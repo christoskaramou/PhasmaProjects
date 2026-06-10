@@ -13,9 +13,9 @@
         "shadow_filter_radius": 0.75,
         "shadow_debug_mode": 0,
         "render_scale": 0.75,
-        "ssao": true,
-        "fxaa": true,
-        "taa": false,
+        "ssao": false,
+        "fxaa": false,
+        "taa": true,
         "cas_sharpening": true,
         "cas_sharpness": 0.5,
         "ssr": false,
@@ -24,12 +24,12 @@
         "dof_focus_scale": 15.0,
         "dof_blur_range": 5.0,
         "bloom": false,
-        "bloom_strength": 1.2,
-        "bloom_range": 2.5,
-        "motion_blur": true,
+        "bloom_strength": 1.0,
+        "bloom_range": 1.0,
+        "motion_blur": false,
         "motion_blur_strength": 1.0,
         "motion_blur_samples": 16,
-        "IBL": true,
+        "IBL": false,
         "IBL_intensity": 1.0,
         "lights_intensity": 1.0,
         "randomize_lights": false,
@@ -37,7 +37,7 @@
         "depth_bias": [
             0.0,
             0.0,
-            -6.199996
+            -6.199999
         ],
         "time_scale": 1.0,
         "model_list": [],
@@ -47,12 +47,53 @@
         "aabbs_depth_aware": true,
         "dynamic_rendering": true,
         "ray_tracing_support": true,
-        "render_mode": 1,
+        "render_mode": 0,
         "use_Disney_PBR": true,
+        "physical_point_falloff": true,
         "present_mode": 2,
         "scene_view_aspect_mode": 0
     },
     "sources": [
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
         {
             "primitive_type": "uv_sphere",
             "primitive_params": [
@@ -295,7 +336,7 @@
             "source_mesh": 0,
             "render_type": 1,
             "instanced": true,
-            "texture_mask": 1,
+            "texture_mask": 17,
             "double_sided": false,
             "material_factors": [
                 [
@@ -303,9 +344,9 @@
                     1.0,
                     1.0,
                     1.0,
-                    0.0,
-                    0.0,
-                    0.0,
+                    5.0,
+                    4.599999,
+                    3.599999,
                     0.0,
                     0.0,
                     1.0,
@@ -324,7 +365,7 @@
                     1.0,
                     1.0,
                     1.0,
-                    0.0,
+                    1.0,
                     0.0,
                     0.0,
                     1.0,
@@ -336,13 +377,14 @@
                 ]
             ],
             "textures": {
-                "base_color": "../Textures/Solar/2k_earth_daymap.jpg"
+                "base_color": "../Textures/Solar/2k_earth_daymap.jpg",
+                "emissive": "../Textures/Solar/night_lights.png"
             }
         },
         {
             "source": 4,
             "source_mesh": 0,
-            "render_type": 1,
+            "render_type": 3,
             "instanced": true,
             "texture_mask": 1,
             "double_sided": false,
@@ -385,7 +427,7 @@
                 ]
             ],
             "textures": {
-                "base_color": "../Textures/Solar/2k_moon.jpg"
+                "base_color": "../Textures/Solar/earth_clouds.png"
             }
         },
         {
@@ -434,7 +476,7 @@
                 ]
             ],
             "textures": {
-                "base_color": "../Textures/Solar/2k_mars.jpg"
+                "base_color": "../Textures/Solar/2k_moon.jpg"
             }
         },
         {
@@ -483,7 +525,7 @@
                 ]
             ],
             "textures": {
-                "base_color": "../Textures/Solar/2k_jupiter.jpg"
+                "base_color": "../Textures/Solar/2k_mars.jpg"
             }
         },
         {
@@ -532,11 +574,248 @@
                 ]
             ],
             "textures": {
-                "base_color": "../Textures/Solar/2k_saturn.jpg"
+                "base_color": "../Textures/Solar/2k_jupiter.jpg"
             }
         },
         {
             "source": 8,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.93,
+                    0.819999,
+                    0.449999,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 9,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.85,
+                    0.819999,
+                    0.74,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 10,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.6,
+                    0.56,
+                    0.5,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 11,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.449999,
+                    0.409999,
+                    0.379999,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 12,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_saturn.jpg"
+            }
+        },
+        {
+            "source": 13,
             "source_mesh": 0,
             "render_type": 3,
             "instanced": true,
@@ -585,7 +864,7 @@
             }
         },
         {
-            "source": 9,
+            "source": 14,
             "source_mesh": 0,
             "render_type": 1,
             "instanced": true,
@@ -634,7 +913,7 @@
             }
         },
         {
-            "source": 10,
+            "source": 15,
             "source_mesh": 0,
             "render_type": 1,
             "instanced": true,
@@ -688,21 +967,21 @@
             "name": "Camera_0",
             "parent": -1,
             "local_matrix": [
-                0.176938,
-                -0.0,
-                0.984221,
+                -0.136073,
                 0.0,
-                -0.212547,
-                0.976403,
-                0.03821,
+                -0.990698,
                 0.0,
-                -0.960997,
-                -0.215954,
-                0.172763,
+                0.137253,
+                0.990356,
+                -0.018851,
                 0.0,
-                -2614.0,
-                21.0,
-                -14963.0,
+                0.981144,
+                -0.138542,
+                -0.134761,
+                0.0,
+                -281.242584,
+                76.640403,
+                105.126007,
                 1.0
             ],
             "component_flags": 8,
@@ -712,10 +991,10 @@
                 "orthographic_size": 10.0,
                 "near_plane": 0.004999,
                 "far_plane": 3.4028234663852886e38,
-                "speed": 3.5,
+                "speed": 150.0,
                 "euler": [
-                    0.217669,
-                    -1.392921,
+                    0.138989,
+                    1.707293,
                     0.0
                 ]
             }
@@ -747,55 +1026,7 @@
             }
         },
         {
-            "name": "SolarSystem",
-            "parent": -1,
-            "local_matrix": [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "script": "C:/Users/Christos/repos/PhasmaSpace/Assets/Scripts/solar/solar_director.lua",
-            "component_flags": 16
-        },
-        {
-            "name": "Sun",
-            "parent": 2,
-            "local_matrix": [
-                208.710006,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                208.710006,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                208.710006,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "mesh": 0,
-            "component_flags": 1
-        },
-        {
-            "name": "Point Light 137",
+            "name": "Point Light 7",
             "parent": -1,
             "local_matrix": [
                 1.0,
@@ -822,14 +1053,14 @@
                     1.0,
                     0.959999,
                     0.899999,
-                    50.0
+                    490000000.0
                 ],
-                "radius": 1000000.0
+                "radius": 5000000.0
             }
         },
         {
-            "name": "Mercury_orbit",
-            "parent": 2,
+            "name": "SolarSystem",
+            "parent": -1,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -843,9 +1074,57 @@
                 0.0,
                 1.0,
                 0.0,
-                1223.911254,
-                -659.598144,
-                -6697.454101,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "script": "C:/Users/Christos/repos/PhasmaSpace/Assets/Scripts/solar/solar_director.lua",
+            "component_flags": 16
+        },
+        {
+            "name": "Sun",
+            "parent": 3,
+            "local_matrix": [
+                69.569999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                69.569999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                69.569999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 0,
+            "component_flags": 1
+        },
+        {
+            "name": "Mercury_orbit",
+            "parent": 3,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -5909.974609,
+                432.243865,
+                -1343.586059,
                 1.0
             ]
         },
@@ -858,12 +1137,12 @@
                 0.0,
                 0.0,
                 0.0,
-                0.999998,
+                0.999999,
                 0.000523,
                 0.0,
                 0.0,
                 -0.000523,
-                0.999998,
+                0.999999,
                 0.0,
                 0.0,
                 0.0,
@@ -875,17 +1154,17 @@
             "name": "Mercury",
             "parent": 6,
             "local_matrix": [
-                -1.411768,
-                0.0,
-                1.989728,
+                0.24397,
                 0.0,
                 0.0,
-                2.439698,
                 0.0,
                 0.0,
-                -1.989728,
+                0.24397,
                 0.0,
-                -1.411768,
+                0.0,
+                0.0,
+                0.0,
+                0.24397,
                 0.0,
                 0.0,
                 0.0,
@@ -897,7 +1176,7 @@
         },
         {
             "name": "Venus_orbit",
-            "parent": 2,
+            "parent": 3,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -911,9 +1190,9 @@
                 0.0,
                 1.0,
                 0.0,
-                10849.415039,
-                -623.828369,
-                159.306991,
+                -10678.075195,
+                632.902648,
+                1220.504882,
                 1.0
             ]
         },
@@ -927,10 +1206,10 @@
                 0.0,
                 0.0,
                 -0.998938,
-                0.046059,
+                0.04606,
                 0.0,
                 0.0,
-                -0.046059,
+                -0.04606,
                 -0.998938,
                 0.0,
                 0.0,
@@ -943,17 +1222,17 @@
             "name": "Venus",
             "parent": 9,
             "local_matrix": [
-                1.160206,
-                0.0,
-                5.93954,
+                0.60518,
                 0.0,
                 0.0,
-                6.051798,
                 0.0,
                 0.0,
-                -5.93954,
+                0.60518,
                 0.0,
-                1.160206,
+                0.0,
+                0.0,
+                0.0,
+                0.60518,
                 0.0,
                 0.0,
                 0.0,
@@ -965,7 +1244,7 @@
         },
         {
             "name": "Earth_orbit",
-            "parent": 2,
+            "parent": 3,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -979,9 +1258,9 @@
                 0.0,
                 1.0,
                 0.0,
-                14632.070312,
-                -0.189214,
-                3115.411621,
+                -2951.576416,
+                0.893949,
+                -14897.371093,
                 1.0
             ]
         },
@@ -995,10 +1274,10 @@
                 0.0,
                 0.0,
                 0.917477,
-                0.397787,
+                0.397788,
                 0.0,
                 0.0,
-                -0.397787,
+                -0.397788,
                 0.917477,
                 0.0,
                 0.0,
@@ -1011,17 +1290,17 @@
             "name": "Earth",
             "parent": 12,
             "local_matrix": [
-                4.519523,
-                0.0,
-                4.490327,
+                0.637099,
                 0.0,
                 0.0,
-                6.370998,
                 0.0,
                 0.0,
-                -4.490327,
+                0.637099,
                 0.0,
-                4.519523,
+                0.0,
+                0.0,
+                0.0,
+                0.637099,
                 0.0,
                 0.0,
                 0.0,
@@ -1029,6 +1308,30 @@
                 1.0
             ],
             "mesh": 3,
+            "component_flags": 1
+        },
+        {
+            "name": "Earth_clouds",
+            "parent": 12,
+            "local_matrix": [
+                0.644745,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.644745,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.644745,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 4,
             "component_flags": 1
         },
         {
@@ -1047,39 +1350,39 @@
                 0.0,
                 1.0,
                 0.0,
-                -1.740279,
-                -3.440294,
-                -38.24617,
+                38.439998,
+                0.0,
+                0.0,
                 1.0
             ]
         },
         {
             "name": "Moon",
-            "parent": 14,
+            "parent": 15,
             "local_matrix": [
-                -0.078656,
-                0.0,
-                1.735618,
+                0.173739,
                 0.0,
                 0.0,
-                1.7374,
                 0.0,
                 0.0,
-                -1.735618,
+                0.173739,
                 0.0,
-                -0.078656,
+                0.0,
+                0.0,
+                0.0,
+                0.173739,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0
             ],
-            "mesh": 4,
+            "mesh": 5,
             "component_flags": 1
         },
         {
             "name": "Mars_orbit",
-            "parent": 2,
+            "parent": 3,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1093,15 +1396,15 @@
                 0.0,
                 1.0,
                 0.0,
-                976.151794,
-                465.818054,
-                23369.613281,
+                19515.929687,
+                -302.804077,
+                8386.862304,
                 1.0
             ]
         },
         {
             "name": "Mars_tilt",
-            "parent": 16,
+            "parent": 17,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1123,87 +1426,19 @@
         },
         {
             "name": "Mars",
-            "parent": 17,
+            "parent": 18,
             "local_matrix": [
-                2.248546,
-                0.0,
-                2.536317,
-                0.0,
-                0.0,
-                3.389498,
-                0.0,
-                0.0,
-                -2.536317,
-                0.0,
-                2.248546,
+                0.33895,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
-                1.0
-            ],
-            "mesh": 5,
-            "component_flags": 1
-        },
-        {
-            "name": "Jupiter_orbit",
-            "parent": 2,
-            "local_matrix": [
-                1.0,
+                0.33895,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                -52614.398437,
-                930.239257,
-                59429.109375,
-                1.0
-            ]
-        },
-        {
-            "name": "Jupiter_tilt",
-            "parent": 19,
-            "local_matrix": [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.998507,
-                0.0546,
-                0.0,
-                0.0,
-                -0.0546,
-                0.998507,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ]
-        },
-        {
-            "name": "Jupiter",
-            "parent": 20,
-            "local_matrix": [
-                33.959499,
-                0.0,
-                -61.108966,
-                0.0,
-                0.0,
-                69.911003,
-                0.0,
-                0.0,
-                61.108966,
-                0.0,
-                33.959499,
+                0.33895,
                 0.0,
                 0.0,
                 0.0,
@@ -1214,8 +1449,8 @@
             "component_flags": 1
         },
         {
-            "name": "Saturn_orbit",
-            "parent": 2,
+            "name": "Jupiter_orbit",
+            "parent": 3,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1229,15 +1464,267 @@
                 0.0,
                 1.0,
                 0.0,
-                138388.09375,
-                -5976.402832,
-                26986.648437,
+                -41823.574218,
+                658.283142,
+                66762.273437,
+                1.0
+            ]
+        },
+        {
+            "name": "Jupiter_tilt",
+            "parent": 20,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.998508,
+                0.054601,
+                0.0,
+                0.0,
+                -0.054601,
+                0.998508,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Jupiter",
+            "parent": 21,
+            "local_matrix": [
+                6.991099,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                6.991099,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                6.991099,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 7,
+            "component_flags": 1
+        },
+        {
+            "name": "Io_orbit",
+            "parent": 21,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                42.18,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Io",
+            "parent": 23,
+            "local_matrix": [
+                0.18216,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.18216,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.18216,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 8,
+            "component_flags": 1
+        },
+        {
+            "name": "Europa_orbit",
+            "parent": 21,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                67.11,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Europa",
+            "parent": 25,
+            "local_matrix": [
+                0.156079,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.156079,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.156079,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 9,
+            "component_flags": 1
+        },
+        {
+            "name": "Ganymede_orbit",
+            "parent": 21,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                107.04,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Ganymede",
+            "parent": 27,
+            "local_matrix": [
+                0.26341,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.26341,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.26341,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 10,
+            "component_flags": 1
+        },
+        {
+            "name": "Callisto_orbit",
+            "parent": 21,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                188.270004,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Callisto",
+            "parent": 29,
+            "local_matrix": [
+                0.241029,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.241029,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.241029,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 11,
+            "component_flags": 1
+        },
+        {
+            "name": "Saturn_orbit",
+            "parent": 3,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                140459.53125,
+                -5890.786132,
+                17316.810546,
                 1.0
             ]
         },
         {
             "name": "Saturn_tilt",
-            "parent": 22,
+            "parent": 31,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1259,33 +1746,33 @@
         },
         {
             "name": "Saturn",
-            "parent": 23,
+            "parent": 32,
             "local_matrix": [
-                18.067577,
-                0.0,
-                55.358268,
+                5.8232,
                 0.0,
                 0.0,
-                58.231998,
                 0.0,
                 0.0,
-                -55.358268,
+                5.8232,
                 0.0,
-                18.067577,
+                0.0,
+                0.0,
+                0.0,
+                5.8232,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0
             ],
-            "mesh": 7,
+            "mesh": 12,
             "component_flags": 1
         },
         {
             "name": "Saturn_rings",
-            "parent": 23,
+            "parent": 32,
             "local_matrix": [
-                28.044,
+                2.804399,
                 0.0,
                 0.0,
                 0.0,
@@ -1295,19 +1782,19 @@
                 0.0,
                 0.0,
                 0.0,
-                28.044,
+                2.804399,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0
             ],
-            "mesh": 8,
+            "mesh": 13,
             "component_flags": 1
         },
         {
             "name": "Uranus_orbit",
-            "parent": 2,
+            "parent": 3,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1321,15 +1808,15 @@
                 0.0,
                 1.0,
                 0.0,
-                133318.53125,
-                -769.087036,
-                258374.421875,
+                139481.765625,
+                -859.763977,
+                255451.75,
                 1.0
             ]
         },
         {
             "name": "Uranus_tilt",
-            "parent": 26,
+            "parent": 35,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1351,31 +1838,31 @@
         },
         {
             "name": "Uranus",
-            "parent": 27,
+            "parent": 36,
             "local_matrix": [
-                -11.694665,
-                0.0,
-                -22.504817,
+                2.5362,
                 0.0,
                 0.0,
-                25.361999,
                 0.0,
                 0.0,
-                22.504817,
+                2.5362,
                 0.0,
-                -11.694665,
+                0.0,
+                0.0,
+                0.0,
+                2.5362,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0
             ],
-            "mesh": 9,
+            "mesh": 14,
             "component_flags": 1
         },
         {
             "name": "Neptune_orbit",
-            "parent": 2,
+            "parent": 3,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1389,15 +1876,15 @@
                 0.0,
                 1.0,
                 0.0,
-                446345.78125,
-                -10714.15039,
-                20795.023437,
+                446604.71875,
+                -10605.784179,
+                15243.204101,
                 1.0
             ]
         },
         {
             "name": "Neptune_tilt",
-            "parent": 29,
+            "parent": 38,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -1419,26 +1906,26 @@
         },
         {
             "name": "Neptune",
-            "parent": 30,
+            "parent": 39,
             "local_matrix": [
-                21.311235,
-                0.0,
-                -12.332125,
+                2.462199,
                 0.0,
                 0.0,
-                24.621999,
                 0.0,
                 0.0,
-                12.332125,
+                2.462199,
                 0.0,
-                21.311235,
+                0.0,
+                0.0,
+                0.0,
+                2.462199,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0
             ],
-            "mesh": 10,
+            "mesh": 15,
             "component_flags": 1
         }
     ],
@@ -1449,28 +1936,28 @@
                 1.0,
                 0.959999,
                 0.899999,
-                50.0
+                490000000.0
             ],
             "position": [
                 0.0,
                 0.0,
                 0.0,
-                1000000.0
+                5000000.0
             ],
-            "name": "Point Light 137"
+            "name": "Point Light 7"
         }
     ],
     "cameras": [
         {
             "name": "Camera_0",
             "position": [
-                -2614.0,
-                21.0,
-                -14963.0
+                -281.242584,
+                76.640403,
+                105.126007
             ],
             "euler": [
-                0.217669,
-                -1.392921,
+                0.138989,
+                1.707293,
                 0.0
             ],
             "fovx": 1.518435,
@@ -1478,7 +1965,7 @@
             "orthographic_size": 10.0,
             "near_plane": 0.004999,
             "far_plane": 3.4028234663852886e38,
-            "speed": 3.5,
+            "speed": 150.0,
             "node_index": 0
         }
     ],

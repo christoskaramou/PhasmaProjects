@@ -13,7 +13,16 @@
 > - Builder made idempotent (deletes prior SolarSystem tree, dedups lights, removes default directional light).
 > - Sun = black base + emissive ×25 + bloom_strength 1.2 / range 2.5 (saved in scene settings).
 > - Manifest `startup_scene` resolves against project ROOT → value is `Assets/Scenes/solar_system.pescene`.
-> - Task 8 (stretch: night lights, clouds, Galilean moons) NOT started — awaiting go-ahead.
+> - **Task 8 COMPLETE (2026-06-10, second pass):** 8a Earth night lights (emissive nightmap ×5.0 — visually
+>   tuned on the night side; faint day-side presence accepted), 8b cloud sphere ×1.012 (luminance→alpha bake
+>   via tools/bake_earth_clouds.py, own spin at 30 h, free limb-haze bonus), 8c Galilean moons (Io/Europa/
+>   Ganymede/Callisto, real radii/periods, flat tints, orbits ×2.5 cosmetic — `moons` list + `dist_scale`
+>   replaced the single-`moon` shape in planets.lua/builder/director). 8d orbit lines stays a dead end.
+>   38-node scene, settled fps ≥1300 (instantaneous fps reads right after load/geometry edits are hitch
+>   frames — sample spaced, settled).
+> - **TRUE SCALE since 2026-06-11 (user decision, supersedes Decision 1 and the scale reference below):**
+>   `RADIUS_SCALE = 1`, `SUN_RADIUS_SCALE = 1`, Galilean `dist_scale` removed — sizes, distances, and
+>   orbits all real. Navigation relies on the clickable body markers + follow camera.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
@@ -142,4 +151,4 @@ Node-name contract (builder creates, director consumes): `<Name>_orbit` → `<Na
 
 ## Out of scope (phase 3+)
 
-Atmospheric scattering pass (engine work, biggest visual upgrade), real-scale floating origin, terrain LOD from USGS DEMs, HYG point-star billboards, lens flare, eclipses/planet shadows, asteroid belt via particles.
+Atmospheric scattering pass (engine work, biggest visual upgrade — **now planned: see `ATMOSPHERE_PLAN.md`**), real-scale floating origin, terrain LOD from USGS DEMs, HYG point-star billboards, lens flare, eclipses/planet shadows, asteroid belt via particles.

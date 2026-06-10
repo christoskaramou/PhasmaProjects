@@ -1,9 +1,9 @@
 # PhasmaSpace
 
 A Space Engine-style solar system demo for [PhasmaEngine](../PhasmaEngine): the 8 planets,
-the Moon, and Saturn's rings driven by real JPL ephemerides, NASA-derived surface textures,
-and a Gaia-based star sky — built entirely as Lua + assets on the stock engine (zero engine
-changes).
+Earth's Moon and the Galilean moons, Saturn's rings, Earth city lights and a drifting cloud
+layer — driven by real JPL ephemerides, NASA-derived surface textures, and a Gaia-based
+star sky, built entirely as Lua + assets on the stock engine (zero engine changes).
 
 ## Run
 
@@ -12,6 +12,7 @@ changes).
    pwsh tools/fetch_solar_textures.ps1     # add -EightK for hi-res local upgrade
    python tools/convert_starmap.py
    python tools/bake_saturn_rings.py
+   python tools/bake_earth_clouds.py
    ```
 2. Point the engine at this project — in the engine build output dir (next to `PhasmaEditor.exe`),
    write `phasma_settings.json`:
@@ -20,6 +21,16 @@ changes).
    ```
 3. Launch `PhasmaEditor.exe` (or `PhasmaPlayer.exe`). The manifest's startup scene is
    `Scenes/solar_system.pescene`.
+
+## In-game UI
+
+The director builds a runtime control panel (works in the editor viewport and
+PhasmaPlayer): **orbit-lines toggle**, **auto-exposure toggle**, **time controls**
+(pause, /2, x2), and a **follow picker** for every body (Sun, planets, Moon, the
+Galileans). A top-left HUD shows camera speed; **mouse wheel** changes it (m/s,
+scaling to km/s / Mm/s / multiples of c). Orbit lines are exact Kepler paths sampled
+from the ephemeris into emissive polyline ribbons (`scene.attach_polyline`, rebuilt
+each load).
 
 The `SolarSystem` root node carries the director script. Its exposed variables (editor
 Properties panel, or `node:get_exposed()` from Lua) drive the simulation:
@@ -58,9 +69,12 @@ drift from the engine binary.
 | Constant | Value |
 |---|---|
 | 1 unit | 10,000 km (distances) |
-| Planet/moon radii | ×10 |
-| Sun radius | ×3 |
+| Planet/moon/sun radii | **×1 — true scale** |
 | 1 AU | 14,959.79 units |
+
+Everything — sizes, distances, and orbits — is at real scale. Bodies are sub-pixel
+dots from any distance (that is what the solar system actually looks like); use the
+clickable body markers and the follow camera to navigate.
 
 Float32 precision at Neptune's orbit (~450k units) is ~0.03 units ≈ 300 km effective — no
 floating origin needed at this scale.
@@ -75,6 +89,19 @@ floating origin needed at this scale.
   (public domain; 1.7B stars from Gaia DR2/Hipparcos/Tycho-2).
 - **Physical constants:** NASA NSSDC planetary fact sheets.
 
+Sunlight uses **physically correct inverse-square falloff** (engine setting
+`physical_point_falloff`, serialized in the scene; sun intensity = luminance x
+distance^2, anchored so Earth at 1 AU is correctly exposed). The director adds
+**photographic auto-exposure** (exposed `auto_exposure`, default on): while following
+a body, the global light multiplier scales with its solar distance squared, so
+Mercury, Earth, and Neptune all read properly exposed — the physics stays real, only
+the "camera" adapts. Turn `auto_exposure` off to see the raw gradient (Mercury blown
+white, Neptune near-black). The follow camera keeps its offset in the body's rotating
+solar frame, so the phase angle you choose stays put while the planet sweeps its
+orbit; drag the camera to pick a new angle.
+
 Known demo simplifications: axial tilt applied about the orbital X axis (not true pole
-RA/Dec), Moon on a simplified circular inclined orbit, no inter-planet shadows, light
-falloff tuned artistically.
+RA/Dec), moons on simplified circular inclined orbits at their real distances, and no
+inter-planet shadows. Earth city lights use the engine's `night_emissive` material flag
+(emissive fades where direct sunlight is strong, so they only show on the night side).
+Galilean moons use flat color tints (no public 2k texture set).
