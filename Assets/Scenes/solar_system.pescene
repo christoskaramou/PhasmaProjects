@@ -1,0 +1,1486 @@
+{
+    "settings": {
+        "right_handed": false,
+        "reverse_depth": true,
+        "frustum_culling": true,
+        "shadows": true,
+        "shadow_map_size": 2048,
+        "num_cascades": 4,
+        "shadow_distance": 250.0,
+        "shadow_cascade_lambda": 0.85,
+        "shadow_normal_bias": 1.5,
+        "shadow_fade_fraction": 0.15,
+        "shadow_filter_radius": 0.75,
+        "shadow_debug_mode": 0,
+        "render_scale": 0.75,
+        "ssao": true,
+        "fxaa": true,
+        "taa": false,
+        "cas_sharpening": true,
+        "cas_sharpness": 0.5,
+        "ssr": false,
+        "tonemapping": false,
+        "dof": false,
+        "dof_focus_scale": 15.0,
+        "dof_blur_range": 5.0,
+        "bloom": false,
+        "bloom_strength": 1.2,
+        "bloom_range": 2.5,
+        "motion_blur": true,
+        "motion_blur_strength": 1.0,
+        "motion_blur_samples": 16,
+        "IBL": true,
+        "IBL_intensity": 1.0,
+        "lights_intensity": 1.0,
+        "randomize_lights": false,
+        "skybox_path": "Textures/Solar/starmap_2020_4k.hdr",
+        "depth_bias": [
+            0.0,
+            0.0,
+            -6.199996
+        ],
+        "time_scale": 1.0,
+        "model_list": [],
+        "freeze_frustum_culling": false,
+        "draw_aabbs": false,
+        "draw_grid": false,
+        "aabbs_depth_aware": true,
+        "dynamic_rendering": true,
+        "ray_tracing_support": true,
+        "render_mode": 1,
+        "use_Disney_PBR": true,
+        "present_mode": 2,
+        "scene_view_aspect_mode": 0
+    },
+    "sources": [
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "plane",
+            "primitive_params": [
+                10.0,
+                10.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                1.0,
+                32.0,
+                32.0
+            ]
+        }
+    ],
+    "meshes": [
+        {
+            "source": 0,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 17,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    25.0,
+                    21.0,
+                    16.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_sun.jpg",
+                "emissive": "../Textures/Solar/2k_sun.jpg"
+            }
+        },
+        {
+            "source": 1,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_mercury.jpg"
+            }
+        },
+        {
+            "source": 2,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_venus_atmosphere.jpg"
+            }
+        },
+        {
+            "source": 3,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_earth_daymap.jpg"
+            }
+        },
+        {
+            "source": 4,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_moon.jpg"
+            }
+        },
+        {
+            "source": 5,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_mars.jpg"
+            }
+        },
+        {
+            "source": 6,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_jupiter.jpg"
+            }
+        },
+        {
+            "source": 7,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_saturn.jpg"
+            }
+        },
+        {
+            "source": 8,
+            "source_mesh": 0,
+            "render_type": 3,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/saturn_rings.png"
+            }
+        },
+        {
+            "source": 9,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_uranus.jpg"
+            }
+        },
+        {
+            "source": 10,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/Solar/2k_neptune.jpg"
+            }
+        }
+    ],
+    "nodes": [
+        {
+            "name": "Camera_0",
+            "parent": -1,
+            "local_matrix": [
+                0.176938,
+                -0.0,
+                0.984221,
+                0.0,
+                -0.212547,
+                0.976403,
+                0.03821,
+                0.0,
+                -0.960997,
+                -0.215954,
+                0.172763,
+                0.0,
+                -2614.0,
+                21.0,
+                -14963.0,
+                1.0
+            ],
+            "component_flags": 8,
+            "camera": {
+                "projection": "perspective",
+                "fovx": 1.518435,
+                "orthographic_size": 10.0,
+                "near_plane": 0.004999,
+                "far_plane": 3.4028234663852886e38,
+                "speed": 3.5,
+                "euler": [
+                    0.217669,
+                    -1.392921,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "Skybox",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 256,
+            "skybox": {
+                "path": "Textures/Solar/starmap_2020_4k.hdr"
+            }
+        },
+        {
+            "name": "SolarSystem",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "script": "C:/Users/Christos/repos/PhasmaSpace/Assets/Scripts/solar/solar_director.lua",
+            "component_flags": 16
+        },
+        {
+            "name": "Sun",
+            "parent": 2,
+            "local_matrix": [
+                208.710006,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                208.710006,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                208.710006,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 0,
+            "component_flags": 1
+        },
+        {
+            "name": "Point Light 137",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "point",
+                "color": [
+                    1.0,
+                    0.959999,
+                    0.899999,
+                    50.0
+                ],
+                "radius": 1000000.0
+            }
+        },
+        {
+            "name": "Mercury_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1223.911254,
+                -659.598144,
+                -6697.454101,
+                1.0
+            ]
+        },
+        {
+            "name": "Mercury_tilt",
+            "parent": 5,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.999998,
+                0.000523,
+                0.0,
+                0.0,
+                -0.000523,
+                0.999998,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Mercury",
+            "parent": 6,
+            "local_matrix": [
+                -1.411768,
+                0.0,
+                1.989728,
+                0.0,
+                0.0,
+                2.439698,
+                0.0,
+                0.0,
+                -1.989728,
+                0.0,
+                -1.411768,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 1,
+            "component_flags": 1
+        },
+        {
+            "name": "Venus_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                10849.415039,
+                -623.828369,
+                159.306991,
+                1.0
+            ]
+        },
+        {
+            "name": "Venus_tilt",
+            "parent": 8,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.998938,
+                0.046059,
+                0.0,
+                0.0,
+                -0.046059,
+                -0.998938,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Venus",
+            "parent": 9,
+            "local_matrix": [
+                1.160206,
+                0.0,
+                5.93954,
+                0.0,
+                0.0,
+                6.051798,
+                0.0,
+                0.0,
+                -5.93954,
+                0.0,
+                1.160206,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 2,
+            "component_flags": 1
+        },
+        {
+            "name": "Earth_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                14632.070312,
+                -0.189214,
+                3115.411621,
+                1.0
+            ]
+        },
+        {
+            "name": "Earth_tilt",
+            "parent": 11,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.917477,
+                0.397787,
+                0.0,
+                0.0,
+                -0.397787,
+                0.917477,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Earth",
+            "parent": 12,
+            "local_matrix": [
+                4.519523,
+                0.0,
+                4.490327,
+                0.0,
+                0.0,
+                6.370998,
+                0.0,
+                0.0,
+                -4.490327,
+                0.0,
+                4.519523,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 3,
+            "component_flags": 1
+        },
+        {
+            "name": "Moon_orbit",
+            "parent": 12,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -1.740279,
+                -3.440294,
+                -38.24617,
+                1.0
+            ]
+        },
+        {
+            "name": "Moon",
+            "parent": 14,
+            "local_matrix": [
+                -0.078656,
+                0.0,
+                1.735618,
+                0.0,
+                0.0,
+                1.7374,
+                0.0,
+                0.0,
+                -1.735618,
+                0.0,
+                -0.078656,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 4,
+            "component_flags": 1
+        },
+        {
+            "name": "Mars_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                976.151794,
+                465.818054,
+                23369.613281,
+                1.0
+            ]
+        },
+        {
+            "name": "Mars_tilt",
+            "parent": 16,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.904901,
+                0.425621,
+                0.0,
+                0.0,
+                -0.425621,
+                0.904901,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Mars",
+            "parent": 17,
+            "local_matrix": [
+                2.248546,
+                0.0,
+                2.536317,
+                0.0,
+                0.0,
+                3.389498,
+                0.0,
+                0.0,
+                -2.536317,
+                0.0,
+                2.248546,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 5,
+            "component_flags": 1
+        },
+        {
+            "name": "Jupiter_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -52614.398437,
+                930.239257,
+                59429.109375,
+                1.0
+            ]
+        },
+        {
+            "name": "Jupiter_tilt",
+            "parent": 19,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.998507,
+                0.0546,
+                0.0,
+                0.0,
+                -0.0546,
+                0.998507,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Jupiter",
+            "parent": 20,
+            "local_matrix": [
+                33.959499,
+                0.0,
+                -61.108966,
+                0.0,
+                0.0,
+                69.911003,
+                0.0,
+                0.0,
+                61.108966,
+                0.0,
+                33.959499,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 6,
+            "component_flags": 1
+        },
+        {
+            "name": "Saturn_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                138388.09375,
+                -5976.402832,
+                26986.648437,
+                1.0
+            ]
+        },
+        {
+            "name": "Saturn_tilt",
+            "parent": 22,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.893136,
+                0.449786,
+                0.0,
+                0.0,
+                -0.449786,
+                0.893136,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Saturn",
+            "parent": 23,
+            "local_matrix": [
+                18.067577,
+                0.0,
+                55.358268,
+                0.0,
+                0.0,
+                58.231998,
+                0.0,
+                0.0,
+                -55.358268,
+                0.0,
+                18.067577,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 7,
+            "component_flags": 1
+        },
+        {
+            "name": "Saturn_rings",
+            "parent": 23,
+            "local_matrix": [
+                28.044,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                28.044,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 8,
+            "component_flags": 1
+        },
+        {
+            "name": "Uranus_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                133318.53125,
+                -769.087036,
+                258374.421875,
+                1.0
+            ]
+        },
+        {
+            "name": "Uranus_tilt",
+            "parent": 26,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.135196,
+                0.990818,
+                0.0,
+                0.0,
+                -0.990818,
+                -0.135196,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Uranus",
+            "parent": 27,
+            "local_matrix": [
+                -11.694665,
+                0.0,
+                -22.504817,
+                0.0,
+                0.0,
+                25.361999,
+                0.0,
+                0.0,
+                22.504817,
+                0.0,
+                -11.694665,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 9,
+            "component_flags": 1
+        },
+        {
+            "name": "Neptune_orbit",
+            "parent": 2,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                446345.78125,
+                -10714.15039,
+                20795.023437,
+                1.0
+            ]
+        },
+        {
+            "name": "Neptune_tilt",
+            "parent": 29,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.880311,
+                0.474395,
+                0.0,
+                0.0,
+                -0.474395,
+                0.880311,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Neptune",
+            "parent": 30,
+            "local_matrix": [
+                21.311235,
+                0.0,
+                -12.332125,
+                0.0,
+                0.0,
+                24.621999,
+                0.0,
+                0.0,
+                12.332125,
+                0.0,
+                21.311235,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 10,
+            "component_flags": 1
+        }
+    ],
+    "lights": [
+        {
+            "type": "point",
+            "color": [
+                1.0,
+                0.959999,
+                0.899999,
+                50.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0,
+                1000000.0
+            ],
+            "name": "Point Light 137"
+        }
+    ],
+    "cameras": [
+        {
+            "name": "Camera_0",
+            "position": [
+                -2614.0,
+                21.0,
+                -14963.0
+            ],
+            "euler": [
+                0.217669,
+                -1.392921,
+                0.0
+            ],
+            "fovx": 1.518435,
+            "projection": "perspective",
+            "orthographic_size": 10.0,
+            "near_plane": 0.004999,
+            "far_plane": 3.4028234663852886e38,
+            "speed": 3.5,
+            "node_index": 0
+        }
+    ],
+    "active_camera": 0
+}

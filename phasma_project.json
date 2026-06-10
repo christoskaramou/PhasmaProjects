@@ -1,0 +1,6 @@
+{
+    "version": 1,
+    "name": "PhasmaSpace",
+    "assets": "Assets",
+    "startup_scene": "Assets/Scenes/solar_system.pescene"
+}

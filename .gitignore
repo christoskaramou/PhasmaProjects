@@ -1,0 +1,18 @@
+# Local hi-res texture upgrades (fetch via tools/fetch_solar_textures.ps1 -EightK)
+Assets/Textures/Solar/8k_*
+Assets/Textures/Solar/*.exr
+
+# Editor session state (written into project Assets when the project is active)
+Assets/editor_config.json
+
+__pycache__/
+
+# Editor runtime state
+Assets/editor_windows.json
+Assets/imgui.ini
+Assets/Save/
+
+# Agent/MCP runtime artifacts (screenshots, session logs) — config stays tracked
+Assets/Agent/image_*.png
+Assets/Agent/sessions/
+Assets/Agent/*.log
