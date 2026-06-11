@@ -25,26 +25,31 @@ star sky, built entirely as Lua + assets on the stock engine (zero engine change
 ## In-game UI
 
 The director builds a runtime control panel (works in the editor viewport and
-PhasmaPlayer): **orbit-lines toggle**, **auto-exposure toggle**, **time controls**
-(pause, /2, x2), and a **follow picker** for every body (Sun, planets, Moon, the
-Galileans). A top-left HUD shows camera speed; **mouse wheel** changes it (m/s,
-scaling to km/s / Mm/s / multiples of c). Orbit lines are exact Kepler paths sampled
-from the ephemeris into emissive polyline ribbons (`scene.attach_polyline`, rebuilt
-each load).
+PhasmaPlayer): **orbit-lines toggle**, **auto-exposure toggle**, **follow-orbit
+toggle**, **time controls** (pause, /2, x2), and a **follow picker** for every
+body (Sun, planets, Moon, the Galileans). A top-left HUD shows camera speed and
+follow zoom; **mouse wheel** zooms the followed body or changes free-camera speed
+(m/s, scaling to km/s / Mm/s / multiples of c). Orbit lines are exact Kepler paths
+sampled from the ephemeris into emissive polyline ribbons (`scene.attach_polyline`,
+rebuilt each load).
 
 The `SolarSystem` root node carries the director script. Its exposed variables (editor
 Properties panel, or `node:get_exposed()` from Lua) drive the simulation:
 
 | Exposed var | Default | Meaning |
 |---|---|---|
-| `time_scale` | 2.0 | simulated days per real second (0 freezes) |
+| `time_scale` | 1/86400 | simulated days per real second (0 freezes) |
 | `epoch_jd` | 2461201.5 | Julian date at sim start (2026-06-10, Horizons-verified) |
 | `animate_in_editor` | true | tick the sim outside play mode |
 | `follow` | "Earth" | body the camera tracks (`Mercury`…`Neptune`, `Moon`, `Sun`; "" = free cam) |
 | `follow_distance` | 6.0 | camera distance in body radii |
+| `follow_orbit` | true | RMB/MMB drag orbits around the followed body |
 
-While following, you can still orbit/zoom by hand — the camera keeps your viewing
-direction and re-anchors to the moving body each frame.
+While following, you can still orbit/zoom by hand: RMB/MMB drag rotates around the
+tracked body, and mouse wheel adjusts distance. Follow mode rebases the
+dynamic planet nodes around the tracked body so the subject and camera render near
+world origin instead of at large heliocentric coordinates; free camera mode also
+recenters when the camera drifts far from origin.
 
 ## Dev tooling
 
@@ -76,8 +81,14 @@ Everything — sizes, distances, and orbits — is at real scale. Bodies are sub
 dots from any distance (that is what the solar system actually looks like); use the
 clickable body markers and the follow camera to navigate.
 
-Float32 precision at Neptune's orbit (~450k units) is ~0.03 units ≈ 300 km effective — no
-floating origin needed at this scale.
+Float32 precision at Neptune's orbit (~450k units) is ~0.03 units ≈ 300 km effective,
+which is visible when the camera sits only a few body radii from the followed target.
+The director therefore keeps planet, moon, shift, and orbit-sample positions as Lua
+numbers until the final engine write, then uses a lightweight floating origin so the
+visible scene avoids large float cancellations. Orbit guide ribbons are anchored at
+the current epoch, sampled from a sagitta budget, and rebuilt only during scene
+binding; the orbit root follows the floating origin and widths are body-scale
+bounded so scripts do not mutate orbit geometry during ticks.
 
 ## Data sources & licenses
 
