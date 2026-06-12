@@ -19,7 +19,7 @@ end
 local E = load_module("Scripts/solar/ephemeris.lua")
 local P = load_module("Scripts/solar/planets.lua")
 
-local EPOCH_JD = 2461201.5 -- 2026-06-10 00:00 UTC; matches solar_director default
+local EPOCH_JD = 2461201.5 -- authoring seed only; solar_director overwrites runtime positions from the current clock
 
 -- Idempotency: delete any prior SolarSystem tree so re-runs don't duplicate nodes.
 for _, e in ipairs(scene.get_entities()) do

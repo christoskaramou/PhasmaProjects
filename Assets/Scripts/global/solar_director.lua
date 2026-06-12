@@ -25,15 +25,32 @@ local E = load_module("Scripts/solar/ephemeris.lua")
 local P = load_module("Scripts/solar/planets.lua")
 local UI = load_module("Scripts/solar/solar_ui.lua")
 
+local UNIX_EPOCH_JD = 2440587.5
+local FALLBACK_EPOCH_JD = 2461201.5
+
+local function current_julian_date()
+    if os and os.time then
+        return UNIX_EPOCH_JD + (os.time() / 86400.0)
+    end
+    return FALLBACK_EPOCH_JD
+end
+
+if _G.solar_manual_orbit_cleanup then
+    pcall(_G.solar_manual_orbit_cleanup, true)
+    _G.solar_manual_orbit_cleanup = nil
+end
+
+local start_epoch_jd = current_julian_date()
 local props = exposed {
     time_scale        = 1.0 / 86400.0, -- sim days per real second; default = real time (0 freezes)
-    epoch_jd          = 2461201.5, -- 2026-06-10 00:00 UTC (verified vs Horizons)
+    epoch_jd          = start_epoch_jd, -- current UTC at script load
     animate_in_editor = true,
     follow            = "Earth",   -- body to track with the camera ("" = free cam)
-    follow_distance   = 6.0,       -- camera distance in multiples of body radius
+    follow_distance   = 180.0,     -- camera distance in multiples of body radius
     follow_orbit      = true,      -- drag RMB/MMB to orbit while following
     auto_exposure     = true,      -- expose for the followed body (camera-style)
 }
+props.epoch_jd = start_epoch_jd
 
 local function pos(x, y, z)
     return { x = x, y = y, z = z }
@@ -74,14 +91,6 @@ local function rotate_x(v, deg)
     return pos(v.x, v.y * c - v.z * s, v.y * s + v.z * c)
 end
 
-local function points_to_vec3(points)
-    local out = {}
-    for i, p in ipairs(points) do
-        out[i] = to_vec3(p)
-    end
-    return out
-end
-
 local sim_days = 0.0
 local handles = {}  -- node name -> SceneNodeHandle
 local root = nil    -- the SolarSystem node (found by name as a global script, or `self`)
@@ -91,6 +100,11 @@ local scene_shift = zero_pos()
 local universe_positions = {} -- body name -> heliocentric world position before root rebase
 local moon_locals = {}        -- moon name -> local orbit position before parent planet tilt
 
+local function reset_simulation_clock()
+    props.epoch_jd = current_julian_date()
+    sim_days = 0.0
+end
+
 local function index_children(h)
     for _, child in ipairs(h:get_children()) do
         handles[child:get_name()] = child
@@ -98,25 +112,31 @@ local function index_children(h)
     end
 end
 
--- Orbit lines: sampled from the real ephemeris into closed hardware line strips.
--- Rebuilt from scratch on every load (line meshes do not round-trip through the
--- .pescene), so any stale serialized "Orbits" tree is removed first.
+-- Orbit lines: temporary manual render_graph pass test. The lines are sampled
+-- into Lua-owned line-strip vertex buffers and drawn by a script-created pass, without
+-- creating RenderType::Lines meshes for the engine's predefined LinesPass.
 --
--- Lines are rebuilt at load/epoch only. Planet orbit vertices stay in
--- heliocentric coordinates and the Orbits root receives the floating-origin
--- shift, so ticks never mutate orbit geometry. Width constants below are kept
--- for older engine builds that fall back to the polyline-ribbon binding.
-local ORBIT_MIN_WIDTH = 0.003
-local ORBIT_MAX_WIDTH = 0.08
-local MOON_ORBIT_MAX_WIDTH = 0.04
-local ORBIT_BODY_WIDTH_FRACTION = 0.08
+-- Line strips are rebuilt at load/epoch only. Planet orbit vertices stay in
+-- heliocentric coordinates; the manual pass applies the floating-origin shift
+-- as a push constant every frame. Moon orbit vertices are pre-tilted and drawn
+-- around their parent planet.
 local ORBIT_MIN_SAMPLES = 240
 local ORBIT_MAX_SAMPLES = 4096
 local ORBIT_SAGITTA_RADIUS_FRACTION = 0.2
 local MOON_ORBIT_SEGMENT_TARGET = 0.75
+local MANUAL_ORBIT_PASS_NAME = "SolarManualOrbitLines"
+local MANUAL_ORBIT_PASS_ORDER = 721
+local MANUAL_ORBIT_COLOR = { x = 1.0, y = 1.0, z = 1.0, w = 1.0 }
 local FREE_REBASE_DISTANCE = 1000.0
 local FOLLOW_ORBIT_SENSITIVITY = 0.0035
 local FOLLOW_ORBIT_PITCH_LIMIT = math.rad(84.0)
+local manual_orbit_lines = {
+    items = {},
+    pass_info = nil,
+    registered = false,
+    frames = 0,
+    draws = 0,
+}
 
 local function orbit_sample_count(a_units, radius_units)
     local sagitta = math.max((radius_units or 1.0) * ORBIT_SAGITTA_RADIUS_FRACTION, 0.02)
@@ -133,26 +153,6 @@ local function moon_orbit_sample_count(a_units)
     return samples
 end
 
-local function orbit_width_for_line(o)
-    local width = o and o.fixed_width or ORBIT_MIN_WIDTH
-    local cap = o and o.width_cap or ORBIT_MAX_WIDTH
-    if width < ORBIT_MIN_WIDTH then width = ORBIT_MIN_WIDTH end
-    if width > cap then width = cap end
-    return width
-end
-
-local function orbit_normal_from_points(pts)
-    local samples = #pts
-    local p1, p2 = pts[1], pts[math.floor(samples / 4)]
-    local nx = p1.y * p2.z - p1.z * p2.y
-    local ny = p1.z * p2.x - p1.x * p2.z
-    local nz = p1.x * p2.y - p1.y * p2.x
-    local nl = math.sqrt(nx * nx + ny * ny + nz * nz)
-    if nl < 1e-9 then nx, ny, nz, nl = 0.0, 1.0, 0.0, 1.0 end
-    if ny < 0.0 then nx, ny, nz = -nx, -ny, -nz end
-    return pos(nx / nl, ny / nl, nz / nl)
-end
-
 local function sample_planet_orbit(o, jd)
     local pts = {}
     for i = 0, o.samples - 1 do
@@ -160,45 +160,193 @@ local function sample_planet_orbit(o, jd)
         local x, y, z = E.heliocentric(o.body, sample_jd)
         pts[#pts + 1] = pos(x * P.AU_UNITS, z * P.AU_UNITS, y * P.AU_UNITS)
     end
-    local normal = orbit_normal_from_points(pts)
     o.pts = pts
-    o.normal = to_vec3(normal)
     o.anchor_jd = jd
 end
 
-local function orbit_width_for_radius(radius_units, cap)
-    local width = radius_units * ORBIT_BODY_WIDTH_FRACTION
-    if width < ORBIT_MIN_WIDTH then width = ORBIT_MIN_WIDTH end
-    if width > cap then width = cap end
-    return width
+local function append_vertex_floats(out, v)
+    out[#out + 1] = v.x
+    out[#out + 1] = v.y
+    out[#out + 1] = v.z
 end
 
-local function rebuild_orbit_line(name, o, width, jd)
-    if o.body and jd then
-        sample_planet_orbit(o, jd)
+local function closed_points_to_line_strip_floats(points)
+    local out = {}
+    local count = #points
+    if count < 2 then return out end
+
+    for i = 1, count do
+        append_vertex_floats(out, points[i])
+    end
+    append_vertex_floats(out, points[1])
+    return out
+end
+
+local function destroy_manual_orbit_lines(clear_globals)
+    if render_graph and render_graph.remove_pass then
+        render_graph.remove_pass(MANUAL_ORBIT_PASS_NAME)
+    end
+    manual_orbit_lines.registered = false
+    manual_orbit_lines.frames = 0
+    manual_orbit_lines.draws = 0
+
+    if destroy_buffer then
+        for _, item in ipairs(manual_orbit_lines.items) do
+            if item.buffer then
+                destroy_buffer(item.buffer)
+                item.buffer = nil
+            end
+        end
+    end
+    manual_orbit_lines.items = {}
+
+    if manual_orbit_lines.pass_info and destroy_pass_info then
+        destroy_pass_info(manual_orbit_lines.pass_info)
+        manual_orbit_lines.pass_info = nil
     end
 
-    if o.node then o.node:remove() end
-    local line = scene.add_empty_node("Orbit_" .. name)
-    line:set_parent(o.parent_node or handles["Orbits"])
-    local pts = points_to_vec3(o.pts)
-    if scene.attach_lines then
-        scene.attach_lines(line, pts, true)
-        if material and material.set_render_type then
-            material.set_render_type(line, "lines")
+    if clear_globals then
+        if _G.solar_manual_orbit_cleanup == destroy_manual_orbit_lines then
+            _G.solar_manual_orbit_cleanup = nil
         end
-    elseif scene.attach_polyline then
-        scene.attach_polyline(line, pts, width, o.normal, true)
-    else
-        pe_log("[solar] orbit line skipped; engine has no line or polyline binding")
-        o.node = line
+        _G.solar_manual_orbit_debug = nil
+    end
+end
+
+local function create_manual_orbit_line(name, points, owner)
+    if not create_buffer then
+        pe_log("[solar] manual orbit line skipped; create_buffer binding is missing")
         return
     end
-    material.set(line, "base_color", vec4(0.0, 0.0, 0.0, 1.0))
-    material.set(line, "emissive", vec3(1.5, 2.8, 5.0))
-    material.set(line, "roughness", 1.0)
-    material.set(line, "metallic", 0.0)
-    o.node = line
+
+    local vertices = closed_points_to_line_strip_floats(points)
+    if #vertices < 6 then return end
+
+    local vertex_count = math.floor(#vertices / 3)
+    local byte_size = #vertices * 4
+    local buffer = create_buffer(byte_size, "vertex", "cpu_to_gpu", "SolarOrbit_" .. name)
+    if not buffer then return end
+    buffer:set_data(vertices, "float")
+    buffer:flush(byte_size, 0)
+    buffer:unmap()
+
+    manual_orbit_lines.items[#manual_orbit_lines.items + 1] = {
+        name = name,
+        buffer = buffer,
+        vertex_count = vertex_count,
+        owner = owner,
+        color = MANUAL_ORBIT_COLOR,
+    }
+end
+
+local function ensure_manual_orbit_pipeline(target, depth)
+    if manual_orbit_lines.pass_info then return true end
+    if not create_pass_info then
+        pe_log("[solar] manual orbit pass skipped; create_pass_info binding is missing")
+        return false
+    end
+
+    local pi = create_pass_info()
+    manual_orbit_lines.pass_info = pi
+    pi:set_name("SolarManualOrbitLine_pipeline")
+    pi:set_vertex_shader("Shaders/Utilities/ManualOrbitLinesVS.hlsl", "mainVS")
+    pi:set_fragment_shader("Shaders/Utilities/ManualOrbitLinesPS.hlsl", "mainPS")
+    pi:set_topology("line_strip")
+    pi:set_cull_mode("none")
+    pi:set_dynamic_states({ "viewport", "scissor" })
+    pi:set_color_format(target)
+    pi:set_depth_format(depth)
+    pi:set_depth_test(true)
+    pi:set_depth_write(false)
+    pi:set_blend_mode("default")
+    pi:update()
+    return true
+end
+
+local function manual_orbit_offset(item)
+    if item.owner then
+        local owner_pos = universe_positions[item.owner]
+        if not owner_pos then return nil end
+        return shifted(owner_pos, scene_shift)
+    end
+    return scene_shift
+end
+
+local function register_manual_orbit_pass()
+    if not render_graph or not render_graph.add_pass then
+        pe_log("[solar] manual orbit pass skipped; render_graph.add_pass binding is missing")
+        return
+    end
+
+    render_graph.remove_pass(MANUAL_ORBIT_PASS_NAME)
+    local target = render_graph.get_target and render_graph.get_target("viewport") or nil
+    local depth = render_graph.get_target and render_graph.get_target("depthStencil") or nil
+    if target and depth then
+        ensure_manual_orbit_pipeline(target, depth)
+    end
+
+    render_graph.add_pass(MANUAL_ORBIT_PASS_NAME, MANUAL_ORBIT_PASS_ORDER, function(cmd)
+        local orbits = handles["Orbits"]
+        if not orbits or not orbits:is_valid() then return end
+        if orbits.is_enabled and not orbits:is_enabled() then return end
+        if #manual_orbit_lines.items == 0 then return end
+
+        local target = render_graph.get_target("viewport")
+        local depth = render_graph.get_target("depthStencil")
+        local cam = get_camera and get_camera() or nil
+        if not target or not depth or not cam then return end
+        if not ensure_manual_orbit_pipeline(target, depth) then return end
+
+        local width = target.get_width
+        local height = target.get_height
+        if width == 0 or height == 0 then return end
+
+        manual_orbit_lines.frames = manual_orbit_lines.frames + 1
+        manual_orbit_lines.draws = 0
+
+        cmd:begin_pass({ { target, "load", "store" }, { depth, "load", "store", "load", "store" } },
+                       MANUAL_ORBIT_PASS_NAME)
+        cmd:set_viewport(0.0, 0.0, target.get_width_f, target.get_height_f, 0.0, 1.0)
+        cmd:set_scissor(0, 0, width, height)
+        cmd:bind_pipeline(manual_orbit_lines.pass_info, false)
+
+        cmd:set_constant_mat4(0, cam:get_view_projection())
+
+        for _, item in ipairs(manual_orbit_lines.items) do
+            local offset = manual_orbit_offset(item)
+            if offset and item.buffer then
+                local color = item.color
+                cmd:set_constant_vec4(16, offset.x, offset.y, offset.z, 0.0)
+                cmd:set_constant_vec4(20, color.x, color.y, color.z, color.w)
+                cmd:push_constants()
+                cmd:bind_vertex_buffer(item.buffer, 0)
+                cmd:draw(item.vertex_count, 1, 0, 0)
+                manual_orbit_lines.draws = manual_orbit_lines.draws + 1
+            end
+        end
+
+        cmd:end_pass()
+    end)
+    manual_orbit_lines.registered = true
+end
+
+_G.solar_manual_orbit_cleanup = destroy_manual_orbit_lines
+_G.solar_manual_orbit_debug = function()
+    local first = manual_orbit_lines.items[1]
+    return {
+        count = #manual_orbit_lines.items,
+        registered = manual_orbit_lines.registered,
+        frames = manual_orbit_lines.frames,
+        draws = manual_orbit_lines.draws,
+        first_vertices = first and first.vertex_count or 0,
+        topology = "line_strip",
+        epoch_jd = props.epoch_jd,
+        jd = props.epoch_jd + sim_days,
+    }
+end
+
+function destroy()
+    destroy_manual_orbit_lines(true)
 end
 
 local function choose_sun_point_light(pls)
@@ -237,6 +385,8 @@ local function sync_sun_light(world_pos)
 end
 
 local function build_orbit_lines(jd)
+    destroy_manual_orbit_lines()
+
     if handles["Orbits"] then
         handles["Orbits"]:remove()
         handles["Orbits"] = nil
@@ -252,12 +402,9 @@ local function build_orbit_lines(jd)
             body = p.body,
             samples = orbit_sample_count(a_units, P.radius_units(p.radius_km)),
             period_days = period_days,
-            fixed_width = orbit_width_for_radius(P.radius_units(p.radius_km), ORBIT_MAX_WIDTH),
-            width_cap = ORBIT_MAX_WIDTH,
-            node = nil,
         }
         sample_planet_orbit(o, jd)
-        rebuild_orbit_line(p.name, o, orbit_width_for_line(o))
+        create_manual_orbit_line(p.name, o.pts, nil)
 
         local tilt = handles[p.name .. "_tilt"]
         if tilt then
@@ -271,19 +418,16 @@ local function build_orbit_lines(jd)
                     local ang = 2.0 * math.pi * (i / msamples)
                     mpts[#mpts + 1] = pos(ma * math.cos(ang), ma * math.sin(ang) * si, ma * math.sin(ang) * ci)
                 end
-                local normal = orbit_normal_from_points(mpts)
-                local mo = {
-                    pts = mpts,
-                    normal = to_vec3(normal),
-                    parent_node = tilt,
-                    fixed_width = orbit_width_for_radius(P.radius_units(m.radius_km), MOON_ORBIT_MAX_WIDTH),
-                    width_cap = MOON_ORBIT_MAX_WIDTH,
-                    node = nil,
-                }
-                rebuild_orbit_line(m.name, mo, orbit_width_for_line(mo))
+                local tilted = {}
+                for i, pt in ipairs(mpts) do
+                    tilted[i] = rotate_x(pt, p.tilt)
+                end
+                create_manual_orbit_line(m.name, tilted, p.name)
             end
         end
     end
+
+    register_manual_orbit_pass()
 end
 
 -- Photographic auto-exposure: sunlight falls off physically (1/d^2), so expose for
@@ -622,6 +766,7 @@ local function bind()
     index_children(root)
     root:set_position(vec3(0.0, 0.0, 0.0))
     scene_shift = zero_pos()
+    reset_simulation_clock()
     local jd = props.epoch_jd + sim_days
     compute_universe_positions(jd)
     update_scene_shift()
