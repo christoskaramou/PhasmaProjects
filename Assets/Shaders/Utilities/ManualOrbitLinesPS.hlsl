@@ -21,6 +21,6 @@ struct PS_OUTPUT_ManualOrbitLine
 PS_OUTPUT_ManualOrbitLine mainPS(PS_INPUT_ManualOrbitLine input)
 {
     PS_OUTPUT_ManualOrbitLine output;
-    output.color = input.color * pc.color.a;
+    output.color = input.color;
     return output;
 }

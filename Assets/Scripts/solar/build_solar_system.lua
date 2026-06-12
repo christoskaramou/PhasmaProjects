@@ -19,7 +19,17 @@ end
 local E = load_module("Scripts/solar/ephemeris.lua")
 local P = load_module("Scripts/solar/planets.lua")
 
-local EPOCH_JD = 2461201.5 -- authoring seed only; solar_director overwrites runtime positions from the current clock
+local UNIX_EPOCH_JD = 2440587.5
+local FALLBACK_EPOCH_JD = 2461201.5
+
+local function current_julian_date()
+    if os and os.time then
+        return UNIX_EPOCH_JD + (os.time() / 86400.0)
+    end
+    return FALLBACK_EPOCH_JD
+end
+
+local EPOCH_JD = current_julian_date() -- authoring seed only; solar_director overwrites from the current clock at runtime
 
 -- Idempotency: delete any prior SolarSystem tree so re-runs don't duplicate nodes.
 for _, e in ipairs(scene.get_entities()) do
@@ -87,6 +97,29 @@ local function make_body(name, parent, radius_units, opts)
     return h
 end
 
+local function make_ring_surface(name, parent, outer_radius_units, opts)
+    local h = scene.add_empty_node(name)
+    h:set_parent(parent)
+    scene.attach_primitive(h, "plane") -- 10x10, planar UVs, XZ plane
+    local s = outer_radius_units * 2.0 / 10.0
+    h:set_scale(vec3(s, 1.0, s))
+    if opts.flip then
+        h:set_rotation(vec3(180.0, 0.0, 0.0))
+    end
+    material.set_texture(h, "base_color", P.TEX .. opts.tex)
+    if opts.tint then
+        material.set(h, "base_color", vec4(opts.tint[1], opts.tint[2], opts.tint[3], 1.0))
+    end
+    if opts.emissive then
+        material.set_texture(h, "emissive", P.TEX .. opts.tex)
+        material.set(h, "emissive", vec3(opts.emissive[1], opts.emissive[2], opts.emissive[3]))
+    end
+    material.set_render_type(h, "alpha_blend")
+    material.set(h, "roughness", 1.0)
+    material.set(h, "metallic", 0.0)
+    return h
+end
+
 local root = scene.add_empty_node("SolarSystem")
 
 -- Sun: emissive, lit from within (the point light below does the actual lighting)
@@ -116,7 +149,7 @@ for _, p in ipairs(P.planets) do
     tilt:set_parent(orbit)
     tilt:set_rotation(vec3(p.tilt, 0.0, 0.0)) -- demo simplification: tilt about X
 
-    local body = make_body(p.name, tilt, P.radius_units(p.radius_km), { tex = p.tex })
+    local body = make_body(p.name, tilt, P.radius_units(p.radius_km), { tex = p.tex, tint = p.tint })
 
     -- City lights: emissive nightmap. night_emissive makes the lighting pass
     -- fade emissive where direct sunlight is strong, so the lights only show
@@ -135,6 +168,8 @@ for _, p in ipairs(P.planets) do
         scene.attach_primitive(clouds, "uv_sphere")
         clouds:set_scale(vec3(cr, cr, cr))
         material.set_texture(clouds, "base_color", P.TEX .. p.clouds.tex)
+        local ct = p.clouds.tint or { 0.78, 0.82, 0.88 }
+        material.set(clouds, "base_color", vec4(ct[1], ct[2], ct[3], p.clouds.opacity or 0.30))
         material.set_render_type(clouds, "alpha_blend")
         material.set(clouds, "roughness", 1.0)
         material.set(clouds, "metallic", 0.0)
@@ -146,26 +181,26 @@ for _, p in ipairs(P.planets) do
 
     if p.rings then
         local outer_u = P.radius_units(p.rings.outer_km)
-        local rings = scene.add_empty_node(p.name .. "_rings")
-        rings:set_parent(tilt)
-        scene.attach_primitive(rings, "plane") -- 10x10, planar UVs, XZ plane
-        local s = outer_u * 2.0 / 10.0
-        rings:set_scale(vec3(s, 1.0, s))
-        material.set_texture(rings, "base_color", P.TEX .. p.rings.tex)
-        material.set_render_type(rings, "alpha_blend")
-        material.set(rings, "roughness", 1.0)
-        material.set(rings, "metallic", 0.0)
+        make_ring_surface(p.name .. "_rings", tilt, outer_u, p.rings)
+        local back_opts = {
+            tex = p.rings.tex,
+            tint = p.rings.tint,
+            emissive = p.rings.emissive,
+            flip = true,
+        }
+        make_ring_surface(p.name .. "_rings_back", tilt, outer_u, back_opts)
     end
 
     for _, m in ipairs(p.moons or {}) do
         local morbit = scene.add_empty_node(m.name .. "_orbit")
         morbit:set_parent(tilt)
-        morbit:set_position(vec3(P.dist_units(m.a_km) * (m.dist_scale or 1.0), 0.0, 0.0))
+        local mp = P.moon_local_units(m, EPOCH_JD)
+        morbit:set_position(vec3(mp.x, mp.y, mp.z))
         make_body(m.name, morbit, P.radius_units(m.radius_km), { tex = m.tex, tint = m.tint })
     end
 end
 
-skybox.load(assets_path .. "Textures/Solar/starmap_2020_4k.hdr")
+skybox.load(assets_path .. "Textures/Solar/gaia_dr2_allsky_4k.png")
 -- No set_script: the director lives in Assets/Scripts/global and auto-loads from
 -- the active project, finding the SolarSystem node by name. Baking an absolute
 -- set_script path here would hard-code this machine's path into the scene and the

@@ -1,5 +1,40 @@
 #include "Lighting.hlsl"
 
+float ComputeNightEmissiveVisibility(float3 worldPos, float3 normal)
+{
+    // PhasmaSpace rebases the followed body to the origin; use that sphere normal
+    // for Earth city lights so the day/night gate follows the solar hemisphere.
+    float distFromOrigin = length(worldPos);
+    float3 maskNormal = (distFromOrigin > 0.05f && distFromOrigin < 10.0f) ? worldPos / distFromOrigin : normal;
+    float strongestDaySide = -1.0f;
+
+    for (uint i = 0; i < cb_numDirectionalLights; ++i)
+    {
+        DirectionalLight light = LoadDirectionalLight(i);
+        if (light.color.w <= 0.0f)
+            continue;
+
+        float3 lightDir = RotateVectorByQuat(float3(0, 0, -1), light.rotation);
+        strongestDaySide = max(strongestDaySide, dot(maskNormal, -lightDir));
+    }
+
+    for (uint i = 0; i < cb_numPointLights; ++i)
+    {
+        PointLight light = LoadPointLight(i);
+        if (light.color.w <= 0.0f)
+            continue;
+
+        float3 toLight = light.position.xyz - worldPos;
+        float lightDist = length(toLight);
+        if (lightDist <= 1e-4f || lightDist > light.position.w)
+            continue;
+
+        strongestDaySide = max(strongestDaySide, dot(maskNormal, toLight / lightDist));
+    }
+
+    return 1.0f - smoothstep(0.02f, 0.30f, strongestDaySide);
+}
+
 PS_OUTPUT_Color mainPS(PS_INPUT_UV input)
 {
     PS_OUTPUT_Color output;
@@ -132,11 +167,11 @@ PS_OUTPUT_Color mainPS(PS_INPUT_UV input)
         fragColor = lerp(fragColor, transmitted, transmissionWeight * 0.8f);
     }
 
-    // Night emissive: the opaque gbuffer flags it with emissive alpha 0. Show
-    // emissive only where direct light is dim, so city lights fade smoothly
-    // across the terminator instead of glowing on the day side.
+    // Night emissive: the opaque gbuffer flags it with emissive alpha 0. Fade
+    // against the direct-light hemisphere, not final brightness, so high-emissive
+    // city maps do not survive on physically exposed day sides.
     if (!pc.passType && emissionSample.a < 0.1)
-        emmission *= 1.0 - saturate(dot(fragColor, float3(0.2126, 0.7152, 0.0722)) * 4.0);
+        emmission *= ComputeNightEmissiveVisibility(wolrdPos, normal);
 
     // Add emmission
     output.color.rgb = fragColor + emmission;

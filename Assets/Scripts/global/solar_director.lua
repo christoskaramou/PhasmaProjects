@@ -10,7 +10,8 @@
 --      |- <Name>_tilt          static Euler X = axial tilt
 --         |- <Name>            spun about local Y here
 --         |- <Name>_rings      (Saturn) static
---         |- Moon_orbit        (Earth) local circular orbit set here
+--         |- <Name>_rings_back (Saturn) static flipped backside
+--         |- <Moon>_orbit      local satellite orbit set here
 --            |- Moon           tidally-locked spin
 
 local function load_module(path)
@@ -124,9 +125,11 @@ local ORBIT_MIN_SAMPLES = 240
 local ORBIT_MAX_SAMPLES = 4096
 local ORBIT_SAGITTA_RADIUS_FRACTION = 0.2
 local MOON_ORBIT_SEGMENT_TARGET = 0.75
+local MOON_ORBIT_LINE_LIMIT = 4
 local MANUAL_ORBIT_PASS_NAME = "SolarManualOrbitLines"
 local MANUAL_ORBIT_PASS_ORDER = 721
 local MANUAL_ORBIT_COLOR = { x = 1.0, y = 1.0, z = 1.0, w = 1.0 }
+local SELECTED_ORBIT_COLOR = { x = 1.0, y = 0.82, z = 0.05, w = 1.0 }
 local FREE_REBASE_DISTANCE = 1000.0
 local FOLLOW_ORBIT_SENSITIVITY = 0.0035
 local FOLLOW_ORBIT_PITCH_LIMIT = math.rad(84.0)
@@ -162,6 +165,25 @@ local function sample_planet_orbit(o, jd)
     end
     o.pts = pts
     o.anchor_jd = jd
+end
+
+local function sample_region_ring(radius_units, samples)
+    local pts = {}
+    for i = 0, samples - 1 do
+        local ang = 2.0 * math.pi * (i / samples)
+        pts[#pts + 1] = pos(radius_units * math.cos(ang), 0.0, radius_units * math.sin(ang))
+    end
+    return pts
+end
+
+local function orbit_color(c)
+    if not c then return MANUAL_ORBIT_COLOR end
+    return {
+        x = c.x or c[1] or MANUAL_ORBIT_COLOR.x,
+        y = c.y or c[2] or MANUAL_ORBIT_COLOR.y,
+        z = c.z or c[3] or MANUAL_ORBIT_COLOR.z,
+        w = c.w or c[4] or MANUAL_ORBIT_COLOR.w,
+    }
 end
 
 local function append_vertex_floats(out, v)
@@ -213,7 +235,7 @@ local function destroy_manual_orbit_lines(clear_globals)
     end
 end
 
-local function create_manual_orbit_line(name, points, owner)
+local function create_manual_orbit_line(name, points, owner, color, visible)
     if not create_buffer then
         pe_log("[solar] manual orbit line skipped; create_buffer binding is missing")
         return
@@ -235,7 +257,8 @@ local function create_manual_orbit_line(name, points, owner)
         buffer = buffer,
         vertex_count = vertex_count,
         owner = owner,
-        color = MANUAL_ORBIT_COLOR,
+        color = orbit_color(color),
+        visible = visible ~= false,
     }
 end
 
@@ -270,6 +293,38 @@ local function manual_orbit_offset(item)
         return shifted(owner_pos, scene_shift)
     end
     return scene_shift
+end
+
+local function selected_node_index()
+    if type(selection) ~= "table" or type(selection.get) ~= "function" then return nil end
+    local ok, sel = pcall(selection.get)
+    if not ok or type(sel) ~= "table" or not sel.has_selection then return nil end
+    if sel.type ~= "node" and sel.type ~= "mesh" then return nil end
+    return sel.node_index
+end
+
+local function selected_orbit_owner()
+    local selected_index = selected_node_index()
+    if selected_index then
+        local function matches(name)
+            local h = handles[name]
+            return h and h:is_valid() and h:get_index() == selected_index
+        end
+
+        for _, p in ipairs(P.planets) do
+            if matches(p.name) or matches(p.name .. "_orbit") or matches(p.name .. "_tilt") or
+                matches(p.name .. "_rings") or matches(p.name .. "_rings_back") then
+                return p.name
+            end
+            for _, m in ipairs(p.moons or {}) do
+                if matches(m.name) or matches(m.name .. "_orbit") then
+                    return m.name
+                end
+            end
+        end
+    end
+
+    return props.follow ~= "" and props.follow or nil
 end
 
 local function register_manual_orbit_pass()
@@ -312,10 +367,11 @@ local function register_manual_orbit_pass()
 
         cmd:set_constant_mat4(0, cam:get_view_projection())
 
+        local highlighted = selected_orbit_owner()
         for _, item in ipairs(manual_orbit_lines.items) do
             local offset = manual_orbit_offset(item)
-            if offset and item.buffer then
-                local color = item.color
+            if offset and item.buffer and (item.visible or item.name == highlighted) then
+                local color = item.name == highlighted and SELECTED_ORBIT_COLOR or item.color
                 cmd:set_constant_vec4(16, offset.x, offset.y, offset.z, 0.0)
                 cmd:set_constant_vec4(20, color.x, color.y, color.z, color.w)
                 cmd:push_constants()
@@ -333,8 +389,14 @@ end
 _G.solar_manual_orbit_cleanup = destroy_manual_orbit_lines
 _G.solar_manual_orbit_debug = function()
     local first = manual_orbit_lines.items[1]
+    local visible_count = 0
+    for _, item in ipairs(manual_orbit_lines.items) do
+        if item.visible then visible_count = visible_count + 1 end
+    end
     return {
         count = #manual_orbit_lines.items,
+        visible_count = visible_count,
+        hidden_count = #manual_orbit_lines.items - visible_count,
         registered = manual_orbit_lines.registered,
         frames = manual_orbit_lines.frames,
         draws = manual_orbit_lines.draws,
@@ -342,6 +404,7 @@ _G.solar_manual_orbit_debug = function()
         topology = "line_strip",
         epoch_jd = props.epoch_jd,
         jd = props.epoch_jd + sim_days,
+        highlighted = selected_orbit_owner(),
     }
 end
 
@@ -408,23 +471,24 @@ local function build_orbit_lines(jd)
 
         local tilt = handles[p.name .. "_tilt"]
         if tilt then
-            for _, m in ipairs(p.moons or {}) do
+            for moon_index, m in ipairs(p.moons or {}) do
                 local ma = P.dist_units(m.a_km) * (m.dist_scale or 1.0)
                 local msamples = moon_orbit_sample_count(ma)
-                local mpts = {}
-                local ci = math.cos(math.rad(m.incl))
-                local si = math.sin(math.rad(m.incl))
-                for i = 0, msamples - 1 do
-                    local ang = 2.0 * math.pi * (i / msamples)
-                    mpts[#mpts + 1] = pos(ma * math.cos(ang), ma * math.sin(ang) * si, ma * math.sin(ang) * ci)
-                end
+                local mpts = P.sample_moon_orbit_units(m, msamples, jd)
                 local tilted = {}
                 for i, pt in ipairs(mpts) do
                     tilted[i] = rotate_x(pt, p.tilt)
                 end
-                create_manual_orbit_line(m.name, tilted, p.name)
+                create_manual_orbit_line(m.name, tilted, p.name, nil, moon_index <= MOON_ORBIT_LINE_LIMIT)
             end
         end
+    end
+
+    for _, r in ipairs(P.regions or {}) do
+        local samples = r.samples or 720
+        if samples < 96 then samples = 96 elseif samples > ORBIT_MAX_SAMPLES then samples = ORBIT_MAX_SAMPLES end
+        local pts = sample_region_ring((r.radius_au or 1.0) * P.AU_UNITS, samples)
+        create_manual_orbit_line(r.name, pts, nil, r.color)
     end
 
     register_manual_orbit_pass()
@@ -675,6 +739,12 @@ local function spin_deg(jd, rot_h)
     return deg
 end
 
+local function moon_spin_deg(jd, m)
+    local period = m.period_d or 1.0
+    if math.abs(period) < 1e-9 then period = 1.0 end
+    return (((m.mean_anomaly_deg or 0.0) + ((jd - (m.epoch_jd or E.J2000)) / period) * 360.0) % 360.0)
+end
+
 local function compute_universe_positions(jd)
     universe_positions = {}
     universe_positions["Sun"] = zero_pos()
@@ -686,12 +756,7 @@ local function compute_universe_positions(jd)
         universe_positions[p.name] = planet_pos
 
         for _, m in ipairs(p.moons or {}) do
-            -- Demo simplification: circular orbit, inclined about X.
-            local ang = 2.0 * math.pi * (((jd - E.J2000) / m.period_d) % 1.0)
-            local a = P.dist_units(m.a_km) * (m.dist_scale or 1.0)
-            local ci = math.cos(math.rad(m.incl))
-            local si = math.sin(math.rad(m.incl))
-            local moon_local = pos(a * math.cos(ang), a * math.sin(ang) * si, a * math.sin(ang) * ci)
+            local moon_local = P.moon_local_units(m, jd)
             moon_locals[m.name] = moon_local
             universe_positions[m.name] = shifted(planet_pos, rotate_x(moon_local, p.tilt))
         end
@@ -737,8 +802,7 @@ local function apply_scene_positions(jd)
             local mbody = handles[m.name]
             if mbody then
                 -- Tidally locked: one rotation per orbit.
-                local mdeg = (((jd - E.J2000) / m.period_d) % 1.0) * 360.0
-                mbody:set_rotation(vec3(0.0, mdeg, 0.0))
+                mbody:set_rotation(vec3(0.0, moon_spin_deg(jd, m), 0.0))
             end
         end
     end
@@ -772,12 +836,22 @@ local function bind()
     update_scene_shift()
     build_orbit_lines(jd)
     apply_scene_positions(jd)
-    -- Re-apply per-load material state: night_emissive lives on the material,
-    -- which round-trips the scene, but re-asserting it keeps older saved
-    -- scenes correct without a rebuild.
+    -- Re-apply per-load material state. night_emissive is a base-material flag
+    -- and is not serialized into the scene, so it must be re-asserted on load.
+    -- Crucially, runtime edits to a *base* material are not re-uploaded to the
+    -- GPU material table (only MaterialInstances are), so setting the flag alone
+    -- never reaches the shader. Re-setting emissive forces a MaterialInstance,
+    -- whose GPU data carries the parent's night_emissive — this is what makes the
+    -- lighting pass gate the city lights to the night hemisphere instead of
+    -- glowing them across the sunlit day side.
     for _, p in ipairs(P.planets) do
         if p.night_tex and handles[p.name] then
-            material.set(handles[p.name], "night_emissive", 1.0)
+            local node = handles[p.name]
+            material.set(node, "night_emissive", 1.0)
+            local m = material.get(node)
+            if m and m.emissive then
+                material.set(node, "emissive", m.emissive)
+            end
         end
     end
     UI.init({ props = props, handles = handles, planets = P })

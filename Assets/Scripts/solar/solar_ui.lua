@@ -9,9 +9,7 @@ local MARKERS = "solar_markers"
 local C_LIGHT = 299792458.0 -- m/s
 local M_PER_UNIT = 1.0e7    -- 1 engine unit = 10,000 km
 
-M.bodies = { "Sun", "Mercury", "Venus", "Earth", "Moon", "Mars",
-             "Jupiter", "Io", "Europa", "Ganymede", "Callisto",
-             "Saturn", "Uranus", "Neptune" }
+M.bodies = {}
 
 local state = {
     built = false,
@@ -35,8 +33,36 @@ local function fmt_speed(mps)
     return string.format("%.0f m/s", mps)
 end
 
+local function build_body_list(ctx)
+    local bodies = { "Sun" }
+    local seen = { Sun = true }
+    local always = {
+        Moon = true, Phobos = true, Deimos = true,
+        Io = true, Europa = true, Ganymede = true, Callisto = true,
+        Charon = true, Styx = true, Nix = true, Kerberos = true, Hydra = true,
+    }
+
+    local function add(name)
+        if name and not seen[name] then
+            bodies[#bodies + 1] = name
+            seen[name] = true
+        end
+    end
+
+    for _, p in ipairs(ctx.planets.planets) do
+        add(p.name)
+        for _, m in ipairs(p.moons or {}) do
+            if always[m.name] or (m.radius_km and m.radius_km >= 100.0) then
+                add(m.name)
+            end
+        end
+    end
+    return bodies
+end
+
 function M.init(ctx)
     runtime_ui.clear(PANEL)
+    M.bodies = build_body_list(ctx)
     runtime_ui.set_title(PANEL, "PhasmaSpace")
     runtime_ui.set_bool(PANEL, "orbits", "Orbit Lines", state.orbits_visible)
     runtime_ui.set_bool(PANEL, "markers", "Body Markers", state.markers_on)
@@ -65,7 +91,7 @@ function M.init(ctx)
     runtime_ui.show(MARKERS)
 
     -- moon -> parent map for marker decluttering (system-scale views would
-    -- otherwise stack every Galilean label on top of Jupiter)
+    -- otherwise stack moon labels on top of their parent planets)
     state.moon_info = {}
     for _, p in ipairs(ctx.planets.planets) do
         for _, m in ipairs(p.moons or {}) do
@@ -89,7 +115,7 @@ end
 -- Screen-space body markers: when a body is too far/small to see, draw a small
 -- labeled chip at its projected position; clicking it follows that body. Moon
 -- markers only appear near their parent planet so system-scale views don't
--- stack every Galilean label on Jupiter.
+-- stack moon labels on their parent planets.
 local MARKER_MAX_ANGULAR = 0.002 -- body angular radius below this -> show marker
 
 local function update_markers(ctx)

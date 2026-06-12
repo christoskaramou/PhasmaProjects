@@ -1,6 +1,8 @@
 -- Standish (JPL) "Keplerian Elements for Approximate Positions of the Major Planets",
 -- Table 1, valid 1800-2050 AD. https://ssd.jpl.nasa.gov/planets/approx_pos.html
--- Values verified digit-by-digit against the JPL page on 2026-06-10.
+-- Major-planet values verified digit-by-digit against the JPL page on 2026-06-10.
+-- Pluto uses JPL Horizons heliocentric J2000 osculating elements queried on
+-- 2026-06-12; angular rate is its J2000 mean motion converted to deg/century.
 -- Returns heliocentric J2000-ecliptic positions in AU. Pure Lua, no engine deps.
 
 local M = {}
@@ -19,6 +21,7 @@ M.elements = {
     saturn  = { 9.53667594, -0.00125060, 0.05386179, -0.00050991, 2.48599187, 0.00193609, 49.95424423, 1222.49362201, 92.59887831, -0.41897216, 113.66242448, -0.28867794 },
     uranus  = { 19.18916464, -0.00196176, 0.04725744, -0.00004397, 0.77263783, -0.00242939, 313.23810451, 428.48202785, 170.95427630, 0.40805281, 74.01692503, 0.04240589 },
     neptune = { 30.06992276, 0.00026291, 0.00859048, 0.00005105, 1.77004347, 0.00035372, -55.12002969, 218.45945325, 44.96476227, -0.32241464, 131.78422574, -0.00508664 },
+    pluto   = { 39.57126152, 0.0, 0.24944850, 0.0, 17.23565302, 0.0, 239.36226047, 144.61870104, 225.21860593, 0.0, 110.03993995, 0.0 },
 }
 
 -- Solve Kepler's equation M = E - e*sin(E); degrees in/out (per the Standish memo,
