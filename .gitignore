@@ -1,19 +1,33 @@
-# Local hi-res texture upgrades (fetch via tools/fetch_solar_textures.ps1 -EightK)
-Assets/Textures/Solar/8k_*
-Assets/Textures/Solar/*.exr
-
-# Editor session state (written into project Assets when the project is active)
-Assets/editor_config.json
-
+# Python/editor scratch
 __pycache__/
+*.py[cod]
 
-# Editor runtime state
-Assets/editor_windows.json
-Assets/imgui.ini
-Assets/Save/
+# Local hi-res texture upgrades (fetch/regenerate locally)
+*/Assets/Textures/Solar/8k_*
+*/Assets/Textures/Solar/*.exr
 
-# Agent/MCP runtime artifacts (screenshots, session logs) — config stays tracked
-Assets/Agent/image_*.png
-Assets/Agent/sessions/
-Assets/Agent/*.log
-Assets/Agent/ss_*.png
+# Phasma editor/runtime state, written into the active project.
+*/Assets/editor_config.json
+*/Assets/editor_windows.json
+*/Assets/imgui.ini
+*/Assets/Save/
+
+# Local AI/agent runtime artifacts. Keep checked-in config, ignore session output.
+*/Assets/Agent/image_*.png
+*/Assets/Agent/sessions/
+*/Assets/Agent/*.log
+*/Assets/Agent/ss_*.png
+*/Assets/HeroBrain/requests/
+*/Assets/HeroBrain/responses/
+
+# Engine binaries may be dropped beside a project for quick local runs.
+*/PhasmaLauncher.exe
+*/PhasmaPlayer.exe
+*/PhasmaEditor.exe
+*/PhasmaCore.dll
+*/PhasmaEditorModule_*.dll
+*/PhasmaEngine.log
+
+# One-off capture/probe output from local playtests.
+*/arena_cap_screen*.png
+*/arena_probe.png
