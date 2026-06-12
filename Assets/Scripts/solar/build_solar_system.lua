@@ -1,8 +1,10 @@
 -- ONE-SHOT scene builder: run via the editor MCP (execute_lua) with the PhasmaSpace
 -- project active and an empty scene, then the saved solar_system.pescene is the
 -- shipping artifact. Binding semantics verified against engine source 2026-06-10:
---   * node.set_script / skybox.load need ABSOLUTE paths (relative resolves vs exe
---     dir, not project Assets) -> both go through assets_path.
+--   * skybox.load needs an ABSOLUTE path (relative resolves vs exe dir, not project
+--     Assets) -> goes through assets_path; it serializes back project-relative.
+--   * The director is NOT attached via set_script (that would bake this machine's
+--     absolute path into the scene); it auto-loads from Assets/Scripts/global.
 --   * material.set_texture resolves "Textures/..." against project Assets (portable).
 --   * material.set(h, "emissive", v) takes vec3; set_rotation takes Euler degrees.
 
@@ -164,7 +166,10 @@ for _, p in ipairs(P.planets) do
 end
 
 skybox.load(assets_path .. "Textures/Solar/starmap_2020_4k.hdr")
-root:set_script(assets_path .. "Scripts/solar/solar_director.lua")
+-- No set_script: the director lives in Assets/Scripts/global and auto-loads from
+-- the active project, finding the SolarSystem node by name. Baking an absolute
+-- set_script path here would hard-code this machine's path into the scene and the
+-- director would not load on any other checkout.
 
 save_scene("solar_system.pescene")
 pe_log("[solar] scene built and saved")

@@ -1079,7 +1079,7 @@
                 0.0,
                 1.0
             ],
-            "script": "C:/Users/Christos/repos/PhasmaSpace/Assets/Scripts/solar/solar_director.lua",
+            "script": "",
             "component_flags": 16
         },
         {

@@ -1,8 +1,10 @@
--- Per-node script on the SolarSystem root. Advances a simulated Julian date and
--- drives heliocentric planet positions (Standish ephemeris) + axial spins.
+-- Global auto-loaded director (Assets/Scripts/global). Advances a simulated Julian
+-- date and drives heliocentric planet positions (Standish ephemeris) + axial spins.
+-- It finds the SolarSystem node by name rather than being attached via set_script,
+-- so the scene carries no machine-specific script path and the project is portable.
 --
 -- Node-name contract (created by build_solar_system.lua):
---   SolarSystem (this script)
+--   SolarSystem (root)
 --   |- Sun
 --   |- <Name>_orbit            position set here (heliocentric)
 --      |- <Name>_tilt          static Euler X = axial tilt
@@ -82,6 +84,8 @@ end
 
 local sim_days = 0.0
 local handles = {}  -- node name -> SceneNodeHandle
+local root = nil    -- the SolarSystem node (found by name as a global script, or `self`)
+local bound = false -- true once the tree is indexed and orbit lines are built
 local sun_light_node = nil
 local scene_shift = zero_pos()
 local universe_positions = {} -- body name -> heliocentric world position before root rebase
@@ -94,15 +98,14 @@ local function index_children(h)
     end
 end
 
--- Orbit lines: sampled from the real ephemeris into closed polyline ribbons.
--- Rebuilt from scratch on every load (polyline meshes do not round-trip through
--- the .pescene), so any stale serialized "Orbits" tree is removed first.
+-- Orbit lines: sampled from the real ephemeris into closed hardware line strips.
+-- Rebuilt from scratch on every load (line meshes do not round-trip through the
+-- .pescene), so any stale serialized "Orbits" tree is removed first.
 --
--- Ribbons are rebuilt at load/epoch only. Planet orbit vertices stay in
+-- Lines are rebuilt at load/epoch only. Planet orbit vertices stay in
 -- heliocentric coordinates and the Orbits root receives the floating-origin
--- shift, so ticks never mutate ribbon geometry. Keep widths small and body-scale
--- bounded; screen-constant widths require geometry rebuilds and cause editor
--- catch-up hitches when scripts mutate scene meshes during ticks.
+-- shift, so ticks never mutate orbit geometry. Width constants below are kept
+-- for older engine builds that fall back to the polyline-ribbon binding.
 local ORBIT_MIN_WIDTH = 0.003
 local ORBIT_MAX_WIDTH = 0.08
 local MOON_ORBIT_MAX_WIDTH = 0.04
@@ -179,7 +182,18 @@ local function rebuild_orbit_line(name, o, width, jd)
     local line = scene.add_empty_node("Orbit_" .. name)
     line:set_parent(o.parent_node or handles["Orbits"])
     local pts = points_to_vec3(o.pts)
-    scene.attach_polyline(line, pts, width, o.normal, true)
+    if scene.attach_lines then
+        scene.attach_lines(line, pts, true)
+        if material and material.set_render_type then
+            material.set_render_type(line, "lines")
+        end
+    elseif scene.attach_polyline then
+        scene.attach_polyline(line, pts, width, o.normal, true)
+    else
+        pe_log("[solar] orbit line skipped; engine has no line or polyline binding")
+        o.node = line
+        return
+    end
     material.set(line, "base_color", vec4(0.0, 0.0, 0.0, 1.0))
     material.set(line, "emissive", vec3(1.5, 2.8, 5.0))
     material.set(line, "roughness", 1.0)
@@ -228,7 +242,7 @@ local function build_orbit_lines(jd)
         handles["Orbits"] = nil
     end
     local orbits = scene.add_empty_node("Orbits")
-    orbits:set_parent(self)
+    orbits:set_parent(root)
     handles["Orbits"] = orbits
 
     for _, p in ipairs(P.planets) do
@@ -401,7 +415,7 @@ local function solar_frame(p)
 end
 
 local function update_scene_shift()
-    self:set_position(vec3(0.0, 0.0, 0.0))
+    if root then root:set_position(vec3(0.0, 0.0, 0.0)) end
     if props.follow == "" then
         follow_state.target = ""
         release_follow_orbit_mouse()
@@ -586,24 +600,27 @@ local function apply_scene_positions(jd)
     end
 end
 
-local function tick()
-    local dt = engine.get_metrics().delta_ms * 0.001
-    if dt > 0.25 then dt = 0.25 end  -- ignore hitches (loads, resizes)
-    sim_days = sim_days + dt * props.time_scale
-    local jd = props.epoch_jd + sim_days
-
-    compute_universe_positions(jd)
-    update_scene_shift()
-    apply_scene_positions(jd)
-
-    UI.tick({ props = props, handles = handles, planets = P })
-    follow_camera()
+-- The SolarSystem node: `self` when attached as a node script (editor authoring),
+-- otherwise found by name. As a global script the director auto-loads from
+-- Assets/Scripts/global with no machine-specific set_script path baked into the
+-- scene, which is what makes the project portable across checkouts.
+local function resolve_root()
+    if self ~= nil then return self end
+    if scene and scene.get_entities then
+        for _, e in ipairs(scene.get_entities()) do
+            if e.label == "SolarSystem" then return e.node end
+        end
+    end
+    return nil
 end
 
-function init()
+-- Index the tree and build orbit lines once the node exists. A global script can
+-- tick before the startup scene has finished loading, so binding is deferred until
+-- resolve_root() succeeds (and re-runs if the node goes stale on a scene change).
+local function bind()
     handles = {}
-    index_children(self)
-    self:set_position(vec3(0.0, 0.0, 0.0))
+    index_children(root)
+    root:set_position(vec3(0.0, 0.0, 0.0))
     scene_shift = zero_pos()
     local jd = props.epoch_jd + sim_days
     compute_universe_positions(jd)
@@ -622,6 +639,38 @@ function init()
     local n = 0
     for _ in pairs(handles) do n = n + 1 end
     pe_log("[solar] director bound, " .. tostring(n) .. " nodes indexed")
+    bound = true
+end
+
+local function ensure_bound()
+    if bound then
+        if root and root:is_valid() then return true end
+        bound, root = false, nil -- scene changed under us; re-bind
+    end
+    if not root then root = resolve_root() end
+    if not root then return false end
+    bind()
+    return true
+end
+
+local function tick()
+    if not ensure_bound() then return end
+    local dt = engine.get_metrics().delta_ms * 0.001
+    if dt > 0.25 then dt = 0.25 end  -- ignore hitches (loads, resizes)
+    sim_days = sim_days + dt * props.time_scale
+    local jd = props.epoch_jd + sim_days
+
+    compute_universe_positions(jd)
+    update_scene_shift()
+    apply_scene_positions(jd)
+
+    UI.tick({ props = props, handles = handles, planets = P })
+    follow_camera()
+end
+
+function init()
+    -- Bind now if the scene is already loaded; otherwise the first tick() will.
+    ensure_bound()
 end
 
 -- Free-camera flight for PLAY MODE (PhasmaPlayer + editor Play). The editor's
