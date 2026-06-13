@@ -1,0 +1,6 @@
+{
+    "version": 1,
+    "name": "Sample",
+    "assets": "Assets",
+    "startup_scene": "Assets/Scenes/las_vegas_neon_showcase.pescene"
+}
