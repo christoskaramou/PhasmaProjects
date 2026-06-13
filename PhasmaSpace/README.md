@@ -36,8 +36,9 @@ Everything needed to run is tracked in this project directory; no asset fetch or
 
 The director builds a runtime control panel (works in the editor viewport and
 PhasmaPlayer): **orbit-lines toggle**, **auto-exposure toggle**, **follow-orbit
-toggle**, **time controls** (pause, /2, x2), and a curated **follow picker** for
-the Sun, planets, Pluto, Mars/Pluto moons, and the largest major moons. A top-left HUD
+toggle**, **time controls** (pause, /2, x2), and a curated **follow dropdown** for
+the Sun, planets, Pluto, Mars/Pluto moons, and the largest major moons. Moon entries
+show their parent planet, e.g. `Jupiter / Io`. A top-left HUD
 shows camera speed and follow zoom; **mouse wheel** zooms the followed body or changes
 free-camera speed (m/s, scaling to km/s / Mm/s / multiples of c). Orbit lines are
 sampled from the ephemerides into Lua-owned vertex buffers and drawn through the

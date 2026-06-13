@@ -16,6 +16,8 @@ local state = {
     orbits_visible = true,
     markers_on = true,
     moon_info = {},
+    body_info = {},
+    follow_picker_open = false,
     last_follow = nil,
     last_ts_text = nil,
     last_speed_text = nil,
@@ -36,6 +38,7 @@ end
 local function build_body_list(ctx)
     local bodies = { "Sun" }
     local seen = { Sun = true }
+    state.body_info = { Sun = { kind = "star" } }
     local always = {
         Moon = true, Phobos = true, Deimos = true,
         Io = true, Europa = true, Ganymede = true, Callisto = true,
@@ -50,8 +53,10 @@ local function build_body_list(ctx)
     end
 
     for _, p in ipairs(ctx.planets.planets) do
+        state.body_info[p.name] = { kind = "planet" }
         add(p.name)
         for _, m in ipairs(p.moons or {}) do
+            state.body_info[m.name] = { kind = "moon", parent = p.name }
             if always[m.name] or (m.radius_km and m.radius_km >= 100.0) then
                 add(m.name)
             end
@@ -60,9 +65,52 @@ local function build_body_list(ctx)
     return bodies
 end
 
+local function body_label(name)
+    if not name or name == "" then return "Free Camera" end
+    local info = state.body_info[name]
+    if info and info.parent then
+        return info.parent .. " / " .. name
+    end
+    return name
+end
+
+local function follow_picker_label(props)
+    return "Follow: " .. body_label(props.follow) .. (state.follow_picker_open and " [close]" or " [pick]")
+end
+
+local function set_free_camera_follow(props)
+    props.follow = ""
+    -- editor default fly speed is meter-scale; at 1 u = 10,000 km it reads as
+    -- frozen. Give free cam a usable starting speed (wheel/buttons adjust).
+    local cam0 = get_camera and get_camera() or nil
+    if cam0 and cam0:get_speed() < 150.0 then
+        cam0:set_speed(150.0)
+    end
+end
+
+local function follow_option_id(index)
+    return "follow_opt_" .. tostring(index)
+end
+
+local function sync_follow_picker_options()
+    if state.follow_picker_open then
+        runtime_ui.set_button(PANEL, "follow_free", body_label(""))
+        for i, name in ipairs(M.bodies) do
+            runtime_ui.set_button(PANEL, follow_option_id(i), body_label(name))
+        end
+        return
+    end
+
+    runtime_ui.remove(PANEL, "follow_free")
+    for i = 1, #M.bodies do
+        runtime_ui.remove(PANEL, follow_option_id(i))
+    end
+end
+
 function M.init(ctx)
     runtime_ui.clear(PANEL)
     M.bodies = build_body_list(ctx)
+    state.follow_picker_open = false
     runtime_ui.set_title(PANEL, "PhasmaSpace")
     runtime_ui.set_bool(PANEL, "orbits", "Orbit Lines", state.orbits_visible)
     runtime_ui.set_bool(PANEL, "markers", "Body Markers", state.markers_on)
@@ -74,11 +122,8 @@ function M.init(ctx)
     runtime_ui.set_button(PANEL, "ts_fast", "Time  x2")
     runtime_ui.set_button(PANEL, "spd_slow", "Cam Speed  /2")
     runtime_ui.set_button(PANEL, "spd_fast", "Cam Speed  x2")
-    runtime_ui.set_text(PANEL, "follow_lbl", "Following", ctx.props.follow)
-    runtime_ui.set_button(PANEL, "f_free", "Free Camera")
-    for _, name in ipairs(M.bodies) do
-        runtime_ui.set_button(PANEL, "f_" .. name, name)
-    end
+    runtime_ui.set_text(PANEL, "follow_lbl", "Following", body_label(ctx.props.follow))
+    runtime_ui.set_button(PANEL, "follow_pick", follow_picker_label(ctx.props))
     runtime_ui.show(PANEL)
 
     runtime_ui.clear(HUD)
@@ -155,9 +200,11 @@ local function update_markers(ctx)
                         -- engine NDC is y-down: +y maps down the screen
                         local sx = (nx * 0.5 + 0.5) * sw
                         local sy = (ny * 0.5 + 0.5) * sh
+                        local label = body_label(name)
+                        local width = math.min(170.0, math.max(90.0, #label * 7.5 + 24.0))
                         runtime_ui.set_quad(MARKERS, id, {
-                            x = sx - 45.0, y = sy + 8.0, width = 90.0, height = 32.0,
-                            label = name, font_scale = 1.0, visible = true,
+                            x = sx - width * 0.5, y = sy + 8.0, width = width, height = 32.0,
+                            label = label, font_scale = 1.0, visible = true,
                             -- colors are plain tables: vec4 userdata is ignored by ReadColorOption
                             fill = { 0.05, 0.09, 0.16, 0.55 },
                             accent = { 0.05, 0.09, 0.16, 0.0 },
@@ -222,22 +269,28 @@ function M.tick(ctx)
     end
 
     -- follow picker
-    if runtime_ui.consume_click(PANEL, "f_free") then
-        props.follow = ""
-        -- editor default fly speed is meter-scale; at 1 u = 10,000 km it reads as
-        -- frozen. Give free cam a usable starting speed (wheel/buttons adjust).
-        local cam0 = get_camera and get_camera() or nil
-        if cam0 and cam0:get_speed() < 150.0 then
-            cam0:set_speed(150.0)
+    if runtime_ui.consume_click(PANEL, "follow_pick") then
+        state.follow_picker_open = not state.follow_picker_open
+    end
+
+    if state.follow_picker_open and runtime_ui.consume_click(PANEL, "follow_free") then
+        set_free_camera_follow(props)
+        state.follow_picker_open = false
+    end
+    if state.follow_picker_open then
+        for i, name in ipairs(M.bodies) do
+            if runtime_ui.consume_click(PANEL, follow_option_id(i)) then
+                props.follow = name
+                state.follow_picker_open = false
+                break
+            end
         end
     end
-    for _, name in ipairs(M.bodies) do
-        if runtime_ui.consume_click(PANEL, "f_" .. name) then
-            props.follow = name
-        end
-    end
+
+    runtime_ui.set_button(PANEL, "follow_pick", follow_picker_label(props))
+    sync_follow_picker_options()
     if props.follow ~= state.last_follow then
-        runtime_ui.set_text(PANEL, "follow_lbl", "Following", props.follow ~= "" and props.follow or "(free)")
+        runtime_ui.set_text(PANEL, "follow_lbl", "Following", body_label(props.follow))
         state.last_follow = props.follow
     end
 
