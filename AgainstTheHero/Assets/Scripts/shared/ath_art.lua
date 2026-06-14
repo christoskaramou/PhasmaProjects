@@ -20,6 +20,9 @@
 
 local Art = {}
 
+-- Dev-only diagnostic logging ([ISO_CAM]); silent unless ATH_DEV=1 at launch.
+local ATH_DEV = ATH_COMMON.env_enabled and ATH_COMMON.env_enabled("ATH_DEV", false) or false
+
 -- ---------------------------------------------------------------------------
 -- Readability scale — the one place to make EVERYTHING bigger.
 -- ---------------------------------------------------------------------------
@@ -432,7 +435,7 @@ function Art.setup_iso_camera(center, opts)
     local crop = (vp.h and vp.h > 0) and (vp.rh / vp.h) or 1.0
     local ortho = (opts.ortho_size or 34.0) / Art.s("zoom") * crop
     if cam.set_orthographic_size then cam:set_orthographic_size(ortho) end
-    if pe_log then
+    if ATH_DEV and pe_log then
         pe_log(string.format("[ISO_CAM] surface=%dx%d band=%dx%d crop=%.3f requested=%.1f final_ortho=%.1f",
             vp.rw, vp.rh, vp.w, vp.h, crop, opts.ortho_size or 34.0, ortho))
     end

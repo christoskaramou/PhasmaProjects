@@ -1,5 +1,6 @@
 {
     "version": 1,
     "name": "AgainstTheHero",
-    "assets": "Assets"
+    "assets": "Assets",
+    "startup_scene": "Assets/Scenes/arena.pescene"
 }

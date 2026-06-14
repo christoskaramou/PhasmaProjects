@@ -4,13 +4,14 @@ local Creep = {}
 -- card speed-buffs, summons — everything) is multiplied by this at use time.
 -- The one knob to make the whole horde faster or slower.
 --
--- It only applies in FULL near the hero: creeps farther than SLOW_FAR approach
--- at full base speed, blending down to SPEED_SCALE by SLOW_NEAR. Without this
--- a low scale turns the spawn-to-hero walk into a 15+ second crawl; with it,
--- only the close-quarters dodging zone is slow.
-Creep.SPEED_SCALE = 0.3
-Creep.SLOW_NEAR = 2.5 -- world units from the hero where SPEED_SCALE fully applies
-Creep.SLOW_FAR = 5.0  -- beyond this, creeps move at full base speed
+-- The constants below tune the OPT-IN "slow aura" hero buff (hero.slow_aura),
+-- which is OFF by default — creeps now keep full base speed all the way to the
+-- hero. When the buff is on, creeps blend from full speed at SLOW_FAR down to
+-- SPEED_SCALE by SLOW_NEAR (the close-quarters dodging zone). See the slow_aura
+-- block in Creep.update.
+Creep.SPEED_SCALE = 0.3 -- speed multiplier at point-blank when slow_aura is on
+Creep.SLOW_NEAR = 2.5   -- world units from the hero where SPEED_SCALE fully applies
+Creep.SLOW_FAR = 5.0    -- beyond this, creeps move at full base speed
 
 Creep.archetypes = {
     rat = {
@@ -133,7 +134,10 @@ Creep.aliases = {}
 -- updates instead of delete/create churn. Parked rigs stay enabled but tiny and
 -- offstage, because toggling enabled rebuilds the scene draw/instance lists.
 Creep.pool = {}      -- archetype id -> array of { root, parts } parked rigs
-Creep.pool_cap = 64  -- max parked rigs kept per archetype (bounds retained nodes)
+Creep.pool_cap = 110 -- max parked rigs kept per archetype. Kept ABOVE the arena's
+                     -- per-type prewarm + cap_max so prewarmed rigs are all
+                     -- retained and a death never overflows the pool into a
+                     -- mid-combat scene.delete_node (delete = swap-and-pop hazard).
 
 local PARK_X = -10000.0
 local PARK_Y = -10000.0
@@ -363,8 +367,17 @@ end
 local function make_rig(self, parent)
     local arch = self.stats
     self.root = make_group("Horde_Creep_" .. tostring(self.id) .. "_" .. self.archetype, parent)
+    -- Sprite creeps are flat cards laid on the ground (View flattens the body).
+    -- The body is a CUBE; its authored ~0.05 thickness shows its RIM as a thin
+    -- line under the slightly tilted top-down camera. Flatten the slab to
+    -- sub-pixel so only the textured top face reads. Non-sprite (3D) creeps keep
+    -- their authored thickness.
+    local bs = arch.body_scale or { 0.42, 0.48, 0.34 }
+    local body_scale = arch.sprite
+        and vec3(bs[1] or 0.42, bs[2] or 0.48, 0.004)
+        or v3(arch.body_scale, { 0.42, 0.48, 0.34 })
     self.parts = {
-        body = cube("Body", v3(arch.body_pos, { 0.0, 0.32, 0.0 }), v3(arch.body_scale, { 0.42, 0.48, 0.34 }), arch.color, self.root, 0.16),
+        body = cube("Body", v3(arch.body_pos, { 0.0, 0.32, 0.0 }), body_scale, arch.color, self.root, 0.16),
         head = sphere("Head", v3(arch.head_pos, { 0.0, 0.72, 0.0 }), v3(arch.head_scale, { 0.30, 0.28, 0.30 }), arch.head or arch.color, self.root, 0.16),
     }
 
@@ -736,13 +749,21 @@ function Creep.update(self, dt, field, map, hero)
         end
     end
 
-    local slow_t = 0.0
-    if hero_dist >= Creep.SLOW_FAR then
-        slow_t = 1.0
-    elseif hero_dist > Creep.SLOW_NEAR then
-        slow_t = (hero_dist - Creep.SLOW_NEAR) / (Creep.SLOW_FAR - Creep.SLOW_NEAR)
+    -- Close-quarters slow is now an OPT-IN HERO BUFF (hero.slow_aura), OFF by
+    -- default: creeps keep FULL base speed all the way in, so the swarm keeps its
+    -- pressure on the ranged hero. A future gear/card sets hero.slow_aura=true (a
+    -- "slow aura" buff) to re-enable the blend: creeps ramp from full speed at
+    -- SLOW_FAR down to SPEED_SCALE by SLOW_NEAR. Was previously always-on (melee).
+    local speed_scale = 1.0
+    if hero and hero.slow_aura then
+        local slow_t = 0.0
+        if hero_dist >= Creep.SLOW_FAR then
+            slow_t = 1.0
+        elseif hero_dist > Creep.SLOW_NEAR then
+            slow_t = (hero_dist - Creep.SLOW_NEAR) / (Creep.SLOW_FAR - Creep.SLOW_NEAR)
+        end
+        speed_scale = Creep.SPEED_SCALE + (1.0 - Creep.SPEED_SCALE) * slow_t
     end
-    local speed_scale = Creep.SPEED_SCALE + (1.0 - Creep.SPEED_SCALE) * slow_t
     local speed = (self.stats.speed or 1.0) * speed_scale
     local next_x = self.x + vx * speed * dt
     local next_z = self.z + vz * speed * dt

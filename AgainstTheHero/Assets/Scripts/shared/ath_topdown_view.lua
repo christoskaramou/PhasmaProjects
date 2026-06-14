@@ -191,7 +191,7 @@ local function skin_hero(D)
     hero.topdown_base_world_scale = hero.topdown_base_world_scale or hero.world_scale or 1.0
     hero.world_scale = hero.topdown_base_world_scale * mult
     hero.body_radius = 0.55 * hero.world_scale
-    if pe_log then
+    if DEV_HITBOXES and pe_log then
         pe_log(string.format("[TOPDOWN] hero base=%.2f mult=%.2f body_radius=%.2f",
             hero.topdown_base_world_scale, mult, hero.body_radius))
     end

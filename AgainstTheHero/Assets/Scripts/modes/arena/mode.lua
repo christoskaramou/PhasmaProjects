@@ -22,14 +22,17 @@ local function tuned(base, overrides)
     for k, v in pairs(overrides) do t[k] = v end
     return t
 end
+-- Creep walk speeds are ~2x the old arena tuning (swarm is faster/scarier now).
+-- They keep full speed all the way to the hero (the near-hero slow is now the
+-- opt-in hero.slow_aura buff, off by default).
 local ARCHETYPES = {
-    sprout        = tuned(Spud.archetypes.sprout,        { range = 0.35, speed = 2.1 }),
-    seed_spitter  = tuned(Spud.archetypes.seed_spitter,  { range = 4.5, hold_range = 4.5, speed = 1.1 }),
-    husk_knight   = tuned(Spud.archetypes.husk_knight,   { range = 0.6, speed = 1.5 }),
-    pumpkin_brute = tuned(Spud.archetypes.pumpkin_brute, { range = 0.7, speed = 1.1 }),
-    -- Crow stays BELOW hero speed (2.8): anything faster than the hero is
+    sprout        = tuned(Spud.archetypes.sprout,        { range = 0.35, speed = 4.2 }),
+    seed_spitter  = tuned(Spud.archetypes.seed_spitter,  { range = 4.5, hold_range = 4.5, speed = 2.2 }),
+    husk_knight   = tuned(Spud.archetypes.husk_knight,   { range = 0.6, speed = 3.0 }),
+    pumpkin_brute = tuned(Spud.archetypes.pumpkin_brute, { range = 0.7, speed = 2.2 }),
+    -- Crow stays BELOW hero speed (8.5): anything faster than the hero is
     -- unavoidable by movement alone (there is no dash/dodge yet).
-    crow          = tuned(Spud.archetypes.crow,          { range = 0.4, speed = 2.5 }),
+    crow          = tuned(Spud.archetypes.crow,          { range = 0.4, speed = 5.0 }),
 }
 
 return {
@@ -67,24 +70,17 @@ return {
             lose_text     = "The swarm got you. Press R and make a better path.",
         },
         arena = {
-            -- Smaller pit than the card modes: creeps reach the hero in seconds
-            -- and everything reads bigger. ortho_size = world height visible in
-            -- the letterboxed band (see Art.setup_iso_camera); 50/zoom ≈ 30
-            -- shows the full 26-tall arena plus a small margin.
-            width = 36, height = 26, pad = 2,
+            -- Playable pit fills the whole visible band so the hero can roam the
+            -- WHOLE map. ortho_size = world height visible in the letterboxed band
+            -- (see Art.setup_iso_camera); 50/zoom ≈ 30, and the 20:9 band is
+            -- ~67x30 world units, so a 64x28 pit puts the fence walls right at the
+            -- screen edges with the floor covering the rest.
+            width = 64, height = 28, pad = 2,
             ortho_size = 50.0,
-            -- Grass fills the whole visible 20:9 band (~67x30 world units) even
-            -- though the playable pit stays 36x26 — the fence walls mark the edge.
-            floor_extent = { width = 70.0, height = 32.0 },
-            -- Spawn ON SCREEN: a ring around the hero start (18,13) instead of
-            -- the far arena perimeter, so creeps are visible the moment they
-            -- spawn and reach the fight in a few seconds.
-            spawns = {
-                { x = 5, y = 13 }, { x = 31, y = 13 },
-                { x = 18, y = 4 }, { x = 18, y = 22 },
-                { x = 8, y = 5 }, { x = 28, y = 5 },
-                { x = 8, y = 21 }, { x = 28, y = 21 },
-            },
+            floor_extent = { width = 72.0, height = 34.0 },
+            -- No fixed spawn ring: the manual arena spawns randomly along the
+            -- walls (Duel:pick_spawn_point), and the decorative sigils fall back
+            -- to the auto-generated perimeter, both scaled to the pit size.
             cam_offset = View.CAM_OFFSET,
         },
         topdown = {
@@ -97,31 +93,45 @@ return {
             creep_scale = 1.0,
         },
         hero = {
-            hp_max = 105.0, dps = 22.0, cleave = 3, attack_range = 1.35,
-            -- Comfortably faster than the swarm (creep speeds also pass through
-            -- Creep.SPEED_SCALE). body_radius is derived from the rendered
-            -- sprite size in ath_topdown_view, not set here.
-            speed = 1.4, kite_speed = 1.4,
+            -- RANGED auto-attacker: fires bolts at the nearest creeps within
+            -- attack_range. cleave = bolts per volley (multi-shot / auto-aim at
+            -- the N nearest). dps scales per-bolt damage; fire_interval = seconds
+            -- between volleys. Gear maps cleanly: +reach -> attack_range,
+            -- +cleave -> more bolts, +damage -> per-bolt damage.
+            hp_max = 105.0, dps = 22.0, cleave = 3, attack_range = 9.0,
+            fire_interval = 0.26,
+            -- Comfortably faster than the swarm so kiting reads clearly.
+            -- body_radius is derived from the rendered sprite size in
+            -- ath_topdown_view, not set here.
+            speed = 8.5, kite_speed = 8.5,
             sprite_texture = Spud.tex.hero,
         },
         archetypes = ARCHETYPES,
         roles = Spud.roles,
         spawn = {
-            interval_start = 0.90, interval_min = 0.34,
-            batch_start = 2, batch_max = 6,
-            cap_start = 26, cap_max = 58,
+            interval_start = 0.60, interval_min = 0.20,
+            batch_start = 3, batch_max = 10,
+            cap_start = 44, cap_max = 85,
             brute_after = 26.0,
         },
         waves = {
             count = 5,
-            budgets = { 42, 58, 76, 98, 124 },
+            budgets = { 90, 120, 160, 210, 270 },
         },
-        reserve_start = 42.0,
+        reserve_start = 90.0,
         round_seconds = 9999.0,
-        kill_fx_budget_per_frame = 5,
+        -- Creeps spawn a bit beefier than their base archetype HP (applied in
+        -- Duel:spawn_one via Creep.create's hp_multiplier).
+        creep_hp_mult = 1.3,
+        kill_fx_budget_per_frame = 6,
         warm_pool_count = 0,
         prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute" },
-        prewarm = { sprout = 64, husk_knight = 20, pumpkin_brute = 8, crow = 16 },
+        -- Pre-build + PARK this many rigs per type at run start (warm_archetype
+        -- now populates the pool). Kept ABOVE each type's realistic peak-alive at
+        -- cap_max=85 so the pool never empties -> combat spawns reuse parked rigs
+        -- and never build a rig mid-frame (the spawn spike). Also avoids the
+        -- mid-combat alpha-cut geometry-add RT hazard.
+        prewarm = { sprout = 72, husk_knight = 40, pumpkin_brute = 16, crow = 24 },
 
         gear = {
             gold_per_kill = 1,

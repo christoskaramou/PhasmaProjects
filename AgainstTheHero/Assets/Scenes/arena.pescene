@@ -1,0 +1,214 @@
+{
+  "settings": {
+    "right_handed": false,
+    "reverse_depth": true,
+    "frustum_culling": true,
+    "shadows": true,
+    "shadow_map_size": 2048,
+    "num_cascades": 4,
+    "shadow_distance": 250.0,
+    "shadow_cascade_lambda": 0.85,
+    "shadow_normal_bias": 1.5,
+    "shadow_fade_fraction": 0.15,
+    "shadow_filter_radius": 0.75,
+    "shadow_debug_mode": 0,
+    "render_scale": 0.75,
+    "ssao": true,
+    "fxaa": false,
+    "taa": true,
+    "cas_sharpening": true,
+    "cas_sharpness": 0.5,
+    "ssr": false,
+    "tonemapping": false,
+    "color_grading": false,
+    "color_grading_lift_r": 0.0,
+    "color_grading_lift_g": 0.0,
+    "color_grading_lift_b": 0.0,
+    "color_grading_gamma_r": 1.0,
+    "color_grading_gamma_g": 1.0,
+    "color_grading_gamma_b": 1.0,
+    "color_grading_gain_r": 1.0,
+    "color_grading_gain_g": 1.0,
+    "color_grading_gain_b": 1.0,
+    "color_grading_saturation": 1.0,
+    "color_grading_contrast": 1.0,
+    "color_grading_intensity": 1.0,
+    "dof": false,
+    "dof_focus_scale": 15.0,
+    "dof_blur_range": 5.0,
+    "bloom": false,
+    "bloom_strength": 1.0,
+    "bloom_range": 1.0,
+    "motion_blur": true,
+    "motion_blur_strength": 1.0,
+    "motion_blur_samples": 16,
+    "IBL": true,
+    "IBL_intensity": 1.0,
+    "lights_intensity": 1.0,
+    "randomize_lights": false,
+    "skybox_path": "Skyboxes/golden_gate_hills/golden_gate_hills_4k.hdr",
+    "depth_bias": [
+      0.0,
+      0.0,
+      -6.199999
+    ],
+    "time_scale": 1.0,
+    "model_list": [],
+    "freeze_frustum_culling": false,
+    "draw_aabbs": false,
+    "draw_grid": true,
+    "aabbs_depth_aware": true,
+    "dynamic_rendering": true,
+    "ray_tracing_support": true,
+    "render_mode": 1,
+    "use_Disney_PBR": true,
+    "physical_point_falloff": false,
+    "present_mode": 2,
+    "scene_view_aspect_mode": 0
+  },
+  "sources": [],
+  "meshes": [],
+  "nodes": [
+    {
+      "name": "Camera_0",
+      "parent": -1,
+      "local_matrix": [
+        -1.0,
+        0.0,
+        -0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.009999,
+        0.1,
+        1.0
+      ],
+      "component_flags": 8,
+      "camera": {
+        "projection": "perspective",
+        "fovx": 1.518436,
+        "orthographic_size": 10.0,
+        "near_plane": 0.004999,
+        "far_plane": 3.4028234663852886e+38,
+        "speed": 3.5,
+        "euler": [
+          0.0,
+          -3.141592,
+          0.0
+        ]
+      }
+    },
+    {
+      "name": "Skybox",
+      "parent": -1,
+      "local_matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "component_flags": 256,
+      "skybox": {
+        "path": "Skyboxes/golden_gate_hills/golden_gate_hills_4k.hdr"
+      }
+    },
+    {
+      "name": "Directional Light 1",
+      "parent": -1,
+      "local_matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.001745,
+        -0.999998,
+        0.0,
+        0.0,
+        0.999998,
+        -0.001745,
+        0.0,
+        0.0,
+        10.0,
+        0.0,
+        1.0
+      ],
+      "component_flags": 2,
+      "light": {
+        "type": "directional",
+        "color": [
+          0.976499,
+          0.8431,
+          0.909799,
+          5.0
+        ]
+      }
+    }
+  ],
+  "lights": [
+    {
+      "type": "directional",
+      "color": [
+        0.976499,
+        0.8431,
+        0.909799,
+        5.0
+      ],
+      "position": [
+        0.0,
+        10.0,
+        0.0,
+        2.0
+      ],
+      "rotation": [
+        0.707723,
+        0.0,
+        0.0,
+        -0.706489
+      ],
+      "name": "Directional Light 1"
+    }
+  ],
+  "cameras": [
+    {
+      "name": "Camera_0",
+      "position": [
+        0.0,
+        0.009999,
+        0.1
+      ],
+      "euler": [
+        0.0,
+        -3.141592,
+        0.0
+      ],
+      "fovx": 1.518436,
+      "projection": "perspective",
+      "orthographic_size": 10.0,
+      "near_plane": 0.004999,
+      "far_plane": 3.4028234663852886e+38,
+      "speed": 3.5,
+      "node_index": 0
+    }
+  ],
+  "active_camera": 0
+}

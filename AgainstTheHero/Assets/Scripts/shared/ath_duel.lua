@@ -28,6 +28,9 @@ local Flow = ATH_COMMON.load_script("Scripts/shared/duel_flow.lua", "duel flow",
 local Creep = ATH_COMMON.load_script("Scripts/shared/duel_creep.lua", "duel creep", _ENV)
 local Console = ATH_COMMON.load_script("Scripts/shared/ath_console.lua", "dev console", _ENV)
 
+-- Dev-only diagnostic logging ([DMG]/[CAMDIAG]); silent unless ATH_DEV=1 at launch.
+local ATH_DEV = ATH_COMMON.env_enabled and ATH_COMMON.env_enabled("ATH_DEV", false) or false
+
 local Duel = {}
 Duel.__index = Duel
 
@@ -424,6 +427,124 @@ function Duel:hero_whirl(hero, dt)
         { preset = "hero_take", count = 18, life_max = 0.28, spawn_radius = radius * 0.5, noise_strength = 4.0, size_max = 0.18 })
 end
 
+-- ---------------------------------------------------------------------------
+-- Manual-hero RANGED attack — pooled bolts.
+-- POOLING IS LOAD-BEARING here too: deleting scene nodes mid-combat shuffles
+-- node storage (swap-and-pop) and corrupts other sprites' draw constants, so we
+-- pre-build a fixed pool of opaque bolt spheres once and PARK + REUSE them
+-- (never delete). Opaque spheres also stay off the alpha-cut RT path.
+-- ---------------------------------------------------------------------------
+local HPROJ_POOL = 28
+local HPROJ_SPEED = 19.0
+local HPROJ_HIT_R = 0.7
+local HPROJ_LIFE = 1.4
+
+function Duel:hproj_hide(p)
+    p.active = false
+    if Art.valid(p.node) then
+        p.node:set_position(vec3(-1000.0, -1000.0, -1000.0))
+        p.node:set_scale(vec3(0.0001, 0.0001, 0.0001))
+    end
+end
+
+function Duel:ensure_hero_projectiles()
+    if self.hproj then return end
+    if not (self.groups and self.groups.actors) then return end
+    self.hproj = {}
+    for i = 1, HPROJ_POOL do
+        local node = Art.sphere("HeroBolt_" .. i, vec3(-1000.0, -1000.0, -1000.0),
+            vec3(0.0001, 0.0001, 0.0001), { 1.0, 0.90, 0.42, 1.0 }, self.groups.actors, 1.5)
+        self.hproj[i] = { node = node, active = false }
+    end
+end
+
+function Duel:reset_hero_projectiles()
+    if not self.hproj then return end
+    for _, p in ipairs(self.hproj) do self:hproj_hide(p) end
+end
+
+function Duel:spawn_hero_bolt(hero, target)
+    self:ensure_hero_projectiles()
+    if not self.hproj then return end
+    local slot
+    for _, p in ipairs(self.hproj) do
+        if not p.active then slot = p; break end
+    end
+    if not slot then return end -- pool exhausted this frame; drop the bolt (no delete)
+    local dx, dz = target.x - hero.x, target.z - hero.z
+    local d = math.sqrt(dx * dx + dz * dz)
+    if d < 0.001 then d, dx, dz = 1.0, 0.0, 1.0 end
+    slot.active = true
+    slot.x, slot.z = hero.x, hero.z
+    slot.vx, slot.vz = dx / d * HPROJ_SPEED, dz / d * HPROJ_SPEED
+    slot.life = HPROJ_LIFE
+    slot.damage = (hero.dps or 10.0) * 0.6
+    if Art.valid(slot.node) then
+        slot.node:set_scale(vec3(0.34, 0.34, 0.34))
+        slot.node:set_position(vec3(slot.x, 0.7, slot.z))
+    end
+end
+
+function Duel:hero_fire(hero, dt)
+    hero.fire_t = (hero.fire_t or 0.0) - dt
+    if hero.fire_t > 0.0 then return end
+    local eff_range = (hero.attack_range or 9.0) * (hero.range_mult or 1.0)
+    local r2 = eff_range * eff_range
+    local cand = {}
+    for _, c in ipairs(self.creeps) do
+        if c.alive then
+            local dx, dz = c.x - hero.x, c.z - hero.z
+            local d = dx * dx + dz * dz
+            if d <= r2 then cand[#cand + 1] = { c = c, d = d } end
+        end
+    end
+    if #cand == 0 then return end
+    table.sort(cand, function(a, b) return a.d < b.d end)
+    hero.fire_t = hero.fire_interval or 0.28
+    hero.attack_flash = 0.12
+    local shots = math.max(1, math.floor(hero.cleave or 1))
+    for i = 1, math.min(shots, #cand) do
+        self:spawn_hero_bolt(hero, cand[i].c)
+    end
+    Art.burst("ath_hero_muzzle", vec3(hero.x, 0.7, hero.z),
+        { preset = "hero_take", count = 6, life_max = 0.16, spawn_radius = 0.18, size_max = 0.12 })
+end
+
+function Duel:update_hero_projectiles(dt)
+    if not self.hproj then return end
+    local hero = self.hero
+    local A = self.arena
+    for _, p in ipairs(self.hproj) do
+        if p.active then
+            p.x = p.x + p.vx * dt
+            p.z = p.z + p.vz * dt
+            p.life = p.life - dt
+            local hit = nil
+            for _, c in ipairs(self.creeps) do
+                if c.alive then
+                    local dx, dz = c.x - p.x, c.z - p.z
+                    if dx * dx + dz * dz <= HPROJ_HIT_R * HPROJ_HIT_R then hit = c; break end
+                end
+            end
+            local off = p.x < A.pad or p.x > A.w - A.pad or p.z < A.pad or p.z > A.h - A.pad
+            if hit then
+                -- Creep.damage flips alive=false on kill; update_creeps then
+                -- counts the kill + drops loot, same path as the melee hero.
+                if Creep.damage(hit, p.damage) and hero and (hero.lifesteal or 0.0) > 0.0 then
+                    hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal)
+                end
+                Art.burst("ath_hero_hit_" .. tostring(hit.id), vec3(p.x, 0.6, p.z),
+                    { preset = "enemy_take", count = 8, life_max = 0.18, spawn_radius = 0.16 })
+                self:hproj_hide(p)
+            elseif p.life <= 0.0 or off then
+                self:hproj_hide(p)
+            elseif Art.valid(p.node) then
+                p.node:set_position(vec3(p.x, 0.7, p.z))
+            end
+        end
+    end
+end
+
 function Duel:update_hero(dt)
     local hero = self.hero
     if not hero then return end
@@ -472,7 +593,7 @@ function Duel:update_hero(dt)
             local dx, dz = target.x - hero.x, target.z - hero.z
             hero.facing = math.atan(dx, dz)
         end
-        self:hero_attack(hero, dt)
+        self:hero_fire(hero, dt)
     else
         local kite_speed = hero.kite_speed * (1.0 + 0.25 * (hero.dash or 0))
         local kite_distance = self.hero_spec.kite_distance + 1.2 * (hero.dash or 0)
@@ -496,6 +617,7 @@ function Duel:update_hero(dt)
         end
     end
     self:hero_whirl(hero, dt)
+    self:update_hero_projectiles(dt)
 
     -- Locomotion + procedural animation (walk gait + an attack flash blend).
     hero.phase = hero.phase + dt * 9.0
@@ -610,6 +732,7 @@ function Duel:spawn_one(spawn, arch, free)
         id = self.next_id, archetype = arch,
         x = spawn.x + jx, z = spawn.y + jz,
         parent = self.groups.actors,
+        hp_multiplier = self.config.creep_hp_mult or 1.0,
         -- POOLING IS LOAD-BEARING: deleting rig nodes mid-combat (a no_pool
         -- experiment) shuffles node storage via swap-and-pop and leaves mesh
         -- draw-constants pointing at OTHER nodes' world matrices — sprites
@@ -631,6 +754,42 @@ function Duel:enqueue_spawn(count, arch, free)
     end
 end
 
+-- A random spawn point hugging the arena walls/edges, kept at least half the
+-- arena (min dimension) away from the hero so nothing materialises on top of the
+-- player. Best-of-N fallback guarantees it always returns a far-ish point.
+function Duel:pick_spawn_point()
+    local A = self.arena
+    local minx, maxx = A.pad + 1.0, A.w - A.pad - 1.0
+    local minz, maxz = A.pad + 1.0, A.h - A.pad - 1.0
+    local band = 3.5 -- how deep from a wall a spawn may sit
+    local min_dist = 0.5 * math.min(A.w, A.h)
+    local hx = (self.hero and self.hero.x) or (A.w * 0.5)
+    local hz = (self.hero and self.hero.z) or (A.h * 0.5)
+    local best, best_d = nil, -1.0
+    for _ = 1, 16 do
+        local edge = math.random(1, 4)
+        local x, z
+        if edge == 1 then -- west wall
+            x = minx + math.random() * band
+            z = minz + math.random() * (maxz - minz)
+        elseif edge == 2 then -- east wall
+            x = maxx - math.random() * band
+            z = minz + math.random() * (maxz - minz)
+        elseif edge == 3 then -- north wall
+            x = minx + math.random() * (maxx - minx)
+            z = minz + math.random() * band
+        else -- south wall
+            x = minx + math.random() * (maxx - minx)
+            z = maxz - math.random() * band
+        end
+        local dx, dz = x - hx, z - hz
+        local d = math.sqrt(dx * dx + dz * dz)
+        if d >= min_dist then return { x = x, y = z } end
+        if d > best_d then best, best_d = { x = x, y = z }, d end
+    end
+    return best or { x = minx, y = minz }
+end
+
 function Duel:drain_spawn_queue(per_frame)
     local q = self.spawn_queue
     if not q or #q == 0 then return end
@@ -640,7 +799,10 @@ function Duel:drain_spawn_queue(per_frame)
         if self:count_alive() >= self:live_cap() then return end
 
         local req = table.remove(q, 1)
-        local spawn = self.spawns[(self.spawn_counter % #self.spawns) + 1]
+        -- Manual arena: random near the walls, away from the hero. Other modes
+        -- keep their authored fixed spawn ring.
+        local spawn = self.manual_hero and self:pick_spawn_point()
+            or self.spawns[(self.spawn_counter % #self.spawns) + 1]
         self:spawn_one(spawn, req.arch, req.free)
     end
 end
@@ -696,6 +858,12 @@ function Duel:warm_archetype(arch, count)
     local n = math.max(0, math.floor(tonumber(count) or 0))
     for _ = 1, n do
         self.next_id = self.next_id + 1
+        -- no_pool = true forces a FRESH rig build (so Creep.create doesn't pop the
+        -- very pool we're filling and just recycle one rig). We then flip it OFF so
+        -- Creep.destroy PARKS the rig into the pool instead of deleting it. Net: the
+        -- pool is pre-populated with `n` ready, already-dressed rigs, so combat
+        -- spawns reuse them by transform and NEVER build a rig mid-frame — building
+        -- a rig mid-combat (geometry add) is the spawn spike.
         local creep = Creep.create({
             id = self.next_id, archetype = arch,
             x = self.arena.hero_start.x, z = self.arena.hero_start.y,
@@ -705,6 +873,7 @@ function Duel:warm_archetype(arch, count)
         if self.config.hooks and self.config.hooks.on_prewarm_spawn then
             self.config.hooks.on_prewarm_spawn(self, creep)
         end
+        creep.no_pool = false
         Creep.destroy(creep)
     end
 end
@@ -800,7 +969,7 @@ function Duel:update_creeps(dt)
         -- DIAG: name every damage source once a second so "damage out of
         -- nowhere" is attributable (creep, distance, its contact reach).
         self._dmg_log_t = (self._dmg_log_t or 0.0) - dt
-        if pe_log and self._dmg_log_t <= 0.0 then
+        if ATH_DEV and pe_log and self._dmg_log_t <= 0.0 then
             self._dmg_log_t = 1.0
             local parts = {}
             for _, c in ipairs(contacters) do
@@ -1240,6 +1409,8 @@ function Duel:reset_run()
         self.player_seat = nil
         self.ai_seat = nil
         self:reset_manual_gear()
+        self:ensure_hero_projectiles()
+        self:reset_hero_projectiles()
         self:begin_manual_wave(1)
     else
         self.state = "combat"
@@ -1332,10 +1503,10 @@ function Duel:update_hud()
     local TS = Art.s("text")
     local status_text
     if self.manual_hero then
-        status_text = string.format("%s\nYOU: HERO  -  Wave %d/%d\nBudget %d / %d\nSwarm %d    Kills %d\nGold %d",
+        status_text = string.format("%s\nYOU: HERO  -  Wave %d/%d\nBudget %d / %d\nSwarm %d    Kills %d\nGold %d    Loot %d",
             (self.theme.hud_title or (self.config.name or "DUEL")), self.wave_index or 1, self.wave_cfg.count or 5,
             math.floor((self.reserve or 0.0) + 0.5), math.floor((self.reserve_start or 1.0) + 0.5),
-            self:count_alive(), self.kills, self.gold or 0)
+            self:count_alive(), self.kills, self.gold or 0, #(self.gear_inventory or {}))
     else
         status_text = string.format("%s\n%s  -  Round %d\nReserve %d / %d\nSwarm %d    Kills %d\nHero: %s",
             (self.theme.hud_title or (self.config.name or "DUEL")), side_label, self.round,
@@ -1482,7 +1653,7 @@ function Duel:update(dt)
 
     -- DIAG: the rendered view sometimes ends up ~19x more zoomed-in than the
     -- ortho size we set at start. Log the live camera state to catch who/when.
-    if pe_log then
+    if ATH_DEV and pe_log then
         self._cam_log_t = (self._cam_log_t or 0.0) - dt
         if self._cam_log_t <= 0.0 then
             self._cam_log_t = 2.0
