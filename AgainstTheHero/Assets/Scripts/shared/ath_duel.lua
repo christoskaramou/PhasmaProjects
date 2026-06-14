@@ -27,6 +27,7 @@ local Cards = ATH_COMMON.load_script("Scripts/shared/ath_cards.lua", "shared car
 local Flow = ATH_COMMON.load_script("Scripts/shared/duel_flow.lua", "duel flow", _ENV)
 local Creep = ATH_COMMON.load_script("Scripts/shared/duel_creep.lua", "duel creep", _ENV)
 local Console = ATH_COMMON.load_script("Scripts/shared/ath_console.lua", "dev console", _ENV)
+local Inventory = ATH_COMMON.load_script("Scripts/shared/ath_inventory.lua", "inventory", _ENV)
 
 -- Dev-only diagnostic logging ([DMG]/[CAMDIAG]); silent unless ATH_DEV=1 at launch.
 local ATH_DEV = ATH_COMMON.env_enabled and ATH_COMMON.env_enabled("ATH_DEV", false) or false
@@ -39,10 +40,36 @@ local SLOWMO_DURATION = 1.2
 local WHIRL_CD = 1.2
 local WHIRL_RADIUS_BASE = 2.0
 
+-- Feel constants (juice pass). Hit flash is a brief emissive whiteout; knockback
+-- is a small decaying shove on the struck actor; telegraphs are the pre-spawn
+-- ground markers that warn where the swarm is about to pour in.
+local HIT_FLASH_T = 0.16          -- seconds a struck sprite stays flashed white
+local CREEP_KNOCK_MELEE = 2.2     -- shove (u/s) a melee cleave/whirl puts on a creep
+local CREEP_KNOCK_BOLT = 3.4      -- shove a hero bolt puts on a creep along its flight
+local HERO_KNOCK_CONTACT = 1.4    -- tiny self-stagger when the swarm bites the hero
+local HERO_KNOCK_BOLT = 2.6       -- tiny self-stagger when a creep projectile lands
+local TELEGRAPH_T = 0.45          -- warn window before a normal creep materialises
+local TELEGRAPH_T_BIG = 0.75      -- longer, scarier warn for elites/brutes
+local TELEGRAPH_BIG_COST = 4      -- threat_cost at/above which a spawn reads as "big"
+local CPROJ_POOL = 24             -- pooled creep projectile spheres (never deleted)
+
 local function clampn(value, low, high)
     if value < low then return low end
     if value > high then return high end
     return value
+end
+
+-- Pointer in surface pixels (mouse on desktop; SDL maps touch -> mouse on
+-- Android, so this also tracks a finger). Used by the virtual movement joystick.
+local function ui_pointer()
+    if input and input.get_mouse_position then
+        local p = input.get_mouse_position()
+        if p and p.x then return p.x, p.y end
+    end
+    return nil
+end
+local function pointer_down()
+    return input and input.is_left_mouse_down and input.is_left_mouse_down() == true
 end
 
 -- A minimal flat sprite hero (single textured quad, no sword/cape) for top-down
@@ -153,6 +180,10 @@ function Duel.new(config, ctx, shell)
         kite_distance = h.kite_distance or 4.5,
         actor = h.actor or default_hero_actor(D.theme),
     }
+    -- Selected hero class id (manual arena). ATH_HERO_CLASS overrides the default
+    -- for headless smokes; otherwise the player picks at run start.
+    D.hero_class = ATH_COMMON.getenv("ATH_HERO_CLASS",
+        h.default_class or (h.classes and h.classes[1] and h.classes[1].id))
 
     -- Spawn tuning.
     local s = D.config.spawn or {}
@@ -166,6 +197,10 @@ function Duel.new(config, ctx, shell)
         cap_max = s.cap_max or 90,
         brute_after = s.brute_after or 18.0,
     }
+
+    -- Spawn telegraphs (pre-spawn ground markers) are on for the manual arena by
+    -- default; legacy duel modes keep instant authored-ring spawns unless opted in.
+    D.use_telegraph = D.manual_hero and (s.telegraph ~= false)
 
     D.roles = D.config.roles or {}
     D.reserve_start = ATH_COMMON.getenv_number("ATH_DUEL_RESERVE", D.config.reserve_start or 300.0)
@@ -274,16 +309,40 @@ end
 -- Hero (auto-fighting actor; the "hero seat" cards upgrade it)
 -- ---------------------------------------------------------------------------
 
+-- The currently-selected hero class spec (or nil when the mode defines none).
+function Duel:active_class()
+    local list = self.config.hero and self.config.hero.classes
+    if not list or #list == 0 then return nil end
+    for _, c in ipairs(list) do
+        if c.id == self.hero_class then return c end
+    end
+    return list[1]
+end
+
 function Duel:create_hero()
     local spec = self.hero_spec
+    -- Apply the chosen hero CLASS (manual arena) on top of the mode's hero spec:
+    -- each class is an attack identity (melee cleave vs ranged bolt vs scatter)
+    -- with its own stats + sprite. active_class() is nil for non-manual modes.
+    local cls = self:active_class()
+    local hp_max = (cls and cls.hp_max) or spec.hp_max
+    local cdps = (cls and cls.dps) or spec.dps
+    local ccleave = (cls and cls.cleave) or spec.cleave
+    local crange = (cls and cls.attack_range) or spec.attack_range
+    local cspeed = (cls and cls.speed) or spec.speed
+    local ckite = (cls and cls.kite_speed) or spec.kite_speed
     local hero = {
         x = self.arena.hero_start.x, z = self.arena.hero_start.y,
-        hp = spec.hp_max, hp_max = spec.hp_max,
-        dps = spec.dps, base_dps = spec.dps,
-        cleave = spec.cleave, attack_range = spec.attack_range,
-        speed = spec.speed, base_speed = spec.speed,
-        kite_speed = spec.kite_speed, base_kite_speed = spec.kite_speed,
+        hp = hp_max, hp_max = hp_max,
+        dps = cdps, base_dps = cdps,
+        cleave = ccleave, attack_range = crange,
+        speed = cspeed, base_speed = cspeed,
+        kite_speed = ckite, base_kite_speed = ckite,
         body_radius = spec.body_radius,
+        attack_type = (cls and cls.attack) or (self.manual_hero and "ranged") or "melee",
+        fire_interval = (cls and cls.fire_interval) or (self.config.hero and self.config.hero.fire_interval) or 0.28,
+        bolt_color = (cls and cls.bolt_color) or { 1.0, 0.90, 0.42 },
+        bolt_scale = (cls and cls.bolt_scale) or 0.34,
         phase = 0.0, facing = 0.0, attack_flash = 0.0,
         dead = false, death_t = 0.0,
         lifesteal = 0.0, regen = 0.0, whirl = 0, whirl_t = 0.0,
@@ -308,6 +367,11 @@ function Duel:create_hero()
         thorns = hero.thorns,
         dash = hero.dash,
     }
+    -- fire_interval is kept as a sibling base field rather than folded into
+    -- base_stats: recompute_hero_stats / gear_preview_stats both reset it from here
+    -- before applying attack-speed gear, so it never double-counts. Keep the two in
+    -- sync if either the field or those reset paths move.
+    hero.base_fire_interval = hero.fire_interval
     -- "Replace the hero with the 2D souls-knight everywhere": every duel mode
     -- supplies its own themed actor, so force the knight rig here (set
     -- Duel.FORCE_KNIGHT = false to fall back to the mode's own rig).
@@ -315,7 +379,10 @@ function Duel:create_hero()
     if self.manual_hero then
         -- Top-down manual hero: a single flat sprite quad, NOT the knight rig
         -- (skips loading ~1.2 MB of knight textures that would only be hidden).
-        actor_spec = flat_hero_actor(self.config.hero and self.config.hero.sprite_texture)
+        -- The class picks the sprite (ranger/brawler/sower), falling back to the
+        -- mode's default hero texture.
+        local tex = (cls and cls.sprite_texture) or (self.config.hero and self.config.hero.sprite_texture)
+        actor_spec = flat_hero_actor(tex)
     elseif Duel.FORCE_KNIGHT ~= false then
         actor_spec = default_hero_actor(self.theme)
     end
@@ -397,8 +464,12 @@ function Duel:hero_attack(hero, dt)
     for i = 1, targets do
         local mult = (i == 1) and 1.0 or 0.45
         local c = in_range[i].c
-        if Creep.damage(c, hero.dps * mult * dt) then
-            c.alive = false
+        local dx, dz = c.x - hero.x, c.z - hero.z
+        local d = math.sqrt(dx * dx + dz * dz)
+        local nx, nz = (d > 0.001) and dx / d or 0.0, (d > 0.001) and dz / d or 0.0
+        -- Knock scaled by dt because melee damage is continuous: a gentle shove,
+        -- not the one-shot punt a discrete bolt/whirl delivers.
+        if self:hit_creep(c, hero.dps * mult * dt, nx * CREEP_KNOCK_MELEE * dt, nz * CREEP_KNOCK_MELEE * dt) then
             if hero.lifesteal > 0.0 then hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal) end
         end
     end
@@ -415,9 +486,11 @@ function Duel:hero_whirl(hero, dt)
     for _, c in ipairs(self.creeps) do
         if c.alive then
             local dx, dz = c.x - hero.x, c.z - hero.z
-            if dx * dx + dz * dz <= r2 then
-                if Creep.damage(c, damage) then
-                    c.alive = false
+            local dd = dx * dx + dz * dz
+            if dd <= r2 then
+                local d = math.sqrt(dd)
+                local nx, nz = (d > 0.001) and dx / d or 0.0, (d > 0.001) and dz / d or 0.0
+                if self:hit_creep(c, damage, nx * CREEP_KNOCK_MELEE * 1.8, nz * CREEP_KNOCK_MELEE * 1.8) then
                     if hero.lifesteal > 0.0 then hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal) end
                 end
             end
@@ -479,8 +552,13 @@ function Duel:spawn_hero_bolt(hero, target)
     slot.vx, slot.vz = dx / d * HPROJ_SPEED, dz / d * HPROJ_SPEED
     slot.life = HPROJ_LIFE
     slot.damage = (hero.dps or 10.0) * 0.6
+    local bc = hero.bolt_color or { 1.0, 0.90, 0.42 }
+    local bs = hero.bolt_scale or 0.34
+    slot.col = bc
     if Art.valid(slot.node) then
-        slot.node:set_scale(vec3(0.34, 0.34, 0.34))
+        material.set(slot.node, "base_color", vec4(bc[1], bc[2], bc[3], 1.0))
+        material.set(slot.node, "emissive", vec3(bc[1] * 1.5, bc[2] * 1.5, bc[3] * 1.5))
+        slot.node:set_scale(vec3(bs, bs, bs))
         slot.node:set_position(vec3(slot.x, 0.7, slot.z))
     end
 end
@@ -506,8 +584,10 @@ function Duel:hero_fire(hero, dt)
     for i = 1, math.min(shots, #cand) do
         self:spawn_hero_bolt(hero, cand[i].c)
     end
+    local mc = hero.bolt_color or { 1.0, 0.92, 0.5 }
     Art.burst("ath_hero_muzzle", vec3(hero.x, 0.7, hero.z),
-        { preset = "hero_take", count = 6, life_max = 0.16, spawn_radius = 0.18, size_max = 0.12 })
+        { preset = "hero_take", count = 6, life_max = 0.16, spawn_radius = 0.18, size_max = 0.12,
+          color_start = vec4(mc[1], mc[2], mc[3], 1.0) })
 end
 
 function Duel:update_hero_projectiles(dt)
@@ -528,13 +608,19 @@ function Duel:update_hero_projectiles(dt)
             end
             local off = p.x < A.pad or p.x > A.w - A.pad or p.z < A.pad or p.z > A.h - A.pad
             if hit then
-                -- Creep.damage flips alive=false on kill; update_creeps then
-                -- counts the kill + drops loot, same path as the melee hero.
-                if Creep.damage(hit, p.damage) and hero and (hero.lifesteal or 0.0) > 0.0 then
+                -- hit_creep flips alive=false on kill; update_creeps then counts
+                -- the kill + drops loot, same path as the melee hero. The bolt
+                -- punts the creep along its flight direction (discrete = full knock).
+                local d = math.sqrt(p.vx * p.vx + p.vz * p.vz)
+                local nx, nz = (d > 0.001) and p.vx / d or 0.0, (d > 0.001) and p.vz / d or 0.0
+                if self:hit_creep(hit, p.damage, nx * CREEP_KNOCK_BOLT, nz * CREEP_KNOCK_BOLT)
+                    and hero and (hero.lifesteal or 0.0) > 0.0 then
                     hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal)
                 end
+                local ic = p.col or { 1.0, 0.92, 0.5 }
                 Art.burst("ath_hero_hit_" .. tostring(hit.id), vec3(p.x, 0.6, p.z),
-                    { preset = "enemy_take", count = 8, life_max = 0.18, spawn_radius = 0.16 })
+                    { preset = "enemy_take", count = 10, life_max = 0.18, spawn_radius = 0.16,
+                      color_start = vec4(ic[1], ic[2], ic[3], 1.0) })
                 self:hproj_hide(p)
             elseif p.life <= 0.0 or off then
                 self:hproj_hide(p)
@@ -542,6 +628,258 @@ function Duel:update_hero_projectiles(dt)
                 p.node:set_position(vec3(p.x, 0.7, p.z))
             end
         end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Hit feedback — one funnel for damaging a creep so every source (melee cleave,
+-- whirl, thorns, hero bolt) lights the flash + applies the same knockback model.
+-- ---------------------------------------------------------------------------
+function Duel:hit_creep(c, amount, kx, kz)
+    if not c or not c.alive then return false end
+    local killed = Creep.damage(c, amount)
+    if not killed then
+        c.hit_flash = HIT_FLASH_T
+        if (kx and kx ~= 0.0) or (kz and kz ~= 0.0) then Creep.knock(c, kx or 0.0, kz or 0.0) end
+    end
+    return killed
+end
+
+-- ---------------------------------------------------------------------------
+-- Creep projectiles — ranged enemies (seed spitter, archer, necromancer) fire a
+-- VISIBLE bolt at the hero instead of dealing silent stand-off damage. Pooled +
+-- recoloured per shot for the same reason the hero bolts are (deleting nodes
+-- mid-combat corrupts other sprites' draw constants). Opaque spheres also stay
+-- off the alpha-cut RT path, so they may be scaled freely.
+-- ---------------------------------------------------------------------------
+function Duel:cproj_hide(p)
+    p.active = false
+    if Art.valid(p.node) then
+        p.node:set_position(vec3(-1000.0, -1000.0, -1000.0))
+        p.node:set_scale(vec3(0.0001, 0.0001, 0.0001))
+    end
+end
+
+function Duel:ensure_creep_projectiles()
+    if self.cproj then return end
+    if not (self.groups and self.groups.actors) then return end
+    self.cproj = {}
+    for i = 1, CPROJ_POOL do
+        local node = Art.sphere("CreepBolt_" .. i, vec3(-1000.0, -1000.0, -1000.0),
+            vec3(0.0001, 0.0001, 0.0001), { 1.0, 0.5, 0.3, 1.0 }, self.groups.actors, 1.4)
+        self.cproj[i] = { node = node, active = false }
+    end
+end
+
+function Duel:reset_creep_projectiles()
+    if not self.cproj then return end
+    for _, p in ipairs(self.cproj) do self:cproj_hide(p) end
+end
+
+function Duel:spawn_creep_proj(desc)
+    self:ensure_creep_projectiles()
+    if not self.cproj then return end
+    local slot
+    for _, p in ipairs(self.cproj) do if not p.active then slot = p; break end end
+    if not slot then return end -- pool exhausted this frame; drop the bolt (no delete)
+    slot.active = true
+    slot.x, slot.y, slot.z = desc.sx, desc.sy or 0.7, desc.sz
+    slot.vx, slot.vy, slot.vz = desc.vx, desc.vy or 0.0, desc.vz
+    slot.gravity = desc.gravity or 0.0
+    slot.life = desc.max_flight_time or 1.4
+    slot.damage = desc.damage or 0.0
+    slot.hit_r = desc.hit_radius or 0.6
+    local col = desc.color or { 1.0, 0.5, 0.3, 1.0 }
+    slot.col = col
+    local sz = desc.particle_size or 0.22
+    if Art.valid(slot.node) then
+        local e = desc.emissive or 1.0
+        material.set(slot.node, "base_color", vec4(col[1], col[2], col[3], 1.0))
+        material.set(slot.node, "emissive", vec3(col[1] * e, col[2] * e, col[3] * e))
+        slot.node:set_scale(vec3(sz, sz, sz))
+        slot.node:set_position(vec3(slot.x, slot.y, slot.z))
+    end
+    -- Muzzle spark at the shooter, tinted to the bolt.
+    Art.burst("ath_cproj_muzzle", vec3(desc.sx, desc.sy or 0.7, desc.sz),
+        { preset = "enemy_give", count = 6, life_max = 0.16, spawn_radius = 0.16, size_max = 0.12,
+          color_start = vec4(col[1], col[2], col[3], 1.0) })
+end
+
+function Duel:try_fire_creep(c, hero, dt)
+    if hero.dead or not Creep.is_ranged(c) then return end
+    local spec = c.stats.projectile
+    if not spec then return end -- only true shooters fire a visible bolt
+    local dx, dz = hero.x - c.x, hero.z - c.z
+    -- Small margin so a creep parked AT its hold_range still reliably fires
+    -- (float jitter otherwise flickers the edge check).
+    local rng = (c.stats.hold_range or c.stats.range or 6.0) + 1.0
+    if dx * dx + dz * dz > rng * rng then return end
+    local cd = spec.cooldown or 0.9
+    local desc = Creep.attack_projectile(c, hero, (c.stats.dps or 2.0) * cd)
+    if desc then self:spawn_creep_proj(desc) end
+end
+
+function Duel:update_creep_projectiles(dt)
+    if not self.cproj then return end
+    local hero = self.hero
+    local A = self.arena
+    for _, p in ipairs(self.cproj) do
+        if p.active then
+            if (p.gravity or 0.0) ~= 0.0 then p.vy = (p.vy or 0.0) - p.gravity * dt end
+            p.x = p.x + p.vx * dt
+            p.y = (p.y or 0.7) + (p.vy or 0.0) * dt
+            p.z = p.z + p.vz * dt
+            p.life = p.life - dt
+            local hit = false
+            if hero and not hero.dead then
+                local dx, dz = hero.x - p.x, hero.z - p.z
+                if dx * dx + dz * dz <= p.hit_r * p.hit_r then hit = true end
+            end
+            local off = p.x < A.pad or p.x > A.w - A.pad or p.z < A.pad or p.z > A.h - A.pad or (p.y or 0.0) < -0.2
+            if hit then
+                self:apply_hero_damage(p.damage)
+                if hero and not hero.dead then
+                    local d = math.sqrt(p.vx * p.vx + p.vz * p.vz)
+                    if d > 0.001 then
+                        hero.knock_x = (hero.knock_x or 0.0) + p.vx / d * HERO_KNOCK_BOLT
+                        hero.knock_z = (hero.knock_z or 0.0) + p.vz / d * HERO_KNOCK_BOLT
+                    end
+                end
+                Art.burst("ath_cproj_hit", vec3(p.x, p.y or 0.7, p.z),
+                    { preset = "hero_take", count = 10, life_max = 0.20, spawn_radius = 0.16,
+                      color_start = vec4(p.col[1], p.col[2], p.col[3], 1.0) })
+                self:cproj_hide(p)
+            elseif p.life <= 0.0 or off then
+                self:cproj_hide(p)
+            elseif Art.valid(p.node) then
+                p.node:set_position(vec3(p.x, p.y or 0.7, p.z))
+            end
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Spawn telegraphs — a pulsing ground ring (+ particles) warns where the swarm
+-- is about to appear, so spawns never pop in on top of the player. Big spawns
+-- (elites/brutes) get a longer, fancier, particle-spitting warn. Rings are
+-- pooled (never deleted mid-combat) like every other combat node.
+-- ---------------------------------------------------------------------------
+function Duel:ensure_telegraph_pool()
+    if self.tele_pool then return end
+    if not (self.groups and self.groups.world) then return end
+    self.tele_pool = {}
+    self.telegraphs = self.telegraphs or {}
+    for i = 1, 18 do
+        local ring = Art.cylinder("Telegraph_" .. i, vec3(-1000.0, 0.04, -1000.0),
+            vec3(2.4, 0.03, 2.4), { 0.95, 0.32, 0.2, 0.5 }, self.groups.world, 1.2)
+        if Art.valid(ring) and material and material.set_render_type then
+            material.set_render_type(ring, "alpha_blend")
+        end
+        self.tele_pool[i] = ring
+    end
+end
+
+function Duel:add_telegraph(spawn, arch, free)
+    self:ensure_telegraph_pool()
+    local ring = self.tele_pool and table.remove(self.tele_pool) or nil
+    if not ring then self:spawn_one(spawn, arch, free); return end -- pool dry: spawn now
+    local big = (Creep.threat_cost(arch) or 1) >= TELEGRAPH_BIG_COST
+    local col = big and { 0.86, 0.32, 0.92 } or (self.theme.spawn_sigil or { 0.95, 0.45, 0.2 })
+    if Art.valid(ring) then
+        material.set(ring, "base_color", vec4(col[1], col[2], col[3], 0.5))
+        material.set(ring, "emissive", vec3(col[1], col[2], col[3]))
+        ring:set_position(vec3(spawn.x, 0.05, spawn.y))
+    end
+    self.telegraphs[#self.telegraphs + 1] = {
+        x = spawn.x, z = spawn.y, arch = arch, free = free, ring = ring, big = big, col = col,
+        t = big and TELEGRAPH_T_BIG or TELEGRAPH_T, dur = big and TELEGRAPH_T_BIG or TELEGRAPH_T, emit_t = 0.0,
+    }
+    Art.burst("ath_tele_start", vec3(spawn.x, 0.3, spawn.y),
+        { preset = big and "enemy_give" or "enemy_take", count = big and 16 or 8, life_max = 0.40,
+          spawn_radius = big and 0.7 or 0.4, size_max = big and 0.22 or 0.14,
+          color_start = vec4(col[1], col[2], col[3], 1.0), gravity = vec3(0.0, 1.2, 0.0) })
+end
+
+function Duel:park_telegraph_ring(tg)
+    if Art.valid(tg.ring) then tg.ring:set_position(vec3(-1000.0, 0.04, -1000.0)) end
+    if tg.ring and self.tele_pool then self.tele_pool[#self.tele_pool + 1] = tg.ring end
+end
+
+function Duel:update_telegraphs(dt)
+    local list = self.telegraphs
+    if not list or #list == 0 then return end
+    local keep = {}
+    for _, tg in ipairs(list) do
+        tg.t = tg.t - dt
+        if Art.valid(tg.ring) then
+            local pulse = 0.35 + 0.65 * math.abs(math.sin(self.realtime * (tg.big and 10.0 or 15.0)))
+            material.set(tg.ring, "base_color", vec4(tg.col[1], tg.col[2], tg.col[3], 0.22 + 0.5 * pulse))
+            material.set(tg.ring, "emissive", vec3(tg.col[1] * pulse * 1.4, tg.col[2] * pulse * 1.4, tg.col[3] * pulse * 1.4))
+        end
+        if tg.big then
+            tg.emit_t = tg.emit_t + dt
+            if tg.emit_t >= 0.12 then
+                tg.emit_t = 0.0
+                Art.burst("ath_tele_loop", vec3(tg.x, 0.25, tg.z),
+                    { preset = "enemy_give", count = 6, life_max = 0.35, spawn_radius = 0.55, size_max = 0.18,
+                      color_start = vec4(tg.col[1], tg.col[2], tg.col[3], 1.0), gravity = vec3(0.0, 1.4, 0.0) })
+            end
+        end
+        if tg.t <= 0.0 then
+            Art.burst("ath_tele_pop", vec3(tg.x, 0.4, tg.z),
+                { preset = tg.big and "enemy_give" or "enemy_take", count = tg.big and 20 or 10, life_max = 0.3,
+                  spawn_radius = tg.big and 0.6 or 0.35, size_max = tg.big and 0.24 or 0.14,
+                  color_start = vec4(tg.col[1], tg.col[2], tg.col[3], 1.0) })
+            self:spawn_one({ x = tg.x, y = tg.z }, tg.arch, tg.free)
+            self:park_telegraph_ring(tg)
+        else
+            keep[#keep + 1] = tg
+        end
+    end
+    self.telegraphs = keep
+end
+
+function Duel:clear_telegraphs()
+    if self.telegraphs then
+        for _, tg in ipairs(self.telegraphs) do self:park_telegraph_ring(tg) end
+    end
+    self.telegraphs = {}
+end
+
+-- ---------------------------------------------------------------------------
+-- Mobile — virtual movement joystick + haptics shim.
+-- ---------------------------------------------------------------------------
+-- Brief haptic pulse if the engine exposes input.vibrate(ms) (Android Vibrator).
+-- No-op otherwise; wired here so it lights up the moment that binding lands.
+function Duel:haptic(ms)
+    if input and input.vibrate then input.vibrate(ms or 12) end
+end
+
+-- Floating left-half joystick driven by the pointer (a finger via SDL's
+-- touch->mouse mapping, or a desktop mouse-drag). Sets self._stick.dirx/dirz,
+-- which update_hero blends in alongside WASD. Combat-only so it never fights the
+-- inventory / menus; engages only when the press STARTS in the left half so taps
+-- on the right don't drive the hero.
+function Duel:update_touch_stick()
+    if not self.manual_hero or self.state ~= "combat" then self._stick = nil; return end
+    local mx, my = ui_pointer()
+    if not (mx and pointer_down()) then self._stick = nil; return end
+    local vw, vh = Art.surface_size()
+    local vp = Art._vp
+    local R = vh * 0.11
+    if not self._stick then
+        if (mx - vp.x) > vw * 0.5 then return end -- right half left free for UI/actions
+        self._stick = { ox = mx, oy = my, kx = mx, ky = my, dirx = 0.0, dirz = 0.0, R = R }
+    end
+    local ddx, ddy = mx - self._stick.ox, my - self._stick.oy
+    local d = math.sqrt(ddx * ddx + ddy * ddy)
+    if d > R then ddx, ddy = ddx / d * R, ddy / d * R; d = R end
+    self._stick.kx, self._stick.ky = self._stick.ox + ddx, self._stick.oy + ddy
+    if d / R < 0.2 then
+        self._stick.dirx, self._stick.dirz = 0.0, 0.0 -- deadzone
+    else
+        -- Screen +x -> world +x; screen +y (down) -> world +z (matches WASD S/Down).
+        self._stick.dirx, self._stick.dirz = ddx / R, ddy / R
     end
 end
 
@@ -561,17 +899,23 @@ function Duel:update_hero(dt)
     end
 
     if hero.regen > 0.0 then hero.hp = math.min(hero.hp_max, hero.hp + hero.regen * dt) end
+    hero.hit_flash = math.max(0.0, (hero.hit_flash or 0.0) - dt)
 
     local target, tdist = self:nearest_creep(hero)
     if self.manual_hero then
         -- Suppress movement while the dev console is open so tuning keys don't drive.
         local console_open = self.console and self.console.visible
+        self:update_touch_stick()
         local dirx, dirz = 0.0, 0.0
         if not console_open then
             dirx = (self:is_key_down("D") or self:is_key_down("Right")) and 1.0 or 0.0
             dirx = dirx - ((self:is_key_down("A") or self:is_key_down("Left")) and 1.0 or 0.0)
             dirz = (self:is_key_down("S") or self:is_key_down("Down")) and 1.0 or 0.0
             dirz = dirz - ((self:is_key_down("W") or self:is_key_down("Up")) and 1.0 or 0.0)
+            -- Touch / mouse virtual joystick overrides WASD when engaged.
+            if self._stick and (self._stick.dirx ~= 0.0 or self._stick.dirz ~= 0.0) then
+                dirx, dirz = self._stick.dirx, self._stick.dirz
+            end
         end
         -- Smooth the input asymmetrically: starts/turns ease in over ~50 ms,
         -- but releasing the keys bites in ~25 ms — the hero plants almost
@@ -593,7 +937,13 @@ function Duel:update_hero(dt)
             local dx, dz = target.x - hero.x, target.z - hero.z
             hero.facing = math.atan(dx, dz)
         end
-        self:hero_fire(hero, dt)
+        -- Class attack identity: melee classes auto-cleave whatever's in reach;
+        -- ranged classes fire pooled bolts at the nearest targets.
+        if hero.attack_type == "melee" then
+            self:hero_attack(hero, dt)
+        else
+            self:hero_fire(hero, dt)
+        end
     else
         local kite_speed = hero.kite_speed * (1.0 + 0.25 * (hero.dash or 0))
         local kite_distance = self.hero_spec.kite_distance + 1.2 * (hero.dash or 0)
@@ -618,6 +968,21 @@ function Duel:update_hero(dt)
     end
     self:hero_whirl(hero, dt)
     self:update_hero_projectiles(dt)
+
+    -- Self-stagger: a small decaying shove from being bitten / shot, applied after
+    -- input so the hit reads but the player stays in control.
+    if (hero.knock_x or 0.0) ~= 0.0 or (hero.knock_z or 0.0) ~= 0.0 then
+        local A = self.arena
+        hero.x = clampn(hero.x + hero.knock_x * dt, A.pad + 0.8, A.w - A.pad - 1.8)
+        hero.z = clampn(hero.z + hero.knock_z * dt, A.pad + 0.8, A.h - A.pad - 1.8)
+        local dd = math.max(0.0, 1.0 - 18.0 * dt)
+        hero.knock_x = hero.knock_x * dd
+        hero.knock_z = hero.knock_z * dd
+        if (hero.knock_x * hero.knock_x + hero.knock_z * hero.knock_z) < 0.02 then
+            hero.knock_x = 0.0
+            hero.knock_z = 0.0
+        end
+    end
 
     -- Locomotion + procedural animation (walk gait + an attack flash blend).
     hero.phase = hero.phase + dt * 9.0
@@ -795,15 +1160,23 @@ function Duel:drain_spawn_queue(per_frame)
     if not q or #q == 0 then return end
 
     local n = math.min(math.max(1, math.floor(tonumber(per_frame) or 1)), #q)
+    -- Pending telegraphs count against the live cap so a long warn window doesn't
+    -- let the queue front-load a huge wave that all pops at once.
+    local pending = self.telegraphs and #self.telegraphs or 0
     for _ = 1, n do
-        if self:count_alive() >= self:live_cap() then return end
+        if self:count_alive() + pending >= self:live_cap() then return end
 
         local req = table.remove(q, 1)
         -- Manual arena: random near the walls, away from the hero. Other modes
         -- keep their authored fixed spawn ring.
         local spawn = self.manual_hero and self:pick_spawn_point()
             or self.spawns[(self.spawn_counter % #self.spawns) + 1]
-        self:spawn_one(spawn, req.arch, req.free)
+        if self.use_telegraph then
+            self:add_telegraph(spawn, req.arch, req.free)
+            pending = pending + 1
+        else
+            self:spawn_one(spawn, req.arch, req.free)
+        end
     end
 end
 
@@ -940,14 +1313,30 @@ function Duel:update_creeps(dt)
     local contact = false
     local contacters = {}
     for _, c in ipairs(self.creeps) do
-        if c.alive then Creep.update(c, dt, self.field, self.map, hero) end
+        local ev = nil
+        if c.alive then ev = Creep.update(c, dt, self.field, self.map, hero) end
+        if c.hit_flash then c.hit_flash = math.max(0.0, c.hit_flash - dt) end
+        -- Necromancer-style summons (Creep.update returns these; previously dropped).
+        -- Arena-only for now to keep this pass from altering the archived menu duels.
+        -- CAVEAT: ev.summon is fed straight into the spawn queue, so any archetype
+        -- that sets summon_archetype MUST also appear in the mode's prewarm_order —
+        -- otherwise its rig is built mid-combat (the frame spike the prewarm pool
+        -- exists to avoid). No current arena archetype summons, so this is dormant.
+        if self.manual_hero and ev and ev.summon then self:enqueue_spawn(1, ev.summon, true) end
         if c.alive and not hero.dead then
-            local dx, dz = hero.x - c.x, hero.z - c.z
-            local d = math.sqrt(dx * dx + dz * dz)
-            if d <= hero.body_radius + (c.stats.range or 0.5) then
-                incoming = incoming + (c.stats.dps or 1.0)
-                contact = true
-                contacters[#contacters + 1] = c
+            if self.manual_hero and Creep.is_ranged(c) then
+                -- Manual arena: ranged enemies do NOT deal silent contact dps; they
+                -- fire a visible bolt the hero can see and dodge. Legacy menu duels
+                -- keep their original stand-off contact-damage model untouched.
+                self:try_fire_creep(c, hero, dt)
+            else
+                local dx, dz = hero.x - c.x, hero.z - c.z
+                local d = math.sqrt(dx * dx + dz * dz)
+                if d <= hero.body_radius + (c.stats.range or 0.5) then
+                    incoming = incoming + (c.stats.dps or 1.0)
+                    contact = true
+                    contacters[#contacters + 1] = c
+                end
             end
         end
         if c.alive then
@@ -990,8 +1379,21 @@ function Duel:update_creeps(dt)
         self.hit_fx_t = (self.hit_fx_t or 0.0) - dt
         if contact and self.hit_fx_t <= 0.0 then
             self.hit_fx_t = 0.12
+            if self.manual_hero then self:haptic(10) end
             Art.burst("ath_duel_herohit", vec3(hero.x, 0.9, hero.z),
                 { preset = "hero_take", count = 8, life_max = 0.16, spawn_radius = 0.12, noise_strength = 2.4, size_max = 0.12 })
+            -- Tiny periodic self-stagger away from the biting cluster (not every
+            -- frame — that would fight the player's control).
+            local cx, cz, n = 0.0, 0.0, 0
+            for _, c in ipairs(contacters) do cx = cx + c.x; cz = cz + c.z; n = n + 1 end
+            if self.manual_hero and n > 0 and not hero.dead then
+                local ax, az = hero.x - cx / n, hero.z - cz / n
+                local d = math.sqrt(ax * ax + az * az)
+                if d > 0.001 then
+                    hero.knock_x = (hero.knock_x or 0.0) + ax / d * HERO_KNOCK_CONTACT
+                    hero.knock_z = (hero.knock_z or 0.0) + az / d * HERO_KNOCK_CONTACT
+                end
+            end
         end
     end
 end
@@ -1005,9 +1407,11 @@ function Duel:apply_hero_damage(amount, opts)
     opts = opts or {}
     local mitig = opts.ignore_armor and 1.0 or (1.0 - clampn(hero.armor or 0.0, -0.5, 0.85))
     hero.hp = hero.hp - amount * mitig
+    hero.hit_flash = HIT_FLASH_T
     if hero.hp <= 0.0 then
         hero.hp = 0.0
         hero.dead = true
+        self:haptic(45)
         self.state = "slain"
         self.slowmo_t = SLOWMO_DURATION
         self:set_flash(opts.flash or "HERO SLAIN")
@@ -1112,6 +1516,37 @@ function Duel:manual_wave_budget(index)
     return base + (math.max(1, index or 1) - 1) * add
 end
 
+-- ---------------------------------------------------------------------------
+-- Class pick — a frozen overlay at run start; the player chooses an attack
+-- identity (sprite + stats + melee/ranged path) before wave 1.
+-- ---------------------------------------------------------------------------
+function Duel:begin_class_pick()
+    self.state = "classpick"
+    self:set_flash("CHOOSE YOUR CLASS")
+end
+
+function Duel:choose_class(index)
+    local list = self.config.hero and self.config.hero.classes
+    if not (list and list[index]) then return end
+    self.hero_class = list[index].id
+    -- Rebuild the hero with the picked class's sprite + stats. scene.delete_node is
+    -- swap-and-pop: deleting the hero while the creep pool is already prewarmed would
+    -- stale a parked rig's draw handle (the exact hazard reset_run guards against with
+    -- clear_pool). Mirror reset_run's safe order — empty the pool, rebuild the hero on
+    -- an empty pool, then re-fire on_reset/warm so the pool is re-parked AFTER the
+    -- fresh hero node exists. (warm_creep_pool is a no-op for the arena, which prewarms
+    -- via the on_reset hook; both are called so this is correct for any manual mode.)
+    Creep.clear_pool()
+    if Art.valid(self.hero and self.hero.root) then scene.delete_node(self.hero.root) end
+    self:create_hero()
+    self:reset_manual_gear()
+    self:ensure_hero_projectiles()
+    self:reset_hero_projectiles()
+    if self.config.hooks and self.config.hooks.on_reset then self.config.hooks.on_reset(self) end
+    if self.mode_started then self:warm_creep_pool() end
+    self:begin_manual_wave(1)
+end
+
 function Duel:begin_manual_wave(index)
     self.wave_index = math.max(1, math.floor(index or 1))
     self.round = self.wave_index
@@ -1120,6 +1555,8 @@ function Duel:begin_manual_wave(index)
     self.round_t = 0.0
     self.spawn_t = 0.35
     self.spawn_queue = {}
+    self:clear_telegraphs()
+    self:reset_creep_projectiles()
     self.state = "combat"
     self:set_flash("WAVE " .. tostring(self.wave_index))
     self:log(string.format("wave start wave=%d budget=%.0f", self.wave_index, self.reserve_start))
@@ -1128,18 +1565,8 @@ end
 function Duel:manual_wave_done()
     return (self.reserve or 0.0) < self:minimum_spawn_cost()
         and (not self.spawn_queue or #self.spawn_queue == 0)
+        and (not self.telegraphs or #self.telegraphs == 0)
         and self:count_alive() == 0
-end
-
-function Duel:manual_item_owned(item_id)
-    if not item_id then return false end
-    for _, item in pairs(self.gear_equipped or {}) do
-        if item and item.id == item_id then return true end
-    end
-    for _, item in ipairs(self.gear_inventory or {}) do
-        if item and item.id == item_id then return true end
-    end
-    return false
 end
 
 function Duel:maybe_drop_manual_gear(_creep)
@@ -1150,15 +1577,16 @@ function Duel:maybe_drop_manual_gear(_creep)
     local every = math.max(1, math.floor(self.gear_cfg.drop_every or 6))
     if #items == 0 or (self.kills % every) ~= 0 then return end
 
-    local start = (self.gear_drop_cursor or 0)
-    for offset = 1, #items do
-        local index = ((start + offset - 1) % #items) + 1
-        local item = items[index]
-        if item and not self:manual_item_owned(item.id) then
-            self.gear_drop_cursor = index
-            self.gear_inventory[#self.gear_inventory + 1] = item
+    -- Cycle the loot table and drop the next piece into the first free bag slot
+    -- (duplicates allowed — it's a real backpack now, not a one-of-each list).
+    local index = ((self.gear_drop_cursor or 0) % #items) + 1
+    self.gear_drop_cursor = index
+    local item = items[index]
+    if item then
+        if Inventory.add_item(self, item) then
             self:set_flash("Found " .. tostring(item.name or item.id))
-            return
+        else
+            self:set_flash("Bag full!")
         end
     end
 end
@@ -1178,6 +1606,9 @@ local function apply_gear_effect(hero, effect)
     if effect.whirl_add then hero.whirl = (hero.whirl or 0) + effect.whirl_add end
     if effect.thorns_add then hero.thorns = (hero.thorns or 0.0) + effect.thorns_add end
     if effect.dash_add then hero.dash = (hero.dash or 0) + effect.dash_add end
+    -- Attack-speed gear (ranged): lowers fire_interval. Crit modelled as expected dps.
+    if effect.fire_interval_mult then hero.fire_interval = (hero.fire_interval or 0.28) * effect.fire_interval_mult end
+    if effect.crit_add then hero.dps = hero.dps * (1.0 + 0.5 * effect.crit_add) end
 end
 
 function Duel:recompute_hero_stats()
@@ -1199,8 +1630,9 @@ function Duel:recompute_hero_stats()
     hero.whirl = base.whirl or 0
     hero.thorns = base.thorns or 0.0
     hero.dash = base.dash or 0
+    hero.fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28
 
-    for _, slot in ipairs({ "weapon", "armor", "trinket" }) do
+    for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
         local item = self.gear_equipped and self.gear_equipped[slot]
         if item then apply_gear_effect(hero, item.effect) end
     end
@@ -1215,23 +1647,40 @@ end
 
 function Duel:reset_manual_gear()
     self.gold = 0
-    self.gear_inventory = {}
-    self.gear_equipped = { weapon = nil, armor = nil, trinket = nil }
+    self.inv_grid = {}
+    self.gear_equipped = { helmet = nil, body = nil, pants = nil, gloves = nil, weapon = nil, jewelry = nil }
     self.gear_drop_cursor = 0
+    self._inv_drag = nil
+    self._inv_last_click = nil
     self:recompute_hero_stats()
 end
 
-function Duel:equip_manual_item(index)
-    if not self.manual_hero then return end
-    local item = self.gear_inventory and self.gear_inventory[index]
-    if not item then return end
-    table.remove(self.gear_inventory, index)
-    local slot = item.slot or "trinket"
-    local old = self.gear_equipped[slot]
-    if old then self.gear_inventory[#self.gear_inventory + 1] = old end
-    self.gear_equipped[slot] = item
-    self:recompute_hero_stats()
-    self:set_flash("Equipped " .. tostring(item.name or item.id))
+-- The hero's TOTAL stats from base + everything equipped, computed WITHOUT
+-- mutating the live hero (the inventory's live preview reads this every frame).
+function Duel:gear_preview_stats()
+    local hero = self.hero
+    if not hero then return {} end
+    local base = hero.base_stats or {}
+    local t = {
+        hp_max = base.hp_max or hero.hp_max or 1.0,
+        dps = base.dps or hero.dps or 1.0,
+        cleave = base.cleave or hero.cleave or 1,
+        attack_range = base.attack_range or hero.attack_range or 1.0,
+        speed = base.speed or hero.speed or 1.0,
+        kite_speed = base.kite_speed or hero.kite_speed or 1.0,
+        armor = base.armor or 0.0,
+        lifesteal = base.lifesteal or 0.0,
+        regen = base.regen or 0.0,
+        whirl = base.whirl or 0,
+        thorns = base.thorns or 0.0,
+        dash = base.dash or 0,
+        fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28,
+    }
+    for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
+        local item = self.gear_equipped and self.gear_equipped[slot]
+        if item then apply_gear_effect(t, item.effect) end
+    end
+    return t
 end
 
 -- ---------------------------------------------------------------------------
@@ -1353,9 +1802,11 @@ end
 function Duel:begin_pause()
     if self.manual_hero then
         self.state = "pause"
+        self:haptic(25)
         self:set_flash("WAVE " .. tostring(self.wave_index or 1) .. " CLEARED")
         if self.config.hooks and self.config.hooks.on_pause then self.config.hooks.on_pause(self) end
-        self:log(string.format("pause wave=%d gold=%d inventory=%d", self.wave_index or 1, self.gold or 0, #(self.gear_inventory or {})))
+        local bag = 0; for _, it in pairs(self.inv_grid or {}) do if it then bag = bag + 1 end end
+        self:log(string.format("pause wave=%d gold=%d bag=%d", self.wave_index or 1, self.gold or 0, bag))
         return
     end
 
@@ -1405,13 +1856,21 @@ function Duel:reset_run()
     self.slowmo_t = 0.0
     self.field = nil
     self.field_t = 0.0
+    self:clear_telegraphs()
+    self:reset_creep_projectiles()
     if self.manual_hero then
         self.player_seat = nil
         self.ai_seat = nil
         self:reset_manual_gear()
         self:ensure_hero_projectiles()
         self:reset_hero_projectiles()
-        self:begin_manual_wave(1)
+        self:ensure_creep_projectiles()
+        self:ensure_telegraph_pool()
+        if self.config.hero and self.config.hero.classes then
+            self:begin_class_pick()
+        else
+            self:begin_manual_wave(1)
+        end
     else
         self.state = "combat"
         self.player_seat = Cards.create({ side = self.side, deck = self.ctx.deck })
@@ -1430,13 +1889,20 @@ function Duel:update_input(dt)
         return
     end
 
+    if self.state == "classpick" then
+        local list = self.config.hero and self.config.hero.classes or {}
+        for i = 1, #list do
+            if self:key_pressed(tostring(i)) or Art.consume_click(self.hud, "classpick_" .. i) then
+                self:choose_class(i)
+                return
+            end
+        end
+        return
+    end
+
     if self.state == "pause" then
         if self.manual_hero then
-            for slot = 1, 5 do
-                if self:key_pressed(tostring(slot)) or Art.consume_click(self.hud, "gear_inv_slot" .. slot) then
-                    self:equip_manual_item(slot)
-                end
-            end
+            Inventory.update(self) -- drag-and-drop + click-to-(un)equip
             if self:key_pressed("Return") or self:key_pressed("Space") or Art.consume_click(self.hud, "resume_btn") then
                 self:resume_combat()
             end
@@ -1503,10 +1969,10 @@ function Duel:update_hud()
     local TS = Art.s("text")
     local status_text
     if self.manual_hero then
-        status_text = string.format("%s\nYOU: HERO  -  Wave %d/%d\nBudget %d / %d\nSwarm %d    Kills %d\nGold %d    Loot %d",
+        status_text = string.format("%s\nYOU: HERO  -  Wave %d/%d\nBudget %d / %d\nSwarm %d    Kills %d\nGold %d",
             (self.theme.hud_title or (self.config.name or "DUEL")), self.wave_index or 1, self.wave_cfg.count or 5,
             math.floor((self.reserve or 0.0) + 0.5), math.floor((self.reserve_start or 1.0) + 0.5),
-            self:count_alive(), self.kills, self.gold or 0, #(self.gear_inventory or {}))
+            self:count_alive(), self.kills, self.gold or 0)
     else
         status_text = string.format("%s\n%s  -  Round %d\nReserve %d / %d\nSwarm %d    Kills %d\nHero: %s",
             (self.theme.hud_title or (self.config.name or "DUEL")), side_label, self.round,
@@ -1526,7 +1992,9 @@ function Duel:update_hud()
         { label = string.format("%s %d / %d", self.manual_hero and "WAVE BUDGET" or "HORDE RESERVE",
             math.floor(self.reserve + 0.5), math.floor(self.reserve_start)) })
 
-    if self.flash and self.flash ~= "" then
+    -- Skip the flash banner on the manual gear screen (the inventory title says
+    -- the same thing, and the flash sits right where the title bar is).
+    if self.flash and self.flash ~= "" and not (self.manual_hero and self.state == "pause") then
         Art.quad(self.hud, "flash", sw * 0.5 - S(260.0), S(96.0), S(520.0), S(34.0), { 0.0, 0.0, 0.0, 0.0 },
             { label = self.flash, text_color = { 0.95, 0.82, 0.35, math.min(1.0, self.flash_t) } })
     else
@@ -1546,36 +2014,13 @@ function Duel:update_hud()
         local panel_y = card_y - gap - panel_h
 
         if self.manual_hero then
-            Art.remove_ids(self.hud, { "card_slot1", "card_slot2", "card_slot3", "card_slot4", "card_slot5" })
-            local equipped = self.gear_equipped or {}
-            local function eq(slot)
-                local item = equipped[slot]
-                return item and (item.name or item.id) or "-"
-            end
-            Art.quad(self.hud, "pause_panel", start_x, panel_y, row_w, panel_h, { 0.06, 0.05, 0.10, 0.92 },
-                { border = accent, title = string.format("WAVE %d CLEARED - EQUIP LOOT", self.wave_index or 1), no_input = true })
-            Art.quad(self.hud, "gear_equipped", start_x, panel_y - S(98.0), row_w, S(86.0), { 0.05, 0.07, 0.08, 0.90 }, {
-                border = { 0.45, 0.70, 0.62, 0.9 }, no_input = true,
-                label = string.format("Weapon: %s     Armor: %s     Trinket: %s     Gold: %d",
-                    eq("weapon"), eq("armor"), eq("trinket"), self.gold or 0),
-            })
-
-            for slot = 1, 5 do
-                local id = "gear_inv_slot" .. slot
-                local item = self.gear_inventory and self.gear_inventory[slot]
-                if item then
-                    Art.quad(self.hud, id, start_x + (slot - 1) * (card_w + gap), card_y, card_w, card_h,
-                        { 0.08, 0.12, 0.13, 0.95 }, {
-                        border = { 0.42, 0.86, 0.68, 0.95 },
-                        title = item.name or item.id,
-                        subtitle = string.upper(item.slot or "trinket"),
-                        body = item.desc or "",
-                        footer = "[" .. slot .. "] / click",
-                    })
-                else
-                    Art.remove(self.hud, id)
-                end
-            end
+            -- Full RPG inventory: backpack grid + 6-slot paper-doll + live stat
+            -- preview, drag-and-drop (ath_inventory). Only the title + NEXT WAVE
+            -- button live here; the inventory owns everything in between.
+            Art.remove_ids(self.hud, { "pause_panel", "card_slot1", "card_slot2", "card_slot3", "card_slot4", "card_slot5",
+                "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
+            Inventory.draw(self, accent) -- draws its own title bar (inv_title)
+            self._inv_shown = true
             Art.quad(self.hud, "resume_btn", sw * 0.5 - S(100.0), resume_y, S(200.0), resume_h, { 0.10, 0.16, 0.10, 0.95 },
                 { border = { 0.4, 0.9, 0.5, 0.95 }, label = "NEXT WAVE   [Enter]" })
         else
@@ -1608,6 +2053,40 @@ function Duel:update_hud()
     else
         Art.remove_ids(self.hud, { "pause_panel", "resume_btn", "card_slot1", "card_slot2", "card_slot3", "card_slot4", "card_slot5" })
         Art.remove_ids(self.hud, { "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
+        -- Tear down the inventory widgets once when leaving the pause/gear screen.
+        if self._inv_shown then Inventory.clear(self); self._inv_shown = false end
+    end
+
+    -- Class pick overlay (run start): one card per class, click or number key.
+    if self.state == "classpick" then
+        local list = self.config.hero and self.config.hero.classes or {}
+        local n = math.max(1, #list)
+        local cw, ch, gap = S(232.0), S(286.0), S(16.0)
+        local row_w = n * (cw + gap) - gap
+        local sx0 = sw * 0.5 - row_w * 0.5
+        local cyc = sh * 0.5 - ch * 0.5 + S(20.0)
+        Art.quad(self.hud, "classpick_title", sw * 0.5 - S(280.0), cyc - S(78.0), S(560.0), S(58.0),
+            { 0.05, 0.05, 0.10, 0.94 }, { border = accent, title = "CHOOSE YOUR CLASS",
+              subtitle = string.format("[1-%d] or click", n), no_input = true })
+        for i, c in ipairs(list) do
+            local x = sx0 + (i - 1) * (cw + gap)
+            local stat
+            if c.attack == "melee" then
+                stat = string.format("HP %d    DMG %d\nReach %.1f   Cleave %d\nMove %.1f",
+                    c.hp_max or 0, c.dps or 0, c.attack_range or 0, c.cleave or 0, c.speed or 0)
+            else
+                stat = string.format("HP %d    DMG %d/shot\nRange %.0f   Shots %d\nFire %.2fs",
+                    c.hp_max or 0, c.dps or 0, c.attack_range or 0, c.cleave or 0, c.fire_interval or 0.28)
+            end
+            Art.quad(self.hud, "classpick_" .. i, x, cyc, cw, ch, { 0.09, 0.10, 0.15, 0.97 }, {
+                border = c.accent or accent,
+                title = c.name or c.id,
+                subtitle = string.format("[%d]  %s", i, string.upper(c.attack or "ranged")),
+                body = (c.blurb or "") .. "\n\n" .. stat,
+            })
+        end
+    else
+        Art.remove_ids(self.hud, { "classpick_title", "classpick_1", "classpick_2", "classpick_3", "classpick_4" })
     end
 
     -- Terminal banners.
@@ -1636,6 +2115,21 @@ function Duel:update_hud()
         Art.quad(self.hud, "end", sw * 0.5 - S(300.0), S(380.0), S(600.0), S(120.0), col, { border = bord, title = title, body = body, no_input = true })
     else
         Art.remove(self.hud, "end")
+    end
+
+    -- Virtual movement joystick (touch / mouse-drag), combat only.
+    if self.manual_hero and self.state == "combat" and self._stick then
+        local vp = Art._vp
+        local st = self._stick
+        local R = st.R or S(120.0)
+        Art.quad(self.hud, "stick_base", st.ox - vp.x - R, st.oy - vp.y - R, R * 2.0, R * 2.0,
+            { 0.18, 0.42, 0.62, 0.16 }, { border = { 0.5, 0.8, 1.0, 0.35 }, no_input = true })
+        local kr = R * 0.44
+        Art.quad(self.hud, "stick_knob", st.kx - vp.x - kr, st.ky - vp.y - kr, kr * 2.0, kr * 2.0,
+            { 0.45, 0.78, 1.0, 0.45 }, { border = { 0.7, 0.92, 1.0, 0.7 }, no_input = true })
+    else
+        Art.remove(self.hud, "stick_base")
+        Art.remove(self.hud, "stick_knob")
     end
 
     if self.config.hooks and self.config.hooks.draw_hud then self.config.hooks.draw_hud(self) end
@@ -1706,6 +2200,8 @@ function Duel:update(dt)
         self:update_spawning(sim_dt)
         self:update_hero(sim_dt)
         self:update_creeps(sim_dt)
+        self:update_telegraphs(sim_dt)
+        self:update_creep_projectiles(sim_dt)
         if self.config.hooks and self.config.hooks.on_combat_tick then self.config.hooks.on_combat_tick(self, sim_dt) end
         if self.manual_hero and self.state == "combat" and self:manual_wave_done() then
             if (self.wave_index or 1) >= (self.wave_cfg.count or 5) then
@@ -1722,7 +2218,7 @@ function Duel:update(dt)
         elseif self.state == "combat" and self.round_t <= 0.0 then
             if not self.manual_hero then self:begin_pause() end
         end
-    elseif self.state == "pause" then
+    elseif self.state == "pause" or self.state == "classpick" then
         -- Sim frozen; UI + camera keep running.
     else
         self:update_hero(sim_dt)
@@ -1762,7 +2258,7 @@ function Duel:start()
         if runtime_ui.show then runtime_ui.show(self.hud) end
     end
 
-    Art.setup_stage()
+    Art.setup_stage({ ibl_enabled = not (self.config and self.config.no_ibl) })
     self:build_arena()
     Art.setup_iso_camera({ x = self.arena.w * 0.5 - 0.5, z = self.arena.h * 0.5 - 0.5 },
         { ortho_size = self.arena.ortho_size, offset = self.arena.cam_offset })
@@ -1779,6 +2275,12 @@ function Duel:stop()
     Creep.clear_pool()
     if runtime_ui and runtime_ui.clear then runtime_ui.clear(self.hud) end
     if Art.valid(self.root) then scene.delete_node(self.root) end
+    -- The pooled-node tables point into the scene group just deleted; drop them so
+    -- a fresh start rebuilds the pools instead of reusing stale handles.
+    self.telegraphs = nil
+    self.tele_pool = nil
+    self.cproj = nil
+    self.hproj = nil
 end
 
 return Duel

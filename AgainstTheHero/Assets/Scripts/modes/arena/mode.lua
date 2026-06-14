@@ -27,12 +27,32 @@ end
 -- opt-in hero.slow_aura buff, off by default).
 local ARCHETYPES = {
     sprout        = tuned(Spud.archetypes.sprout,        { range = 0.35, speed = 4.2 }),
-    seed_spitter  = tuned(Spud.archetypes.seed_spitter,  { range = 4.5, hold_range = 4.5, speed = 2.2 }),
-    husk_knight   = tuned(Spud.archetypes.husk_knight,   { range = 0.6, speed = 3.0 }),
-    pumpkin_brute = tuned(Spud.archetypes.pumpkin_brute, { range = 0.7, speed = 2.2 }),
+    -- The spitter now lobs a VISIBLE seed (Duel creep-projectile system) instead
+    -- of a silent stand-off damage field, so it's back in the mix. It holds at
+    -- ~5 units and pelts the hero; kite out of range to break line of fire.
+    seed_spitter  = tuned(Spud.archetypes.seed_spitter,  {
+        range = 4.5, hold_range = 4.8, speed = 2.2,
+        projectile = {
+            kind = "seed", speed = 15.0, cooldown = 1.15,
+            start_y = 0.7, target_y = 0.55,
+            scale = { 0.18, 0.18, 0.18 }, particle_size = 0.20,
+            color = { 0.98, 0.86, 0.30 }, emissive = 1.3,
+            hit_radius = 0.7, gravity = 0.0,
+        },
+    }),
+    husk_knight   = tuned(Spud.archetypes.husk_knight,   { range = 0.6, speed = 3.0, knockback_resist = 0.45 }),
+    pumpkin_brute = tuned(Spud.archetypes.pumpkin_brute, { range = 0.7, speed = 2.2, knockback_resist = 0.75 }),
     -- Crow stays BELOW hero speed (8.5): anything faster than the hero is
     -- unavoidable by movement alone (there is no dash/dodge yet).
     crow          = tuned(Spud.archetypes.crow,          { range = 0.4, speed = 5.0 }),
+    -- Armored swarm tank: chunkier than a sprout, shrugs off knockback (resist
+    -- carried from the base archetype), but slow enough to kite.
+    beetle        = tuned(Spud.archetypes.beetle,        { range = 0.6, speed = 2.6 }),
+    -- Long-range heavy: holds far back (hold_range 7.5) and lobs a big slow cob.
+    corn_mortar   = tuned(Spud.archetypes.corn_mortar,   { speed = 0.9 }),
+    -- Fast ranged flier: darts, holds at ~5, pelts quick stingers. Below hero
+    -- speed so a committed chase still catches it.
+    wasp          = tuned(Spud.archetypes.wasp,          { speed = 5.2 }),
 }
 
 return {
@@ -105,6 +125,38 @@ return {
             -- ath_topdown_view, not set here.
             speed = 8.5, kite_speed = 8.5,
             sprite_texture = Spud.tex.hero,
+            -- Selectable classes (chosen on a pick screen at run start). Each is an
+            -- attack IDENTITY — ranged bolts, melee cleave, or seed-scatter — that
+            -- gear/cards later bend. Stats here override the hero baseline above.
+            default_class = "ranger",
+            classes = {
+                {
+                    id = "ranger", name = "Ranger", attack = "ranged",
+                    blurb = "Long-range bolts. Pick the swarm off from afar.",
+                    accent = { 0.96, 0.84, 0.36, 0.95 },
+                    hp_max = 105.0, dps = 22.0, cleave = 3, attack_range = 9.0,
+                    fire_interval = 0.26, speed = 8.5, kite_speed = 8.5,
+                    sprite_texture = Spud.tex.hero,
+                    bolt_color = { 1.0, 0.90, 0.42 }, bolt_scale = 0.34,
+                },
+                {
+                    id = "brawler", name = "Brawler", attack = "melee",
+                    blurb = "Cleaves all in reach. Tanky - wade into the swarm.",
+                    accent = { 0.92, 0.42, 0.34, 0.95 },
+                    hp_max = 155.0, dps = 30.0, cleave = 4, attack_range = 1.8,
+                    speed = 9.0, kite_speed = 9.0,
+                    sprite_texture = Spud.tex.brawler,
+                },
+                {
+                    id = "sower", name = "Sower", attack = "ranged",
+                    blurb = "Sprays seed-shot at the nearest five. Short range, fast.",
+                    accent = { 0.54, 0.82, 0.40, 0.95 },
+                    hp_max = 95.0, dps = 13.0, cleave = 5, attack_range = 6.0,
+                    fire_interval = 0.32, speed = 8.3, kite_speed = 8.3,
+                    sprite_texture = Spud.tex.sower,
+                    bolt_color = { 0.66, 0.92, 0.40 }, bolt_scale = 0.30,
+                },
+            },
         },
         archetypes = ARCHETYPES,
         roles = Spud.roles,
@@ -125,55 +177,70 @@ return {
         creep_hp_mult = 1.3,
         kill_fx_budget_per_frame = 6,
         warm_pool_count = 0,
-        prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute" },
+        prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute", "seed_spitter", "beetle", "corn_mortar", "wasp" },
         -- Pre-build + PARK this many rigs per type at run start (warm_archetype
         -- now populates the pool). Kept ABOVE each type's realistic peak-alive at
         -- cap_max=85 so the pool never empties -> combat spawns reuse parked rigs
         -- and never build a rig mid-frame (the spawn spike). Also avoids the
         -- mid-combat alpha-cut geometry-add RT hazard.
-        prewarm = { sprout = 72, husk_knight = 40, pumpkin_brute = 16, crow = 24 },
+        prewarm = { sprout = 56, husk_knight = 32, pumpkin_brute = 16, crow = 22, seed_spitter = 14, beetle = 26, corn_mortar = 10, wasp = 18 },
 
         gear = {
             gold_per_kill = 1,
             drop_every = 7,
+            -- Loot table for the 6-slot paper-doll (helmet/body/pants/gloves/
+            -- weapon/jewelry). Drops cycle this list into the backpack; rarity
+            -- tints the slot border in the inventory.
             items = {
-                {
-                    id = "field_spear", slot = "weapon", name = "Field Spear",
-                    desc = "+0.40 reach, +3 damage",
-                    effect = { attack_range_add = 0.40, dps_add = 3.0 },
-                },
-                {
-                    id = "cleaver", slot = "weapon", name = "Cleaver",
-                    desc = "+2 cleave, -10% speed",
-                    effect = { cleave_add = 2, speed_mult = 0.90, kite_speed_mult = 0.90 },
-                },
-                {
-                    id = "fleet_boots", slot = "trinket", name = "Fleet Boots",
-                    desc = "+22% move speed",
-                    effect = { speed_mult = 1.22, kite_speed_mult = 1.22 },
-                },
-                {
-                    id = "field_plate", slot = "armor", name = "Field Plate",
-                    desc = "+35 HP, +12% armor, -8% speed",
-                    effect = { hp_max_add = 35.0, armor_add = 0.12, speed_mult = 0.92, kite_speed_mult = 0.92 },
-                },
-                {
-                    id = "red_charm", slot = "trinket", name = "Red Charm",
-                    desc = "+1 lifesteal, +10% damage",
-                    effect = { lifesteal_add = 1.0, dps_mult = 1.10 },
-                },
+                -- helmet
+                { id = "straw_hat", slot = "helmet", rarity = "common", name = "Straw Hat",
+                  desc = "+18 HP", effect = { hp_max_add = 18.0 } },
+                { id = "iron_helm", slot = "helmet", rarity = "uncommon", name = "Iron Helm",
+                  desc = "+28 HP, +8% armor", effect = { hp_max_add = 28.0, armor_add = 0.08 } },
+                -- body
+                { id = "field_vest", slot = "body", rarity = "common", name = "Field Vest",
+                  desc = "+30 HP", effect = { hp_max_add = 30.0 } },
+                { id = "husk_plate", slot = "body", rarity = "uncommon", name = "Husk Plate",
+                  desc = "+55 HP, +12% armor, -6% move", effect = { hp_max_add = 55.0, armor_add = 0.12, speed_mult = 0.94, kite_speed_mult = 0.94 } },
+                -- pants
+                { id = "work_trousers", slot = "pants", rarity = "common", name = "Work Trousers",
+                  desc = "+10% move", effect = { speed_mult = 1.10, kite_speed_mult = 1.10 } },
+                { id = "sprint_greaves", slot = "pants", rarity = "uncommon", name = "Sprint Greaves",
+                  desc = "+18% move, +12 HP", effect = { speed_mult = 1.18, kite_speed_mult = 1.18, hp_max_add = 12.0 } },
+                -- gloves
+                { id = "garden_gloves", slot = "gloves", rarity = "common", name = "Garden Gloves",
+                  desc = "+12% attack speed", effect = { fire_interval_mult = 0.88 } },
+                { id = "gauntlets", slot = "gloves", rarity = "uncommon", name = "Gauntlets",
+                  desc = "+4 damage, +6% attack speed", effect = { dps_add = 4.0, fire_interval_mult = 0.94 } },
+                -- weapon
+                { id = "field_spear", slot = "weapon", rarity = "common", name = "Field Spear",
+                  desc = "+0.6 reach, +3 damage", effect = { attack_range_add = 0.6, dps_add = 3.0 } },
+                { id = "cleaver", slot = "weapon", rarity = "uncommon", name = "Cleaver",
+                  desc = "+2 cleave, -8% move", effect = { cleave_add = 2, speed_mult = 0.92, kite_speed_mult = 0.92 } },
+                { id = "seed_cannon", slot = "weapon", rarity = "rare", name = "Seed Cannon",
+                  desc = "+1 shot, +2 range, +15% damage", effect = { cleave_add = 1, attack_range_add = 2.0, dps_mult = 1.15 } },
+                -- jewelry
+                { id = "swift_band", slot = "jewelry", rarity = "common", name = "Swift Band",
+                  desc = "+12% move, +8 HP", effect = { speed_mult = 1.12, kite_speed_mult = 1.12, hp_max_add = 8.0 } },
+                { id = "red_charm", slot = "jewelry", rarity = "uncommon", name = "Red Charm",
+                  desc = "+1 lifesteal, +10% damage", effect = { lifesteal_add = 1.0, dps_mult = 1.10 } },
+                { id = "crit_ring", slot = "jewelry", rarity = "rare", name = "Crit Ring",
+                  desc = "+30% crit, +5 damage", effect = { crit_add = 0.30, dps_add = 5.0 } },
             },
         },
 
-        -- NO seed_spitter in the mix for now: its "attack" is a silent stand-off
-        -- damage field (no projectile visual exists), which on-device reads as
-        -- the hero constantly losing HP out of nowhere (confirmed via [DMG]
-        -- logging). Bring it back once ranged attacks have a visible projectile.
+        -- seed_spitter is back: it now fires a VISIBLE seed bolt (Duel creep
+        -- projectiles), so its damage is attributable and dodgeable instead of the
+        -- old silent stand-off field.
         auto_mix = function(D)
             if D.combat_time >= D.spawn_cfg.brute_after and (D.spawn_counter % 13 == 0) then
                 return "pumpkin_brute"
             end
+            if D.spawn_counter % 11 == 0 then return "corn_mortar" end
             if D.spawn_counter % 8 == 0 then return "crow" end
+            if D.spawn_counter % 7 == 0 then return "wasp" end
+            if D.spawn_counter % 6 == 0 then return "seed_spitter" end
+            if D.spawn_counter % 4 == 0 then return "beetle" end
             if D.spawn_counter % 3 == 0 then return "husk_knight" end
             return "sprout"
         end,

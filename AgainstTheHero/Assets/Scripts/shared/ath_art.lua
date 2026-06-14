@@ -57,6 +57,13 @@ end
 -- ---------------------------------------------------------------------------
 Art.TARGET_ASPECT = 20.0 / 9.0
 Art._vp = { x = 0, y = 0, w = 2400, h = 1080, rw = 2400, rh = 1080 }
+-- The backend bumps font size by display density (io.FontGlobalScale = ddpi/96,
+-- clamped [1,4]) — 1.0 on ~96dpi desktops, ~4.0 on phones. We size our QUAD
+-- GEOMETRY in raw surface pixels (not DPI-scaled), so that font bump makes text
+-- overflow its boxes on high-DPI screens. surface_size() refreshes this each
+-- frame from runtime_ui; Art.quad divides font_scale by it so text stays WYSIWYG
+-- (identical relative size on phone and PC). 1.0 keeps the desktop path untouched.
+Art._ui_scale = 1.0
 
 -- ---------------------------------------------------------------------------
 -- Node helpers (the cube/sphere/cylinder/group quartet every mode duplicated)
@@ -147,6 +154,7 @@ function Art.part(spec, parent)
             if spec.alpha_blend ~= false and material.set_render_type then
                 material.set_render_type(node, spec.render_type or "alpha_cut")
             end
+            if material.set_double_sided then material.set_double_sided(node, true) end
             -- Flat 2D sprite: drive the texture through the emissive slot too so the
             -- art reads at face value regardless of the stage lighting (dark armour
             -- would otherwise vanish). emissive factor is forced to white.
@@ -394,7 +402,10 @@ end
 function Art.burst(name, position, opts)
     if not (particles and particles.emit_burst) then return end
     opts = opts or {}
-    particles.emit_burst({
+    -- Optional knobs (color/gravity/velocity/orientation) are only forwarded when
+    -- supplied, so a bare burst still inherits its preset's look. This is the hook
+    -- the combat FX use to colour each attack/telegraph by its own theme.
+    local b = {
         preset = opts.preset or "enemy_take",
         name = name,
         position = position,
@@ -405,7 +416,15 @@ function Art.burst(name, position, opts)
         spawn_radius = (opts.spawn_radius or 0.18) * Art.s("fx"),
         noise_strength = opts.noise_strength or 3.0,
         size_max = (opts.size_max or 0.16) * Art.s("fx"),
-    })
+    }
+    if opts.size_min then b.size_min = opts.size_min * Art.s("fx") end
+    if opts.color_start then b.color_start = opts.color_start end
+    if opts.color_end then b.color_end = opts.color_end end
+    if opts.gravity then b.gravity = opts.gravity end
+    if opts.velocity then b.velocity = opts.velocity end
+    if opts.drag then b.drag = opts.drag end
+    if opts.orientation then b.orientation = opts.orientation end
+    particles.emit_burst(b)
 end
 
 -- ---------------------------------------------------------------------------
@@ -478,14 +497,22 @@ function Art.setup_stage(opts)
         settings.set("shadows", opts.shadows == true)
         settings.set("ssao", false)
         settings.set("day", true)
-        settings.set("IBL", true)
-        settings.set("IBL_intensity", opts.ibl or 0.6)
+        -- IBL defaults on (desktop), but a mode can disable it (opts.ibl_enabled =
+        -- false) — Android does, because the equirect->cubemap build shader isn't in
+        -- the prebaked SPIR-V cache and ATH is emissive-lit (IBL adds ~nothing).
+        local ibl_on = opts.ibl_enabled ~= false
+        settings.set("IBL", ibl_on)
+        settings.set("IBL_intensity", ibl_on and (opts.ibl or 0.6) or 0.0)
         settings.set("lights_intensity", opts.lights or 2.4)
         settings.set("tonemapping", false)
         settings.set("motion_blur", false)
         settings.set("bloom", false)
         settings.set("taa", false)
         settings.set("fxaa", true)
+        -- CAS sharpening counters the soft look of a low mobile render_scale (the
+        -- upscaled 3D otherwise reads blurry) — the desktop demo scenes use it too.
+        settings.set("cas_sharpening", true)
+        settings.set("cas_sharpness", 0.5)
     end
     if lights and lights.get_counts and lights.add_directional then
         local counts = lights.get_counts()
@@ -520,6 +547,9 @@ function Art.surface_size()
     if runtime_ui and runtime_ui.get_surface_size then
         local s = runtime_ui.get_surface_size()
         if s and s.width and s.width > 0 then rw, rh = s.width, s.height end
+        -- ui_scale = the backend's DPI font bump (1.0 desktop .. 4.0 phone). Nil on
+        -- older engines without the binding, so keep the prior value (default 1.0).
+        if s and s.ui_scale and s.ui_scale > 0 then Art._ui_scale = s.ui_scale end
     end
     rw = rw or 2400.0
     rh = rh or 1080.0
@@ -555,8 +585,10 @@ function Art.quad(screen, id, x, y, w, h, fill, opts)
         text_color = opts.text_color or { 0.92, 0.94, 0.98, 1.0 },
         image = opts.image, image_tint = opts.image_tint,
         -- All UI text auto-scales: a caller's font_scale is RELATIVE to the global
-        -- text scale, so bumping Art.SCALE.text grows every label everywhere.
-        font_scale = (opts.font_scale or 1.0) * Art.s("text"), selected = opts.selected,
+        -- text scale, so bumping Art.SCALE.text grows every label everywhere. The
+        -- /Art._ui_scale cancels the backend's DPI font bump so high-DPI phones get
+        -- the SAME text-to-box ratio as the desktop (where _ui_scale == 1.0).
+        font_scale = (opts.font_scale or 1.0) * Art.s("text") / (Art._ui_scale or 1.0), selected = opts.selected,
         draggable = opts.draggable, bring_to_front = opts.bring_to_front,
         -- no_input: a decorative/background quad that must NOT capture clicks or be
         -- raised over the UI (prevents the "click empty space -> black screen" bug).

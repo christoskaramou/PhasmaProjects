@@ -96,6 +96,7 @@ function View.dress_sprite(node, tex)
         material.set(node, "emissive", vec3(1.0, 1.0, 1.0))
     end
     if material.set_render_type then material.set_render_type(node, "alpha_cut") end
+    if material.set_double_sided then material.set_double_sided(node, true) end
 end
 
 -- Per-spawn hook: dress + flat-lay a flagged creep's body ONCE per underlying rig.
@@ -107,6 +108,9 @@ function View.on_spawn(D, creep)
     if not (adef and adef.sprite) then return end
     local body = creep.parts and creep.parts.body
     if not Art.valid(body) then return end
+    -- Clear any leftover hit-flash emissive a reused (pooled) rig may carry from a
+    -- creep that died mid-flash, so it doesn't re-enter play glowing white.
+    if material then material.set(body, "emissive", vec3(1.0, 1.0, 1.0)) end
     if Art.valid(creep.root) then
         local cfg = topdown_config(D)
         local mult = number_or(adef.sprite_scale, number_or(cfg.creep_scale, number_or(cfg.sprite_scale, 1.0)))
@@ -178,7 +182,11 @@ local function skin_hero(D)
     if not (hero and hero.parts and Art.valid(hero.root)) then return end
     if D._topdown_hero_root == hero.root then return end
     D._topdown_hero_root = hero.root
-    local tex = D.config.hero and D.config.hero.sprite_texture
+    -- Dress with the SELECTED CLASS sprite (ranger/brawler/sower), mode default as
+    -- the fallback — must mirror create_hero's texture choice, or this re-dress (it
+    -- fires once per new hero root) reverts a picked class sprite to the mode default.
+    local cls = D.active_class and D:active_class()
+    local tex = (cls and cls.sprite_texture) or (D.config.hero and D.config.hero.sprite_texture)
     View.dress_sprite(hero.parts.body, tex)
     local cfg = topdown_config(D)
     local mult = number_or(D.config.hero and D.config.hero.sprite_scale,
@@ -200,18 +208,77 @@ local function skin_hero(D)
     end
 end
 
+-- Per-creep sprite JUICE (feature pass): a white hit-flash (emissive whiteout
+-- that fades to the sprite's normal 1,1,1) plus a small walk waddle (yaw rock on
+-- the flat card) and a sharper recoil tilt right after a hit. Sprites only;
+-- per-frame position/rotation/material writes are the engine-reliable ones — NOT
+-- scale — so all the motion lives in yaw + emissive.
+function View.animate_creeps(D)
+    local pitch, base_yaw, roll = View.FLAT_ROT[1], View.FLAT_ROT[2], View.FLAT_ROT[3]
+    for _, c in ipairs(D.creeps or {}) do
+        if c.alive and c.stats and c.stats.sprite then
+            local body = c.parts and c.parts.body
+            if Art.valid(body) then
+                local t = c.hit_flash or 0.0
+                if t > 0.0 then
+                    local k = 1.0 + 16.0 * t
+                    material.set(body, "emissive", vec3(k, k, k))
+                    c._flashing = true
+                elseif c._flashing then
+                    material.set(body, "emissive", vec3(1.0, 1.0, 1.0))
+                    c._flashing = false
+                end
+                local wob = math.sin(c.phase or 0.0) * 7.0
+                if t > 0.0 then wob = wob + t * 90.0 end -- recoil snap
+                body:set_rotation(vec3(pitch, base_yaw + wob, roll))
+            end
+        end
+    end
+end
+
 -- Per combat-tick hook: runs AFTER the Duel's update_hero/update_creeps, so our
--- orientation overrides win. Lays every sprite flat & head-up. NO scale writes
--- here: sprite sizes are baked at rig creation (flat_hero_actor quad dims;
--- Duel:dress_creep root scale) because only creation-frame transforms reliably
--- reach the renderer. Rotations/positions are fine to write per frame.
+-- orientation overrides win. Lays every sprite flat & head-up, then applies the
+-- juice. NO scale writes here: sprite sizes are baked at rig creation
+-- (flat_hero_actor quad dims; Duel:dress_creep root scale) because only
+-- creation-frame transforms reliably reach the renderer. Rotations/positions/
+-- materials are fine to write per frame.
 function View.tick(D)
     skin_hero(D)
     local hero = D.hero
     if hero and hero.parts and not hero.dead and Art.valid(hero.root) then
         hero.root:set_rotation(ZERO_VEC)
-        flatten(hero.parts.body)
+        local body = hero.parts.body
+        if not Art.valid(body) then
+            -- nothing to lay
+        elseif D.manual_hero then
+            -- Manual arena hero gets the full juice; other sprite modes keep their
+            -- original flat-lay so this pass doesn't change their hero feel.
+            local bp = (hero.actor and hero.actor.base and hero.actor.base.body and hero.actor.base.body.position) or { 0.0, 1.1, 0.0 }
+            local by = bp[2] or 1.1
+            -- Attack lunge: a subtle nudge toward the aim direction when firing.
+            local pop = 0.0
+            if (hero.attack_flash or 0.0) > 0.0 then pop = 0.10 * math.min(1.0, hero.attack_flash / 0.12) end
+            local fx, fz = math.sin(hero.facing or 0.0), math.cos(hero.facing or 0.0)
+            body:set_position(vec3(fx * pop, by, fz * pop))
+            -- Faint walk waddle while moving + a recoil tilt when struck.
+            local sp = math.sqrt((hero.vel_x or 0.0) * (hero.vel_x or 0.0) + (hero.vel_z or 0.0) * (hero.vel_z or 0.0))
+            local wob = (sp > 0.1) and (math.sin(hero.phase or 0.0) * 1.8) or 0.0
+            local t = hero.hit_flash or 0.0
+            if t > 0.0 then wob = wob + t * 70.0 end
+            body:set_rotation(vec3(View.FLAT_ROT[1], View.FLAT_ROT[2] + wob, View.FLAT_ROT[3]))
+            if t > 0.0 then
+                local k = 1.0 + 16.0 * t
+                material.set(body, "emissive", vec3(k, k, k))
+                hero._flashing = true
+            elseif hero._flashing then
+                material.set(body, "emissive", vec3(1.0, 1.0, 1.0))
+                hero._flashing = false
+            end
+        else
+            flatten(body)
+        end
     end
+    View.animate_creeps(D)
     if DEV_HITBOXES then View.tick_hitboxes(D) end
 end
 

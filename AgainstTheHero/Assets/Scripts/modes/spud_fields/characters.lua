@@ -46,6 +46,11 @@ Spud.tex = {
     husk      = TEX .. "husk_knight.png",
     pumpkin   = TEX .. "pumpkin_brute.png",
     crow      = TEX .. "crow.png",
+    beetle    = TEX .. "beetle.png",
+    corn      = TEX .. "corn_mortar.png",
+    wasp      = TEX .. "wasp.png",
+    brawler   = TEX .. "hero_brawler.png",
+    sower     = TEX .. "hero_sower.png",
 }
 
 Spud.theme = {
@@ -129,6 +134,53 @@ Spud.archetypes = {
         parts = 2, scale = 0.95,
         body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 1.18, 0.86, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
+    },
+    -- BEETLE — armored swarm tank. Slower, chunkier, shrugs off knockback. A
+    -- step up in toughness from the sprout without the elite husk's wall of HP.
+    beetle = {
+        name = "Spud Beetle", threat_cost = 2, hp = 20, dps = 3.2, range = 0.6, speed = 2.1,
+        color = C.carrot, head = C.carrot,
+        sprite = true, texture = Spud.tex.beetle,
+        parts = 2, scale = 1.05,
+        body_pos = { 0.0, 0.66, 0.0 }, body_scale = { 1.05, 0.96, 0.05 },
+        head_scale = { 0.001, 0.001, 0.001 },
+        knockback_resist = 0.4,
+    },
+    -- CORN MORTAR — long-range heavy lobber. Holds WAY back and flings a big slow
+    -- cob the hero must read and sidestep; low HP, so closing the gap kills it.
+    corn_mortar = {
+        name = "Corn Mortar", threat_cost = 3, hp = 12, dps = 3.0, range = 7.5, speed = 1.0,
+        color = C.sun, head = C.sun,
+        sprite = true, texture = Spud.tex.corn,
+        parts = 2, scale = 1.1,
+        body_pos = { 0.0, 0.80, 0.0 }, body_scale = { 0.86, 1.29, 0.05 },
+        head_scale = { 0.001, 0.001, 0.001 },
+        hold_range = 7.5, anchor_hold = true, needs_los = true, los_reposition_seconds = 2.0,
+        projectile = {
+            kind = "cob", speed = 9.0, cooldown = 1.9,
+            start_y = 0.9, target_y = 0.55,
+            scale = { 0.30, 0.30, 0.30 }, particle_size = 0.30,
+            color = { 0.98, 0.80, 0.32 }, emissive = 1.1,
+            hit_radius = 0.9, gravity = 0.0,
+        },
+    },
+    -- GARDEN WASP — fast ranged flier. Darts in, holds at mid range, and pelts
+    -- quick stingers; ignores terrain. Glass cannon on the wing.
+    wasp = {
+        name = "Garden Wasp", threat_cost = 2, hp = 7, dps = 2.4, range = 5.0, speed = 4.2,
+        color = C.sun, head = C.crow,
+        sprite = true, texture = Spud.tex.wasp, flies = true,
+        parts = 2, scale = 0.95,
+        body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 1.24, 0.85, 0.05 },
+        head_scale = { 0.001, 0.001, 0.001 },
+        hold_range = 5.0, anchor_hold = true, needs_los = true, los_reposition_seconds = 1.5,
+        projectile = {
+            kind = "sting", speed = 18.0, cooldown = 0.9,
+            start_y = 1.0, target_y = 0.6,
+            scale = { 0.12, 0.12, 0.12 }, particle_size = 0.14,
+            color = { 0.95, 0.86, 0.30 }, emissive = 1.2,
+            hit_radius = 0.55, gravity = 0.0,
+        },
     },
 }
 

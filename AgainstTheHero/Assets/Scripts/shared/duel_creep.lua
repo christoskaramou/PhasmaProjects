@@ -475,6 +475,7 @@ function Creep.create(args)
         projectile = arch.projectile,
         flies = arch.flies == true,
         scale = arch.scale,
+        knockback_resist = arch.knockback_resist,
     }
     local self = {
         id = args.id,
@@ -627,6 +628,25 @@ function Creep.threat_cost(archetype)
     return arch.threat_cost or 1
 end
 
+-- A creep attacks from RANGE (fires projectiles, deals no melee contact dps) when
+-- it carries a projectile spec or holds a stand-off line. Melee creeps fall through
+-- to contact damage. Used by the Duel to split the two damage models cleanly.
+function Creep.is_ranged(self)
+    local s = self and self.stats
+    if not s then return false end
+    return s.projectile ~= nil or s.anchor_hold == true or (s.hold_range ~= nil)
+end
+
+-- Apply a knockback impulse (world units/second) the next movement steps decay.
+-- Heavier creeps shrug it off via stats.knockback_resist (0..1, 1 = immovable).
+function Creep.knock(self, kx, kz)
+    if not self or not self.alive then return end
+    local resist = (self.stats and self.stats.knockback_resist) or 0.0
+    local keep = 1.0 - math.min(math.max(resist, 0.0), 1.0)
+    self.knock_x = (self.knock_x or 0.0) + (kx or 0.0) * keep
+    self.knock_z = (self.knock_z or 0.0) + (kz or 0.0) * keep
+end
+
 function Creep.damage(self, amount)
     if not self or not self.alive then return false end
     self.hp = self.hp - math.max(amount or 0.0, 0.0)
@@ -765,12 +785,25 @@ function Creep.update(self, dt, field, map, hero)
         speed_scale = Creep.SPEED_SCALE + (1.0 - Creep.SPEED_SCALE) * slow_t
     end
     local speed = (self.stats.speed or 1.0) * speed_scale
-    local next_x = self.x + vx * speed * dt
-    local next_z = self.z + vz * speed * dt
+    -- Hit knockback: a short decaying impulse added on top of pursuit, so a hit
+    -- visibly shoves the creep back (stagger) without permanently changing course.
+    local kx = self.knock_x or 0.0
+    local kz = self.knock_z or 0.0
+    local next_x = self.x + vx * speed * dt + kx * dt
+    local next_z = self.z + vz * speed * dt + kz * dt
     local tile_x = math.floor(next_x + 0.5)
     local tile_y = math.floor(next_z + 0.5)
     if self.stats.flies or not map or map:is_walkable(tile_x, tile_y) then
         set_world(self, next_x, next_z)
+    end
+    if kx ~= 0.0 or kz ~= 0.0 then
+        local d = math.max(0.0, 1.0 - (self.knock_decay or 16.0) * dt)
+        self.knock_x = kx * d
+        self.knock_z = kz * d
+        if (self.knock_x * self.knock_x + self.knock_z * self.knock_z) < 0.02 then
+            self.knock_x = 0.0
+            self.knock_z = 0.0
+        end
     end
 
     self.contact_t = hero_dist <= (hero.body_radius or 0.65) and (self.contact_t + dt) or 0.0
