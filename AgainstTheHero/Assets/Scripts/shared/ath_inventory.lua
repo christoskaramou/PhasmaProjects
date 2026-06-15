@@ -263,6 +263,12 @@ function Inv.draw(D, accent)
     local function S(v) return v * Art.s("hud") end
     local slots, cell, gap, g = Inv.layout(D)
     accent = accent or { 0.62, 0.34, 0.86, 0.95 }
+    -- Item-name font is PINNED to the size the fixed-size cells were tuned for
+    -- (baseline 1.85 text scale). The global UI text was scaled up for legibility,
+    -- but a 9-char wrap at the big font overflows a cell and CLIPS ("Sprint
+    -- Greave"); dividing by the live text scale keeps tile names fitting at any
+    -- global size. min(1.0, ..) so it never grows past the original on small scales.
+    local tile_font = math.min(1.0, 1.85 / Art.s("text"))
 
     -- Title bar — uses `label` (anchors at the box top, stays inside it; `title`
     -- would render below the reserved art band, outside this short box).
@@ -289,14 +295,14 @@ function Inv.draw(D, accent)
             (s.kind == "equip") and EQUIP_BG or SLOT_BG,
             { border = (s.kind == "equip") and { 0.40, 0.62, 0.58, 0.9 } or SLOT_BORDER, no_input = true,
               label = (not item and s.kind == "equip") and Inv.SLOT_LABEL[s.key] or "",
-              text_color = { 0.6, 0.66, 0.7, 0.9 } })
+              font_scale = tile_font, text_color = { 0.6, 0.66, 0.7, 0.9 } })
         -- Item tile (draggable). Dim while it is the one being dragged.
         if item then
             local rc = Inv.RARITY[item.rarity or "common"]
             local fill = is_dragging and { 0.10, 0.11, 0.14, 0.45 } or { 0.13, 0.15, 0.20, 0.98 }
             -- Name at the normal font, word-wrapped to fit the cell.
             Art.quad(D.hud, s.id, s.x + pad, s.y + pad, s.w - pad * 2, s.h - pad * 2, fill,
-                { border = rc, draggable = true, bring_to_front = true, label = tile_label(item) })
+                { border = rc, draggable = true, bring_to_front = true, label = tile_label(item), font_scale = tile_font })
         else
             Art.remove(D.hud, s.id)
         end
@@ -357,7 +363,7 @@ function Inv.draw(D, accent)
             local gy = (D._inv_drag.my or 0.0) - vp.y - cell * 0.5
             local rc = Inv.RARITY[item.rarity or "common"]
             Art.quad(D.hud, "inv_ghost", gx, gy, cell, cell, { 0.16, 0.18, 0.24, 0.96 },
-                { border = rc, bring_to_front = true, no_input = true, label = tile_label(item) })
+                { border = rc, bring_to_front = true, no_input = true, label = tile_label(item), font_scale = tile_font })
         end
     else
         Art.remove(D.hud, "inv_ghost")

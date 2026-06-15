@@ -855,20 +855,19 @@ function Duel:haptic(ms)
     if input and input.vibrate then input.vibrate(ms or 12) end
 end
 
--- Floating left-half joystick driven by the pointer (a finger via SDL's
+-- Floating full-screen joystick driven by the pointer (a finger via SDL's
 -- touch->mouse mapping, or a desktop mouse-drag). Sets self._stick.dirx/dirz,
 -- which update_hero blends in alongside WASD. Combat-only so it never fights the
--- inventory / menus; engages only when the press STARTS in the left half so taps
--- on the right don't drive the hero.
+-- inventory / menus; a press ANYWHERE on screen starts the stick, so either thumb
+-- can drive the hero (combat has no right-side action buttons to conflict with —
+-- the auto-attack is automatic).
 function Duel:update_touch_stick()
     if not self.manual_hero or self.state ~= "combat" then self._stick = nil; return end
     local mx, my = ui_pointer()
     if not (mx and pointer_down()) then self._stick = nil; return end
-    local vw, vh = Art.surface_size()
-    local vp = Art._vp
+    local _, vh = Art.surface_size() -- refresh Art._vp; vh sizes the stick radius
     local R = vh * 0.11
     if not self._stick then
-        if (mx - vp.x) > vw * 0.5 then return end -- right half left free for UI/actions
         self._stick = { ox = mx, oy = my, kx = mx, ky = my, dirx = 0.0, dirz = 0.0, R = R }
     end
     local ddx, ddy = mx - self._stick.ox, my - self._stick.oy

@@ -260,6 +260,44 @@ return {
             on_combat_tick = function(D, _dt)
                 View.tick(D)
             end,
+            -- Per-frame HUD overlay hook (runs at the end of update_hud, every frame
+            -- in all states: classpick/combat/pause/end).
+            draw_hud = function(D)
+                -- Hide the attack-range disc. The Duel builds a Hero_Aura cylinder
+                -- sized to attack_range*2 (a big ring) and re-scales it every frame;
+                -- it renders on the OPAQUE deferred path (ignores base_color alpha),
+                -- so a transparent colour just yields a black disc, and post-creation
+                -- scale writes don't reach the renderer. PARK it offstage instead:
+                -- position writes always render (same trick the dev hitbox pool uses).
+                local aura = D.hero and D.hero.parts and D.hero.parts.aura
+                if aura and Art.valid(aura) then aura:set_position(vec3(1.0e6, 0.0, 0.0)) end
+
+                -- HUD declutter by state (draw_hud runs at the END of update_hud,
+                -- after the Duel set these quads, so removals win this frame):
+                --  * live play  -> hide the top-left "stat" panel; combat stays clean
+                --    (just the HP bar + wave-budget bar).
+                --  * pause/gear -> hide the wide top HP bar; the inventory's TOTAL
+                --    STATS panel already shows Health, and the HP bar otherwise
+                --    collides with the top-left stat panel on the gear screen.
+                if D.state ~= "pause" then
+                    Art.remove(D.hud, "stat")
+                else
+                    Art.remove(D.hud, "hp_bg"); Art.remove(D.hud, "hp_fg"); Art.remove(D.hud, "hp_label")
+                end
+
+                local vw = Art.surface_size()
+                -- FPS clock (top-right) on the DIRECT-BOOT path only (Android, or the
+                -- ATH_MODE=arena quick-launch) — there is no menu shell to draw it.
+                -- On the menu path the shell owns the FPS clock, so this stays off to
+                -- avoid a double. ath_android_boot sets config.direct_boot.
+                if D.config.direct_boot then Art.draw_fps_clock(D.hud, vw) end
+
+                -- Lock the in-game view to the ~Android 20:9 band (Art.TARGET_ASPECT):
+                -- setup_iso_camera frames the world for 20:9, but the 3D fills the
+                -- whole window, so mask the overscan so the desktop view matches a
+                -- 20:9 phone exactly. (On the menu path the shell also letterboxes.)
+                Art.draw_letterbox(D.hud)
+            end,
         },
     },
 }

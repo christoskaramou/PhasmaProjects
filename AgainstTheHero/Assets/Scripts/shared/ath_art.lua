@@ -38,9 +38,13 @@ local ATH_DEV = ATH_COMMON.env_enabled and ATH_COMMON.env_enabled("ATH_DEV", fal
 --   zoom — camera zoom-in (ortho_size is DIVIDED by this; bigger = closer)
 Art.SCALE = {
     global = 1.0,
-    text   = 1.85,
-    ui     = 1.85,
-    hud    = 1.85,
+    -- text ~1.75x (1.85 -> 3.24) and UI element sizes 1.5x (1.85 -> 2.775).
+    -- 2x text was too big for dense screens (gear/pause), so dialed back. Art.quad
+    -- divides font by Art._ui_scale (the phone DPI bump), so these land identically
+    -- on PC and Android. char/fx/zoom unchanged -> the game world keeps its size.
+    text   = 3.24,
+    ui     = 2.775,
+    hud    = 2.775,
     char   = 1.80,
     fx     = 1.65,
     zoom   = 1.65,
@@ -651,6 +655,89 @@ function Art.draw_letterbox(screen)
         Art.quad(screen, "lb_r", vp.w, -vp.y, vp.rw - vp.x - vp.w, vp.rh, black, { no_input = true })
     else
         Art.remove(screen, "lb_l"); Art.remove(screen, "lb_r")
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- 7-segment FPS clock (top-right). SHARED so the menu shell AND a direct-boot
+-- mode (the Android arena, which has no shell) draw an identical readout. State
+-- lives on Art._fps so it survives across frames; `screen` is the target UI
+-- screen and `sw` the band width (Art.surface_size's vw).
+-- ---------------------------------------------------------------------------
+local SEVEN_SEG = {
+    [0] = { a = true, b = true, c = true, d = true, e = true, f = true },
+    [1] = { b = true, c = true },
+    [2] = { a = true, b = true, g = true, e = true, d = true },
+    [3] = { a = true, b = true, g = true, c = true, d = true },
+    [4] = { f = true, g = true, b = true, c = true },
+    [5] = { a = true, f = true, g = true, c = true, d = true },
+    [6] = { a = true, f = true, g = true, e = true, c = true, d = true },
+    [7] = { a = true, b = true, c = true },
+    [8] = { a = true, b = true, c = true, d = true, e = true, f = true, g = true },
+    [9] = { a = true, b = true, c = true, d = true, f = true, g = true },
+}
+local SEG_NAMES = { "a", "b", "c", "d", "e", "f", "g" }
+local SEG_LIT = { 0.66, 0.45, 1.0, 1.0 }   -- backlit violet
+local SEG_OFF = { 0.26, 0.20, 0.42, 0.20 } -- faint ghost of an unlit segment
+local FPS_CELLS = 4
+local FPS_SAMPLE_SECONDS = 0.25
+
+local function draw_seg_digit(screen, prefix, x, y, w, h, on)
+    on = on or {}
+    local t = math.max(2.0, w * 0.20)
+    local midy = y + h * 0.5 - t * 0.5
+    local vlen = (h - 3.0 * t) * 0.5
+    local function seg(name, sx, sy, sw, sh)
+        Art.quad(screen, prefix .. "_" .. name, sx, sy, sw, sh, on[name] and SEG_LIT or SEG_OFF, { no_input = true })
+    end
+    seg("a", x + t, y, w - 2.0 * t, t)
+    seg("g", x + t, midy, w - 2.0 * t, t)
+    seg("d", x + t, y + h - t, w - 2.0 * t, t)
+    seg("f", x, y + t, t, vlen)
+    seg("b", x + w - t, y + t, t, vlen)
+    seg("e", x, midy + t, t, vlen)
+    seg("c", x + w - t, midy + t, t, vlen)
+end
+
+Art._fps = Art._fps or {}
+function Art.draw_fps_clock(screen, sw)
+    local function U(v) return v * Art.s("ui") end
+    local F = Art._fps
+    local m = engine and engine.get_metrics and engine.get_metrics() or nil
+    local delta_ms = m and m.delta_ms or nil
+    if (not delta_ms or delta_ms <= 0.0) and m and m.fps and m.fps > 0.0 then
+        delta_ms = 1000.0 / m.fps
+    end
+    delta_ms = (delta_ms and delta_ms > 0.0) and delta_ms or (1000.0 / 60.0)
+    F.bucket_ms = (F.bucket_ms or 0.0) + delta_ms
+    F.bucket_frames = (F.bucket_frames or 0) + 1
+    F.bucket_seconds = (F.bucket_seconds or 0.0) + delta_ms / 1000.0
+    if not F.display or F.bucket_seconds >= FPS_SAMPLE_SECONDS then
+        local avg_ms = F.bucket_ms / math.max(1, F.bucket_frames)
+        F.display = avg_ms > 0.0 and 1000.0 / avg_ms or 0.0
+        F.bucket_ms, F.bucket_frames, F.bucket_seconds = 0.0, 0, 0.0
+    end
+    local shown = math.max(0, math.min(9999, math.floor((F.display or 0.0) + 0.5)))
+    local s = tostring(shown)
+    local ndig = #s
+    local dw, dh, gap, pad, margin, labw = U(20.0), U(34.0), U(6.0), U(10.0), U(16.0), U(50.0)
+    local panel_w = labw + ndig * dw + (ndig - 1) * gap + pad * 2.0
+    local panel_h = dh + pad * 2.0
+    local px = sw - panel_w - margin
+    local py = margin
+    Art.quad(screen, "fps_panel", px, py, panel_w, panel_h, { 0.03, 0.03, 0.06, 0.85 },
+        { border = { 0.32, 0.24, 0.5, 0.9 }, no_input = true })
+    Art.quad(screen, "fps_label", px + pad, py + pad, labw - U(6.0), dh, { 0, 0, 0, 0 },
+        { label = "FPS", text_color = { 0.55, 0.45, 0.82, 1.0 }, no_input = true })
+    local x0 = px + pad + labw
+    local y0 = py + pad
+    for i = 1, FPS_CELLS do
+        local prefix = "fps_d" .. i
+        if i <= ndig then
+            draw_seg_digit(screen, prefix, x0 + (i - 1) * (dw + gap), y0, dw, dh, SEVEN_SEG[tonumber(s:sub(i, i))])
+        else
+            for _, name in ipairs(SEG_NAMES) do Art.remove(screen, prefix .. "_" .. name) end
+        end
     end
 end
 

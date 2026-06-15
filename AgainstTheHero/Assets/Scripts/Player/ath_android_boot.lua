@@ -35,6 +35,9 @@ local function init()
     -- SPIR-V cache; ATH is emissive-lit so IBL adds ~nothing). Threaded through the
     -- config so Duel:start's setup_stage sets IBL off BEFORE the engine builds it.
     arena.config.no_ibl = true
+    -- Direct-boot (no menu shell): tell the arena to draw the FPS clock itself,
+    -- since the shell (which owns it on the desktop menu path) never runs here.
+    arena.config.direct_boot = true
     active = Duel.new(arena.config, { side = "hero" }, { return_to_menu = function() end })
     active:start()
     -- Shader-bake / headless runs set ATH_AUTOSTART so combat begins without a
