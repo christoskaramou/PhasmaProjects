@@ -25,6 +25,14 @@ end
 local function init()
     local Common = boot_common()
     if not Common then return end
+    -- Scenes-first boot: only drop straight into the arena when explicitly
+    -- requested (ATH_MODE=arena). By default the player loads the startup scene
+    -- (intro.pescene) and scene node scripts drive the flow, so this node script
+    -- stays inert unless it's deliberately running the standalone arena.
+    if not (Common.getenv and Common.getenv("ATH_MODE") == "arena") then
+        if pe_log then pe_log("[ATH] android boot: scenes mode (ATH_MODE~=arena), skipping arena") end
+        return
+    end
     Duel = Common.load_script("Scripts/shared/ath_duel.lua", "shared duel", _ENV)
     arena = Common.load_script("Scripts/modes/arena/mode.lua", "arena mode", _ENV)
     if not (Duel and arena and arena.config) then

@@ -90,14 +90,17 @@ return {
             lose_text     = "The swarm got you. Press R and make a better path.",
         },
         arena = {
-            -- Playable pit fills the whole visible band so the hero can roam the
-            -- WHOLE map. ortho_size = world height visible in the letterboxed band
-            -- (see Art.setup_iso_camera); 50/zoom ≈ 30, and the 20:9 band is
-            -- ~67x30 world units, so a 64x28 pit puts the fence walls right at the
-            -- screen edges with the floor covering the rest.
+            -- Playable pit the hero roams. ortho_size feeds Art.setup_iso_camera
+            -- (50/zoom ≈ 30 in the 20:9 band); the band is ~67 wide, so a 64-wide
+            -- pit puts the fence walls just inside the screen edges. NOTE: the view
+            -- WIDTH is ~67 for any landscape aspect (crop cancels), but the view
+            -- HEIGHT grows on less-wide screens (ortho ~31 at 19.5:9 up to ~37 at
+            -- 16:9). Since the letterbox bars are gone (Free aspect), the floor must
+            -- OVER-fill that full height or background shows top/bottom -> hence
+            -- floor_extent height 40 (covers ortho up to ~40) and width 76 margin.
             width = 64, height = 28, pad = 2,
             ortho_size = 50.0,
-            floor_extent = { width = 72.0, height = 34.0 },
+            floor_extent = { width = 76.0, height = 40.0 },
             -- No fixed spawn ring: the manual arena spawns randomly along the
             -- walls (Duel:pick_spawn_point), and the decorative sigils fall back
             -- to the auto-generated perimeter, both scaled to the pit size.
@@ -292,11 +295,10 @@ return {
                 -- avoid a double. ath_android_boot sets config.direct_boot.
                 if D.config.direct_boot then Art.draw_fps_clock(D.hud, vw) end
 
-                -- Lock the in-game view to the ~Android 20:9 band (Art.TARGET_ASPECT):
-                -- setup_iso_camera frames the world for 20:9, but the 3D fills the
-                -- whole window, so mask the overscan so the desktop view matches a
-                -- 20:9 phone exactly. (On the menu path the shell also letterboxes.)
-                Art.draw_letterbox(D.hud)
+                -- NO letterbox: the scene-driven build fills the window at its
+                -- native aspect (Free) with an anchored authored HUD, and the floor
+                -- over-fills the view (arena.floor_extent), so the green covers the
+                -- whole screen instead of masking the overscan to a 20:9 band.
             end,
         },
     },

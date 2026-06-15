@@ -50,7 +50,7 @@
         "depth_bias": [
             0.0,
             0.0,
-            -6.199998
+            -6.199995
         ],
         "time_scale": 1.0,
         "model_list": [],
@@ -64,7 +64,7 @@
         "use_Disney_PBR": true,
         "physical_point_falloff": false,
         "present_mode": 2,
-        "scene_view_aspect_mode": 0
+        "scene_view_aspect_mode": 3
     },
     "sources": [],
     "meshes": [],
@@ -73,21 +73,21 @@
             "name": "Camera_0",
             "parent": -1,
             "local_matrix": [
-                -0.999975,
-                0.0,
-                0.006976,
-                0.0,
-                -0.001085,
-                0.987831,
-                -0.155526,
-                0.0,
-                -0.006891,
-                -0.15553,
-                -0.987806,
+                1.0,
                 0.0,
                 0.0,
-                0.009998,
-                0.1,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.482419,
+                0.216985,
+                -1.066038,
                 1.0
             ],
             "component_flags": 8,
@@ -96,39 +96,145 @@
                 "fovx": 1.518435,
                 "orthographic_size": 10.0,
                 "near_plane": 0.004999,
-                "far_plane": 3.4028234663852886e38,
+                "far_plane": 3.4028234663852886e+38,
                 "speed": 3.5,
                 "euler": [
-                    0.156164,
-                    -3.134616,
+                    -0.0,
+                    0.0,
                     0.0
                 ]
             }
         },
         {
-            "name": "Skybox",
+            "name": "UI Play",
             "parent": -1,
             "local_matrix": [
-                1.0,
+                420.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                140.0,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0,
                 0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
+                1280.0,
+                890.0,
                 0.0,
                 1.0
             ],
-            "component_flags": 256,
-            "skybox": {
-                "path": ""
+            "script": "Assets/Scripts/shared/flow.lua",
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "intro_play",
+                "title": "PLAY",
+                "action": "click",
+                "action_function": "on_play",
+                "fill": [
+                    0.119998,
+                    0.14,
+                    0.17,
+                    0.959999
+                ],
+                "border": [
+                    0.959999,
+                    0.74,
+                    0.219999,
+                    0.949998
+                ],
+                "accent": [
+                    0.959999,
+                    0.74,
+                    0.219999,
+                    1.0
+                ],
+                "text_color": [
+                    0.97,
+                    0.98,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "font_scale": 2.5,
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
+            }
+        },
+        {
+            "name": "UI Title",
+            "parent": -1,
+            "local_matrix": [
+                1200.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                200.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1280.0,
+                400.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "intro_title",
+                "body": "AGAINST THE HERO",
+                "action": "click",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.959999,
+                    0.97,
+                    0.98,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "font_scale": 4.0,
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         }
     ],
@@ -137,20 +243,20 @@
         {
             "name": "Camera_0",
             "position": [
-                0.0,
-                0.009998,
-                0.1
+                0.482419,
+                0.216985,
+                -1.066038
             ],
             "euler": [
-                0.156164,
-                -3.134616,
+                -0.0,
+                0.0,
                 0.0
             ],
             "fovx": 1.518435,
             "projection": "orthographic",
             "orthographic_size": 10.0,
             "near_plane": 0.004999,
-            "far_plane": 3.4028234663852886e38,
+            "far_plane": 3.4028234663852886e+38,
             "speed": 3.5,
             "node_index": 0
         }

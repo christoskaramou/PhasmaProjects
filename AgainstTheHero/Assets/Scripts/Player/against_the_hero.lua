@@ -10,7 +10,11 @@
 -- To drop straight into a (menu) battlefield without clicking, set
 --   ATH_DUEL_MODE=<id> [ATH_SIDE=hero|horde]  (handled inside the shell).
 
-local DEFAULT_MODE = "menu"
+-- Scenes-first boot: by default the player loads the startup SCENE
+-- (Assets/Scenes/*.pescene, e.g. intro.pescene) and scene node scripts drive
+-- the flow. The legacy procedural shell / standalone modes stay reachable by
+-- setting ATH_MODE (menu | pit | iron_gallows | gravewarden).
+local DEFAULT_MODE = "scenes"
 local COMMON_PATH = "Scripts/shared/ath_common.lua"
 local CommonModule = nil
 
@@ -35,6 +39,12 @@ local function load_script(path, label)
 end
 
 local mode = requested_mode()
+
+-- Default path: do nothing here and let the loaded scene + its node scripts
+-- run the game. No procedural shell, no auto-arena.
+if mode == "scenes" then
+    return
+end
 
 if mode == "classic" then
     pe_error("Against The Hero: classic mode has been removed (reachable only via git history); run ATH_MODE=menu")

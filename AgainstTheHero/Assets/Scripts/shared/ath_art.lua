@@ -741,4 +741,39 @@ function Art.draw_fps_clock(screen, sw)
     end
 end
 
+-- Draw ONLY the live FPS as 7-segment digits filling rect (x,y,w,h) on `screen`.
+-- Lets an authored HUD frame node (placed/sized in the editor) host the real
+-- digital readout: the panel + "FPS" label are the authored static look; a
+-- script supplies this rect each frame so the digits stay script-driven.
+function Art.draw_fps_digits(screen, prefix, x, y, w, h)
+    local F = Art._fps
+    local m = engine and engine.get_metrics and engine.get_metrics() or nil
+    local delta_ms = m and m.delta_ms or nil
+    if (not delta_ms or delta_ms <= 0.0) and m and m.fps and m.fps > 0.0 then
+        delta_ms = 1000.0 / m.fps
+    end
+    delta_ms = (delta_ms and delta_ms > 0.0) and delta_ms or (1000.0 / 60.0)
+    F.bucket_ms = (F.bucket_ms or 0.0) + delta_ms
+    F.bucket_frames = (F.bucket_frames or 0) + 1
+    F.bucket_seconds = (F.bucket_seconds or 0.0) + delta_ms / 1000.0
+    if not F.display or F.bucket_seconds >= FPS_SAMPLE_SECONDS then
+        local avg_ms = F.bucket_ms / math.max(1, F.bucket_frames)
+        F.display = avg_ms > 0.0 and 1000.0 / avg_ms or 0.0
+        F.bucket_ms, F.bucket_frames, F.bucket_seconds = 0.0, 0, 0.0
+    end
+    local shown = math.max(0, math.min(9999, math.floor((F.display or 0.0) + 0.5)))
+    local s = tostring(shown)
+    local ndig = #s
+    local gap = math.max(2.0, w * 0.06)
+    local dw = (w - (FPS_CELLS - 1) * gap) / FPS_CELLS
+    for i = 1, FPS_CELLS do
+        local p = prefix .. "_d" .. i
+        if i <= ndig then
+            draw_seg_digit(screen, p, x + (i - 1) * (dw + gap), y, dw, h, SEVEN_SEG[tonumber(s:sub(i, i))])
+        else
+            for _, name in ipairs(SEG_NAMES) do Art.remove(screen, p .. "_" .. name) end
+        end
+    end
+end
+
 return Art

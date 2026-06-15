@@ -1,0 +1,743 @@
+{
+    "settings": {
+        "right_handed": false,
+        "reverse_depth": true,
+        "frustum_culling": true,
+        "shadows": true,
+        "shadow_map_size": 2048,
+        "num_cascades": 4,
+        "shadow_distance": 250.0,
+        "shadow_cascade_lambda": 0.85,
+        "shadow_normal_bias": 1.5,
+        "shadow_fade_fraction": 0.15,
+        "shadow_filter_radius": 0.75,
+        "render_scale": 0.75,
+        "ssao": true,
+        "fxaa": false,
+        "taa": true,
+        "cas_sharpening": true,
+        "cas_sharpness": 0.5,
+        "ssr": false,
+        "tonemapping": false,
+        "color_grading": false,
+        "dof": false,
+        "bloom": false,
+        "motion_blur": true,
+        "motion_blur_strength": 1.0,
+        "motion_blur_samples": 16,
+        "IBL": true,
+        "IBL_intensity": 1.0,
+        "lights_intensity": 1.0,
+        "randomize_lights": false,
+        "skybox_path": "",
+        "time_scale": 1.0,
+        "model_list": [],
+        "draw_grid": false,
+        "dynamic_rendering": true,
+        "ray_tracing_support": true,
+        "render_mode": 1,
+        "use_Disney_PBR": true,
+        "present_mode": 2,
+        "scene_view_aspect_mode": 3
+    },
+    "sources": [],
+    "meshes": [],
+    "nodes": [
+        {
+            "name": "Camera_0",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 8,
+            "camera": {
+                "projection": "orthographic",
+                "fovx": 1.518435,
+                "orthographic_size": 18.0,
+                "near_plane": 0.1,
+                "far_plane": 640.0,
+                "speed": 3.5,
+                "euler": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "Skybox",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.1920928955078125e-07,
+                1.0
+            ],
+            "component_flags": 256,
+            "skybox": {
+                "path": ""
+            }
+        },
+        {
+            "name": "GameBoot",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 16,
+            "script": "Assets/Scripts/shared/game_boot.lua"
+        },
+        {
+            "name": "HUD HP BG",
+            "parent": -1,
+            "local_matrix": [
+                920.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                40.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "hud_hp_bg",
+                "fill": [
+                    0.06,
+                    0.07,
+                    0.09,
+                    0.9
+                ],
+                "border": [
+                    0.3,
+                    0.32,
+                    0.36,
+                    0.85
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": true,
+                "anchor": [
+                    0.5,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "HUD HP Fill",
+            "parent": -1,
+            "local_matrix": [
+                920.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -460.0,
+                40.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/hud/hud_hp_fill.lua",
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "hud_hp_fill",
+                "fill": [
+                    0.3,
+                    0.74,
+                    0.4,
+                    0.95
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": true,
+                "anchor": [
+                    0.5,
+                    0.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "HUD HP Text",
+            "parent": -1,
+            "local_matrix": [
+                920.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                40.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/hud/hud_hp_text.lua",
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "hud_hp_text",
+                "body": "HERO  100 / 100",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.95,
+                    0.97,
+                    0.99,
+                    1.0
+                ],
+                "font_scale": 1.5,
+                "visible": true,
+                "no_input": true,
+                "bring_to_front": true,
+                "anchor": [
+                    0.5,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "HUD Spawn BG",
+            "parent": -1,
+            "local_matrix": [
+                920.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                40.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                -79.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "hud_spawn_bg",
+                "fill": [
+                    0.06,
+                    0.07,
+                    0.09,
+                    0.9
+                ],
+                "border": [
+                    0.3,
+                    0.32,
+                    0.36,
+                    0.85
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": true,
+                "anchor": [
+                    0.5,
+                    1.0
+                ],
+                "pivot": [
+                    0.5,
+                    1.0
+                ]
+            }
+        },
+        {
+            "name": "HUD Spawn Fill",
+            "parent": -1,
+            "local_matrix": [
+                920.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                40.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -460.0,
+                -79.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/hud/hud_spawn_fill.lua",
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "hud_spawn_fill",
+                "fill": [
+                    0.86,
+                    0.34,
+                    0.3,
+                    0.95
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": true,
+                "anchor": [
+                    0.5,
+                    1.0
+                ],
+                "pivot": [
+                    0.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "name": "HUD FPS",
+            "parent": -1,
+            "local_matrix": [
+                340.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                96.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -70.0,
+                40.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/hud/hud_fps.lua",
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "hud_fps",
+                "fill": [
+                    0.03,
+                    0.03,
+                    0.06,
+                    0.85
+                ],
+                "border": [
+                    0.32,
+                    0.24,
+                    0.5,
+                    0.9
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.55,
+                    0.45,
+                    0.82,
+                    1.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": true,
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "HUD Gear",
+            "parent": -1,
+            "local_matrix": [
+                120.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                120.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -140.0,
+                150.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "image",
+                "screen": "__scene_ui",
+                "id": "hud_gear",
+                "image": "../Textures/gear.png",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": true,
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "HUD Gear Hit",
+            "parent": -1,
+            "local_matrix": [
+                120.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                120.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -140.0,
+                150.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/hud/hud_gear.lua",
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hud_gear_hit",
+                "action": "click",
+                "action_function": "on_toggle_gear",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "visible": true,
+                "no_input": false,
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    1.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "HUD Inventory",
+            "parent": -1,
+            "enabled": false,
+            "local_matrix": [
+                1100.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                620.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                -14.5,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "hud_inventory",
+                "title": "INVENTORY",
+                "body": "Helmet   Body   Pants\nGloves   Weapon   Jewelry\n\n(paper-doll - coming soon)",
+                "fill": [
+                    0.05,
+                    0.06,
+                    0.08,
+                    0.96
+                ],
+                "border": [
+                    0.55,
+                    0.58,
+                    0.64,
+                    0.95
+                ],
+                "accent": [
+                    0.96,
+                    0.74,
+                    0.22,
+                    1.0
+                ],
+                "text_color": [
+                    0.92,
+                    0.93,
+                    0.95,
+                    1.0
+                ],
+                "font_scale": 1.4,
+                "visible": true,
+                "bring_to_front": true,
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ]
+            }
+        }
+    ],
+    "lights": [],
+    "cameras": [
+        {
+            "name": "Camera_0",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "euler": [
+                -0.0,
+                0.0,
+                0.0
+            ],
+            "fovx": 1.518435,
+            "projection": "orthographic",
+            "orthographic_size": 18.0,
+            "near_plane": 0.1,
+            "far_plane": 640.0,
+            "speed": 3.5,
+            "node_index": 0
+        }
+    ],
+    "active_camera": 0
+}

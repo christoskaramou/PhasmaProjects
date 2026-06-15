@@ -1,0 +1,425 @@
+{
+    "settings": {
+        "right_handed": false,
+        "reverse_depth": true,
+        "frustum_culling": true,
+        "shadows": true,
+        "shadow_map_size": 2048,
+        "num_cascades": 4,
+        "shadow_distance": 250.0,
+        "shadow_cascade_lambda": 0.85,
+        "shadow_normal_bias": 1.5,
+        "shadow_fade_fraction": 0.15,
+        "shadow_filter_radius": 0.75,
+        "shadow_debug_mode": 0,
+        "render_scale": 0.75,
+        "ssao": true,
+        "fxaa": false,
+        "taa": true,
+        "cas_sharpening": true,
+        "cas_sharpness": 0.5,
+        "ssr": false,
+        "tonemapping": false,
+        "color_grading": false,
+        "dof": false,
+        "bloom": false,
+        "motion_blur": true,
+        "motion_blur_strength": 1.0,
+        "motion_blur_samples": 16,
+        "IBL": true,
+        "IBL_intensity": 1.0,
+        "lights_intensity": 1.0,
+        "randomize_lights": false,
+        "skybox_path": "",
+        "time_scale": 1.0,
+        "model_list": [],
+        "draw_grid": true,
+        "dynamic_rendering": true,
+        "ray_tracing_support": true,
+        "render_mode": 1,
+        "use_Disney_PBR": true,
+        "present_mode": 2,
+        "scene_view_aspect_mode": 3
+    },
+    "sources": [],
+    "meshes": [],
+    "nodes": [
+        {
+            "name": "Camera_0",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.48242,
+                0.216985,
+                -1.066038,
+                1.0
+            ],
+            "component_flags": 8,
+            "camera": {
+                "projection": "orthographic",
+                "fovx": 1.518435,
+                "orthographic_size": 10.0,
+                "near_plane": 0.004999,
+                "far_plane": 3.4028234663852886e+38,
+                "speed": 3.5,
+                "euler": [
+                    -0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "Skybox",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.1920928955078125e-07,
+                1.0
+            ],
+            "component_flags": 256,
+            "skybox": {
+                "path": ""
+            }
+        },
+        {
+            "name": "UI Title",
+            "parent": -1,
+            "local_matrix": [
+                1200.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                160.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1280.0,
+                260.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "hero_title",
+                "body": "CHOOSE YOUR HERO",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.96,
+                    0.97,
+                    0.98,
+                    1.0
+                ],
+                "font_scale": 3.5,
+                "visible": true,
+                "no_input": true
+            }
+        },
+        {
+            "name": "UI Ranger",
+            "parent": -1,
+            "local_matrix": [
+                520.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                700.0,
+                680.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/flow.lua",
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hero_ranger",
+                "title": "RANGER",
+                "body": "Long-range bolts. Pick the swarm off from afar.",
+                "action": "click",
+                "action_function": "on_pick_ranger",
+                "fill": [
+                    0.1,
+                    0.11,
+                    0.14,
+                    0.96
+                ],
+                "border": [
+                    0.96,
+                    0.84,
+                    0.36,
+                    0.95
+                ],
+                "accent": [
+                    0.96,
+                    0.84,
+                    0.36,
+                    1.0
+                ],
+                "text_color": [
+                    0.97,
+                    0.98,
+                    1.0,
+                    1.0
+                ],
+                "font_scale": 1.8,
+                "visible": true
+            }
+        },
+        {
+            "name": "UI Brawler",
+            "parent": -1,
+            "local_matrix": [
+                520.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1280.0,
+                680.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/flow.lua",
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hero_brawler",
+                "title": "BRAWLER",
+                "body": "Cleaves all in reach. Tanky - wade into the swarm.",
+                "action": "click",
+                "action_function": "on_pick_brawler",
+                "fill": [
+                    0.1,
+                    0.11,
+                    0.14,
+                    0.96
+                ],
+                "border": [
+                    0.92,
+                    0.42,
+                    0.34,
+                    0.95
+                ],
+                "accent": [
+                    0.92,
+                    0.42,
+                    0.34,
+                    1.0
+                ],
+                "text_color": [
+                    0.97,
+                    0.98,
+                    1.0,
+                    1.0
+                ],
+                "font_scale": 1.8,
+                "visible": true
+            }
+        },
+        {
+            "name": "UI Sower",
+            "parent": -1,
+            "local_matrix": [
+                520.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1860.0,
+                680.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/flow.lua",
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hero_sower",
+                "title": "SOWER",
+                "body": "Sprays seed-shot at the nearest five. Short range, fast.",
+                "action": "click",
+                "action_function": "on_pick_sower",
+                "fill": [
+                    0.1,
+                    0.11,
+                    0.14,
+                    0.96
+                ],
+                "border": [
+                    0.54,
+                    0.82,
+                    0.4,
+                    0.95
+                ],
+                "accent": [
+                    0.54,
+                    0.82,
+                    0.4,
+                    1.0
+                ],
+                "text_color": [
+                    0.97,
+                    0.98,
+                    1.0,
+                    1.0
+                ],
+                "font_scale": 1.8,
+                "visible": true
+            }
+        },
+        {
+            "name": "UI Back",
+            "parent": -1,
+            "local_matrix": [
+                280.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                90.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1280.0,
+                1175.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "script": "Assets/Scripts/shared/flow.lua",
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hero_back",
+                "title": "BACK",
+                "action": "click",
+                "action_function": "on_back_intro",
+                "fill": [
+                    0.12,
+                    0.14,
+                    0.17,
+                    0.96
+                ],
+                "border": [
+                    0.5,
+                    0.53,
+                    0.58,
+                    0.95
+                ],
+                "accent": [
+                    0.6,
+                    0.63,
+                    0.68,
+                    1.0
+                ],
+                "text_color": [
+                    0.92,
+                    0.93,
+                    0.94,
+                    1.0
+                ],
+                "font_scale": 1.6,
+                "visible": true
+            }
+        }
+    ],
+    "lights": [],
+    "cameras": [
+        {
+            "name": "Camera_0",
+            "position": [
+                0.48242,
+                0.216985,
+                -1.066038
+            ],
+            "euler": [
+                -0.0,
+                0.0,
+                0.0
+            ],
+            "fovx": 1.518435,
+            "projection": "orthographic",
+            "orthographic_size": 10.0,
+            "near_plane": 0.004999,
+            "far_plane": 3.4028234663852886e+38,
+            "speed": 3.5,
+            "node_index": 0
+        }
+    ],
+    "active_camera": 0
+}

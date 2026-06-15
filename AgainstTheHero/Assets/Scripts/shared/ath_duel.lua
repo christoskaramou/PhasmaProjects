@@ -1959,7 +1959,11 @@ function Duel:update_hud()
     local bx, by = sw * 0.5 - bw * 0.5, S(28.0)
     local pct = clampn((hero.hp or 0.0) / (hero.hp_max or 1.0), 0.0, 1.0)
     local hp_color = pct > 0.5 and { 0.36, 0.78, 0.42, 0.95 } or (pct > 0.25 and { 0.92, 0.74, 0.28, 0.95 } or { 0.90, 0.30, 0.26, 0.95 })
-    Art.bar(self.hud, "hp", bx, by, bw, bh, pct, hp_color, { label = string.format("HERO  %d / %d", math.floor(hero.hp + 0.5), math.floor(hero.hp_max + 0.5)) })
+    -- config.external_hud (set by the scene-driven game_boot) means an authored
+    -- scene UI draws the HP + wave-budget bars instead, so skip the built-ins.
+    if not self.config.external_hud then
+        Art.bar(self.hud, "hp", bx, by, bw, bh, pct, hp_color, { label = string.format("HERO  %d / %d", math.floor(hero.hp + 0.5), math.floor(hero.hp_max + 0.5)) })
+    end
 
     -- Top-left status — ONE compact multi-line label. Drawn from the top edge, so
     -- the frame hugs the text (the title/body layout reserves a tall empty "art"
@@ -1986,10 +1990,12 @@ function Duel:update_hud()
     -- Horde Reserve bar (bottom-right — modes draw their own readout bottom-left).
     local dw = S(440.0)
     local dx, dy = sw - dw - S(24.0), sh - S(58.0)
-    Art.bar(self.hud, "reserve", dx, dy, dw, S(32.0), clampn(self.reserve / self.reserve_start, 0.0, 1.0),
-        { 0.86, 0.34, 0.30, 0.95 },
-        { label = string.format("%s %d / %d", self.manual_hero and "WAVE BUDGET" or "HORDE RESERVE",
-            math.floor(self.reserve + 0.5), math.floor(self.reserve_start)) })
+    if not self.config.external_hud then
+        Art.bar(self.hud, "reserve", dx, dy, dw, S(32.0), clampn(self.reserve / self.reserve_start, 0.0, 1.0),
+            { 0.86, 0.34, 0.30, 0.95 },
+            { label = string.format("%s %d / %d", self.manual_hero and "WAVE BUDGET" or "HORDE RESERVE",
+                math.floor(self.reserve + 0.5), math.floor(self.reserve_start)) })
+    end
 
     -- Skip the flash banner on the manual gear screen (the inventory title says
     -- the same thing, and the flash sits right where the title bar is).
