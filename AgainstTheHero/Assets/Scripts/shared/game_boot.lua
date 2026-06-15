@@ -70,6 +70,18 @@ local function init()
     -- bars and the FPS readout, so suppress the arena's built-in versions.
     mode.config.external_hud = true
     mode.config.direct_boot = false
+    -- game.pescene also authors the arena's STATIC stage (Floor / Wall_* / Spawn_*
+    -- under the "Stage" group) and the hero sprite ("Hero" + child "Hero Body") as
+    -- real scene nodes. Tell the Duel to ADOPT those instead of building them, so the
+    -- script only drives the dynamic side (spawns / movement / HP). Scoped to the
+    -- arena field, whose authored node names + transforms match these.
+    if field == "arena" then
+        mode.config.arena = mode.config.arena or {}
+        mode.config.arena.scene_stage = true
+        mode.config.hero = mode.config.hero or {}
+        mode.config.hero.scene_node = "Hero"
+        mode.config.hero.scene_body = "Hero Body"
+    end
     active = Duel.new(mode.config, { side = "hero" }, {
         return_to_menu = function() scene.load("intro.pescene") end,
     })

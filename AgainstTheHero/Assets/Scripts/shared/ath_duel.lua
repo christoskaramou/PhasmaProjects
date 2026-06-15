@@ -285,23 +285,29 @@ function Duel:build_arena()
     end
 
     -- Cheap, self-lit stage (emissive only — scene lighting barely reaches here).
-    local cx = A.w * 0.5 - 0.5
-    local cz = A.h * 0.5 - 0.5
-    -- The floor VISUAL may extend past the playable bounds (config.arena.
-    -- floor_extent) so an ultra-wide camera never shows the raw scene around
-    -- the pit; the walls still mark the real gameplay edge.
-    local fx = (self.config.arena and self.config.arena.floor_extent) or {}
-    local fw = fx.width or A.w
-    local fh = fx.height or A.h
-    Art.cube("Floor", vec3(cx, -0.05, cz), vec3(fw, 0.1, fh), theme.floor or { 0.26, 0.24, 0.32 }, self.groups.world, 0.9, theme.floor_texture)
-    local wall = theme.wall or { 0.42, 0.36, 0.50 }
-    Art.cube("Wall_N", vec3(cx, 0.5, A.pad - 0.5), vec3(A.w, 1.2, 0.4), wall, self.groups.world, 0.8)
-    Art.cube("Wall_S", vec3(cx, 0.5, A.h - A.pad - 0.5), vec3(A.w, 1.2, 0.4), wall, self.groups.world, 0.8)
-    Art.cube("Wall_W", vec3(A.pad - 0.5, 0.5, cz), vec3(0.4, 1.2, A.h), wall, self.groups.world, 0.8)
-    Art.cube("Wall_E", vec3(A.w - A.pad - 0.5, 0.5, cz), vec3(0.4, 1.2, A.h), wall, self.groups.world, 0.8)
-    local sigil = theme.spawn_sigil or { 0.92, 0.26, 0.22 }
-    for i, sp in ipairs(self.spawns) do
-        Art.cylinder("Spawn_" .. i, vec3(sp.x, 0.03, sp.y), vec3(1.1, 0.04, 1.1), sigil, self.groups.world, 1.2)
+    -- SKIPPED when the loaded scene already authors the stage as real nodes
+    -- (config.arena.scene_stage, set by game_boot for game.pescene's "Stage" group):
+    -- the spawn/clamp logic above is pure data and still runs; only the VISUALS move
+    -- to the scene file. The authored floor/walls/sigils must match these transforms.
+    if not (self.config.arena and self.config.arena.scene_stage) then
+        local cx = A.w * 0.5 - 0.5
+        local cz = A.h * 0.5 - 0.5
+        -- The floor VISUAL may extend past the playable bounds (config.arena.
+        -- floor_extent) so an ultra-wide camera never shows the raw scene around
+        -- the pit; the walls still mark the real gameplay edge.
+        local fx = (self.config.arena and self.config.arena.floor_extent) or {}
+        local fw = fx.width or A.w
+        local fh = fx.height or A.h
+        Art.cube("Floor", vec3(cx, -0.05, cz), vec3(fw, 0.1, fh), theme.floor or { 0.26, 0.24, 0.32 }, self.groups.world, 0.9, theme.floor_texture)
+        local wall = theme.wall or { 0.42, 0.36, 0.50 }
+        Art.cube("Wall_N", vec3(cx, 0.5, A.pad - 0.5), vec3(A.w, 1.2, 0.4), wall, self.groups.world, 0.8)
+        Art.cube("Wall_S", vec3(cx, 0.5, A.h - A.pad - 0.5), vec3(A.w, 1.2, 0.4), wall, self.groups.world, 0.8)
+        Art.cube("Wall_W", vec3(A.pad - 0.5, 0.5, cz), vec3(0.4, 1.2, A.h), wall, self.groups.world, 0.8)
+        Art.cube("Wall_E", vec3(A.w - A.pad - 0.5, 0.5, cz), vec3(0.4, 1.2, A.h), wall, self.groups.world, 0.8)
+        local sigil = theme.spawn_sigil or { 0.92, 0.26, 0.22 }
+        for i, sp in ipairs(self.spawns) do
+            Art.cylinder("Spawn_" .. i, vec3(sp.x, 0.03, sp.y), vec3(1.1, 0.04, 1.1), sigil, self.groups.world, 1.2)
+        end
     end
 end
 
@@ -376,21 +382,45 @@ function Duel:create_hero()
     -- supplies its own themed actor, so force the knight rig here (set
     -- Duel.FORCE_KNIGHT = false to fall back to the mode's own rig).
     local actor_spec = spec.actor
-    if self.manual_hero then
-        -- Top-down manual hero: a single flat sprite quad, NOT the knight rig
-        -- (skips loading ~1.2 MB of knight textures that would only be hidden).
-        -- The class picks the sprite (ranger/brawler/sower), falling back to the
-        -- mode's default hero texture.
-        local tex = (cls and cls.sprite_texture) or (self.config.hero and self.config.hero.sprite_texture)
-        actor_spec = flat_hero_actor(tex)
-    elseif Duel.FORCE_KNIGHT ~= false then
-        actor_spec = default_hero_actor(self.theme)
+    -- ADOPT an authored hero node (config.hero.scene_node, e.g. game.pescene's
+    -- "Hero" root + "Hero Body" sprite child) instead of building a rig: the scene
+    -- owns the static hero, the Duel only drives it. The base pose mirrors
+    -- flat_hero_actor's body (local y 1.1, flat-laid -90° via the top-down view).
+    -- Falls back to the built rig if the authored node isn't present.
+    local adopt_name = self.config.hero and self.config.hero.scene_node
+    if adopt_name and scene.find_model then
+        local root = scene.find_model(adopt_name)
+        local body = scene.find_model((self.config.hero and self.config.hero.scene_body) or "Hero Body")
+        if Art.valid(root) and Art.valid(body) then
+            hero.actor = { spec = {}, parts = { body = body }, base = {
+                body = { position = { 0.0, 1.1, 0.0 }, scale = { 1.0, 1.0, 1.0 }, rotation = { -90.0, 0.0, 0.0 } },
+            } }
+            hero.root = root
+            hero.parts = hero.actor.parts
+            hero.adopted = true
+            -- Re-dress on the next top-down tick: the view's dress-once guard keys
+            -- off a root-handle change, but an adopted root is reused across class
+            -- picks / R-resets, so clear it or a class swap keeps the old sprite.
+            self._topdown_hero_root = nil
+        end
     end
-    hero.actor = (actor_spec and actor_spec.soft_cape)
-        and Art.build_soft_actor(actor_spec, self.groups.actors)
-        or  Art.build_actor(actor_spec, self.groups.actors)
-    hero.root = hero.actor.root
-    hero.parts = hero.actor.parts
+    if not hero.adopted then
+        if self.manual_hero then
+            -- Top-down manual hero: a single flat sprite quad, NOT the knight rig
+            -- (skips loading ~1.2 MB of knight textures that would only be hidden).
+            -- The class picks the sprite (ranger/brawler/sower), falling back to the
+            -- mode's default hero texture.
+            local tex = (cls and cls.sprite_texture) or (self.config.hero and self.config.hero.sprite_texture)
+            actor_spec = flat_hero_actor(tex)
+        elseif Duel.FORCE_KNIGHT ~= false then
+            actor_spec = default_hero_actor(self.theme)
+        end
+        hero.actor = (actor_spec and actor_spec.soft_cape)
+            and Art.build_soft_actor(actor_spec, self.groups.actors)
+            or  Art.build_actor(actor_spec, self.groups.actors)
+        hero.root = hero.actor.root
+        hero.parts = hero.actor.parts
+    end
     if pe_log then
         local np = 0; for _ in pairs(hero.parts or {}) do np = np + 1 end
         pe_log(string.format("[KNIGHT] forced=%s soft=%s root=%s parts=%d cape=%s",
@@ -399,8 +429,10 @@ function Duel:create_hero()
             tostring(Art.valid(hero.root)), np,
             tostring(hero.parts and Art.valid(hero.parts.soft_cape))))
     end
-    -- An attack-range aura ring, if the rig didn't already provide one.
-    if not hero.parts.aura then
+    -- An attack-range aura ring, if the rig didn't already provide one. Skipped for
+    -- an adopted hero: it would parent to the authored (never-deleted) root and leak
+    -- a ring per re-create; the manual arena parks the aura offstage regardless.
+    if not hero.adopted and not hero.parts.aura then
         hero.parts.aura = Art.cylinder("Hero_Aura", vec3(0.0, 0.04, 0.0),
             vec3(spec.attack_range * 2.0, 0.03, spec.attack_range * 2.0),
             (self.theme.aura or { 0.42, 0.70, 0.95, 0.5 }), hero.root, 0.7)
@@ -1536,7 +1568,11 @@ function Duel:choose_class(index)
     -- fresh hero node exists. (warm_creep_pool is a no-op for the arena, which prewarms
     -- via the on_reset hook; both are called so this is correct for any manual mode.)
     Creep.clear_pool()
-    if Art.valid(self.hero and self.hero.root) then scene.delete_node(self.hero.root) end
+    -- Never delete an ADOPTED hero (authored scene node): create_hero re-finds and
+    -- re-drives the same node; deleting it would remove it from the scene for good.
+    if Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted) then
+        scene.delete_node(self.hero.root)
+    end
     self:create_hero()
     self:reset_manual_gear()
     self:ensure_hero_projectiles()
@@ -1840,7 +1876,10 @@ function Duel:reset_run()
     -- group) is deleted+rebuilt: the swap-and-pop on that delete would stale
     -- their handles. New rigs are built only as the spawn queue drains.
     Creep.clear_pool()
-    if Art.valid(self.hero and self.hero.root) then scene.delete_node(self.hero.root) end
+    -- Adopted heroes (authored scene node) are re-found by create_hero, never deleted.
+    if Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted) then
+        scene.delete_node(self.hero.root)
+    end
     self:create_hero()
     self.combat_time = 0.0
     self.round = 1

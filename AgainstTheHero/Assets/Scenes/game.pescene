@@ -11,6 +11,7 @@
         "shadow_normal_bias": 1.5,
         "shadow_fade_fraction": 0.15,
         "shadow_filter_radius": 0.75,
+        "shadow_debug_mode": 0,
         "render_scale": 0.75,
         "ssao": true,
         "fxaa": false,
@@ -20,8 +21,24 @@
         "ssr": false,
         "tonemapping": false,
         "color_grading": false,
+        "color_grading_lift_r": 0.0,
+        "color_grading_lift_g": 0.0,
+        "color_grading_lift_b": 0.0,
+        "color_grading_gamma_r": 1.0,
+        "color_grading_gamma_g": 1.0,
+        "color_grading_gamma_b": 1.0,
+        "color_grading_gain_r": 1.0,
+        "color_grading_gain_g": 1.0,
+        "color_grading_gain_b": 1.0,
+        "color_grading_saturation": 1.0,
+        "color_grading_contrast": 1.0,
+        "color_grading_intensity": 1.0,
         "dof": false,
+        "dof_focus_scale": 15.0,
+        "dof_blur_range": 5.0,
         "bloom": false,
+        "bloom_strength": 1.0,
+        "bloom_range": 1.0,
         "motion_blur": true,
         "motion_blur_strength": 1.0,
         "motion_blur_samples": 16,
@@ -30,51 +47,710 @@
         "lights_intensity": 1.0,
         "randomize_lights": false,
         "skybox_path": "",
+        "depth_bias": [
+            0.0,
+            0.0,
+            -6.199995
+        ],
         "time_scale": 1.0,
         "model_list": [],
+        "freeze_frustum_culling": false,
+        "draw_aabbs": false,
         "draw_grid": false,
+        "aabbs_depth_aware": true,
         "dynamic_rendering": true,
         "ray_tracing_support": true,
         "render_mode": 1,
         "use_Disney_PBR": true,
+        "physical_point_falloff": false,
         "present_mode": 2,
         "scene_view_aspect_mode": 3
     },
-    "sources": [],
-    "meshes": [],
+    "sources": [
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                0.5,
+                1.0
+            ]
+        },
+        {
+            "primitive_type": "quad",
+            "primitive_params": [
+                1.6,
+                2.2
+            ]
+        }
+    ],
+    "meshes": [
+        {
+            "source": 0,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 1,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.4,
+                    0.66,
+                    0.28,
+                    1.0,
+                    0.36,
+                    0.593999,
+                    0.252,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/modes/spud_fields/floor.png"
+            }
+        },
+        {
+            "source": 1,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.4,
+                    0.27,
+                    0.159997,
+                    1.0,
+                    0.319999,
+                    0.216,
+                    0.128,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 2,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.4,
+                    0.27,
+                    0.159997,
+                    1.0,
+                    0.319999,
+                    0.216,
+                    0.128,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 3,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.4,
+                    0.27,
+                    0.159997,
+                    1.0,
+                    0.319999,
+                    0.216,
+                    0.128,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 4,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.4,
+                    0.27,
+                    0.159997,
+                    1.0,
+                    0.319999,
+                    0.216,
+                    0.128,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 5,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.959999,
+                    0.839999,
+                    0.28,
+                    1.0,
+                    1.151998,
+                    1.008,
+                    0.335999,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 6,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.959999,
+                    0.839999,
+                    0.28,
+                    1.0,
+                    1.151998,
+                    1.008,
+                    0.335999,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 7,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.959999,
+                    0.839999,
+                    0.28,
+                    1.0,
+                    1.151998,
+                    1.008,
+                    0.335999,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 8,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.959999,
+                    0.839999,
+                    0.28,
+                    1.0,
+                    1.151998,
+                    1.008,
+                    0.335999,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 9,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.959999,
+                    0.839999,
+                    0.28,
+                    1.0,
+                    1.151998,
+                    1.008,
+                    0.335999,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 10,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.959999,
+                    0.839999,
+                    0.28,
+                    1.0,
+                    1.151998,
+                    1.008,
+                    0.335999,
+                    0.0,
+                    0.0,
+                    0.85,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 11,
+            "source_mesh": 0,
+            "render_type": 2,
+            "instanced": true,
+            "texture_mask": 17,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {
+                "base_color": "../Textures/modes/spud_fields/hero_spud.png",
+                "emissive": "../Textures/modes/spud_fields/hero_spud.png"
+            }
+        }
+    ],
     "nodes": [
         {
             "name": "Camera_0",
             "parent": -1,
             "local_matrix": [
-                1.0,
+                -1.0,
+                0.0,
+                -6.278329465203569e-7,
+                0.0,
+                6.247170745155017e-7,
+                0.099504,
+                -0.995037,
                 0.0,
                 0.0,
+                -0.995037,
+                -0.099504,
                 0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                31.5,
+                60.0,
+                19.5,
                 1.0
             ],
             "component_flags": 8,
             "camera": {
                 "projection": "orthographic",
                 "fovx": 1.518435,
-                "orthographic_size": 18.0,
+                "orthographic_size": 30.0,
                 "near_plane": 0.1,
                 "far_plane": 640.0,
                 "speed": 3.5,
                 "euler": [
-                    -0.0,
-                    0.0,
+                    1.471127,
+                    3.141592,
                     0.0
                 ]
             }
@@ -97,7 +773,7 @@
                 0.0,
                 0.0,
                 0.0,
-                -1.1920928955078125e-07,
+                -1.1920928955078125e-7,
                 1.0
             ],
             "component_flags": 256,
@@ -126,8 +802,8 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 16,
-            "script": "Assets/Scripts/shared/game_boot.lua"
+            "script": "Assets/Scripts/shared/game_boot.lua",
+            "component_flags": 16
         },
         {
             "name": "HUD HP BG",
@@ -155,15 +831,16 @@
                 "type": "panel",
                 "screen": "__scene_ui",
                 "id": "hud_hp_bg",
+                "action": "click",
                 "fill": [
-                    0.06,
+                    0.059999,
                     0.07,
                     0.09,
-                    0.9
+                    0.899999
                 ],
                 "border": [
                     0.3,
-                    0.32,
+                    0.319999,
                     0.36,
                     0.85
                 ],
@@ -179,9 +856,12 @@
                     0.0,
                     0.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     0.5,
                     0.0
@@ -189,7 +869,18 @@
                 "pivot": [
                     0.5,
                     0.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         },
         {
@@ -213,17 +904,18 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 528,
             "script": "Assets/Scripts/shared/hud/hud_hp_fill.lua",
+            "component_flags": 528,
             "runtime_ui": {
                 "type": "panel",
                 "screen": "__scene_ui",
                 "id": "hud_hp_fill",
+                "action": "click",
                 "fill": [
                     0.3,
                     0.74,
                     0.4,
-                    0.95
+                    0.949998
                 ],
                 "border": [
                     0.0,
@@ -243,9 +935,12 @@
                     0.0,
                     0.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     0.5,
                     0.0
@@ -253,7 +948,18 @@
                 "pivot": [
                     0.0,
                     0.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         },
         {
@@ -277,13 +983,14 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 528,
             "script": "Assets/Scripts/shared/hud/hud_hp_text.lua",
+            "component_flags": 528,
             "runtime_ui": {
                 "type": "text",
                 "screen": "__scene_ui",
                 "id": "hud_hp_text",
                 "body": "HERO  100 / 100",
+                "action": "click",
                 "fill": [
                     0.0,
                     0.0,
@@ -303,15 +1010,17 @@
                     0.0
                 ],
                 "text_color": [
-                    0.95,
+                    0.949998,
                     0.97,
                     0.99,
                     1.0
                 ],
-                "font_scale": 1.5,
-                "visible": true,
-                "no_input": true,
-                "bring_to_front": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     0.5,
                     0.0
@@ -319,7 +1028,18 @@
                 "pivot": [
                     0.5,
                     0.0
-                ]
+                ],
+                "font_scale": 1.5,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": true
             }
         },
         {
@@ -348,15 +1068,16 @@
                 "type": "panel",
                 "screen": "__scene_ui",
                 "id": "hud_spawn_bg",
+                "action": "click",
                 "fill": [
-                    0.06,
+                    0.059999,
                     0.07,
                     0.09,
-                    0.9
+                    0.899999
                 ],
                 "border": [
                     0.3,
-                    0.32,
+                    0.319999,
                     0.36,
                     0.85
                 ],
@@ -372,9 +1093,12 @@
                     0.0,
                     0.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     0.5,
                     1.0
@@ -382,7 +1106,18 @@
                 "pivot": [
                     0.5,
                     1.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         },
         {
@@ -406,17 +1141,18 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 528,
             "script": "Assets/Scripts/shared/hud/hud_spawn_fill.lua",
+            "component_flags": 528,
             "runtime_ui": {
                 "type": "panel",
                 "screen": "__scene_ui",
                 "id": "hud_spawn_fill",
+                "action": "click",
                 "fill": [
                     0.86,
                     0.34,
                     0.3,
-                    0.95
+                    0.949998
                 ],
                 "border": [
                     0.0,
@@ -436,9 +1172,12 @@
                     0.0,
                     0.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     0.5,
                     1.0
@@ -446,7 +1185,18 @@
                 "pivot": [
                     0.0,
                     1.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         },
         {
@@ -470,23 +1220,24 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 528,
             "script": "Assets/Scripts/shared/hud/hud_fps.lua",
+            "component_flags": 528,
             "runtime_ui": {
                 "type": "panel",
                 "screen": "__scene_ui",
                 "id": "hud_fps",
+                "action": "click",
                 "fill": [
-                    0.03,
-                    0.03,
-                    0.06,
+                    0.029998,
+                    0.029998,
+                    0.059999,
                     0.85
                 ],
                 "border": [
-                    0.32,
-                    0.24,
+                    0.319999,
+                    0.239997,
                     0.5,
-                    0.9
+                    0.899999
                 ],
                 "accent": [
                     0.0,
@@ -496,13 +1247,16 @@
                 ],
                 "text_color": [
                     0.55,
-                    0.45,
-                    0.82,
+                    0.449999,
+                    0.819998,
                     1.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     1.0,
                     0.0
@@ -510,7 +1264,18 @@
                 "pivot": [
                     1.0,
                     0.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         },
         {
@@ -540,6 +1305,7 @@
                 "screen": "__scene_ui",
                 "id": "hud_gear",
                 "image": "../Textures/gear.png",
+                "action": "click",
                 "fill": [
                     0.0,
                     0.0,
@@ -570,9 +1336,6 @@
                     1.0,
                     1.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": true,
                 "anchor": [
                     1.0,
                     0.0
@@ -580,7 +1343,18 @@
                 "pivot": [
                     1.0,
                     0.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
             }
         },
         {
@@ -604,8 +1378,8 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 528,
             "script": "Assets/Scripts/shared/hud/hud_gear.lua",
+            "component_flags": 528,
             "runtime_ui": {
                 "type": "button",
                 "screen": "__scene_ui",
@@ -636,9 +1410,12 @@
                     0.0,
                     0.0
                 ],
-                "font_scale": 1.0,
-                "visible": true,
-                "no_input": false,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     1.0,
                     0.0
@@ -646,7 +1423,18 @@
                 "pivot": [
                     1.0,
                     0.0
-                ]
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
             }
         },
         {
@@ -678,33 +1466,37 @@
                 "id": "hud_inventory",
                 "title": "INVENTORY",
                 "body": "Helmet   Body   Pants\nGloves   Weapon   Jewelry\n\n(paper-doll - coming soon)",
+                "action": "click",
                 "fill": [
                     0.05,
-                    0.06,
-                    0.08,
-                    0.96
+                    0.059999,
+                    0.079998,
+                    0.959999
                 ],
                 "border": [
                     0.55,
-                    0.58,
-                    0.64,
-                    0.95
+                    0.579999,
+                    0.639998,
+                    0.949998
                 ],
                 "accent": [
-                    0.96,
+                    0.959999,
                     0.74,
-                    0.22,
+                    0.219999,
                     1.0
                 ],
                 "text_color": [
                     0.92,
                     0.93,
-                    0.95,
+                    0.949998,
                     1.0
                 ],
-                "font_scale": 1.4,
-                "visible": true,
-                "bring_to_front": true,
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
                 "anchor": [
                     0.5,
                     0.5
@@ -712,27 +1504,425 @@
                 "pivot": [
                     0.5,
                     0.5
+                ],
+                "font_scale": 1.399999,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Stage",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Floor",
+            "parent": 12,
+            "local_matrix": [
+                76.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                40.0,
+                0.0,
+                31.5,
+                -0.05,
+                13.5,
+                1.0
+            ],
+            "mesh": 0,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_N",
+            "parent": 12,
+            "local_matrix": [
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.4,
+                0.0,
+                31.5,
+                0.5,
+                1.5,
+                1.0
+            ],
+            "mesh": 1,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_S",
+            "parent": 12,
+            "local_matrix": [
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.4,
+                0.0,
+                31.5,
+                0.5,
+                25.5,
+                1.0
+            ],
+            "mesh": 2,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_W",
+            "parent": 12,
+            "local_matrix": [
+                0.4,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                28.0,
+                0.0,
+                1.5,
+                0.5,
+                13.5,
+                1.0
+            ],
+            "mesh": 3,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_E",
+            "parent": 12,
+            "local_matrix": [
+                0.4,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                28.0,
+                0.0,
+                61.5,
+                0.5,
+                13.5,
+                1.0
+            ],
+            "mesh": 4,
+            "component_flags": 1
+        },
+        {
+            "name": "Spawn_1",
+            "parent": 12,
+            "local_matrix": [
+                1.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.039999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                3.0,
+                0.029998,
+                3.0,
+                1.0
+            ],
+            "mesh": 5,
+            "component_flags": 1
+        },
+        {
+            "name": "Spawn_2",
+            "parent": 12,
+            "local_matrix": [
+                1.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.039999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                60.0,
+                0.029998,
+                3.0,
+                1.0
+            ],
+            "mesh": 6,
+            "component_flags": 1
+        },
+        {
+            "name": "Spawn_3",
+            "parent": 12,
+            "local_matrix": [
+                1.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.039999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                3.0,
+                0.029998,
+                24.0,
+                1.0
+            ],
+            "mesh": 7,
+            "component_flags": 1
+        },
+        {
+            "name": "Spawn_4",
+            "parent": 12,
+            "local_matrix": [
+                1.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.039999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                60.0,
+                0.029998,
+                24.0,
+                1.0
+            ],
+            "mesh": 8,
+            "component_flags": 1
+        },
+        {
+            "name": "Spawn_5",
+            "parent": 12,
+            "local_matrix": [
+                1.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.039999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                32.0,
+                0.029998,
+                3.0,
+                1.0
+            ],
+            "mesh": 9,
+            "component_flags": 1
+        },
+        {
+            "name": "Spawn_6",
+            "parent": 12,
+            "local_matrix": [
+                1.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.039999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                32.0,
+                0.029998,
+                24.0,
+                1.0
+            ],
+            "mesh": 10,
+            "component_flags": 1
+        },
+        {
+            "name": "Hero",
+            "parent": -1,
+            "local_matrix": [
+                1.799998,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.799998,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.799998,
+                0.0,
+                32.0,
+                0.0,
+                14.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Hero Body",
+            "parent": 24,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.999997,
+                0.0,
+                0.0,
+                0.999997,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                1.0
+            ],
+            "mesh": 11,
+            "component_flags": 1
+        },
+        {
+            "name": "Stage Light",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.001745,
+                -0.999997,
+                0.0,
+                0.0,
+                0.999997,
+                -0.001745,
+                0.0,
+                0.0,
+                10.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "directional",
+                "color": [
+                    0.92,
+                    0.899999,
+                    0.839999,
+                    2.599997
                 ]
             }
         }
     ],
-    "lights": [],
+    "lights": [
+        {
+            "type": "directional",
+            "color": [
+                0.92,
+                0.899999,
+                0.839999,
+                2.599997
+            ],
+            "position": [
+                0.0,
+                10.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.707723,
+                0.0,
+                0.0,
+                -0.706489
+            ],
+            "name": "Stage Light"
+        }
+    ],
     "cameras": [
         {
             "name": "Camera_0",
             "position": [
-                0.0,
-                0.0,
-                0.0
+                31.5,
+                60.0,
+                19.5
             ],
             "euler": [
-                -0.0,
-                0.0,
+                1.471127,
+                3.141592,
                 0.0
             ],
             "fovx": 1.518435,
             "projection": "orthographic",
-            "orthographic_size": 18.0,
+            "orthographic_size": 30.0,
             "near_plane": 0.1,
             "far_plane": 640.0,
             "speed": 3.5,
