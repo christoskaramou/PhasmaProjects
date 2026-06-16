@@ -1,20 +1,12 @@
--- Attached to the authored "HUD Gear" button. Toggles the authored "HUD
--- Inventory" panel (a top-level node, authored hidden via "enabled": false).
--- Demonstrates the button -> script -> show/hide-authored-panel pattern.
-
-local function find_top(name)
-    if not (scene and scene.get_entities) then return nil end
-    for _, e in ipairs(scene.get_entities() or {}) do
-        if e.label == name and e.node then return e.node end
-    end
-    return nil
-end
+-- Attached to the authored "HUD Gear Hit" button. Opens / closes the authored
+-- "Pause Menu" (inventory) by asking the active Duel to toggle its inventory
+-- pause. The Duel owns the pause state + the authored Pause Menu group's
+-- visibility; this script only forwards the action.
 
 function on_toggle_gear()
-    local inv = find_top("HUD Inventory")
-    if inv and inv.is_enabled and inv.set_enabled then
-        local now = inv:is_enabled()
-        inv:set_enabled(not now)
-        if pe_log then pe_log("[hud] inventory " .. (now and "hidden" or "shown")) end
+    local D = _G.ATH_ACTIVE_DUEL
+    if D and D.toggle_inventory then
+        D:toggle_inventory()
+        if pe_log then pe_log("[hud] toggle inventory") end
     end
 end

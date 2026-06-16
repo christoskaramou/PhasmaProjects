@@ -71,7 +71,6 @@
     "nodes": [
         {
             "name": "Camera_0",
-            "parent": -1,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -96,18 +95,119 @@
                 "fovx": 1.518435,
                 "orthographic_size": 10.0,
                 "near_plane": 0.004999,
-                "far_plane": 3.4028234663852886e38,
+                "far_plane": 3.4028234663852886e+38,
                 "speed": 3.5,
                 "euler": [
                     -0.0,
                     0.0,
                     0.0
                 ]
-            }
+            },
+            "parent": -1
+        },
+        {
+            "name": "UI",
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "parent": -1
+        },
+        {
+            "name": "UI Title",
+            "local_matrix": [
+                1200.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                200.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1280.0,
+                482.890014,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "intro_title",
+                "body": "AGAINST THE HERO",
+                "action": "click",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.959999,
+                    0.97,
+                    0.98,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 6.9,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
+            },
+            "parent": 1
         },
         {
             "name": "UI Play",
-            "parent": -1,
             "local_matrix": [
                 420.0,
                 0.0,
@@ -184,86 +284,8 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": false
-            }
-        },
-        {
-            "name": "UI Title",
-            "parent": -1,
-            "local_matrix": [
-                1200.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                200.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                1280.0,
-                482.890014,
-                0.0,
-                1.0
-            ],
-            "component_flags": 512,
-            "runtime_ui": {
-                "type": "text",
-                "screen": "__scene_ui",
-                "id": "intro_title",
-                "body": "AGAINST THE HERO",
-                "action": "click",
-                "fill": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "border": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "accent": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "text_color": [
-                    0.959999,
-                    0.97,
-                    0.98,
-                    1.0
-                ],
-                "image_tint": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "anchor": [
-                    0.0,
-                    0.0
-                ],
-                "pivot": [
-                    0.5,
-                    0.5
-                ],
-                "font_scale": 6.9,
-                "text_align_h": 2,
-                "text_align_v": 2,
-                "text_offset": [
-                    0.0,
-                    0.0
-                ],
-                "visible": true,
-                "draggable": false,
-                "no_input": true,
-                "bring_to_front": false
-            }
+            },
+            "parent": 1
         }
     ],
     "lights": [],
@@ -284,7 +306,7 @@
             "projection": "orthographic",
             "orthographic_size": 10.0,
             "near_plane": 0.004999,
-            "far_plane": 3.4028234663852886e38,
+            "far_plane": 3.4028234663852886e+38,
             "speed": 3.5,
             "node_index": 0
         }

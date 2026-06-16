@@ -98,48 +98,6 @@
             ]
         },
         {
-            "primitive_type": "cylinder",
-            "primitive_params": [
-                0.5,
-                1.0
-            ]
-        },
-        {
-            "primitive_type": "cylinder",
-            "primitive_params": [
-                0.5,
-                1.0
-            ]
-        },
-        {
-            "primitive_type": "cylinder",
-            "primitive_params": [
-                0.5,
-                1.0
-            ]
-        },
-        {
-            "primitive_type": "cylinder",
-            "primitive_params": [
-                0.5,
-                1.0
-            ]
-        },
-        {
-            "primitive_type": "cylinder",
-            "primitive_params": [
-                0.5,
-                1.0
-            ]
-        },
-        {
-            "primitive_type": "cylinder",
-            "primitive_params": [
-                0.5,
-                1.0
-            ]
-        },
-        {
             "primitive_type": "quad",
             "primitive_params": [
                 1.6,
@@ -388,288 +346,6 @@
         {
             "source": 5,
             "source_mesh": 0,
-            "render_type": 1,
-            "instanced": true,
-            "texture_mask": 0,
-            "double_sided": false,
-            "material_factors": [
-                [
-                    0.959999,
-                    0.839999,
-                    0.28,
-                    1.0,
-                    1.151998,
-                    1.008,
-                    0.335999,
-                    0.0,
-                    0.0,
-                    0.85,
-                    0.5,
-                    1.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0
-                ],
-                [
-                    0.0,
-                    0.0,
-                    1.5,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            ],
-            "textures": {}
-        },
-        {
-            "source": 6,
-            "source_mesh": 0,
-            "render_type": 1,
-            "instanced": true,
-            "texture_mask": 0,
-            "double_sided": false,
-            "material_factors": [
-                [
-                    0.959999,
-                    0.839999,
-                    0.28,
-                    1.0,
-                    1.151998,
-                    1.008,
-                    0.335999,
-                    0.0,
-                    0.0,
-                    0.85,
-                    0.5,
-                    1.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0
-                ],
-                [
-                    0.0,
-                    0.0,
-                    1.5,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            ],
-            "textures": {}
-        },
-        {
-            "source": 7,
-            "source_mesh": 0,
-            "render_type": 1,
-            "instanced": true,
-            "texture_mask": 0,
-            "double_sided": false,
-            "material_factors": [
-                [
-                    0.959999,
-                    0.839999,
-                    0.28,
-                    1.0,
-                    1.151998,
-                    1.008,
-                    0.335999,
-                    0.0,
-                    0.0,
-                    0.85,
-                    0.5,
-                    1.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0
-                ],
-                [
-                    0.0,
-                    0.0,
-                    1.5,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            ],
-            "textures": {}
-        },
-        {
-            "source": 8,
-            "source_mesh": 0,
-            "render_type": 1,
-            "instanced": true,
-            "texture_mask": 0,
-            "double_sided": false,
-            "material_factors": [
-                [
-                    0.959999,
-                    0.839999,
-                    0.28,
-                    1.0,
-                    1.151998,
-                    1.008,
-                    0.335999,
-                    0.0,
-                    0.0,
-                    0.85,
-                    0.5,
-                    1.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0
-                ],
-                [
-                    0.0,
-                    0.0,
-                    1.5,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            ],
-            "textures": {}
-        },
-        {
-            "source": 9,
-            "source_mesh": 0,
-            "render_type": 1,
-            "instanced": true,
-            "texture_mask": 0,
-            "double_sided": false,
-            "material_factors": [
-                [
-                    0.959999,
-                    0.839999,
-                    0.28,
-                    1.0,
-                    1.151998,
-                    1.008,
-                    0.335999,
-                    0.0,
-                    0.0,
-                    0.85,
-                    0.5,
-                    1.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0
-                ],
-                [
-                    0.0,
-                    0.0,
-                    1.5,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            ],
-            "textures": {}
-        },
-        {
-            "source": 10,
-            "source_mesh": 0,
-            "render_type": 1,
-            "instanced": true,
-            "texture_mask": 0,
-            "double_sided": false,
-            "material_factors": [
-                [
-                    0.959999,
-                    0.839999,
-                    0.28,
-                    1.0,
-                    1.151998,
-                    1.008,
-                    0.335999,
-                    0.0,
-                    0.0,
-                    0.85,
-                    0.5,
-                    1.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0
-                ],
-                [
-                    0.0,
-                    0.0,
-                    1.5,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            ],
-            "textures": {}
-        },
-        {
-            "source": 11,
-            "source_mesh": 0,
             "render_type": 2,
             "instanced": true,
             "texture_mask": 17,
@@ -723,17 +399,17 @@
             "name": "Camera_0",
             "parent": -1,
             "local_matrix": [
-                -1.0,
+                -0.999986,
                 0.0,
-                -6.278329465203569e-7,
+                -0.005235,
                 0.0,
-                6.247170745155017e-7,
-                0.099504,
-                -0.995037,
+                0.00521,
+                0.097769,
+                -0.995195,
                 0.0,
-                0.0,
-                -0.995037,
-                -0.099504,
+                0.000511,
+                -0.995209,
+                -0.097768,
                 0.0,
                 31.5,
                 60.0,
@@ -749,8 +425,8 @@
                 "far_plane": 640.0,
                 "speed": 3.5,
                 "euler": [
-                    1.471127,
-                    3.141592,
+                    1.472869,
+                    3.136357,
                     0.0
                 ]
             }
@@ -782,6 +458,38 @@
             }
         },
         {
+            "name": "Stage Light",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.001745,
+                -0.999997,
+                0.0,
+                0.0,
+                0.999997,
+                -0.001745,
+                0.0,
+                0.0,
+                10.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "directional",
+                "color": [
+                    0.92,
+                    0.899999,
+                    0.839999,
+                    2.599997
+                ]
+            }
+        },
+        {
             "name": "GameBoot",
             "parent": -1,
             "local_matrix": [
@@ -806,8 +514,640 @@
             "component_flags": 16
         },
         {
-            "name": "HUD HP BG",
+            "name": "Stage",
             "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Floor",
+            "parent": 4,
+            "local_matrix": [
+                76.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                40.0,
+                0.0,
+                31.5,
+                -0.05,
+                13.5,
+                1.0
+            ],
+            "mesh": 0,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_N",
+            "parent": 4,
+            "local_matrix": [
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.4,
+                0.0,
+                31.5,
+                0.5,
+                1.5,
+                1.0
+            ],
+            "mesh": 1,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_S",
+            "parent": 4,
+            "local_matrix": [
+                64.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.4,
+                0.0,
+                31.5,
+                0.5,
+                25.5,
+                1.0
+            ],
+            "mesh": 2,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_W",
+            "parent": 4,
+            "local_matrix": [
+                0.4,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                28.0,
+                0.0,
+                1.5,
+                0.5,
+                13.5,
+                1.0
+            ],
+            "mesh": 3,
+            "component_flags": 1
+        },
+        {
+            "name": "Wall_E",
+            "parent": 4,
+            "local_matrix": [
+                0.4,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.2,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                28.0,
+                0.0,
+                61.5,
+                0.5,
+                13.5,
+                1.0
+            ],
+            "mesh": 4,
+            "component_flags": 1
+        },
+        {
+            "name": "Pause Next Wave",
+            "parent": 27,
+            "local_matrix": [
+                360.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                84.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                560.0,
+                0.0,
+                1.0
+            ],
+            "script": "Assets/Scripts/shared/hud/pause_next_wave.lua",
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "pause_next_wave",
+                "title": "NEXT WAVE",
+                "action": "click",
+                "action_function": "on_next_wave",
+                "fill": [
+                    0.1,
+                    0.159997,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.899999,
+                    0.5,
+                    0.949998
+                ],
+                "accent": [
+                    0.4,
+                    0.899999,
+                    0.5,
+                    0.949998
+                ],
+                "text_color": [
+                    0.899999,
+                    1.0,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 4.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Card 1",
+            "parent": 14,
+            "local_matrix": [
+                230.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -260.0,
+                330.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "pause_card_1",
+                "title": "CARD 1",
+                "body": "(draft slot)",
+                "action": "click",
+                "fill": [
+                    0.09,
+                    0.1,
+                    0.15,
+                    0.97
+                ],
+                "border": [
+                    0.5,
+                    0.5,
+                    0.6,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.899999,
+                    0.92,
+                    0.959999,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 1.399999,
+                "text_align_h": 2,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
+            }
+        },
+        {
+            "name": "Card 3",
+            "parent": 14,
+            "local_matrix": [
+                230.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                260.0,
+                330.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "pause_card_3",
+                "title": "CARD 3",
+                "body": "(draft slot)",
+                "action": "click",
+                "fill": [
+                    0.09,
+                    0.1,
+                    0.15,
+                    0.97
+                ],
+                "border": [
+                    0.5,
+                    0.5,
+                    0.6,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.899999,
+                    0.92,
+                    0.959999,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 1.399999,
+                "text_align_h": 2,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
+            }
+        },
+        {
+            "name": "Card 2",
+            "parent": 14,
+            "local_matrix": [
+                230.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                330.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "pause_card_2",
+                "title": "CARD 2",
+                "body": "(draft slot)",
+                "action": "click",
+                "fill": [
+                    0.09,
+                    0.1,
+                    0.15,
+                    0.97
+                ],
+                "border": [
+                    0.5,
+                    0.5,
+                    0.6,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.899999,
+                    0.92,
+                    0.959999,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 1.399999,
+                "text_align_h": 2,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
+            }
+        },
+        {
+            "name": "Cards",
+            "parent": 27,
+            "enabled": false,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Inv Stats Values",
+            "parent": 30,
+            "local_matrix": [
+                220.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                400.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -470.0,
+                180.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_stats_values",
+                "action": "click",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.959999,
+                    0.92,
+                    0.699998,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.2,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Hero",
+            "parent": -1,
+            "local_matrix": [
+                1.799998,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.799998,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.799998,
+                0.0,
+                32.0,
+                0.0,
+                14.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Hero Body",
+            "parent": 16,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.999997,
+                0.0,
+                0.0,
+                0.999997,
+                0.0,
+                0.0,
+                0.0,
+                1.1,
+                0.0,
+                1.0
+            ],
+            "mesh": 5,
+            "component_flags": 1
+        },
+        {
+            "name": "HUD",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "HUD HP BG",
+            "parent": 18,
             "local_matrix": [
                 920.0,
                 0.0,
@@ -885,7 +1225,7 @@
         },
         {
             "name": "HUD HP Fill",
-            "parent": -1,
+            "parent": 18,
             "local_matrix": [
                 920.0,
                 0.0,
@@ -964,7 +1304,7 @@
         },
         {
             "name": "HUD HP Text",
-            "parent": -1,
+            "parent": 18,
             "local_matrix": [
                 920.0,
                 0.0,
@@ -1029,9 +1369,9 @@
                     0.5,
                     0.0
                 ],
-                "font_scale": 1.5,
-                "text_align_h": 0,
-                "text_align_v": 0,
+                "font_scale": 4.3,
+                "text_align_h": 2,
+                "text_align_v": 2,
                 "text_offset": [
                     0.0,
                     0.0
@@ -1044,7 +1384,7 @@
         },
         {
             "name": "HUD Spawn BG",
-            "parent": -1,
+            "parent": 18,
             "local_matrix": [
                 920.0,
                 0.0,
@@ -1122,7 +1462,7 @@
         },
         {
             "name": "HUD Spawn Fill",
-            "parent": -1,
+            "parent": 18,
             "local_matrix": [
                 920.0,
                 0.0,
@@ -1201,7 +1541,7 @@
         },
         {
             "name": "HUD FPS",
-            "parent": -1,
+            "parent": 18,
             "local_matrix": [
                 340.0,
                 0.0,
@@ -1235,7 +1575,7 @@
                 ],
                 "border": [
                     0.319999,
-                    0.239997,
+                    0.239996,
                     0.5,
                     0.899999
                 ],
@@ -1280,7 +1620,7 @@
         },
         {
             "name": "HUD Gear",
-            "parent": -1,
+            "parent": 18,
             "local_matrix": [
                 120.0,
                 0.0,
@@ -1299,7 +1639,8 @@
                 0.0,
                 1.0
             ],
-            "component_flags": 512,
+            "script": "Assets/Scripts/shared/hud/hud_gear.lua",
+            "component_flags": 528,
             "runtime_ui": {
                 "type": "image",
                 "screen": "__scene_ui",
@@ -1353,39 +1694,38 @@
                 ],
                 "visible": true,
                 "draggable": false,
-                "no_input": true,
+                "no_input": false,
                 "bring_to_front": false
             }
         },
         {
-            "name": "HUD Gear Hit",
-            "parent": -1,
+            "name": "Inv Stats Labels",
+            "parent": 30,
             "local_matrix": [
-                120.0,
+                250.0,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
-                120.0,
+                400.0,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
                 1.0,
                 0.0,
-                -140.0,
-                150.0,
+                -700.0,
+                180.0,
                 0.0,
                 1.0
             ],
-            "script": "Assets/Scripts/shared/hud/hud_gear.lua",
-            "component_flags": 528,
+            "component_flags": 512,
             "runtime_ui": {
-                "type": "button",
+                "type": "text",
                 "screen": "__scene_ui",
-                "id": "hud_gear_hit",
+                "id": "inv_stats_labels",
+                "body": "TOTAL STATS\nHealth\nAttack Damage\nAttack Range\nAttacks/Hit\nAttack Rate\nMove Speed\nArmor\nLife Steal\nRegen",
                 "action": "click",
-                "action_function": "on_toggle_gear",
                 "fill": [
                     0.0,
                     0.0,
@@ -1405,10 +1745,10 @@
                     0.0
                 ],
                 "text_color": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
+                    0.92,
+                    0.939997,
+                    0.98,
+                    1.0
                 ],
                 "image_tint": [
                     1.0,
@@ -1417,12 +1757,113 @@
                     1.0
                 ],
                 "anchor": [
-                    1.0,
-                    0.0
+                    0.5,
+                    0.5
                 ],
                 "pivot": [
-                    1.0,
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
                     0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Pause Menu",
+            "parent": -1,
+            "enabled": false,
+            "local_matrix": [
+                1.419999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.121999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.121999,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Pause Backdrop",
+            "parent": 27,
+            "local_matrix": [
+                2600.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1500.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "pause_backdrop",
+                "action": "click",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.72
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.92,
+                    0.939997,
+                    0.98,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
                 ],
                 "font_scale": 1.0,
                 "text_align_h": 0,
@@ -1433,21 +1874,20 @@
                 ],
                 "visible": true,
                 "draggable": false,
-                "no_input": false,
+                "no_input": true,
                 "bring_to_front": false
             }
         },
         {
-            "name": "HUD Inventory",
-            "parent": -1,
-            "enabled": false,
+            "name": "Pause Title",
+            "parent": 27,
             "local_matrix": [
-                1100.0,
+                1500.0,
                 0.0,
                 0.0,
                 0.0,
                 0.0,
-                620.0,
+                90.0,
                 0.0,
                 0.0,
                 0.0,
@@ -1455,40 +1895,39 @@
                 1.0,
                 0.0,
                 0.0,
-                -14.5,
+                -470.0,
                 0.0,
                 1.0
             ],
             "component_flags": 512,
             "runtime_ui": {
-                "type": "panel",
+                "type": "text",
                 "screen": "__scene_ui",
-                "id": "hud_inventory",
-                "title": "INVENTORY",
-                "body": "Helmet   Body   Pants\nGloves   Weapon   Jewelry\n\n(paper-doll - coming soon)",
+                "id": "pause_title",
+                "body": "GEAR UP",
                 "action": "click",
                 "fill": [
-                    0.05,
                     0.059999,
-                    0.079998,
-                    0.959999
+                    0.05,
+                    0.1,
+                    0.92
                 ],
                 "border": [
-                    0.55,
-                    0.579999,
-                    0.639998,
+                    0.62,
+                    0.34,
+                    0.86,
                     0.949998
                 ],
                 "accent": [
-                    0.959999,
-                    0.74,
-                    0.219999,
-                    1.0
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
                 ],
                 "text_color": [
+                    0.959999,
                     0.92,
-                    0.93,
-                    0.949998,
+                    0.699998,
                     1.0
                 ],
                 "image_tint": [
@@ -1505,7 +1944,2611 @@
                     0.5,
                     0.5
                 ],
-                "font_scale": 1.399999,
+                "font_scale": 4.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inventory",
+            "parent": 27,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Inv Equipped Header",
+            "parent": 30,
+            "local_matrix": [
+                358.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                50.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -621.0,
+                -370.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_hdr_equipped",
+                "body": "EQUIPPED",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.059999,
+                    0.1,
+                    0.8
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.899999,
+                    0.92,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
+            }
+        },
+        {
+            "name": "Inv Backpack Header",
+            "parent": 30,
+            "local_matrix": [
+                360.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                50.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                425.0,
+                -370.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_hdr_backpack",
+                "body": "BACKPACK",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.059999,
+                    0.1,
+                    0.8
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.899999,
+                    0.92,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.799998,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
+            }
+        },
+        {
+            "name": "Inv Equip Helmet",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -745.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_eq_helmet",
+                "body": "Helmet",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.1,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.6,
+                    0.66,
+                    0.699998,
+                    0.899999
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Equip Body",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -621.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_eq_body",
+                "body": "Body",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.1,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.6,
+                    0.66,
+                    0.699998,
+                    0.899999
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Equip Pants",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -497.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_eq_pants",
+                "body": "Pants",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.1,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.6,
+                    0.66,
+                    0.699998,
+                    0.899999
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Equip Gloves",
+            "parent": 30,
+            "local_matrix": [
+                109.999946,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.891264,
+                0.0,
+                -745.0,
+                -120.999946,
+                0.0,
+                0.999997
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_eq_gloves",
+                "body": "Gloves",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.1,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.6,
+                    0.66,
+                    0.699998,
+                    0.899999
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Equip Weapon",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -621.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_eq_weapon",
+                "body": "Weapon",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.1,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.6,
+                    0.66,
+                    0.699998,
+                    0.899999
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 3.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Equip Jewelry",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -497.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_eq_jewelry",
+                "body": "Jewelry",
+                "action": "click",
+                "fill": [
+                    0.059999,
+                    0.1,
+                    0.1,
+                    0.949998
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.579999,
+                    0.899999
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.6,
+                    0.66,
+                    0.699998,
+                    0.899999
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.9,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 1",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                115.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_1",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 2",
+            "parent": 30,
+            "local_matrix": [
+                109.999969,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                109.999984,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.891264,
+                0.0,
+                239.0,
+                -244.999984,
+                0.0,
+                0.999997
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_2",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 3",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                363.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_3",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 4",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                487.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_4",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 5",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                611.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_5",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 6",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                735.0,
+                -245.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_6",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 7",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                115.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_7",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 8",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                239.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_8",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 9",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                363.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_9",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 10",
+            "parent": 30,
+            "local_matrix": [
+                110.000053,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.891264,
+                0.0,
+                487.0,
+                -120.999946,
+                0.0,
+                0.999997
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_10",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 11",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                611.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_11",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 12",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                735.0,
+                -121.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_12",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 13",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                115.0,
+                3.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_13",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 14",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                239.0,
+                3.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_14",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 15",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                363.0,
+                3.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_15",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 16",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                487.0,
+                3.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_16",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 17",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                611.0,
+                3.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_17",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 18",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                735.0,
+                3.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_18",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 19",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                115.0,
+                127.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_19",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 20",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                239.0,
+                127.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_20",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 21",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                363.0,
+                127.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_21",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 22",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                487.0,
+                127.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_22",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 23",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                611.0,
+                127.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_23",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Bag 24",
+            "parent": 30,
+            "local_matrix": [
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                110.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                735.0,
+                127.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "text",
+                "screen": "__scene_ui",
+                "id": "inv_bag_24",
+                "action": "click",
+                "fill": [
+                    0.07,
+                    0.079998,
+                    0.109999,
+                    0.949998
+                ],
+                "border": [
+                    0.259999,
+                    0.28,
+                    0.34,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.85,
+                    0.879998,
+                    0.92,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 2.0,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": true,
+                "no_input": false,
+                "bring_to_front": true
+            }
+        },
+        {
+            "name": "Inv Stats Panel",
+            "parent": 30,
+            "local_matrix": [
+                469.999938,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                429.358276,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.891264,
+                0.0,
+                -621.0,
+                187.242141,
+                0.0,
+                0.999997
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "inv_stats_bg",
+                "action": "click",
+                "fill": [
+                    0.05,
+                    0.059999,
+                    0.09,
+                    0.949998
+                ],
+                "border": [
+                    0.62,
+                    0.34,
+                    0.86,
+                    0.949998
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.92,
+                    0.939997,
+                    0.98,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.5,
+                    0.5
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 1.0,
                 "text_align_h": 0,
                 "text_align_v": 0,
                 "text_offset": [
@@ -1514,372 +4557,8 @@
                 ],
                 "visible": true,
                 "draggable": false,
-                "no_input": false,
-                "bring_to_front": true
-            }
-        },
-        {
-            "name": "Stage",
-            "parent": -1,
-            "local_matrix": [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ]
-        },
-        {
-            "name": "Floor",
-            "parent": 12,
-            "local_matrix": [
-                76.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                40.0,
-                0.0,
-                31.5,
-                -0.05,
-                13.5,
-                1.0
-            ],
-            "mesh": 0,
-            "component_flags": 1
-        },
-        {
-            "name": "Wall_N",
-            "parent": 12,
-            "local_matrix": [
-                64.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.2,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.4,
-                0.0,
-                31.5,
-                0.5,
-                1.5,
-                1.0
-            ],
-            "mesh": 1,
-            "component_flags": 1
-        },
-        {
-            "name": "Wall_S",
-            "parent": 12,
-            "local_matrix": [
-                64.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.2,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.4,
-                0.0,
-                31.5,
-                0.5,
-                25.5,
-                1.0
-            ],
-            "mesh": 2,
-            "component_flags": 1
-        },
-        {
-            "name": "Wall_W",
-            "parent": 12,
-            "local_matrix": [
-                0.4,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.2,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                28.0,
-                0.0,
-                1.5,
-                0.5,
-                13.5,
-                1.0
-            ],
-            "mesh": 3,
-            "component_flags": 1
-        },
-        {
-            "name": "Wall_E",
-            "parent": 12,
-            "local_matrix": [
-                0.4,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.2,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                28.0,
-                0.0,
-                61.5,
-                0.5,
-                13.5,
-                1.0
-            ],
-            "mesh": 4,
-            "component_flags": 1
-        },
-        {
-            "name": "Spawn_1",
-            "parent": 12,
-            "local_matrix": [
-                1.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.039999,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                3.0,
-                0.029998,
-                3.0,
-                1.0
-            ],
-            "mesh": 5,
-            "component_flags": 1
-        },
-        {
-            "name": "Spawn_2",
-            "parent": 12,
-            "local_matrix": [
-                1.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.039999,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                60.0,
-                0.029998,
-                3.0,
-                1.0
-            ],
-            "mesh": 6,
-            "component_flags": 1
-        },
-        {
-            "name": "Spawn_3",
-            "parent": 12,
-            "local_matrix": [
-                1.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.039999,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                3.0,
-                0.029998,
-                24.0,
-                1.0
-            ],
-            "mesh": 7,
-            "component_flags": 1
-        },
-        {
-            "name": "Spawn_4",
-            "parent": 12,
-            "local_matrix": [
-                1.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.039999,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                60.0,
-                0.029998,
-                24.0,
-                1.0
-            ],
-            "mesh": 8,
-            "component_flags": 1
-        },
-        {
-            "name": "Spawn_5",
-            "parent": 12,
-            "local_matrix": [
-                1.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.039999,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                32.0,
-                0.029998,
-                3.0,
-                1.0
-            ],
-            "mesh": 9,
-            "component_flags": 1
-        },
-        {
-            "name": "Spawn_6",
-            "parent": 12,
-            "local_matrix": [
-                1.1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.039999,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                32.0,
-                0.029998,
-                24.0,
-                1.0
-            ],
-            "mesh": 10,
-            "component_flags": 1
-        },
-        {
-            "name": "Hero",
-            "parent": -1,
-            "local_matrix": [
-                1.799998,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.799998,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.799998,
-                0.0,
-                32.0,
-                0.0,
-                14.0,
-                1.0
-            ]
-        },
-        {
-            "name": "Hero Body",
-            "parent": 24,
-            "local_matrix": [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                -0.999997,
-                0.0,
-                0.0,
-                0.999997,
-                0.0,
-                0.0,
-                0.0,
-                1.1,
-                0.0,
-                1.0
-            ],
-            "mesh": 11,
-            "component_flags": 1
-        },
-        {
-            "name": "Stage Light",
-            "parent": -1,
-            "local_matrix": [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                -0.001745,
-                -0.999997,
-                0.0,
-                0.0,
-                0.999997,
-                -0.001745,
-                0.0,
-                0.0,
-                10.0,
-                0.0,
-                1.0
-            ],
-            "component_flags": 2,
-            "light": {
-                "type": "directional",
-                "color": [
-                    0.92,
-                    0.899999,
-                    0.839999,
-                    2.599997
-                ]
+                "no_input": true,
+                "bring_to_front": false
             }
         }
     ],
@@ -1916,8 +4595,8 @@
                 19.5
             ],
             "euler": [
-                1.471127,
-                3.141592,
+                1.472869,
+                3.136357,
                 0.0
             ],
             "fovx": 1.518435,

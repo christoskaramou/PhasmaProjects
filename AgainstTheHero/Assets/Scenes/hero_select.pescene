@@ -71,7 +71,6 @@
     "nodes": [
         {
             "name": "Camera_0",
-            "parent": -1,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -96,18 +95,18 @@
                 "fovx": 1.518435,
                 "orthographic_size": 10.0,
                 "near_plane": 0.004999,
-                "far_plane": 3.4028234663852886e38,
+                "far_plane": 3.4028234663852886e+38,
                 "speed": 3.5,
                 "euler": [
                     -0.0,
                     0.0,
                     0.0
                 ]
-            }
+            },
+            "parent": -1
         },
         {
             "name": "Skybox",
-            "parent": -1,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -123,17 +122,39 @@
                 0.0,
                 0.0,
                 0.0,
-                -1.1920928955078125e-7,
+                -1.1920928955078125e-07,
                 1.0
             ],
             "component_flags": 256,
             "skybox": {
                 "path": ""
-            }
+            },
+            "parent": -1
+        },
+        {
+            "name": "UI",
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "parent": -1
         },
         {
             "name": "UI Title",
-            "parent": -1,
             "local_matrix": [
                 1200.0,
                 0.0,
@@ -208,11 +229,11 @@
                 "draggable": false,
                 "no_input": true,
                 "bring_to_front": false
-            }
+            },
+            "parent": 2
         },
         {
             "name": "UI Ranger",
-            "parent": -1,
             "local_matrix": [
                 520.0,
                 0.0,
@@ -290,11 +311,11 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": false
-            }
+            },
+            "parent": 2
         },
         {
             "name": "UI Brawler",
-            "parent": -1,
             "local_matrix": [
                 520.0,
                 0.0,
@@ -372,11 +393,11 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": false
-            }
+            },
+            "parent": 2
         },
         {
             "name": "UI Sower",
-            "parent": -1,
             "local_matrix": [
                 520.0,
                 0.0,
@@ -454,11 +475,11 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": false
-            }
+            },
+            "parent": 2
         },
         {
             "name": "UI Back",
-            "parent": -1,
             "local_matrix": [
                 280.0,
                 0.0,
@@ -535,7 +556,8 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": false
-            }
+            },
+            "parent": 2
         }
     ],
     "lights": [],
@@ -556,7 +578,7 @@
             "projection": "orthographic",
             "orthographic_size": 10.0,
             "near_plane": 0.004999,
-            "far_plane": 3.4028234663852886e38,
+            "far_plane": 3.4028234663852886e+38,
             "speed": 3.5,
             "node_index": 0
         }

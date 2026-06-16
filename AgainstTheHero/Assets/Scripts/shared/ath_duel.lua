@@ -1708,6 +1708,7 @@ function Duel:reset_manual_gear()
     self.gear_drop_cursor = 0
     self._inv_drag = nil
     self._inv_last_click = nil
+    self._between_wave = nil
     self:recompute_hero_stats()
 end
 
@@ -1858,6 +1859,7 @@ end
 function Duel:begin_pause()
     if self.manual_hero then
         self.state = "pause"
+        self._between_wave = true -- a wave-flow pause: NEXT WAVE advances the run
         self:haptic(25)
         self:set_flash("WAVE " .. tostring(self.wave_index or 1) .. " CLEARED")
         if self.config.hooks and self.config.hooks.on_pause then self.config.hooks.on_pause(self) end
@@ -1878,7 +1880,15 @@ end
 
 function Duel:resume_combat()
     if self.manual_hero then
-        self:begin_manual_wave((self.wave_index or 1) + 1)
+        Inventory.hide(self)
+        if self._between_wave then
+            self._between_wave = false
+            self:begin_manual_wave((self.wave_index or 1) + 1)
+        else
+            -- A mid-fight inventory peek (gear button) closes back to the SAME wave.
+            self._between_wave = false
+            self.state = "combat"
+        end
         if self.config.hooks and self.config.hooks.on_resume then self.config.hooks.on_resume(self) end
         return
     end
@@ -1888,6 +1898,21 @@ function Duel:resume_combat()
     self.spawn_t = math.min(self.spawn_t or 0.4, 0.4)
     self:set_flash("FIGHT")
     if self.config.hooks and self.config.hooks.on_resume then self.config.hooks.on_resume(self) end
+end
+
+-- Gear button (authored "HUD Gear Hit"): open/close the authored Pause Menu
+-- inventory mid-run WITHOUT advancing the wave. A between-wave pause is owned by
+-- the wave flow, so the gear button never closes that (use NEXT WAVE / Enter).
+function Duel:toggle_inventory()
+    if not self.manual_hero then return end
+    if self.state == "pause" then
+        if not self._between_wave then self:resume_combat() end
+    elseif self.state == "combat" then
+        self._between_wave = false
+        self.state = "pause"
+        self:haptic(15)
+        Inventory.show(self)
+    end
 end
 
 function Duel:reset_run()
@@ -1961,8 +1986,10 @@ function Duel:update_input(dt)
 
     if self.state == "pause" then
         if self.manual_hero then
-            Inventory.update(self) -- drag-and-drop + click-to-(un)equip
-            if self:key_pressed("Return") or self:key_pressed("Space") or Art.consume_click(self.hud, "resume_btn") then
+            Inventory.update(self) -- drag-and-drop + click-to-(un)equip over authored nodes
+            -- The authored "Pause Next Wave" button resumes via its own node script
+            -- (on_next_wave); keep keyboard resume here.
+            if self:key_pressed("Return") or self:key_pressed("Space") then
                 self:resume_combat()
             end
             return
@@ -2066,9 +2093,19 @@ function Duel:update_hud()
         Art.remove(self.hud, "flash")
     end
 
-    -- Pause overlay: card hand for legacy modes, loot/equip for manual hero.
-    -- Laid out bottom-up so the panel, row, and resume button never overlap.
-    if self.state == "pause" then
+    -- Pause overlay. The MANUAL arena's pause/inventory is now AUTHORED: the
+    -- "Pause Menu" scene-node group owns the backpack grid, paper-doll, stat panel,
+    -- title and NEXT WAVE button (see ath_inventory). The script only toggles the
+    -- group's visibility by state and pushes current values into it. Legacy
+    -- (non-manual) duel modes still draw their transient card hand here.
+    if self.manual_hero then
+        if self.state == "pause" then
+            Inventory.show(self)
+            Inventory.refresh(self)
+        else
+            Inventory.hide(self)
+        end
+    elseif self.state == "pause" then
         local card_w, card_h, gap = S(150.0), S(196.0), S(10.0)
         local row_w = 5 * (card_w + gap) - gap
         local start_x = sw * 0.5 - row_w * 0.5
@@ -2078,48 +2115,34 @@ function Duel:update_hud()
         local panel_h = S(42.0)
         local panel_y = card_y - gap - panel_h
 
-        if self.manual_hero then
-            -- Full RPG inventory: backpack grid + 6-slot paper-doll + live stat
-            -- preview, drag-and-drop (ath_inventory). Only the title + NEXT WAVE
-            -- button live here; the inventory owns everything in between.
-            Art.remove_ids(self.hud, { "pause_panel", "card_slot1", "card_slot2", "card_slot3", "card_slot4", "card_slot5",
-                "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
-            Inventory.draw(self, accent) -- draws its own title bar (inv_title)
-            self._inv_shown = true
-            Art.quad(self.hud, "resume_btn", sw * 0.5 - S(100.0), resume_y, S(200.0), resume_h, { 0.10, 0.16, 0.10, 0.95 },
-                { border = { 0.4, 0.9, 0.5, 0.95 }, label = "NEXT WAVE   [Enter]" })
-        else
-            Art.remove_ids(self.hud, { "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
-            local seat = self.player_seat
-            local who = (seat.side == "hero") and "UPGRADE THE HERO" or "COMMAND THE HORDE"
-            local actions = Cards.legal_actions(seat, false)
-            Art.quad(self.hud, "pause_panel", start_x, panel_y, row_w, panel_h, { 0.06, 0.05, 0.10, 0.92 },
-                { border = accent, title = string.format("PAUSE - Round %d - %s", self.round, who), no_input = true })
-            for slot = 1, 5 do
-                local id = "card_slot" .. slot
-                local action = actions[slot]
-                if action then
-                    local rar = Cards.rarity(action.card)
-                    local fill = action.affordable and { 0.10, 0.10, 0.16, 0.95 } or { 0.06, 0.05, 0.06, 0.9 }
-                    Art.quad(self.hud, id, start_x + (slot - 1) * (card_w + gap), card_y, card_w, card_h, fill, {
-                        border = rar.color,
-                        title = action.label,
-                        subtitle = string.format("Cost %d  %s%s", action.cost, string.rep("*", rar.stars), action.affordable and "" or "  (locked)"),
-                        body = action.desc,
-                        footer = "[" .. slot .. "] / click",
-                    })
-                else
-                    Art.remove(self.hud, id)
-                end
+        Art.remove_ids(self.hud, { "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
+        local seat = self.player_seat
+        local who = (seat.side == "hero") and "UPGRADE THE HERO" or "COMMAND THE HORDE"
+        local actions = Cards.legal_actions(seat, false)
+        Art.quad(self.hud, "pause_panel", start_x, panel_y, row_w, panel_h, { 0.06, 0.05, 0.10, 0.92 },
+            { border = accent, title = string.format("PAUSE - Round %d - %s", self.round, who), no_input = true })
+        for slot = 1, 5 do
+            local id = "card_slot" .. slot
+            local action = actions[slot]
+            if action then
+                local rar = Cards.rarity(action.card)
+                local fill = action.affordable and { 0.10, 0.10, 0.16, 0.95 } or { 0.06, 0.05, 0.06, 0.9 }
+                Art.quad(self.hud, id, start_x + (slot - 1) * (card_w + gap), card_y, card_w, card_h, fill, {
+                    border = rar.color,
+                    title = action.label,
+                    subtitle = string.format("Cost %d  %s%s", action.cost, string.rep("*", rar.stars), action.affordable and "" or "  (locked)"),
+                    body = action.desc,
+                    footer = "[" .. slot .. "] / click",
+                })
+            else
+                Art.remove(self.hud, id)
             end
-            Art.quad(self.hud, "resume_btn", sw * 0.5 - S(100.0), resume_y, S(200.0), resume_h, { 0.10, 0.16, 0.10, 0.95 },
-                { border = { 0.4, 0.9, 0.5, 0.95 }, label = "RESUME   [Enter]" })
         end
+        Art.quad(self.hud, "resume_btn", sw * 0.5 - S(100.0), resume_y, S(200.0), resume_h, { 0.10, 0.16, 0.10, 0.95 },
+            { border = { 0.4, 0.9, 0.5, 0.95 }, label = "RESUME   [Enter]" })
     else
         Art.remove_ids(self.hud, { "pause_panel", "resume_btn", "card_slot1", "card_slot2", "card_slot3", "card_slot4", "card_slot5" })
         Art.remove_ids(self.hud, { "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
-        -- Tear down the inventory widgets once when leaving the pause/gear screen.
-        if self._inv_shown then Inventory.clear(self); self._inv_shown = false end
     end
 
     -- Class pick overlay (run start): one card per class, click or number key.

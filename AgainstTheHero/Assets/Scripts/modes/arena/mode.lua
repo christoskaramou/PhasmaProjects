@@ -275,16 +275,13 @@ return {
                 local aura = D.hero and D.hero.parts and D.hero.parts.aura
                 if aura and Art.valid(aura) then aura:set_position(vec3(1.0e6, 0.0, 0.0)) end
 
-                -- HUD declutter by state (draw_hud runs at the END of update_hud,
-                -- after the Duel set these quads, so removals win this frame):
-                --  * live play  -> hide the top-left "stat" panel; combat stays clean
-                --    (just the HP bar + wave-budget bar).
-                --  * pause/gear -> hide the wide top HP bar; the inventory's TOTAL
-                --    STATS panel already shows Health, and the HP bar otherwise
-                --    collides with the top-left stat panel on the gear screen.
-                if D.state ~= "pause" then
-                    Art.remove(D.hud, "stat")
-                else
+                -- HUD declutter (draw_hud runs at the END of update_hud, after the
+                -- Duel set these quads, so removals win this frame). The authored HUD
+                -- nodes + the authored Pause Menu own the screen now, so the transient
+                -- top-left "stat" panel is always removed (it overlapped the authored
+                -- pause/inventory). Drop the duel's HP-bar quads on the gear screen too.
+                Art.remove(D.hud, "stat")
+                if D.state == "pause" then
                     Art.remove(D.hud, "hp_bg"); Art.remove(D.hud, "hp_fg"); Art.remove(D.hud, "hp_label")
                 end
 
