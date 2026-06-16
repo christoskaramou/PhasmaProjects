@@ -171,13 +171,13 @@ return {
         },
         waves = {
             count = 5,
-            budgets = { 90, 120, 160, 210, 270 },
+            budgets = { 130, 173, 230, 302, 389 },
         },
-        reserve_start = 90.0,
+        reserve_start = 130.0,
         round_seconds = 9999.0,
         -- Creeps spawn a bit beefier than their base archetype HP (applied in
         -- Duel:spawn_one via Creep.create's hp_multiplier).
-        creep_hp_mult = 1.3,
+        creep_hp_mult = 1.56,
         kill_fx_budget_per_frame = 6,
         warm_pool_count = 0,
         prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute", "seed_spitter", "beetle", "corn_mortar", "wasp" },

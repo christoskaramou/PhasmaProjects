@@ -59,6 +59,12 @@ local function clampn(value, low, high)
     return value
 end
 
+local function arena_actor_bounds(A, clearance)
+    local c = clearance or 0.8
+    return A.pad + c, A.w - A.pad - 1.0 - c,
+        A.pad + c, A.h - A.pad - 1.0 - c
+end
+
 -- Pointer in surface pixels (mouse on desktop; SDL maps touch -> mouse on
 -- Android, so this also tracks a finger). Used by the virtual movement joystick.
 local function ui_pointer()
@@ -472,9 +478,10 @@ end
 
 function Duel:move_hero(hero, dirx, dirz, speed, dt)
     local A = self.arena
+    local minx, maxx, minz, maxz = arena_actor_bounds(A, 0.8)
     speed = speed * (hero.move_mult or 1.0)
-    hero.x = clampn(hero.x + dirx * speed * dt, A.pad + 0.8, A.w - A.pad - 1.8)
-    hero.z = clampn(hero.z + dirz * speed * dt, A.pad + 0.8, A.h - A.pad - 1.8)
+    hero.x = clampn(hero.x + dirx * speed * dt, minx, maxx)
+    hero.z = clampn(hero.z + dirz * speed * dt, minz, maxz)
     if dirx * dirx + dirz * dirz > 0.0001 then hero.facing = math.atan(dirx, dirz) end
 end
 
@@ -1004,8 +1011,9 @@ function Duel:update_hero(dt)
     -- input so the hit reads but the player stays in control.
     if (hero.knock_x or 0.0) ~= 0.0 or (hero.knock_z or 0.0) ~= 0.0 then
         local A = self.arena
-        hero.x = clampn(hero.x + hero.knock_x * dt, A.pad + 0.8, A.w - A.pad - 1.8)
-        hero.z = clampn(hero.z + hero.knock_z * dt, A.pad + 0.8, A.h - A.pad - 1.8)
+        local minx, maxx, minz, maxz = arena_actor_bounds(A, 0.8)
+        hero.x = clampn(hero.x + hero.knock_x * dt, minx, maxx)
+        hero.z = clampn(hero.z + hero.knock_z * dt, minz, maxz)
         local dd = math.max(0.0, 1.0 - 18.0 * dt)
         hero.knock_x = hero.knock_x * dd
         hero.knock_z = hero.knock_z * dd
@@ -1155,8 +1163,7 @@ end
 -- player. Best-of-N fallback guarantees it always returns a far-ish point.
 function Duel:pick_spawn_point()
     local A = self.arena
-    local minx, maxx = A.pad + 1.0, A.w - A.pad - 1.0
-    local minz, maxz = A.pad + 1.0, A.h - A.pad - 1.0
+    local minx, maxx, minz, maxz = arena_actor_bounds(A, 1.25)
     local band = 3.5 -- how deep from a wall a spawn may sit
     local min_dist = 0.5 * math.min(A.w, A.h)
     local hx = (self.hero and self.hero.x) or (A.w * 0.5)
@@ -1184,6 +1191,19 @@ function Duel:pick_spawn_point()
         if d > best_d then best, best_d = { x = x, y = z }, d end
     end
     return best or { x = minx, y = minz }
+end
+
+function Duel:clamp_creep_to_arena(creep)
+    if not (creep and creep.alive and self.manual_hero) then return end
+    local minx, maxx, minz, maxz = arena_actor_bounds(self.arena, 1.0)
+    local x = clampn(creep.x or 0.0, minx, maxx)
+    local z = clampn(creep.z or 0.0, minz, maxz)
+    if x == creep.x and z == creep.z then return end
+    creep.x = x
+    creep.z = z
+    if Art.valid(creep.root) then
+        creep.root:set_position(vec3(x, 0.0, z))
+    end
 end
 
 function Duel:drain_spawn_queue(per_frame)
@@ -1346,6 +1366,7 @@ function Duel:update_creeps(dt)
     for _, c in ipairs(self.creeps) do
         local ev = nil
         if c.alive then ev = Creep.update(c, dt, self.field, self.map, hero) end
+        self:clamp_creep_to_arena(c)
         if c.hit_flash then c.hit_flash = math.max(0.0, c.hit_flash - dt) end
         -- Necromancer-style summons (Creep.update returns these; previously dropped).
         -- Arena-only for now to keep this pass from altering the archived menu duels.
