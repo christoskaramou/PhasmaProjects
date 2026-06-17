@@ -106,6 +106,7 @@ local ppos = vec3(0.0, 0.0, 0.0)   -- reused set_position arg
 local pscl = vec3(1.0, 1.0, 1.0)   -- reused set_scale arg
 local pfill = { 0.0, 0.0, 0.0, 0.0 } -- reused fill color
 local parg = { fill = pfill }      -- reused set_ui arg (only fill is driven)
+local MM_BG = { 0.12, 0.16, 0.10, 1.0 } -- reused minimap background color
 
 local function pool_adopt()
     if pool then return end
@@ -184,25 +185,25 @@ local function draw_minimap(state)
     local x, y, w, h = panel_rect("Minimap", M, sh - M - 300, 300, 300)
     local pad = w * 0.05
     local mx, my, mw, mh = x + pad, y + pad, w - pad * 2, h - pad * 2
-    quad("mm_bg", mx, my, mw, mh, { 0.12, 0.16, 0.10, 1.0 }, { no_input = true })
+    pquad(mx, my, mw, mh, MM_BG)
 
     local b = World.bounds
     local rx, rz = (b.max_x - b.min_x), (b.max_z - b.min_z)
-    local function plot(id, wx, wz, col, size)
+    local function plot(wx, wz, col, size)
         local px = mx + ((wx - b.min_x) / rx) * mw
         local py = my + ((wz - b.min_z) / rz) * mh
-        quad(id, px - size * 0.5, py - size * 0.5, size, size, col, { no_input = true })
+        pquad(px - size * 0.5, py - size * 0.5, size, size, col)
     end
-    plot("mm_mine", World.mine.x, World.mine.z, U.COLOR.gold, 7)
-    if World.forest then plot("mm_forest", World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
+    plot(World.mine.x, World.mine.z, U.COLOR.gold, 7)
+    if World.forest then plot(World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
     for _, b in ipairs(state.buildings or {}) do
-        if b.alive then plot("mm_b" .. (b.id or 0), b.x, b.z, U.COLOR.player_trim, 9) end
+        if b.alive then plot(b.x, b.z, U.COLOR.player_trim, 9) end
     end
     for _, e in ipairs(state.enemy_units) do
-        if e.alive then plot("mm_e" .. e.id, e.x, e.z, U.COLOR.enemy, 5) end
+        if e.alive then plot(e.x, e.z, U.COLOR.enemy, 5) end
     end
     for _, u in ipairs(state.player_units) do
-        if u.alive then plot("mm_p" .. u.id, u.x, u.z, u.is_hero and U.COLOR.hero_trim or U.COLOR.player, u.is_hero and 7 or 5) end
+        if u.alive then plot(u.x, u.z, u.is_hero and U.COLOR.hero_trim or U.COLOR.player, u.is_hero and 7 or 5) end
     end
 
     -- click-to-recenter hit area
@@ -404,16 +405,17 @@ local function draw_floating_hp(state)
     for _, u in ipairs(state.player_units) do maybe(u, u.selected) end
 end
 
+local SEL_BOX = { 0.4, 0.95, 0.5, 0.9 } -- reused selection-box edge color
+
 local function draw_select_box()
     local b = WB.selection.box
     if b.active then
         local x0, y0 = math.min(b.x0, b.x1), math.min(b.y0, b.y1)
         local w, h = math.abs(b.x1 - b.x0), math.abs(b.y1 - b.y0)
-        local c = { 0.4, 0.95, 0.5, 0.9 }
-        quad("selbox_t", x0, y0, w, 2, c, { no_input = true })
-        quad("selbox_b", x0, y0 + h, w, 2, c, { no_input = true })
-        quad("selbox_l", x0, y0, 2, h, c, { no_input = true })
-        quad("selbox_r", x0 + w, y0, 2, h, c, { no_input = true })
+        pquad(x0, y0, w, 2, SEL_BOX)
+        pquad(x0, y0 + h, w, 2, SEL_BOX)
+        pquad(x0, y0, 2, h, SEL_BOX)
+        pquad(x0 + w, y0, 2, h, SEL_BOX)
     end
 end
 
