@@ -71,6 +71,54 @@ Units.ARCH = {
             return r
         end)(),
     },
+    -- Laborer: a fragile non-combatant that harvests gold/lumber (see wb_economy).
+    worker = {
+        faction = "player", display = "Laborer", hp = 90, dps = 5, range = 1.2, interval = 1.2,
+        speed = 5.6, armor = 0.05, radius = 0.45, scale = 0.85, weapon = "Pick", bounty = 0,
+        no_combat = true,
+        rig = (function()
+            local r = {
+                { kind = "cube", name = "Legs", pos = { 0.0, 0.26, 0.0 }, scale = { 0.46, 0.5, 0.38 }, color = C.worker_trim, emissive = 0.10 },
+                { kind = "cube", name = "Body", pos = { 0.0, 0.7, 0.0 }, scale = { 0.56, 0.56, 0.42 }, color = C.worker, emissive = 0.12 },
+                { kind = "sphere", name = "Head", pos = { 0.0, 1.08, 0.0 }, scale = { 0.38, 0.4, 0.38 }, color = C.worker, emissive = 0.12 },
+            }
+            r[#r + 1] = { kind = "cylinder", name = "Pick", pos = { 0.42, 0.9, 0.12 }, scale = { 0.06, 1.0, 0.06 }, color = C.tree_trunk, emissive = 0.1 }
+            r[#r + 1] = { kind = "cube", name = "PickHead", pos = { 0.42, 1.42, 0.12 }, scale = { 0.36, 0.1, 0.1 }, color = C.rock, emissive = 0.16 }
+            return r
+        end)(),
+    },
+    -- Town Hall: resource drop-off + trains Laborers; supplies food.
+    town_hall = {
+        faction = "player", display = "Town Hall", hp = 1500, dps = 0, range = 0.0, interval = 1.0,
+        speed = 0.0, armor = 0.5, radius = 3.4, scale = 1.0, bounty = 0,
+        is_building = true, no_combat = true, food_cap = 12, trains = "worker",
+        rig = {
+            { kind = "cube", name = "Base", pos = { 0.0, 1.2, 0.0 }, scale = { 5.4, 2.4, 5.0 }, color = C.stone, emissive = 0.07 },
+            { kind = "cube", name = "Upper", pos = { 0.0, 3.0, 0.0 }, scale = { 4.2, 1.4, 3.8 }, color = C.stone_dark, emissive = 0.07 },
+            { kind = "cube", name = "Door", pos = { 0.0, 0.9, 2.55 }, scale = { 1.4, 1.8, 0.4 }, color = C.tree_trunk, emissive = 0.05 },
+            { kind = "cone", name = "Roof", pos = { 0.0, 4.7, 0.0 }, scale = { 4.6, 2.2, 4.2 }, color = C.roof, emissive = 0.12 },
+            { kind = "cylinder", name = "TowerL", pos = { -2.6, 2.0, -2.2 }, scale = { 1.0, 4.0, 1.0 }, color = C.stone, emissive = 0.07 },
+            { kind = "cone", name = "TowerLTop", pos = { -2.6, 4.5, -2.2 }, scale = { 1.3, 1.5, 1.3 }, color = C.roof, emissive = 0.14 },
+            { kind = "cylinder", name = "TowerR", pos = { 2.6, 2.0, -2.2 }, scale = { 1.0, 4.0, 1.0 }, color = C.stone, emissive = 0.07 },
+            { kind = "cone", name = "TowerRTop", pos = { 2.6, 4.5, -2.2 }, scale = { 1.3, 1.5, 1.3 }, color = C.roof, emissive = 0.14 },
+            { kind = "cube", name = "Banner", pos = { 0.0, 3.3, 2.0 }, scale = { 1.0, 1.4, 0.12 }, color = C.player, emissive = 0.22 },
+        },
+    },
+    -- Barracks: trains Soldiers.
+    barracks = {
+        faction = "player", display = "Barracks", hp = 1100, dps = 0, range = 0.0, interval = 1.0,
+        speed = 0.0, armor = 0.4, radius = 3.0, scale = 1.0, bounty = 0,
+        is_building = true, no_combat = true, food_cap = 8, trains = "soldier",
+        rig = {
+            { kind = "cube", name = "Hall", pos = { 0.0, 1.1, 0.0 }, scale = { 6.0, 2.2, 4.0 }, color = C.stone, emissive = 0.07 },
+            { kind = "cube", name = "Roof", pos = { 0.0, 2.6, 0.0 }, scale = { 6.3, 0.8, 4.3 }, color = C.roof, emissive = 0.12 },
+            { kind = "cube", name = "Door", pos = { 0.0, 0.85, 2.05 }, scale = { 1.4, 1.6, 0.4 }, color = C.tree_trunk, emissive = 0.05 },
+            { kind = "cube", name = "PostL", pos = { -2.4, 1.0, 2.6 }, scale = { 0.3, 2.0, 0.3 }, color = C.tree_trunk, emissive = 0.05 },
+            { kind = "cube", name = "PostR", pos = { 2.4, 1.0, 2.6 }, scale = { 0.3, 2.0, 0.3 }, color = C.tree_trunk, emissive = 0.05 },
+            { kind = "cube", name = "Banner", pos = { 0.0, 1.7, 2.05 }, scale = { 0.9, 1.2, 0.12 }, color = C.player_trim, emissive = 0.22 },
+            { kind = "cube", name = "Rack", pos = { 2.0, 0.6, -1.6 }, scale = { 1.8, 1.0, 0.3 }, color = C.rock, emissive = 0.1 },
+        },
+    },
     wolf = {
         faction = "enemy", display = "Direwolf", hp = 80, dps = 9, range = 1.4, interval = 0.8,
         speed = 8.2, armor = 0.04, radius = 0.5, scale = 1.0, xp = 30, weapon = nil, bounty = 12,
@@ -136,6 +184,9 @@ local function make_unit_table(arch_name, root, parts, ring, x, z)
         alive = true, selected = false, hit_flash = 0.0, attack_swing = 0.0,
         root = root, parts = parts, ring = ring,
         is_hero = arch.is_hero or false,
+        is_building = arch.is_building or false,
+        no_combat = arch.no_combat or false,
+        food_cap = arch.food_cap or 0,
         xp_value = arch.xp or 0,
     }
     if arch.is_hero then
@@ -237,6 +288,39 @@ function Units.tick_visual(unit, dt, t)
         end
     end
     if (unit.hit_flash or 0.0) > 0.0 then unit._flashed = true end
+end
+
+-- Deactivate a unit without pooling it: hide its ring, disable + park its rig, and
+-- mark it not-alive. Used for training reserves — units authored in the scene that
+-- wait offstage until a building trains them (see wb_economy). Distinct from kill():
+-- no death FX, no pool push; the same table is later revived by Units.activate.
+function Units.deactivate(unit)
+    unit.alive = false
+    unit.target = nil
+    unit.order = "idle"
+    unit.job = nil
+    Units.set_selected(unit, false)
+    if U.valid(unit.root) then
+        unit.root:set_enabled(false)
+        unit.root:set_position(vec3(unit.x, PARK_Y, unit.z))
+    end
+end
+
+-- Revive a deactivated reserve unit at (x,z) with fresh stats. Re-enables the rig,
+-- resets combat/harvest state, and places + faces it (toward the battle for players).
+function Units.activate(unit, x, z)
+    local arch = Units.ARCH[unit.arch]
+    if not arch then return unit end
+    unit.alive = true
+    unit.hp = arch.hp; unit.hp_max = arch.hp
+    unit.order = "idle"; unit.target = nil; unit.attack_move = false
+    unit.attack_t = 0.0; unit.attack_swing = 0.0; unit.hit_flash = 0.0; unit.slow_t = 0.0
+    unit.job = nil; unit.hstate = nil; unit.carry = 0; unit.carry_kind = nil
+    unit.selected = false
+    if U.valid(unit.root) then unit.root:set_enabled(true) end
+    Units.place(unit, x, z)
+    Units.face(unit, 0.0, (arch.faction == "player") and -1.0 or 1.0)
+    return unit
 end
 
 -- Kill a unit: hide selection, park the rig offstage, and pool it for reuse.

@@ -146,6 +146,10 @@ local function draw_minimap(state)
         quad(id, px - size * 0.5, py - size * 0.5, size, size, col, { no_input = true })
     end
     plot("mm_mine", World.mine.x, World.mine.z, U.COLOR.gold, 7)
+    if World.forest then plot("mm_forest", World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
+    for _, b in ipairs(state.buildings or {}) do
+        if b.alive then plot("mm_b" .. (b.id or 0), b.x, b.z, U.COLOR.player_trim, 9) end
+    end
     for _, e in ipairs(state.enemy_units) do
         if e.alive then plot("mm_e" .. e.id, e.x, e.z, U.COLOR.enemy, 5) end
     end
@@ -172,6 +176,24 @@ local function draw_portrait(state)
     local x, y, w, h = panel_rect("Portrait", M * 2 + 300, sh - M - 300, 560, 300)
     local sel = WB.selection.list
     local pad = 14.0
+
+    local bsel = WB.selection.building
+    if bsel then
+        local face = h * 0.42
+        quad("port_face", x + pad, y + pad, face, face, { 0.5, 0.52, 0.6, 1.0 }, { border = U.COLOR.panel_edge, no_input = true })
+        quad("port_head", x + pad + face * 0.22, y + pad + face * 0.5, face * 0.56, face * 0.3, U.COLOR.roof, { no_input = true })
+        local tx = x + pad + face + 14.0
+        local tw = w - pad - (tx - x)
+        quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 }, { body = bsel.display, font_scale = 1.2, no_input = true })
+        local hp_pct = (bsel.hp or 1) / (bsel.hp_max or 1)
+        bar("port_hp", tx, y + pad + 44.0, tw, 30.0, hp_pct, U.COLOR.hp_good,
+            string.format("%d / %d", math.floor((bsel.hp or 0) + 0.5), math.floor((bsel.hp_max or 0) + 0.5)))
+        local foodtxt = (bsel.food_cap or 0) > 0 and string.format("Supplies %d food", bsel.food_cap) or ""
+        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+            { body = foodtxt, font_scale = 1.0, no_input = true })
+        return
+    end
+
     if #sel == 0 then
         quad("port_empty", x + pad, y + pad, w - pad * 2, h * 0.18, { 0, 0, 0, 0 },
             { body = "No unit selected", font_scale = 1.1, no_input = true })
@@ -223,14 +245,47 @@ local function draw_command_card(state)
             { title = label, body = sub or "", font_scale = 1.0 })
     end
 
+    -- Building command card: a train button + queue progress (mutually exclusive
+    -- with unit selection — see wb_selection).
+    local bsel = WB.selection.building
+    if bsel then
+        local def = WB.economy and WB.economy.train_def and WB.economy.train_def(bsel.trains)
+        if def then
+            local status = WB.economy.train_status(state, bsel)
+            local fill = (status == "ok") and { 0.16, 0.2, 0.16, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
+            local cost = string.format("%dg", def.gold) .. (def.lumber > 0 and string.format(" %dw", def.lumber) or "")
+            if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, bsel) end
+            local why = ({ gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" })[status]
+            if why then
+                quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, { 0, 0, 0, 0 },
+                    { body = why, font_scale = 0.9, no_input = true, align = "center" })
+            end
+            if bsel.queue and #bsel.queue > 0 then
+                local j = bsel.queue[1]
+                local pct = 1.0 - U.clamp((j.t or 0) / (j.total or 1), 0.0, 1.0)
+                local bx, by = slot(0, 2)
+                bar("cc_q", bx, by + bh * 0.2, w - pad * 2, bh * 0.5, pct, U.COLOR.player,
+                    string.format("Training... %d%%   (%d in queue)", math.floor(pct * 100 + 0.5), #bsel.queue))
+            end
+        else
+            quad("cc_bhint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+                { body = bsel.display, font_scale = 1.1, no_input = true, align = "center" })
+        end
+        return
+    end
+
     if #sel == 0 then
         quad("cc_hint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
-            { body = "Select a unit\n(left-click / drag)", font_scale = 1.0, no_input = true })
+            { body = "Select a unit or building\n(left-click / drag)", font_scale = 1.0, no_input = true })
         return
     end
 
     if btn(0, 0, "stop", "Stop", "S", { 0.15, 0.13, 0.13, 0.95 }) then WB.orders.stop(sel) end
     if btn(1, 0, "hold", "Hold", "H", { 0.13, 0.15, 0.13, 0.95 }) then WB.orders.hold(sel) end
+    if sel[1] and sel[1].arch == "worker" then
+        quad("cc_gather", select(1, slot(0, 1)), select(2, slot(0, 1)), bw * 2 + pad, bh, { 0.10, 0.12, 0.16, 0.9 },
+            { title = "Gather", body = "right-click mine / forest", font_scale = 0.8, no_input = true, align = "center" })
+    end
     quad("cc_move", select(1, slot(2, 0)), select(2, slot(2, 0)), bw, bh, { 0.10, 0.12, 0.16, 0.9 },
         { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" })
     quad("cc_atk", select(1, slot(3, 0)), select(2, slot(3, 0)), bw, bh, { 0.16, 0.11, 0.11, 0.9 },
@@ -314,6 +369,18 @@ local function draw_select_box()
 end
 
 -- ---- main ---------------------------------------------------------------------
+
+-- Reset per-session HUD state. The module persists across an editor Play->Stop->Play, so
+-- without this the overlay is never re-shown on the 2nd Play (`shown` stays true) and the
+-- cached authored-panel handles (`nodes`) point at the pre-snapshot scene — leaving the
+-- whole HUD blank. Called from Game.init.
+function Hud.reset()
+    shown = false
+    nodes = nil
+    dyn_now = {}
+    dyn_prev = {}
+    for i = #panels, 1, -1 do panels[i] = nil end
+end
 
 function Hud.update(state)
     if not (runtime_ui and runtime_ui.set_quad) then return end

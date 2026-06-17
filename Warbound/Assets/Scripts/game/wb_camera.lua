@@ -44,6 +44,14 @@ function Camera.init(focus_x, focus_z)
     local c = get_cam()
     Camera.focus_x = focus_x or 0.0
     Camera.focus_z = focus_z or 6.0
+    -- Reset projection sampling/calibration so a fresh play session (incl. editor
+    -- Play->Stop->Play, which reuses the persisted module) re-samples the real VP and
+    -- re-detects flips against the live camera rather than trusting last session's.
+    cam = nil
+    Camera._anchor = nil; Camera._p = nil
+    Camera._calibrated = false; Camera._n = 0; Camera._settle_until = 0
+    Camera.flip_x = false; Camera.flip_y = false
+    c = get_cam()
     if not c then return end
     if c.set_projection_mode then c:set_projection_mode("perspective") end
     if c.set_fov then c:set_fov(Camera.FOV_DEG) end
@@ -122,12 +130,26 @@ local function sample_anchor()
     return true
 end
 
--- Recompute the effective coefficients for the current focus/dist (pure Lua). Only
--- re-samples the matrix if there's no anchor yet or the window was resized.
+-- Recompute the effective coefficients for the current focus/dist (pure Lua).
+-- Re-samples the real VP when: there's no anchor yet, the window was resized, OR we're
+-- still in the startup settle window. The standalone Player can hand us a not-yet-final
+-- view-projection on the first frames (the camera's look_at matrix / swapchain aspect
+-- settle a beat after Camera.init), and the old "sample exactly once" caught that stale
+-- matrix — leaving world_to_screen projecting every unit to the screen edge so clicks
+-- never landed (fine in the editor, which owns a stable viewport). Re-sampling for a
+-- bounded burst (first SETTLE_FRAMES, plus a short burst after each resize) captures the
+-- final matrix without the sustained per-frame matrix calls that crash the player.
+Camera.SETTLE_FRAMES = 90
+Camera._n = 0
+Camera._settle_until = 0
+
 function Camera.refresh_if_needed()
+    Camera._n = Camera._n + 1
     local a = Camera._anchor
     local w, h = Camera.screen()
-    if not a or math.floor(w) ~= math.floor(a.w) or math.floor(h) ~= math.floor(a.h) then
+    local size_changed = a and (math.floor(w) ~= math.floor(a.w) or math.floor(h) ~= math.floor(a.h))
+    if size_changed then Camera._settle_until = Camera._n + 30 end
+    if not a or size_changed or Camera._n <= Camera.SETTLE_FRAMES or Camera._n <= Camera._settle_until then
         if not sample_anchor() then return end
         a = Camera._anchor
     end
@@ -223,7 +245,9 @@ function Camera.update(dt, mouse_in_ui)
     -- Keep the cached projection coefficients current (cheap: only re-samples the
     -- matrix when the view actually changed).
     Camera.refresh_if_needed()
-    if not Camera._calibrated then Camera.calibrate() end
+    -- Calibrate only once the VP has settled (see refresh_if_needed) so flip detection
+    -- doesn't latch onto a stale first-frame matrix.
+    if not Camera._calibrated and Camera._n >= 20 then Camera.calibrate() end
 
     -- zoom (wheel)
     if input and input.get_mouse_wheel then

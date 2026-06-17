@@ -7,10 +7,11 @@ local Camera = WB.camera
 local Selection = {}
 
 Selection.list = {}                 -- selected player units
+Selection.building = nil            -- a single selected player building (mutually exclusive with units)
 Selection.box = { active = false, x0 = 0, y0 = 0, x1 = 0, y1 = 0 }
 
 local DRAG_MIN = 8.0                 -- px movement before a click becomes a box
-local PICK_PX = 46.0                 -- single-click pick radius (screen px)
+local PICK_PX = 56.0                 -- single-click pick radius (screen px)
 
 local prev_down = false
 local press_x, press_y = 0.0, 0.0
@@ -26,6 +27,7 @@ end
 function Selection.clear()
     for _, u in ipairs(Selection.list) do WB.units.set_selected(u, false) end
     Selection.list = {}
+    if Selection.building then WB.units.set_selected(Selection.building, false); Selection.building = nil end
 end
 
 function Selection.set(units)
@@ -35,6 +37,15 @@ function Selection.set(units)
             WB.units.set_selected(u, true)
             Selection.list[#Selection.list + 1] = u
         end
+    end
+end
+
+-- Select a single building (clears any unit selection; they're mutually exclusive).
+function Selection.set_building(b)
+    Selection.clear()
+    if b and b.alive then
+        Selection.building = b
+        WB.units.set_selected(b, true) -- toggles the building's ground ring
     end
 end
 
@@ -94,7 +105,9 @@ function Selection.update(player_units, mouse_in_ui)
             if hit then
                 Selection.set({ hit })
             else
-                Selection.clear()
+                -- no unit under the cursor: try a player building, else clear
+                local b = WB.economy and WB.economy.building_at and WB.economy.building_at(press_x, press_y)
+                if b then Selection.set_building(b) else Selection.clear() end
             end
         else
             local x0, x1 = math.min(press_x, ex), math.max(press_x, ex)

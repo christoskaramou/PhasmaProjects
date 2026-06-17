@@ -22,13 +22,13 @@ end
 
 function Orders.stop(sel)
     for _, u in ipairs(sel) do
-        u.order = "idle"; u.target = nil; u.goal_x, u.goal_z = u.x, u.z
+        u.order = "idle"; u.target = nil; u.job = nil; u.goal_x, u.goal_z = u.x, u.z
     end
 end
 
 function Orders.hold(sel)
     for _, u in ipairs(sel) do
-        u.order = "hold"; u.target = nil; u.goal_x, u.goal_z = u.x, u.z
+        u.order = "hold"; u.target = nil; u.job = nil; u.goal_x, u.goal_z = u.x, u.z
     end
 end
 
@@ -53,13 +53,13 @@ function Orders.move_to(sel, cx, cz)
     for i, u in ipairs(sel) do
         local p = pts[i]
         local gx, gz = World.clamp(p.x, p.z, 0.8)
-        u.order = "move"; u.target = nil; u.goal_x, u.goal_z = gx, gz
+        u.order = "move"; u.target = nil; u.job = nil; u.goal_x, u.goal_z = gx, gz
     end
 end
 
 function Orders.attack(sel, target)
     for _, u in ipairs(sel) do
-        u.order = "attack"; u.target = target; u.attack_move = false
+        u.order = "attack"; u.target = target; u.job = nil; u.attack_move = false
     end
 end
 
@@ -77,7 +77,23 @@ function Orders.handle_input(sel, enemy_units, mouse_in_ui)
             else
                 local gx, gz = Camera.pick_ground(mx, my)
                 if gx then
-                    Orders.move_to(sel, gx, gz)
+                    -- Laborers + a click near a resource node = harvest; everything
+                    -- else (and any non-worker in the selection) just moves there.
+                    local kind = WB.economy and WB.economy.resource_near(gx, gz) or nil
+                    local workers = {}
+                    if kind then
+                        for _, u in ipairs(sel) do
+                            if u.alive and u.arch == "worker" then workers[#workers + 1] = u end
+                        end
+                    end
+                    if #workers > 0 then
+                        WB.economy.order_harvest(WB.economy._state, workers, kind)
+                        local movers = {}
+                        for _, u in ipairs(sel) do if u.arch ~= "worker" then movers[#movers + 1] = u end end
+                        if #movers > 0 then Orders.move_to(movers, gx, gz) end
+                    else
+                        Orders.move_to(sel, gx, gz)
+                    end
                     WB.fx_ping(gx, gz, false)
                 end
             end

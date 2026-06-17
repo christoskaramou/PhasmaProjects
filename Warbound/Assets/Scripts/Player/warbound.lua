@@ -32,7 +32,7 @@ if Loader then
     -- Load order must respect each module's load-time `local X = WB.x` captures:
     -- a module's dependencies must be preloaded before it (util -> world -> camera ...).
     local WB = Loader.preload({
-        "util", "world", "camera", "units", "selection", "orders", "combat", "abilities", "hud", "game",
+        "util", "world", "camera", "units", "selection", "orders", "combat", "abilities", "economy", "hud", "game",
     })
     Game = WB.game
 end
@@ -71,6 +71,11 @@ end
 
 local function destroy()
     if Game and Game.destroy then pcall(Game.destroy) end
+    -- The Lua chunk persists across an editor Play -> Stop -> Play cycle, so the next
+    -- Play's init hook must re-run Game.init. Without resetting these the second Play
+    -- would skip init entirely (stale state, dead game loop while the camera still pans).
+    started = false
+    present_set = false
 end
 
 hooks {

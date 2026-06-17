@@ -55,6 +55,12 @@ U.COLOR = {
     enemy_trim  = { 0.35, 0.22, 0.18 },  -- dark hide
     hero        = { 0.42, 0.72, 1.0 },   -- brighter hero blue
     hero_trim   = { 1.0, 0.86, 0.30 },
+    worker      = { 0.46, 0.54, 0.64 },  -- laborer steel-grey
+    worker_trim = { 0.72, 0.58, 0.34 },  -- leather tan
+    -- buildings
+    stone       = { 0.55, 0.53, 0.49 },
+    stone_dark  = { 0.42, 0.40, 0.37 },
+    roof        = { 0.30, 0.34, 0.52 },  -- Ironhold slate-blue roof
     -- world
     grass       = { 0.28, 0.42, 0.20 },
     grass_dark  = { 0.22, 0.34, 0.16 },

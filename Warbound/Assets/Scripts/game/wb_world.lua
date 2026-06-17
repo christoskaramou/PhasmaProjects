@@ -9,8 +9,11 @@ local World = {}
 -- Playfield is a square centered on the origin: x,z in [-HALF, HALF].
 World.HALF = 34.0
 World.bounds = { min_x = -34.0, max_x = 34.0, min_z = -34.0, max_z = 34.0 }
--- Where the player's gold mine sits (resource node for slice 2; a landmark now).
-World.mine = { x = 22.0, z = -20.0 }
+-- Resource nodes harvested by Laborers (wb_economy). The gold mine sits on the
+-- eastern frontier — reachable from the base but lightly guarded; the lumber forest
+-- is a safe grove just west of the player base.
+World.mine = { x = 24.0, z = 2.0 }
+World.forest = { x = -22.0, z = 16.0 }
 
 -- Configure the renderer for a clean, readable outdoor RTS look. Safe no-ops if a
 -- bridge is missing.
@@ -85,6 +88,17 @@ local function make_gold_mine(parent, x, z)
         pos = { 0.2, 2.4, 0.9 }, scale = { 0.5, 0.5, 0.5 }, color = U.COLOR.gold, emissive = 0.5 })
 end
 
+-- A denser grove marking the lumber source. Trees cluster around the forest center
+-- so Laborers visibly chop wood there (the harvest target is World.forest).
+local function make_forest(parent, cx, cz)
+    local root = U.group("Forest", parent)
+    if not U.valid(root) then return end
+    make_tree(root, cx, cz, 1.5)
+    local ring = { { -3.4, -1.2 }, { 3.0, -2.0 }, { -2.2, 3.0 }, { 3.4, 2.4 },
+                   { -4.6, 1.6 }, { 4.8, -0.6 }, { 0.4, 4.4 }, { 0.0, -4.2 } }
+    for _, o in ipairs(ring) do make_tree(root, cx + o[1], cz + o[2], rnd(0.9, 1.3)) end
+end
+
 -- Build the whole static world under a fresh "World" group; returns that group.
 function World.build()
     local root = U.group("World", nil)
@@ -105,23 +119,32 @@ function World.build()
         pos = { 0.0, 0.03, -2.0 }, scale = { 26.0, 0.05, 22.0 }, color = U.COLOR.dirt, emissive = 0.06 })
 
     make_gold_mine(root, World.mine.x, World.mine.z)
+    make_forest(root, World.forest.x, World.forest.z)
+
+    -- Keep these areas clear of scattered scenery: the central battlefield, the gold
+    -- mine, the lumber forest, and the player's base yard (back +z, where the Town
+    -- Hall / Barracks sit — see wb_game BUILDINGS).
+    local function clear_of_structures(x, z)
+        if U.dist2(x, z, World.mine.x, World.mine.z) <= 8.0 then return false end
+        if U.dist2(x, z, World.forest.x, World.forest.z) <= 9.0 then return false end
+        if z > 19.0 and math.abs(x) < 16.0 then return false end -- base yard
+        return true
+    end
 
     -- Scatter trees around the perimeter (leave the central clearing open) and rocks.
     scatter_seed()
     local placed = 0
-    for _ = 1, 90 do
+    for _ = 1, 110 do
         if placed >= 46 then break end
         local x, z = rnd(-H, H), rnd(-H, H)
-        -- keep the central battlefield and the mine clear
-        if (math.abs(x) > 14.0 or math.abs(z + 2.0) > 13.0)
-            and U.dist2(x, z, World.mine.x, World.mine.z) > 8.0 then
+        if (math.abs(x) > 14.0 or math.abs(z + 2.0) > 13.0) and clear_of_structures(x, z) then
             make_tree(root, x, z, rnd(0.8, 1.4))
             placed = placed + 1
         end
     end
     for _ = 1, 18 do
         local x, z = rnd(-H + 2, H - 2), rnd(-H + 2, H - 2)
-        if math.abs(x) > 12.0 or math.abs(z + 2.0) > 11.0 then
+        if (math.abs(x) > 12.0 or math.abs(z + 2.0) > 11.0) and clear_of_structures(x, z) then
             make_rock(root, x, z, rnd(0.6, 1.3))
         end
     end

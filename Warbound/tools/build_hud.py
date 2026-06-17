@@ -60,6 +60,10 @@ def build_hud(nodes_len_before, ui_root_index):
     g = ui_root_index
     M = 20.0  # margin
     nodes = [{"name": "UI_Root", "local_matrix": mat(1, 1, 0, 0), "parent": -1}]
+    # Minimap / Portrait / Command are authored, visible panels (dark fill + edge): they
+    # render their own frame so the editor (stopped) shows the real HUD chrome. The script
+    # adopts each by name, reads its laid-out rect (get_ui_rect), and draws the dynamic
+    # content (dots, bars, buttons, text) inside it; no_input so they never steal clicks.
     # 1=top  bottom-left minimap
     nodes.append(ui_node("HUD_Minimap", "hud_minimap", 300, 300, [0, 1], [0, 1], M, -M, g,
                          fill=PANEL, border=EDGE))

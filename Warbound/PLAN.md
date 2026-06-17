@@ -64,15 +64,19 @@ The runtime exposes no screen→world pick. `wb_camera` builds it from the camer
 | `wb_orders.lua`    | issue move/attack orders, per-frame steering + separation, arrival |
 | `wb_combat.lua`    | acquire targets, auto-attack, damage, death, hero XP/leveling |
 | `wb_abilities.lua` | hero abilities (Warstomp AoE, cooldown + mana) |
-| `wb_hud.lua`       | runtime_ui HUD: minimap, portrait + bars, command card, resource bar, floating HP |
+| `wb_economy.lua`   | slice 2: Laborer harvest state machine, building drop-off + training (reserve pool), food/upkeep |
+| `wb_hud.lua`       | runtime_ui HUD: minimap, portrait + bars, command card (unit + building/train), resource bar, floating HP |
 | `wb_game.lua`      | orchestrator: owns world state, `init()` builds the match, `update(dt)` ticks subsystems |
 
 ## Roadmap
 
-- **Slice 1 (now): Hero + Squad combat.** Camera, selection, movement, auto-combat, a
-  hero with one active ability + leveling, an enemy camp to clear, full HUD. ← current
-- **Slice 2: Economy + base-building.** Gather gold from the mine + lumber from trees,
-  a Town Hall + Barracks, train units, food/upkeep.
+- **Slice 1 (done): Hero + Squad combat.** Camera, selection, movement, auto-combat, a
+  hero with one active ability + leveling, an enemy camp to clear, full HUD.
+- **Slice 2 (first cut done): Economy + base-building.** Laborers harvest gold (mine) +
+  lumber (forest grove) and deposit at the nearest building; Town Hall + Barracks train
+  units from a parked reserve pool; food/upkeep (cap = sum of building food). Gameplay
+  runs at `GAME_SPEED` (0.5). ← current; next: building placement UI, rally points,
+  enemy economy. (See `wb_economy.lua`.)
 - **Slice 3: Tech + abilities.** Upgrades, a second hero, more abilities, items.
 - **Slice 4: Enemy AI.** A scripted opponent that builds and attacks.
 - **Slice 5: Art pass.** Swap primitive rigs for CC0/original 3D models; map decoration.

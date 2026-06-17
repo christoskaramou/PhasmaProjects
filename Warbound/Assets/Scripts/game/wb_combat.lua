@@ -26,7 +26,7 @@ end
 -- move/attack order; it only kicks in for idle (defend) and hold (attack-in-place).
 function Combat.acquire(player_units, enemy_units)
     for _, u in ipairs(player_units) do
-        if u.alive then
+        if u.alive and not u.no_combat then -- Laborers never auto-engage (they harvest)
             if u.order == "idle" then
                 local foe = nearest(u, enemy_units, PLAYER_AGGRO)
                 if foe then u.order = "attack"; u.target = foe; u.attack_move = true end

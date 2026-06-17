@@ -74,6 +74,10 @@ local function body_label(name)
     return name
 end
 
+local function marker_label(name)
+    return name or ""
+end
+
 local function follow_picker_label(props)
     return "Follow: " .. body_label(props.follow) .. (state.follow_picker_open and " [close]" or " [pick]")
 end
@@ -112,6 +116,7 @@ function M.init(ctx)
     M.bodies = build_body_list(ctx)
     state.follow_picker_open = false
     runtime_ui.set_title(PANEL, "PhasmaSpace")
+    runtime_ui.set_screen_scrollable(PANEL, true)
     runtime_ui.set_bool(PANEL, "orbits", "Orbit Lines", state.orbits_visible)
     runtime_ui.set_bool(PANEL, "markers", "Body Markers", state.markers_on)
     runtime_ui.set_bool(PANEL, "auto_exp", "Auto Exposure", ctx.props.auto_exposure)
@@ -170,6 +175,8 @@ local function update_markers(ctx)
     if not surf or not surf.valid then return end
     local sw, sh = surf.w, surf.h
     if not sw or not sh or sw <= 0 or sh <= 0 then return end
+    local ui_scale = surf.ui_scale or 1.0
+    local marker_font_scale = 1.0 / math.max(1.0, ui_scale)
 
     local vp = cam:get_view_projection()
     local cp = cam:get_position()
@@ -200,11 +207,12 @@ local function update_markers(ctx)
                         -- engine NDC is y-down: +y maps down the screen
                         local sx = (nx * 0.5 + 0.5) * sw
                         local sy = (ny * 0.5 + 0.5) * sh
-                        local label = body_label(name)
+                        local label = marker_label(name)
                         local width = math.min(170.0, math.max(90.0, #label * 7.5 + 24.0))
                         runtime_ui.set_quad(MARKERS, id, {
                             x = sx - width * 0.5, y = sy + 8.0, width = width, height = 32.0,
-                            label = label, font_scale = 1.0, visible = true,
+                            label = label, font_scale = marker_font_scale, visible = true,
+                            style = "button", align_h = "center", align_v = "middle",
                             -- colors are plain tables: vec4 userdata is ignored by ReadColorOption
                             fill = { 0.05, 0.09, 0.16, 0.55 },
                             accent = { 0.05, 0.09, 0.16, 0.0 },
