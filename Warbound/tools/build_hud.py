@@ -20,7 +20,6 @@ SCENE = os.path.join(os.path.dirname(__file__), "..", "Assets", "Scenes", "skirm
 
 PANEL = [0.06, 0.07, 0.10, 0.92]
 EDGE = [0.45, 0.38, 0.22, 0.95]
-POOL_SIZE = 160  # preallocated generic quad nodes the HUD script reuses (enable/disable)
 INK = [0.93, 0.95, 0.99, 1.0]
 GOLD = [0.95, 0.78, 0.22, 1.0]
 GREEN = [0.36, 0.82, 0.40, 1.0]
@@ -86,18 +85,6 @@ def build_hud(nodes_len_before, ui_root_index):
     nodes.append(ui_node("HUD_Objective", "hud_objective", 1000, 70, [0.5, 0], [0.5, 0], 0, M, g,
                          wtype="text", body="Clear the Wilds camp", text_color=INK,
                          font_scale=1.6, align_h=2, align_v=2))
-
-    # ---- preallocated quad pool ------------------------------------------------
-    # Generic, initially-DISABLED panel nodes (anchor/pivot 0,0 so translation = surface-px
-    # origin). The HUD script drives ALL variable-count dynamic content (floating HP bars,
-    # minimap dots, selection box, portrait fields) by acquiring a pool node and calling
-    # set_enabled + set_position + set_scale + set_ui, then disabling the unused ones — so
-    # nothing is created at runtime (no widget-creation spike, no per-frame quad allocation).
-    for i in range(POOL_SIZE):
-        n = ui_node("Pool_%04d" % i, "pool_%04d" % i, 1.0, 1.0, [0, 0], [0, 0], 0.0, 0.0, g,
-                    wtype="panel", no_input=True)
-        n["enabled"] = False
-        nodes.append(n)
     return nodes
 
 

@@ -46,7 +46,7 @@ local function quad(id, x, y, w, h, fill, opts)
         accent = { 0, 0, 0, 0 },
         text_color = opts.text_color or U.COLOR.ink,
         font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0),
-        text_align_h = opts.align or "left",
+        align_h = opts.align or "left",
         no_input = (opts.no_input ~= false),
         selected = opts.selected,
     })
@@ -65,7 +65,7 @@ local function button(id, x, y, w, h, fill, opts)
         accent = { 0, 0, 0, 0 },
         text_color = opts.text_color or U.COLOR.ink,
         font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0),
-        text_align_h = "center",
+        align_h = "center",
         no_input = false,
     })
     local st = runtime_ui.get_state and runtime_ui.get_state(SCREEN, id) or nil
@@ -92,107 +92,6 @@ local function adopt()
         for _, k in ipairs({ "Minimap", "Portrait", "Command", "Resources", "Fps", "Objective" }) do
             nodes[k] = scene.find_model("HUD_" .. k)
         end
-    end
-end
-
--- ---- preallocated quad pool ---------------------------------------------------
--- Generic disabled panel nodes authored in the scene (Pool_####, tools/build_hud.py). The
--- HUD reuses them for variable-count dynamic content: pquad() acquires the next node and
--- enables + positions + scales + colors it; leftovers are disabled at frame end. No runtime
--- widget creation and no per-frame allocation (the vec3 / color / set_ui args are reused).
-local pool = nil
-local pool_n = 0
-local ppos = vec3(0.0, 0.0, 0.0)   -- reused set_position arg
-local pscl = vec3(1.0, 1.0, 1.0)   -- reused set_scale arg
-local pfill = { 0.0, 0.0, 0.0, 0.0 } -- reused fill color
-local pborder = { 0.0, 0.0, 0.0, 0.0 } -- reused border color
-local parg = { fill = pfill, border = pborder, body = "", title = "", font_scale = 1.0, text_align_h = "left" } -- reused set_ui arg
-local MM_BG = { 0.12, 0.16, 0.10, 1.0 } -- reused minimap background color
-local BAR_BG = { 0.04, 0.05, 0.06, 0.95 } -- reused bar bg
-local BAR_EDGE = { 0.2, 0.2, 0.24, 0.95 } -- reused bar border
-local CC_HINT_FILL = { 0.10, 0.12, 0.16, 0.9 } -- reused move/gather label fill
-local CC_ATK_FILL = { 0.16, 0.11, 0.11, 0.9 }  -- reused attack label fill
-
-local function pool_adopt()
-    if pool then return end
-    pool = {}
-    if not (scene and scene.find_model) then return end
-    local i = 0
-    while true do
-        local n = scene.find_model(string.format("Pool_%04d", i))
-        if not (n and U.valid(n)) then break end
-        if n.set_enabled then n:set_enabled(false) end
-        pool[#pool + 1] = n
-        i = i + 1
-    end
-end
-
--- Claim the next pool node, enable it, place it at surface-px (x,y) with size (w,h).
-local function pacquire(x, y, w, h)
-    pool_n = pool_n + 1
-    local n = pool and pool[pool_n]
-    if not n then return nil end
-    n:set_enabled(true)
-    ppos.x, ppos.y, ppos.z = x, y, 0.0
-    n:set_position(ppos)
-    pscl.x, pscl.y, pscl.z = math.max(w, 0.001), math.max(h, 0.001), 1.0
-    n:set_scale(pscl)
-    return n
-end
-
--- Filled (optionally bordered) panel from the pool.
-local function pquad(x, y, w, h, fill, border)
-    local n = pacquire(x, y, w, h)
-    if not n then return end
-    pfill[1], pfill[2], pfill[3], pfill[4] = fill[1], fill[2], fill[3], fill[4]
-    if border then
-        pborder[1], pborder[2], pborder[3], pborder[4] = border[1], border[2], border[3], border[4]
-    else
-        pborder[1], pborder[2], pborder[3], pborder[4] = 0.0, 0.0, 0.0, 0.0
-    end
-    parg.body = ""
-    parg.title = ""
-    parg.font_scale = 1.0
-    parg.text_align_h = "left"
-    parg.text_color = nil
-    if n.set_ui then n:set_ui(parg) end
-end
-
--- Text label from the pool. fill/border default transparent; optional title above body.
-local function ptext(x, y, w, h, body, font_scale, align, text_color, title, fill, border)
-    local n = pacquire(x, y, w, h)
-    if not n then return end
-    if fill then
-        pfill[1], pfill[2], pfill[3], pfill[4] = fill[1], fill[2], fill[3], fill[4]
-    else
-        pfill[1], pfill[2], pfill[3], pfill[4] = 0.0, 0.0, 0.0, 0.0
-    end
-    if border then
-        pborder[1], pborder[2], pborder[3], pborder[4] = border[1], border[2], border[3], border[4]
-    else
-        pborder[1], pborder[2], pborder[3], pborder[4] = 0.0, 0.0, 0.0, 0.0
-    end
-    parg.body = U.ascii(body or "")
-    parg.title = title and U.ascii(title) or ""
-    parg.font_scale = (font_scale or 1.0) / (uiscale or 1.0)
-    parg.text_align_h = align or "left"
-    parg.text_color = text_color or U.COLOR.ink
-    if n.set_ui then n:set_ui(parg) end
-end
-
--- Progress bar (bg + fill + optional centered label), all from the pool.
-local function pbar(x, y, w, h, pct, color, label)
-    pct = U.clamp(pct or 0.0, 0.0, 1.0)
-    pquad(x, y, w, h, BAR_BG, BAR_EDGE)
-    pquad(x, y, w * pct, h, color)
-    if label then ptext(x, y - h * 0.15, w, h, label, 0.95, "center") end
-end
-
--- Disable any pool nodes not claimed this frame.
-local function pool_end()
-    if not pool then return end
-    for i = pool_n + 1, #pool do
-        if pool[i] and pool[i].set_enabled then pool[i]:set_enabled(false) end
     end
 end
 
@@ -237,25 +136,25 @@ local function draw_minimap(state)
     local x, y, w, h = panel_rect("Minimap", M, sh - M - 300, 300, 300)
     local pad = w * 0.05
     local mx, my, mw, mh = x + pad, y + pad, w - pad * 2, h - pad * 2
-    pquad(mx, my, mw, mh, MM_BG)
+    quad("mm_bg", mx, my, mw, mh, { 0.12, 0.16, 0.10, 1.0 }, { no_input = true })
 
     local b = World.bounds
     local rx, rz = (b.max_x - b.min_x), (b.max_z - b.min_z)
-    local function plot(wx, wz, col, size)
+    local function plot(id, wx, wz, col, size)
         local px = mx + ((wx - b.min_x) / rx) * mw
         local py = my + ((wz - b.min_z) / rz) * mh
-        pquad(px - size * 0.5, py - size * 0.5, size, size, col)
+        quad(id, px - size * 0.5, py - size * 0.5, size, size, col, { no_input = true })
     end
-    plot(World.mine.x, World.mine.z, U.COLOR.gold, 7)
-    if World.forest then plot(World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
+    plot("mm_mine", World.mine.x, World.mine.z, U.COLOR.gold, 7)
+    if World.forest then plot("mm_forest", World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
     for _, b in ipairs(state.buildings or {}) do
-        if b.alive then plot(b.x, b.z, U.COLOR.player_trim, 9) end
+        if b.alive then plot("mm_b" .. (b.id or 0), b.x, b.z, U.COLOR.player_trim, 9) end
     end
     for _, e in ipairs(state.enemy_units) do
-        if e.alive then plot(e.x, e.z, U.COLOR.enemy, 5) end
+        if e.alive then plot("mm_e" .. e.id, e.x, e.z, U.COLOR.enemy, 5) end
     end
     for _, u in ipairs(state.player_units) do
-        if u.alive then plot(u.x, u.z, u.is_hero and U.COLOR.hero_trim or U.COLOR.player, u.is_hero and 7 or 5) end
+        if u.alive then plot("mm_p" .. u.id, u.x, u.z, u.is_hero and U.COLOR.hero_trim or U.COLOR.player, u.is_hero and 7 or 5) end
     end
 
     -- click-to-recenter hit area
@@ -272,11 +171,6 @@ end
 
 -- ---- selected-unit portrait (inside the authored HUD_Portrait panel) -----------
 
-local PORT_FACE = { 0.0, 0.0, 0.0, 1.0 } -- reused portrait face color (rgb set per draw)
-local PORT_HEAD = { 0.95, 0.92, 0.85, 1.0 }
-local PORT_XP = { 0.7, 0.5, 0.95, 1.0 }
-local BLDG_FACE = { 0.5, 0.52, 0.6, 1.0 }
-
 local function draw_portrait(state)
     local M = 20.0
     local x, y, w, h = panel_rect("Portrait", M * 2 + 300, sh - M - 300, 560, 300)
@@ -286,49 +180,51 @@ local function draw_portrait(state)
     local bsel = WB.selection.building
     if bsel then
         local face = h * 0.42
-        pquad(x + pad, y + pad, face, face, BLDG_FACE, U.COLOR.panel_edge)
-        pquad(x + pad + face * 0.22, y + pad + face * 0.5, face * 0.56, face * 0.3, U.COLOR.roof)
+        quad("port_face", x + pad, y + pad, face, face, { 0.5, 0.52, 0.6, 1.0 }, { border = U.COLOR.panel_edge, no_input = true })
+        quad("port_head", x + pad + face * 0.22, y + pad + face * 0.5, face * 0.56, face * 0.3, U.COLOR.roof, { no_input = true })
         local tx = x + pad + face + 14.0
         local tw = w - pad - (tx - x)
-        ptext(tx, y + pad, tw, 30.0, bsel.display, 1.2, "left")
+        quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 }, { body = bsel.display, font_scale = 1.2, no_input = true })
         local hp_pct = (bsel.hp or 1) / (bsel.hp_max or 1)
-        pbar(tx, y + pad + 44.0, tw, 30.0, hp_pct, U.COLOR.hp_good,
+        bar("port_hp", tx, y + pad + 44.0, tw, 30.0, hp_pct, U.COLOR.hp_good,
             string.format("%d / %d", math.floor((bsel.hp or 0) + 0.5), math.floor((bsel.hp_max or 0) + 0.5)))
         local foodtxt = (bsel.food_cap or 0) > 0 and string.format("Supplies %d food", bsel.food_cap) or ""
-        ptext(x + pad, y + h - 38.0, w - pad * 2, 30.0, foodtxt, 1.0, "left")
+        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+            { body = foodtxt, font_scale = 1.0, no_input = true })
         return
     end
 
     if #sel == 0 then
-        ptext(x + pad, y + pad, w - pad * 2, h * 0.18, "No unit selected", 1.1, "left")
+        quad("port_empty", x + pad, y + pad, w - pad * 2, h * 0.18, { 0, 0, 0, 0 },
+            { body = "No unit selected", font_scale = 1.1, no_input = true })
         return
     end
 
     local u = sel[1]
     local face = h * 0.42
     local col = u.is_hero and U.COLOR.hero or (u.faction == "player" and U.COLOR.player or U.COLOR.enemy)
-    PORT_FACE[1], PORT_FACE[2], PORT_FACE[3] = col[1], col[2], col[3]
-    pquad(x + pad, y + pad, face, face, PORT_FACE, U.COLOR.panel_edge)
-    pquad(x + pad + face * 0.3, y + pad + face * 0.22, face * 0.4, face * 0.4, PORT_HEAD)
+    quad("port_face", x + pad, y + pad, face, face, { col[1], col[2], col[3], 1.0 }, { border = U.COLOR.panel_edge, no_input = true })
+    quad("port_head", x + pad + face * 0.3, y + pad + face * 0.22, face * 0.4, face * 0.4, { 0.95, 0.92, 0.85, 1.0 }, { no_input = true })
 
     local tx = x + pad + face + 14.0
     local tw = w - pad - (tx - x)
     local namestr = u.display .. (u.is_hero and ("  Lv " .. (u.level or 1)) or "")
     if #sel > 1 then namestr = namestr .. "   (+" .. (#sel - 1) .. ")" end
-    ptext(tx, y + pad, tw, 30.0, namestr, 1.2, "left")
+    quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 }, { body = namestr, font_scale = 1.2, no_input = true })
 
     local by = y + pad + 44.0
     local hp_pct = u.hp / u.hp_max
     local hp_col = hp_pct > 0.5 and U.COLOR.hp_good or (hp_pct > 0.25 and U.COLOR.hp_warn or U.COLOR.hp_low)
-    pbar(tx, by, tw, 30.0, hp_pct, hp_col,
+    bar("port_hp", tx, by, tw, 30.0, hp_pct, hp_col,
         string.format("%d / %d", math.floor(u.hp + 0.5), math.floor(u.hp_max + 0.5)))
     if u.is_hero then
-        pbar(tx, by + 42.0, tw, 24.0, (u.mana or 0) / (u.mana_max or 1), U.COLOR.mana,
+        bar("port_mp", tx, by + 42.0, tw, 24.0, (u.mana or 0) / (u.mana_max or 1), U.COLOR.mana,
             string.format("Mana %d / %d", math.floor(u.mana or 0), math.floor(u.mana_max or 0)))
-        pbar(tx, by + 78.0, tw, 16.0, (u.xp or 0) / (u.xp_to_level or 1), PORT_XP, nil)
+        bar("port_xp", tx, by + 78.0, tw, 16.0, (u.xp or 0) / (u.xp_to_level or 1), { 0.7, 0.5, 0.95 }, nil)
     end
-    ptext(x + pad, y + h - 38.0, w - pad * 2, 30.0,
-        string.format("Damage %d    Armor %d%%", math.floor(u.dps + 0.5), math.floor((u.armor or 0) * 100 + 0.5)), 1.0, "left")
+    quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+        { body = string.format("Damage %d    Armor %d%%", math.floor(u.dps + 0.5), math.floor((u.armor or 0) * 100 + 0.5)),
+          font_scale = 1.0, no_input = true })
 end
 
 -- ---- command card (buttons inside the authored HUD_Command panel) --------------
@@ -361,37 +257,39 @@ local function draw_command_card(state)
             if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, bsel) end
             local why = ({ gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" })[status]
             if why then
-                local wx, wy = slot(1, 0)
-                ptext(wx, wy, bw, bh, why, 0.9, "center")
+                quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, { 0, 0, 0, 0 },
+                    { body = why, font_scale = 0.9, no_input = true, align = "center" })
             end
             if bsel.queue and #bsel.queue > 0 then
                 local j = bsel.queue[1]
                 local pct = 1.0 - U.clamp((j.t or 0) / (j.total or 1), 0.0, 1.0)
                 local bx, by = slot(0, 2)
-                pbar(bx, by + bh * 0.2, w - pad * 2, bh * 0.5, pct, U.COLOR.player,
+                bar("cc_q", bx, by + bh * 0.2, w - pad * 2, bh * 0.5, pct, U.COLOR.player,
                     string.format("Training... %d%%   (%d in queue)", math.floor(pct * 100 + 0.5), #bsel.queue))
             end
         else
-            ptext(x + pad, y + pad, w - pad * 2, h - pad * 2, bsel.display, 1.1, "center")
+            quad("cc_bhint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+                { body = bsel.display, font_scale = 1.1, no_input = true, align = "center" })
         end
         return
     end
 
     if #sel == 0 then
-        ptext(x + pad, y + pad, w - pad * 2, h - pad * 2, "Select a unit or building\n(left-click / drag)", 1.0, "left")
+        quad("cc_hint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+            { body = "Select a unit or building\n(left-click / drag)", font_scale = 1.0, no_input = true })
         return
     end
 
     if btn(0, 0, "stop", "Stop", "S", { 0.15, 0.13, 0.13, 0.95 }) then WB.orders.stop(sel) end
     if btn(1, 0, "hold", "Hold", "H", { 0.13, 0.15, 0.13, 0.95 }) then WB.orders.hold(sel) end
     if sel[1] and sel[1].arch == "worker" then
-        local gx, gy = slot(0, 1)
-        ptext(gx, gy, bw * 2 + pad, bh, "right-click mine / forest", 0.8, "center", nil, "Gather", CC_HINT_FILL)
+        quad("cc_gather", select(1, slot(0, 1)), select(2, slot(0, 1)), bw * 2 + pad, bh, { 0.10, 0.12, 0.16, 0.9 },
+            { title = "Gather", body = "right-click mine / forest", font_scale = 0.8, no_input = true, align = "center" })
     end
-    local mx2, my2 = slot(2, 0)
-    ptext(mx2, my2, bw, bh, "right-click", 0.85, "center", nil, "Move", CC_HINT_FILL)
-    local ax, ay = slot(3, 0)
-    ptext(ax, ay, bw, bh, "rt-clk foe", 0.85, "center", nil, "Attack", CC_ATK_FILL)
+    quad("cc_move", select(1, slot(2, 0)), select(2, slot(2, 0)), bw, bh, { 0.10, 0.12, 0.16, 0.9 },
+        { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" })
+    quad("cc_atk", select(1, slot(3, 0)), select(2, slot(3, 0)), bw, bh, { 0.16, 0.11, 0.11, 0.9 },
+        { title = "Attack", body = "rt-clk foe", font_scale = 0.85, no_input = true, align = "center" })
 
     local hero = sel[1]
     if hero and hero.is_hero then
@@ -437,8 +335,6 @@ end
 
 -- ---- floating health bars + selection box (screen overlays) --------------------
 
-local HP_BG = { 0.02, 0.02, 0.03, 0.9 } -- reused bg color for pooled HP bars
-
 local function draw_floating_hp(state)
     local function maybe(u, always)
         if not u.alive then return end
@@ -451,24 +347,24 @@ local function draw_floating_hp(state)
         local pct = u.hp / u.hp_max
         local col = u.faction == "player" and U.COLOR.hp_good or U.COLOR.hp_low
         if pct <= 0.3 then col = U.COLOR.hp_low elseif pct <= 0.6 and u.faction == "player" then col = U.COLOR.hp_warn end
-        pquad(px - w * 0.5 - 1, py - 7, w + 2, 7, HP_BG)        -- bg (pooled, no alloc)
-        pquad(px - w * 0.5, py - 6, w * pct, 5, col)            -- fill
+        local id = "fh" .. u.id
+        quad(id .. "_bg", px - w * 0.5 - 1, py - 7, w + 2, 7, { 0.02, 0.02, 0.03, 0.9 }, { no_input = true })
+        quad(id .. "_fg", px - w * 0.5, py - 6, w * pct, 5, col, { no_input = true })
     end
     for _, e in ipairs(state.enemy_units) do maybe(e, true) end
     for _, u in ipairs(state.player_units) do maybe(u, u.selected) end
 end
-
-local SEL_BOX = { 0.4, 0.95, 0.5, 0.9 } -- reused selection-box edge color
 
 local function draw_select_box()
     local b = WB.selection.box
     if b.active then
         local x0, y0 = math.min(b.x0, b.x1), math.min(b.y0, b.y1)
         local w, h = math.abs(b.x1 - b.x0), math.abs(b.y1 - b.y0)
-        pquad(x0, y0, w, 2, SEL_BOX)
-        pquad(x0, y0 + h, w, 2, SEL_BOX)
-        pquad(x0, y0, 2, h, SEL_BOX)
-        pquad(x0 + w, y0, 2, h, SEL_BOX)
+        local c = { 0.4, 0.95, 0.5, 0.9 }
+        quad("selbox_t", x0, y0, w, 2, c, { no_input = true })
+        quad("selbox_b", x0, y0 + h, w, 2, c, { no_input = true })
+        quad("selbox_l", x0, y0, 2, h, c, { no_input = true })
+        quad("selbox_r", x0 + w, y0, 2, h, c, { no_input = true })
     end
 end
 
@@ -481,7 +377,6 @@ end
 function Hud.reset()
     shown = false
     nodes = nil
-    pool = nil
     dyn_now = {}
     dyn_prev = {}
     for i = #panels, 1, -1 do panels[i] = nil end
@@ -496,10 +391,8 @@ function Hud.update(state)
         if runtime_ui.show then pcall(runtime_ui.show, SCREEN) end
     end
     adopt()
-    pool_adopt()
     refresh_surface()
     dyn_now = {}
-    pool_n = 0
     for i = #panels, 1, -1 do panels[i] = nil end
 
     draw_minimap(state)
@@ -509,7 +402,6 @@ function Hud.update(state)
     draw_floating_hp(state)
     draw_select_box()
 
-    pool_end() -- disable pool nodes not claimed this frame
     for id in pairs(dyn_prev) do
         if not dyn_now[id] then runtime_ui.remove(SCREEN, id) end
     end
