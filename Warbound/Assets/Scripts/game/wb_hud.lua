@@ -95,6 +95,54 @@ local function adopt()
     end
 end
 
+-- ---- preallocated quad pool ---------------------------------------------------
+-- Generic disabled panel nodes authored in the scene (Pool_####, tools/build_hud.py). The
+-- HUD reuses them for variable-count dynamic content: pquad() acquires the next node and
+-- enables + positions + scales + colors it; leftovers are disabled at frame end. No runtime
+-- widget creation and no per-frame allocation (the vec3 / color / set_ui args are reused).
+local pool = nil
+local pool_n = 0
+local ppos = vec3(0.0, 0.0, 0.0)   -- reused set_position arg
+local pscl = vec3(1.0, 1.0, 1.0)   -- reused set_scale arg
+local pfill = { 0.0, 0.0, 0.0, 0.0 } -- reused fill color
+local parg = { fill = pfill }      -- reused set_ui arg (only fill is driven)
+
+local function pool_adopt()
+    if pool then return end
+    pool = {}
+    if not (scene and scene.find_model) then return end
+    local i = 0
+    while true do
+        local n = scene.find_model(string.format("Pool_%04d", i))
+        if not (n and U.valid(n)) then break end
+        if n.set_enabled then n:set_enabled(false) end
+        pool[#pool + 1] = n
+        i = i + 1
+    end
+end
+
+-- Acquire the next pool node at surface-px (x,y), size (w,h), fill color.
+local function pquad(x, y, w, h, fill)
+    pool_n = pool_n + 1
+    local n = pool and pool[pool_n]
+    if not n then return end
+    n:set_enabled(true)
+    ppos.x, ppos.y, ppos.z = x, y, 0.0
+    n:set_position(ppos)
+    pscl.x, pscl.y, pscl.z = math.max(w, 0.001), math.max(h, 0.001), 1.0
+    n:set_scale(pscl)
+    pfill[1], pfill[2], pfill[3], pfill[4] = fill[1], fill[2], fill[3], fill[4]
+    if n.set_ui then n:set_ui(parg) end
+end
+
+-- Disable any pool nodes not claimed this frame.
+local function pool_end()
+    if not pool then return end
+    for i = pool_n + 1, #pool do
+        if pool[i] and pool[i].set_enabled then pool[i]:set_enabled(false) end
+    end
+end
+
 -- HUD panel rects (surface px), so the camera can suppress edge-scroll over them.
 local panels = {}
 local function add_panel(x, y, w, h) panels[#panels + 1] = { x, y, w, h } end
@@ -335,6 +383,8 @@ end
 
 -- ---- floating health bars + selection box (screen overlays) --------------------
 
+local HP_BG = { 0.02, 0.02, 0.03, 0.9 } -- reused bg color for pooled HP bars
+
 local function draw_floating_hp(state)
     local function maybe(u, always)
         if not u.alive then return end
@@ -347,9 +397,8 @@ local function draw_floating_hp(state)
         local pct = u.hp / u.hp_max
         local col = u.faction == "player" and U.COLOR.hp_good or U.COLOR.hp_low
         if pct <= 0.3 then col = U.COLOR.hp_low elseif pct <= 0.6 and u.faction == "player" then col = U.COLOR.hp_warn end
-        local id = "fh" .. u.id
-        quad(id .. "_bg", px - w * 0.5 - 1, py - 7, w + 2, 7, { 0.02, 0.02, 0.03, 0.9 }, { no_input = true })
-        quad(id .. "_fg", px - w * 0.5, py - 6, w * pct, 5, col, { no_input = true })
+        pquad(px - w * 0.5 - 1, py - 7, w + 2, 7, HP_BG)        -- bg (pooled, no alloc)
+        pquad(px - w * 0.5, py - 6, w * pct, 5, col)            -- fill
     end
     for _, e in ipairs(state.enemy_units) do maybe(e, true) end
     for _, u in ipairs(state.player_units) do maybe(u, u.selected) end
@@ -377,6 +426,7 @@ end
 function Hud.reset()
     shown = false
     nodes = nil
+    pool = nil
     dyn_now = {}
     dyn_prev = {}
     for i = #panels, 1, -1 do panels[i] = nil end
@@ -391,8 +441,10 @@ function Hud.update(state)
         if runtime_ui.show then pcall(runtime_ui.show, SCREEN) end
     end
     adopt()
+    pool_adopt()
     refresh_surface()
     dyn_now = {}
+    pool_n = 0
     for i = #panels, 1, -1 do panels[i] = nil end
 
     draw_minimap(state)
@@ -402,6 +454,7 @@ function Hud.update(state)
     draw_floating_hp(state)
     draw_select_box()
 
+    pool_end() -- disable pool nodes not claimed this frame
     for id in pairs(dyn_prev) do
         if not dyn_now[id] then runtime_ui.remove(SCREEN, id) end
     end
