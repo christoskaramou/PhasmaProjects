@@ -106,10 +106,12 @@ local ppos = vec3(0.0, 0.0, 0.0)   -- reused set_position arg
 local pscl = vec3(1.0, 1.0, 1.0)   -- reused set_scale arg
 local pfill = { 0.0, 0.0, 0.0, 0.0 } -- reused fill color
 local pborder = { 0.0, 0.0, 0.0, 0.0 } -- reused border color
-local parg = { fill = pfill, border = pborder, body = "", font_scale = 1.0, text_align_h = "left" } -- reused set_ui arg
+local parg = { fill = pfill, border = pborder, body = "", title = "", font_scale = 1.0, text_align_h = "left" } -- reused set_ui arg
 local MM_BG = { 0.12, 0.16, 0.10, 1.0 } -- reused minimap background color
 local BAR_BG = { 0.04, 0.05, 0.06, 0.95 } -- reused bar bg
 local BAR_EDGE = { 0.2, 0.2, 0.24, 0.95 } -- reused bar border
+local CC_HINT_FILL = { 0.10, 0.12, 0.16, 0.9 } -- reused move/gather label fill
+local CC_ATK_FILL = { 0.16, 0.11, 0.11, 0.9 }  -- reused attack label fill
 
 local function pool_adopt()
     if pool then return end
@@ -149,19 +151,29 @@ local function pquad(x, y, w, h, fill, border)
         pborder[1], pborder[2], pborder[3], pborder[4] = 0.0, 0.0, 0.0, 0.0
     end
     parg.body = ""
+    parg.title = ""
     parg.font_scale = 1.0
     parg.text_align_h = "left"
     parg.text_color = nil
     if n.set_ui then n:set_ui(parg) end
 end
 
--- Text label from the pool (transparent fill, transparent border).
-local function ptext(x, y, w, h, body, font_scale, align, text_color)
+-- Text label from the pool. fill/border default transparent; optional title above body.
+local function ptext(x, y, w, h, body, font_scale, align, text_color, title, fill, border)
     local n = pacquire(x, y, w, h)
     if not n then return end
-    pfill[1], pfill[2], pfill[3], pfill[4] = 0.0, 0.0, 0.0, 0.0
-    pborder[1], pborder[2], pborder[3], pborder[4] = 0.0, 0.0, 0.0, 0.0
+    if fill then
+        pfill[1], pfill[2], pfill[3], pfill[4] = fill[1], fill[2], fill[3], fill[4]
+    else
+        pfill[1], pfill[2], pfill[3], pfill[4] = 0.0, 0.0, 0.0, 0.0
+    end
+    if border then
+        pborder[1], pborder[2], pborder[3], pborder[4] = border[1], border[2], border[3], border[4]
+    else
+        pborder[1], pborder[2], pborder[3], pborder[4] = 0.0, 0.0, 0.0, 0.0
+    end
     parg.body = U.ascii(body or "")
+    parg.title = title and U.ascii(title) or ""
     parg.font_scale = (font_scale or 1.0) / (uiscale or 1.0)
     parg.text_align_h = align or "left"
     parg.text_color = text_color or U.COLOR.ink
@@ -349,39 +361,37 @@ local function draw_command_card(state)
             if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, bsel) end
             local why = ({ gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" })[status]
             if why then
-                quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, { 0, 0, 0, 0 },
-                    { body = why, font_scale = 0.9, no_input = true, align = "center" })
+                local wx, wy = slot(1, 0)
+                ptext(wx, wy, bw, bh, why, 0.9, "center")
             end
             if bsel.queue and #bsel.queue > 0 then
                 local j = bsel.queue[1]
                 local pct = 1.0 - U.clamp((j.t or 0) / (j.total or 1), 0.0, 1.0)
                 local bx, by = slot(0, 2)
-                bar("cc_q", bx, by + bh * 0.2, w - pad * 2, bh * 0.5, pct, U.COLOR.player,
+                pbar(bx, by + bh * 0.2, w - pad * 2, bh * 0.5, pct, U.COLOR.player,
                     string.format("Training... %d%%   (%d in queue)", math.floor(pct * 100 + 0.5), #bsel.queue))
             end
         else
-            quad("cc_bhint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
-                { body = bsel.display, font_scale = 1.1, no_input = true, align = "center" })
+            ptext(x + pad, y + pad, w - pad * 2, h - pad * 2, bsel.display, 1.1, "center")
         end
         return
     end
 
     if #sel == 0 then
-        quad("cc_hint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
-            { body = "Select a unit or building\n(left-click / drag)", font_scale = 1.0, no_input = true })
+        ptext(x + pad, y + pad, w - pad * 2, h - pad * 2, "Select a unit or building\n(left-click / drag)", 1.0, "left")
         return
     end
 
     if btn(0, 0, "stop", "Stop", "S", { 0.15, 0.13, 0.13, 0.95 }) then WB.orders.stop(sel) end
     if btn(1, 0, "hold", "Hold", "H", { 0.13, 0.15, 0.13, 0.95 }) then WB.orders.hold(sel) end
     if sel[1] and sel[1].arch == "worker" then
-        quad("cc_gather", select(1, slot(0, 1)), select(2, slot(0, 1)), bw * 2 + pad, bh, { 0.10, 0.12, 0.16, 0.9 },
-            { title = "Gather", body = "right-click mine / forest", font_scale = 0.8, no_input = true, align = "center" })
+        local gx, gy = slot(0, 1)
+        ptext(gx, gy, bw * 2 + pad, bh, "right-click mine / forest", 0.8, "center", nil, "Gather", CC_HINT_FILL)
     end
-    quad("cc_move", select(1, slot(2, 0)), select(2, slot(2, 0)), bw, bh, { 0.10, 0.12, 0.16, 0.9 },
-        { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" })
-    quad("cc_atk", select(1, slot(3, 0)), select(2, slot(3, 0)), bw, bh, { 0.16, 0.11, 0.11, 0.9 },
-        { title = "Attack", body = "rt-clk foe", font_scale = 0.85, no_input = true, align = "center" })
+    local mx2, my2 = slot(2, 0)
+    ptext(mx2, my2, bw, bh, "right-click", 0.85, "center", nil, "Move", CC_HINT_FILL)
+    local ax, ay = slot(3, 0)
+    ptext(ax, ay, bw, bh, "rt-clk foe", 0.85, "center", nil, "Attack", CC_ATK_FILL)
 
     local hero = sel[1]
     if hero and hero.is_hero then
