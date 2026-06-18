@@ -67,6 +67,30 @@ end
 
 function Orders.handle_input(sel, enemy_units, mouse_in_ui)
     local down = input and input.is_right_mouse_down and input.is_right_mouse_down() == true
+
+    -- Building selection: right-click sets the rally point.
+    if WB.selection.building then
+        local b = WB.selection.building
+        if down and not prev_right and not mouse_in_ui then
+            local mx, my = mouse()
+            if mx then
+                local gx, gz = Camera.pick_ground(mx, my)
+                if gx then
+                    local kind = WB.economy and WB.economy.resource_near(gx, gz, "player")
+                    if kind then b.rally_node = kind; b.rally_x, b.rally_z = gx, gz
+                    else b.rally_node = nil; b.rally_x, b.rally_z = gx, gz end
+                    b.rally_set = true
+                    WB.fx_ping(gx, gz, false)
+                    if pe_log then
+                        pe_log(string.format("[rally] %s rally set node=%s", b.display or b.arch or "building", tostring(kind or "none")))
+                    end
+                end
+            end
+        end
+        prev_right = down
+        return
+    end
+
     if down and not prev_right and not mouse_in_ui and #sel > 0 then
         local mx, my = mouse()
         if mx then
@@ -83,11 +107,13 @@ function Orders.handle_input(sel, enemy_units, mouse_in_ui)
                     local workers = {}
                     if kind then
                         for _, u in ipairs(sel) do
-                            if u.alive and u.arch == "worker" then workers[#workers + 1] = u end
+                            if u.alive and u.arch_is_worker then workers[#workers + 1] = u end
                         end
                     end
                     if #workers > 0 then
-                        WB.economy.order_harvest(WB.economy._state, workers, kind)
+                        local _state = WB.game and WB.game.state
+                        local _E = _state and _state.econ and _state.econ.player
+                        if _E then WB.economy.order_harvest(_E, workers, kind) end
                         local movers = {}
                         for _, u in ipairs(sel) do if u.arch ~= "worker" then movers[#movers + 1] = u end end
                         if #movers > 0 then Orders.move_to(movers, gx, gz) end
@@ -137,6 +163,11 @@ function Orders.locomote(dt, units)
             elseif u.order == "attack" and u.target and u.target.alive then
                 pt_x, pt_z = u.target.x, u.target.z
                 stop = u.range * 0.85 + u.target.radius
+            elseif u.order == "build" and u.build_target and u.build_target.alive and u.build_target.state == "site" then
+                local b = u.build_target
+                pt_x, pt_z, stop = b.x, b.z, (b.radius + 1.2)
+            elseif u.order == "build" then
+                u.order = "idle"; u.build_target = nil
             end
 
             local face_dx, face_dz = 0.0, 0.0

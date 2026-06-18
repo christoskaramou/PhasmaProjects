@@ -32,13 +32,12 @@ if Loader then
     -- Load order must respect each module's load-time `local X = WB.x` captures:
     -- a module's dependencies must be preloaded before it (util -> world -> camera ...).
     local WB = Loader.preload({
-        "util", "world", "camera", "units", "selection", "orders", "combat", "abilities", "economy", "hud", "game",
+        "util", "world", "camera", "units", "selection", "orders", "combat", "abilities", "economy", "build", "ai", "hud", "game",
     })
     Game = WB.game
 end
 
 local started = false
-local present_set = false
 
 local function ensure_started()
     if started then return end
@@ -62,20 +61,14 @@ local function update(dt)
         local ok, err = pcall(Game.update, dt)
         if not ok and pe_error then pe_error("Warbound: update error: " .. tostring(err)) end
     end
-
-    if not present_set then
-        present_set = true
-        if rhi and rhi.change_present_mode then pcall(rhi.change_present_mode, "fifo") end
-    end
 end
 
 local function destroy()
     if Game and Game.destroy then pcall(Game.destroy) end
     -- The Lua chunk persists across an editor Play -> Stop -> Play cycle, so the next
-    -- Play's init hook must re-run Game.init. Without resetting these the second Play
+    -- Play's init hook must re-run Game.init. Without resetting `started` the second Play
     -- would skip init entirely (stale state, dead game loop while the camera still pans).
     started = false
-    present_set = false
 end
 
 hooks {

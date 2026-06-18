@@ -77,8 +77,19 @@ function Selection.unit_at(sx, sy, units)
 end
 
 -- Handle selection input. `mouse_in_ui` suppresses world clicks over the HUD.
+-- `state` is the match state (used for build confirm/cancel).
 -- Returns nothing; mutates Selection.list/box.
-function Selection.update(player_units, mouse_in_ui)
+function Selection.update(player_units, mouse_in_ui, state)
+    -- Build-placement mode: left-click confirms, right-click cancels; consume the event.
+    if WB.build and WB.build.is_placing and WB.build.is_placing() then
+        local l = input and input.is_left_mouse_down and input.is_left_mouse_down() == true
+        local r = input and input.is_right_mouse_down and input.is_right_mouse_down() == true
+        if l and not prev_down then WB.build.confirm(state) end
+        if r then WB.build.cancel() end
+        prev_down = l
+        return
+    end
+
     local down = input and input.is_left_mouse_down and input.is_left_mouse_down() == true
     local mx, my = mouse()
 

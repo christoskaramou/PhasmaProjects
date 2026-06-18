@@ -75,7 +75,7 @@ Units.ARCH = {
     worker = {
         faction = "player", display = "Laborer", hp = 90, dps = 5, range = 1.2, interval = 1.2,
         speed = 5.6, armor = 0.05, radius = 0.45, scale = 0.85, weapon = "Pick", bounty = 0,
-        no_combat = true,
+        no_combat = true, is_worker = true,
         rig = (function()
             local r = {
                 { kind = "cube", name = "Legs", pos = { 0.0, 0.26, 0.0 }, scale = { 0.46, 0.5, 0.38 }, color = C.worker_trim, emissive = 0.10 },
@@ -91,7 +91,7 @@ Units.ARCH = {
     town_hall = {
         faction = "player", display = "Town Hall", hp = 1500, dps = 0, range = 0.0, interval = 1.0,
         speed = 0.0, armor = 0.5, radius = 3.4, scale = 1.0, bounty = 0,
-        is_building = true, no_combat = true, food_cap = 12, trains = "worker",
+        is_building = true, no_combat = true, food_cap = 12, trains = "worker", is_dropoff = true,
         rig = {
             { kind = "cube", name = "Base", pos = { 0.0, 1.2, 0.0 }, scale = { 5.4, 2.4, 5.0 }, color = C.stone, emissive = 0.07 },
             { kind = "cube", name = "Upper", pos = { 0.0, 3.0, 0.0 }, scale = { 4.2, 1.4, 3.8 }, color = C.stone_dark, emissive = 0.07 },
@@ -119,6 +119,28 @@ Units.ARCH = {
             { kind = "cube", name = "Rack", pos = { 2.0, 0.6, -1.6 }, scale = { 1.8, 1.0, 0.3 }, color = C.rock, emissive = 0.1 },
         },
     },
+    -- Farm: provides food cap, no combat.
+    farm = {
+        faction = "player", display = "Farm", hp = 500, dps = 0, range = 0.0, interval = 1.0,
+        speed = 0.0, armor = 0.3, radius = 1.8, scale = 1.0, bounty = 0,
+        is_building = true, no_combat = true, food_cap = 6,
+        rig = {
+            { kind = "cube", name = "Base", pos = { 0.0, 0.5, 0.0 }, scale = { 3.0, 1.0, 3.0 }, color = C.stone, emissive = 0.07 },
+            { kind = "cube", name = "Crop", pos = { 0.0, 1.1, 0.0 }, scale = { 2.6, 0.3, 2.6 }, color = C.tree_leaf, emissive = 0.10 },
+            { kind = "cube", name = "Post", pos = { 1.2, 0.9, 1.2 }, scale = { 0.2, 1.0, 0.2 }, color = C.tree_trunk, emissive = 0.05 },
+        },
+    },
+    -- Guard Tower: stationary attacker, no_combat NOT set so it fights.
+    tower = {
+        faction = "player", display = "Guard Tower", hp = 700, dps = 22, range = 9.0, interval = 1.1,
+        speed = 0.0, armor = 0.35, radius = 1.6, scale = 1.0, bounty = 0,
+        is_building = true, weapon = nil,
+        rig = {
+            { kind = "cylinder", name = "Shaft", pos = { 0.0, 2.0, 0.0 }, scale = { 1.6, 4.0, 1.6 }, color = C.stone, emissive = 0.07 },
+            { kind = "cube", name = "Crown", pos = { 0.0, 4.2, 0.0 }, scale = { 2.0, 0.6, 2.0 }, color = C.stone_dark, emissive = 0.08 },
+            { kind = "cube", name = "Banner", pos = { 0.0, 3.4, 1.0 }, scale = { 0.8, 1.0, 0.12 }, color = C.player_trim, emissive = 0.2 },
+        },
+    },
     wolf = {
         faction = "enemy", display = "Direwolf", hp = 80, dps = 9, range = 1.4, interval = 0.8,
         speed = 8.2, armor = 0.04, radius = 0.5, scale = 1.0, xp = 30, weapon = nil, bounty = 12,
@@ -136,6 +158,41 @@ Units.ARCH = {
         },
     },
 }
+
+-- Build an enemy variant of a player building arch: same rig shape, enemy colors/faction.
+local function enemy_variant(base, display, trains)
+    local a = {}
+    for k, v in pairs(base) do a[k] = v end
+    a.faction = "enemy"; a.display = display; a.trains = trains
+    a.rig = {}
+    for i, part in ipairs(base.rig) do
+        local p = {}; for k, v in pairs(part) do p[k] = v end
+        if p.color == C.stone or p.color == C.stone_dark then p.color = C.enemy_stone end
+        if p.color == C.roof then p.color = C.enemy_roof end
+        if p.color == C.player or p.color == C.player_trim then p.color = C.enemy end
+        a.rig[i] = p
+    end
+    return a
+end
+
+Units.ARCH.enemy_town_hall = enemy_variant(Units.ARCH.town_hall, "Wilds Den", "wilds_worker")
+Units.ARCH.enemy_town_hall.is_dropoff = true
+Units.ARCH.enemy_barracks  = enemy_variant(Units.ARCH.barracks,  "Wilds Pit", "grunt")
+Units.ARCH.enemy_farm      = enemy_variant(Units.ARCH.farm,      "Wilds Pen", nil)
+Units.ARCH.enemy_tower     = enemy_variant(Units.ARCH.tower,     "Wilds Spire", nil)
+Units.ARCH.enemy_tower.dps = 20
+
+Units.ARCH.wilds_worker = (function()
+    local w = {}; for k, v in pairs(Units.ARCH.worker) do w[k] = v end
+    w.faction = "enemy"; w.display = "Ravager"
+    w.rig = {}
+    for i, part in ipairs(Units.ARCH.worker.rig) do
+        local p = {}; for k, v in pairs(part) do p[k] = v end
+        if p.color == C.worker or p.color == C.worker_trim then p.color = C.enemy end
+        w.rig[i] = p
+    end
+    return w
+end)()
 
 -- ---- rig construction + pooling ----------------------------------------------
 
@@ -188,6 +245,8 @@ local function make_unit_table(arch_name, root, parts, ring, x, z)
         no_combat = arch.no_combat or false,
         food_cap = arch.food_cap or 0,
         xp_value = arch.xp or 0,
+        arch_is_worker = arch.is_worker == true,
+        is_dropoff = arch.is_dropoff == true,
     }
     if arch.is_hero then
         unit.level = 1; unit.xp = 0; unit.xp_to_level = 100
@@ -227,7 +286,9 @@ function Units.adopt(node_name, arch_name, x, z)
     -- and enable the selection ring ONCE (it is authored set_enabled(false)) so selecting a
     -- unit later is a cheap set_visible toggle rather than a raster-instance rebuild.
     for _, c in pairs(parts) do if U.valid(c) then c:set_visible(true) end end
-    if U.valid(ring) then ring:set_enabled(true); ring:set_visible(false) end
+    -- Enabled (so selection is a cheap set_visible flip) but parked below the world: an
+    -- enabled+hidden ring is still drawn by the shadow pass and would cast a disc shadow.
+    if U.valid(ring) then ring:set_enabled(true); ring:set_visible(false); ring:set_position(vec3(0.0, PARK_Y, 0.0)) end
     return make_unit_table(arch_name, root, parts, ring, x, z)
 end
 
@@ -261,7 +322,14 @@ end
 
 function Units.set_selected(unit, on)
     unit.selected = on
-    if U.valid(unit.ring) then unit.ring:set_visible(on == true) end
+    if U.valid(unit.ring) then
+        unit.ring:set_visible(on == true)
+        -- The ring stays set_enabled(true) so showing it is a cheap visibility flip (no
+        -- raster rebuild). But set_visible only culls the MAIN view -- the shadow pass
+        -- renders every enabled mesh, so an enabled+hidden ring still casts a disc shadow
+        -- on the ground. Park the hidden ring far below the world so it casts nothing.
+        unit.ring:set_position(vec3(0.0, on and 0.05 or PARK_Y, 0.0))
+    end
 end
 
 -- Per-frame cosmetics: a little walk bob, a weapon swing on attack, and a hit

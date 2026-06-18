@@ -61,6 +61,7 @@ U.COLOR = {
     stone       = { 0.55, 0.53, 0.49 },
     stone_dark  = { 0.42, 0.40, 0.37 },
     roof        = { 0.30, 0.34, 0.52 },  -- Ironhold slate-blue roof
+    enemy_stone = { 0.34, 0.20, 0.18 }, enemy_roof = { 0.55, 0.16, 0.12 },
     -- world
     grass       = { 0.28, 0.42, 0.20 },
     grass_dark  = { 0.22, 0.34, 0.16 },

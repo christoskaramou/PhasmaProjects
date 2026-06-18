@@ -19,12 +19,25 @@ Game.GAME_SPEED = GAME_SPEED
 
 local state = {
     player_units = {}, enemy_units = {}, all_units = {},
-    buildings = {}, reserves = {},
-    hero = nil, gold = 150, lumber = 80, kills = 0,
-    enemy_alive = 0, player_alive = 0, food_cap = 12,
-    result = nil, time = 0.0,
+    hero = nil, kills = 0,
+    enemy_alive = 0, player_alive = 0,
+    result = nil, time = 0.0, hero_dead = false,
+    econ = nil, -- built in reset_state()
 }
 Game.state = state
+
+local function reset_state()
+    state.player_units = {}; state.enemy_units = {}; state.all_units = {}
+    state.hero = nil; state.kills = 0
+    state.enemy_alive = 0; state.player_alive = 0
+    state.result = nil; state.hero_dead = false; state.time = 0.0
+    state.econ = {
+        player = { faction = "player", gold = 150, lumber = 80, food_cap = 0,
+                   buildings = {}, units = state.player_units, unit_reserves = {}, building_reserves = {} },
+        enemy  = { faction = "enemy",  gold = 150, lumber = 80, food_cap = 0,
+                   buildings = {}, units = state.enemy_units, unit_reserves = {}, building_reserves = {} },
+    }
+end
 
 local actors = nil
 local prev_r = false
@@ -111,6 +124,10 @@ local ROSTER = {
     { name = "Worker_1",    arch = "worker",  x = -12.0, z = 22.5 },
     { name = "Worker_2",    arch = "worker",  x = -13.5, z = 24.0 },
     { name = "Worker_3",    arch = "worker",  x = -10.5, z = 24.5 },
+    -- ---- Wilds starting laborers ---------------------------------------------
+    { name = "WildsWorker_1", arch = "wilds_worker", x = -6.0,  z = -30.0 },
+    { name = "WildsWorker_2", arch = "wilds_worker", x = -8.0,  z = -31.0 },
+    { name = "WildsWorker_3", arch = "wilds_worker", x = -4.0,  z = -31.5 },
     -- ---- training reserves: authored offstage, parked at runtime, activated by
     -- buildings when trained (no geometry is created at runtime). --------------
     { name = "Res_Worker_1",  arch = "worker",  x = -28.0, z = 30.0, reserve = true },
@@ -127,13 +144,52 @@ local ROSTER = {
     { name = "Res_Soldier_6", arch = "soldier", x = -14.0, z = 32.0, reserve = true },
     { name = "Res_Soldier_7", arch = "soldier", x = -12.0, z = 30.0, reserve = true },
     { name = "Res_Soldier_8", arch = "soldier", x = -12.0, z = 32.0, reserve = true },
+    -- ---- Wilds unit reserves -------------------------------------------------
+    { name = "ERes_wworker_1", arch = "wilds_worker", x = 38, z = 30, reserve = true },
+    { name = "ERes_wworker_2", arch = "wilds_worker", x = 40, z = 30, reserve = true },
+    { name = "ERes_wworker_3", arch = "wilds_worker", x = 42, z = 30, reserve = true },
+    { name = "ERes_grunt_1",   arch = "grunt",        x = 38, z = 32, reserve = true },
+    { name = "ERes_grunt_2",   arch = "grunt",        x = 40, z = 32, reserve = true },
+    { name = "ERes_grunt_3",   arch = "grunt",        x = 42, z = 32, reserve = true },
+    { name = "ERes_grunt_4",   arch = "grunt",        x = 38, z = 34, reserve = true },
+    { name = "ERes_grunt_5",   arch = "grunt",        x = 40, z = 34, reserve = true },
+    { name = "ERes_grunt_6",   arch = "grunt",        x = 42, z = 34, reserve = true },
+    { name = "ERes_grunt_7",   arch = "grunt",        x = 38, z = 36, reserve = true },
+    { name = "ERes_grunt_8",   arch = "grunt",        x = 40, z = 36, reserve = true },
 }
 
--- Player base structures (authored in the bake; adopted + driven by wb_economy).
+-- Base structures (authored in the bake; adopted + driven by wb_economy).
 -- rally_* is where freshly-trained units appear (just in front of the building).
 local BUILDINGS = {
-    { name = "TownHall", arch = "town_hall", x = -9.0, z = 26.0, rally_x = -9.0, rally_z = 20.0 },
-    { name = "Barracks", arch = "barracks",  x = 9.0,  z = 26.0, rally_x = 9.0,  rally_z = 20.0 },
+    -- player starting base
+    { name = "TownHall", arch = "town_hall", faction = "player", x = -9.0, z = 26.0, rally_x = -9.0, rally_z = 20.0 },
+    { name = "Barracks", arch = "barracks",  faction = "player", x = 9.0,  z = 26.0, rally_x = 9.0,  rally_z = 20.0 },
+    -- Wilds starting base (south)
+    { name = "WildsHall",     arch = "enemy_town_hall", faction = "enemy", x = -3.0, z = -28.0, rally_x = -3.0, rally_z = -22.0 },
+    { name = "WildsBarracks", arch = "enemy_barracks",  faction = "enemy", x = 6.0,  z = -28.0, rally_x = 6.0,  rally_z = -22.0 },
+    -- player building reserves (offstage, activated on placement)
+    { name = "PRes_townhall_1", arch = "town_hall", faction = "player", x = -40, z = 36, reserve = true },
+    { name = "PRes_townhall_2", arch = "town_hall", faction = "player", x = -37, z = 36, reserve = true },
+    { name = "PRes_barracks_1", arch = "barracks",  faction = "player", x = -34, z = 36, reserve = true },
+    { name = "PRes_barracks_2", arch = "barracks",  faction = "player", x = -31, z = 36, reserve = true },
+    { name = "PRes_barracks_3", arch = "barracks",  faction = "player", x = -28, z = 36, reserve = true },
+    { name = "PRes_farm_1", arch = "farm", faction = "player", x = -40, z = 40, reserve = true },
+    { name = "PRes_farm_2", arch = "farm", faction = "player", x = -37, z = 40, reserve = true },
+    { name = "PRes_farm_3", arch = "farm", faction = "player", x = -34, z = 40, reserve = true },
+    { name = "PRes_farm_4", arch = "farm", faction = "player", x = -31, z = 40, reserve = true },
+    { name = "PRes_tower_1", arch = "tower", faction = "player", x = -40, z = 44, reserve = true },
+    { name = "PRes_tower_2", arch = "tower", faction = "player", x = -37, z = 44, reserve = true },
+    { name = "PRes_tower_3", arch = "tower", faction = "player", x = -34, z = 44, reserve = true },
+    { name = "PRes_tower_4", arch = "tower", faction = "player", x = -31, z = 44, reserve = true },
+    -- Wilds building reserves
+    { name = "ERes_townhall_1", arch = "enemy_town_hall", faction = "enemy", x = 28, z = -36, reserve = true },
+    { name = "ERes_barracks_1", arch = "enemy_barracks",  faction = "enemy", x = 31, z = -36, reserve = true },
+    { name = "ERes_barracks_2", arch = "enemy_barracks",  faction = "enemy", x = 34, z = -36, reserve = true },
+    { name = "ERes_farm_1", arch = "enemy_farm", faction = "enemy", x = 28, z = -40, reserve = true },
+    { name = "ERes_farm_2", arch = "enemy_farm", faction = "enemy", x = 31, z = -40, reserve = true },
+    { name = "ERes_farm_3", arch = "enemy_farm", faction = "enemy", x = 34, z = -40, reserve = true },
+    { name = "ERes_tower_1", arch = "enemy_tower", faction = "enemy", x = 28, z = -44, reserve = true },
+    { name = "ERes_tower_2", arch = "enemy_tower", faction = "enemy", x = 31, z = -44, reserve = true },
 }
 
 local function register(u)
@@ -145,6 +201,7 @@ local function register(u)
     else
         state.enemy_units[#state.enemy_units + 1] = u
     end
+    -- econ unit lists are the same table references as player_units/enemy_units (set in reset_state)
 end
 
 -- mode = "build" (create rigs for baking) | "adopt" (wrap authored scene nodes).
@@ -157,8 +214,13 @@ local function place_units(mode)
             if r.reserve then
                 -- Park training reserves offstage; the economy activates them later.
                 Units.deactivate(u)
-                state.reserves[r.arch] = state.reserves[r.arch] or {}
-                table.insert(state.reserves[r.arch], u)
+                local arch_obj = Units.ARCH[r.arch]
+                local fac = (arch_obj and arch_obj.faction) or "player"
+                local E = state.econ and state.econ[fac]
+                if E then
+                    E.unit_reserves[r.arch] = E.unit_reserves[r.arch] or {}
+                    table.insert(E.unit_reserves[r.arch], u)
+                end
             else
                 register(u)
             end
@@ -166,18 +228,26 @@ local function place_units(mode)
     end
 end
 
--- Build/adopt the player base structures into state.buildings (not player_units, so
--- they don't count as food and their loss doesn't end the match).
+-- Build/adopt base structures for both factions (not in *_units, so they don't
+-- count as food). Reserve buildings are parked offstage for later placement.
 local function place_buildings(mode)
     for _, b in ipairs(BUILDINGS) do
-        local u
-        if mode == "build" then u = Units.build(b.arch, b.name, b.x, b.z)
-        else u = Units.adopt(b.name, b.arch, b.x, b.z) end
+        local u = (mode == "build") and Units.build(b.arch, b.name, b.x, b.z)
+                                     or  Units.adopt(b.name, b.arch, b.x, b.z)
         if u then
-            u.trains = Units.ARCH[b.arch] and Units.ARCH[b.arch].trains or nil
+            local arch = Units.ARCH[b.arch]
+            u.trains = arch and arch.trains or nil
             u.rally_x, u.rally_z = b.rally_x, b.rally_z
             u.queue = {}
-            state.buildings[#state.buildings + 1] = u
+            u.state = "done"
+            local E = state.econ[b.faction]
+            if b.reserve then
+                Units.deactivate(u)
+                E.building_reserves[b.arch] = E.building_reserves[b.arch] or {}
+                table.insert(E.building_reserves[b.arch], u)
+            else
+                E.buildings[#E.buildings + 1] = u
+            end
         end
     end
 end
@@ -187,6 +257,9 @@ local function recount()
     state.enemy_alive = 0
     for _, u in ipairs(state.player_units) do if u.alive then state.player_alive = state.player_alive + 1 end end
     for _, e in ipairs(state.enemy_units) do if e.alive then state.enemy_alive = state.enemy_alive + 1 end end
+    local halls = WB.combat.standing_town_halls(state)
+    state.player_halls = halls.player
+    state.enemy_halls  = halls.enemy
 end
 
 -- ---- lifecycle ----------------------------------------------------------------
@@ -195,15 +268,14 @@ local function env(name)
     return os and os.getenv and os.getenv(name)
 end
 
+-- The Wilds AI is active by default; WB_AI=0 makes them passive (verification/isolation).
+local env_ai_off = env("WB_AI") == "0"
+
 function Game.init()
     -- Reset match state. The Lua chunk + modules persist across an editor Play -> Stop ->
     -- Play, so init must start from clean lists (not append to the prior session's) or the
     -- second Play double-adopts / runs on stale state.
-    state.player_units = {}; state.enemy_units = {}; state.all_units = {}
-    state.buildings = {}; state.reserves = {}
-    state.hero = nil; state.gold = 150; state.lumber = 80; state.kills = 0
-    state.enemy_alive = 0; state.player_alive = 0; state.food_cap = 12
-    state.result = nil; state.hero_dead = false; state.time = 0.0
+    reset_state()
     if WB.selection and WB.selection.clear then WB.selection.clear() end
     if WB.hud and WB.hud.reset then WB.hud.reset() end -- re-show HUD overlay on a fresh play
 
@@ -237,12 +309,18 @@ function Game.init()
         World.setup_stage() -- render settings + key light (config, not hierarchy)
         place_units("adopt")
         place_buildings("adopt")
-        Economy.init(state)
         Camera.init(0.0, 12.0)
     end
 
     recount()
     if pe_log then pe_log("[Warbound] match started: " .. state.player_alive .. " vs " .. state.enemy_alive) end
+    if pe_log then
+        local pe = state.econ.player; local ee = state.econ.enemy
+        local pbr = 0; for _, pool in pairs(pe.building_reserves) do pbr = pbr + #pool end
+        local ebr = 0; for _, pool in pairs(ee.building_reserves) do ebr = ebr + #pool end
+        pe_log(string.format("[bake] p_buildings=%d e_buildings=%d p_breserve=%d e_breserve=%d e_units=%d",
+            #pe.buildings, #ee.buildings, pbr, ebr, #state.enemy_units))
+    end
     prewarm_fx() -- grow the particle buffer at load so combat death-bursts don't stall mid-fight
 
     -- DEV self-demo (WB_DEMO=1): send Laborers to chop lumber and march the warband
@@ -253,28 +331,21 @@ function Game.init()
         for _, u in ipairs(state.player_units) do
             if u.arch == "worker" then workers[#workers + 1] = u else fighters[#fighters + 1] = u end
         end
-        if #workers > 0 then Economy.order_harvest(state, workers, "lumber") end
+        if #workers > 0 then Economy.order_harvest(state.econ.player, workers, "lumber") end
         WB.selection.set(fighters)
-        WB.orders.move_to(fighters, 0.0, -14.0)
+        local demo_x, demo_z = 0.0, -14.0
+        WB.orders.move_to(fighters, demo_x, demo_z)
         Camera.center_on(0.0, -2.0)
     end
 end
 
 function Game.restart()
     for _, u in ipairs(state.all_units) do if u.alive then Units.kill(u) end end
-    state.player_units = {}
-    state.enemy_units = {}
-    state.all_units = {}
-    state.buildings = {}
-    state.reserves = {}
-    state.hero = nil
-    state.gold = 150; state.lumber = 80; state.kills = 0
-    state.result = nil; state.hero_dead = false; state.time = 0.0
+    reset_state()
     WB.selection.clear()
     -- Re-wrap the authored unit + building nodes (adopt re-enables + repositions them).
     place_units("adopt")
     place_buildings("adopt")
-    Economy.init(state)
     recount()
     Camera.center_on(0.0, 12.0)
     if pe_log then pe_log("[Warbound] match restarted") end
@@ -318,12 +389,15 @@ function Game.update(dt)
         return
     end
 
-    WB.selection.update(state.player_units, mouse_in_ui)
+    WB.selection.update(state.player_units, mouse_in_ui, state)
     WB.orders.handle_input(WB.selection.list, state.enemy_units, mouse_in_ui)
-    WB.combat.acquire(state.player_units, state.enemy_units)
+    WB.combat.acquire(state.player_units, state.enemy_units, state)
     Economy.update(gdt, state)   -- sets worker harvest goals + ticks training queues
+    if WB.build then WB.build.update(gdt, state) end
+    if WB.ai and not env_ai_off then WB.ai.update(gdt, state) end -- AFTER build.update: AI.place appends to E.buildings mid-iteration otherwise
     WB.orders.locomote(gdt, state.all_units)
     WB.combat.attacks(gdt, state.all_units, state)
+    WB.combat.buildings_pass(gdt, state)
     -- Abilities tick on REAL dt: the cooldown is a player-facing clock (an 8s cooldown
     -- must take 8 real seconds, not 16), and mana regen rides the same dt so the cooldown
     -- stays the gate instead of mana lagging behind it.
@@ -332,8 +406,13 @@ function Game.update(dt)
     for _, u in ipairs(state.all_units) do Units.tick_visual(u, gdt, state.time) end
 
     recount()
-    if state.enemy_alive <= 0 then state.result = "win" end
-    if state.player_alive <= 0 or state.hero_dead then state.result = "lose" end
+    if not state.result then
+        if state.enemy_halls <= 0 then state.result = "win"
+        elseif state.player_halls <= 0 or state.hero_dead then state.result = "lose" end
+        if state.result and pe_log then
+            pe_log("[Warbound] " .. (state.result == "win" and "VICTORY: razed the Wilds" or "DEFEAT"))
+        end
+    end
 
     WB.hud.update(state)
 end

@@ -147,8 +147,13 @@ local function draw_minimap(state)
     end
     plot("mm_mine", World.mine.x, World.mine.z, U.COLOR.gold, 7)
     if World.forest then plot("mm_forest", World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
-    for _, b in ipairs(state.buildings or {}) do
+    local PE_b = state.econ and state.econ.player
+    for _, b in ipairs(PE_b and PE_b.buildings or {}) do
         if b.alive then plot("mm_b" .. (b.id or 0), b.x, b.z, U.COLOR.player_trim, 9) end
+    end
+    local EE_b = state.econ and state.econ.enemy
+    for _, b in ipairs(EE_b and EE_b.buildings or {}) do
+        if b.alive then plot("mm_eb" .. (b.id or 0), b.x, b.z, U.COLOR.enemy, 9) end
     end
     for _, e in ipairs(state.enemy_units) do
         if e.alive then plot("mm_e" .. e.id, e.x, e.z, U.COLOR.enemy, 5) end
@@ -249,12 +254,22 @@ local function draw_command_card(state)
     -- with unit selection — see wb_selection).
     local bsel = WB.selection.building
     if bsel then
+        -- Construction-site progress bar: shown while the building is under construction.
+        if bsel.state == "site" and bsel.build_total and bsel.build_total > 0 then
+            local pct = U.clamp(1.0 - (bsel.build_t or 0) / bsel.build_total, 0.0, 1.0)
+            local bx, by = slot(0, 0)
+            bar("cc_site", bx, by + bh * 0.1, w - pad * 2, bh * 0.6, pct, U.COLOR.player,
+                string.format("Building... %d%%", math.floor(pct * 100 + 0.5)))
+            return
+        end
+
         local def = WB.economy and WB.economy.train_def and WB.economy.train_def(bsel.trains)
         if def then
-            local status = WB.economy.train_status(state, bsel)
+            local PE = state.econ and state.econ.player
+            local status = WB.economy.train_status(state, PE, bsel)
             local fill = (status == "ok") and { 0.16, 0.2, 0.16, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
             local cost = string.format("%dg", def.gold) .. (def.lumber > 0 and string.format(" %dw", def.lumber) or "")
-            if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, bsel) end
+            if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, PE, bsel) end
             local why = ({ gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" })[status]
             if why then
                 quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, { 0, 0, 0, 0 },
@@ -283,8 +298,20 @@ local function draw_command_card(state)
     if btn(0, 0, "stop", "Stop", "S", { 0.15, 0.13, 0.13, 0.95 }) then WB.orders.stop(sel) end
     if btn(1, 0, "hold", "Hold", "H", { 0.13, 0.15, 0.13, 0.95 }) then WB.orders.hold(sel) end
     if sel[1] and sel[1].arch == "worker" then
-        quad("cc_gather", select(1, slot(0, 1)), select(2, slot(0, 1)), bw * 2 + pad, bh, { 0.10, 0.12, 0.16, 0.9 },
-            { title = "Gather", body = "right-click mine / forest", font_scale = 0.8, no_input = true, align = "center" })
+        local i = 0
+        for _, key in ipairs({ "farm", "barracks", "tower", "town_hall" }) do
+            local def = WB.build and WB.build.DEFS and WB.build.DEFS[key]
+            if def then
+                local PE = state.econ and state.econ.player
+                local affordable = PE and PE.gold >= def.gold and PE.lumber >= def.lumber
+                local fill = affordable and { 0.14, 0.18, 0.14, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
+                local c, r = i % 4, 1 + math.floor(i / 4)
+                if btn(c, r, "bld_" .. key, def.label, string.format("%dg %dw", def.gold, def.lumber), fill) then
+                    if affordable then WB.build.begin(state, PE, key, sel) end
+                end
+                i = i + 1
+            end
+        end
     end
     quad("cc_move", select(1, slot(2, 0)), select(2, slot(2, 0)), bw, bh, { 0.10, 0.12, 0.16, 0.9 },
         { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" })
@@ -308,9 +335,10 @@ end
 
 local function drive_top(state)
     local M = 20.0
-    local food = string.format("%d/%d", state.player_alive, state.food_cap or 12)
+    local PE = state.econ and state.econ.player
+    local food = string.format("%d/%d", state.player_alive, PE and PE.food_cap or 12)
     drive_text("Resources",
-        string.format("Gold %d   Lumber %d   Food %s", state.gold or 0, state.lumber or 0, food),
+        string.format("Gold %d   Lumber %d   Food %s", PE and PE.gold or 0, PE and PE.lumber or 0, food),
         U.COLOR.gold, sw - M - 440, M, 440, 70)
 
     local fps = 0
@@ -328,7 +356,8 @@ local function drive_top(state)
     elseif state.result == "lose" then
         msg, ccol = "DEFEAT  -  your warband has fallen.   (press R)", { 0.95, 0.45, 0.4, 1.0 }
     else
-        msg, ccol = string.format("Clear the Wilds camp    -    %d foes remain", state.enemy_alive), U.COLOR.ink
+        msg, ccol = string.format("Raze the Wilds' Great Hall   -   %d enemy halls, %d foes",
+            state.enemy_halls or 0, state.enemy_alive), U.COLOR.ink
     end
     drive_text("Objective", msg, ccol, sw * 0.5 - 500, M, 1000, 70)
 end
@@ -368,6 +397,51 @@ local function draw_select_box()
     end
 end
 
+-- ---- rally marker (minimap dot + world-projected ring for selected building) ---
+
+local function draw_rally(state)
+    local b = WB.selection and WB.selection.building
+    if not (b and b.rally_set) then return end
+
+    -- Minimap dot: same coordinate mapping as draw_minimap.
+    local M = 20.0
+    local mx, my, mw, mh
+    do
+        local pad
+        local x, y, w, h = panel_rect("Minimap", M, sh - M - 300, 300, 300)
+        pad = w * 0.05
+        mx, my, mw, mh = x + pad, y + pad, w - pad * 2, h - pad * 2
+    end
+    local bnd = World.bounds
+    local rx_range = bnd.max_x - bnd.min_x
+    local rz_range = bnd.max_z - bnd.min_z
+    if rx_range > 0 and rz_range > 0 then
+        local px = mx + ((b.rally_x - bnd.min_x) / rx_range) * mw
+        local py = my + ((b.rally_z - bnd.min_z) / rz_range) * mh
+        local sz = 8
+        quad("rally_mm", px - sz * 0.5, py - sz * 0.5, sz, sz, { 0.2, 0.9, 0.3, 1.0 }, { no_input = true })
+    end
+
+    -- World-projected thin ring: 8-segment approximation around the rally point.
+    local sx, sy = Camera.world_to_screen(b.rally_x, 0.3, b.rally_z)
+    if sx then
+        local R = 14.0
+        local segs = 8
+        local thick = 2.0
+        for i = 0, segs - 1 do
+            local a0 = (i / segs) * math.pi * 2
+            local a1 = ((i + 0.5) / segs) * math.pi * 2
+            local qx = sx + math.cos(a0) * R
+            local qy = sy + math.sin(a0) * R
+            local dx = math.cos(a1) * R - math.cos(a0) * R
+            local dz = math.sin(a1) * R - math.sin(a0) * R
+            local seg_len = math.sqrt(dx * dx + dz * dz)
+            quad("rally_ring" .. i, qx, qy, math.max(seg_len, thick), thick,
+                { 0.2, 0.9, 0.3, 0.85 }, { no_input = true })
+        end
+    end
+end
+
 -- ---- main ---------------------------------------------------------------------
 
 -- Reset per-session HUD state. The module persists across an editor Play->Stop->Play, so
@@ -399,8 +473,19 @@ function Hud.update(state)
     draw_portrait(state)
     draw_command_card(state)
     drive_top(state)
+
+    -- Placement banner: shown while the player is in build-placement mode.
+    if WB.build and WB.build.is_placing and WB.build.is_placing() then
+        local bw, bh2 = 540.0, 44.0
+        quad("place_banner", sw * 0.5 - bw * 0.5, sh * 0.5 - 120.0, bw, bh2,
+            { 0.05, 0.08, 0.05, 0.92 },
+            { body = "Left-click to place — right-click to cancel", font_scale = 1.05,
+              align = "center", no_input = true,
+              border = { 0.3, 0.6, 0.3, 0.9 } })
+    end
     draw_floating_hp(state)
     draw_select_box()
+    draw_rally(state)
 
     for id in pairs(dyn_prev) do
         if not dyn_now[id] then runtime_ui.remove(SCREEN, id) end

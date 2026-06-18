@@ -14,28 +14,17 @@ World.bounds = { min_x = -34.0, max_x = 34.0, min_z = -34.0, max_z = 34.0 }
 -- is a safe grove just west of the player base.
 World.mine = { x = 24.0, z = 2.0 }
 World.forest = { x = -22.0, z = 16.0 }
+-- Wilds resource nodes (south half — mirrored for the enemy faction's workers).
+World.wilds_mine = { x = -22.0, z = -24.0 }
+World.wilds_forest = { x = 20.0, z = -22.0 }
 
--- Configure the renderer for a clean, readable outdoor RTS look. Safe no-ops if a
--- bridge is missing.
+-- Render settings AND lighting (shadows, SSAO, IBL, the directional sun, …) are authored
+-- in the .pescene and applied on load — the script does NOT override them at play time.
+-- The ONLY exception is BAKING: WB_BAKE clears the scene first, so the sun must be
+-- (re)authored into the fresh scene here. In normal play this is a no-op.
 function World.setup_stage()
-    if settings and settings.set then
-        settings.set("draw_grid", false)
-        settings.set("draw_aabbs", false)
-        settings.set("shadows", true)
-        settings.set("ssao", true)
-        settings.set("day", true)
-        settings.set("IBL", true)
-        settings.set("IBL_intensity", 0.7)
-        settings.set("lights_intensity", 1.0)
-        settings.set("tonemapping", false)
-        settings.set("bloom", false)
-        settings.set("motion_blur", false)
-        settings.set("taa", false)
-        settings.set("fxaa", true)
-        settings.set("cas_sharpening", true)
-        settings.set("cas_sharpness", 0.5)
-    end
-    -- One warm key light, angled like a low afternoon sun for long unit shadows.
+    if not (os and os.getenv and os.getenv("WB_BAKE")) then return end
+    -- Bake-only: author a warm directional sun into the just-cleared scene.
     if lights then
         if lights.get_counts and lights.add_directional then
             local counts = lights.get_counts()
@@ -114,20 +103,21 @@ function World.build()
         pos = { -10.0, 0.02, 8.0 }, scale = { 18.0, 0.05, 14.0 }, color = U.COLOR.grass_dark, emissive = 0.08 })
     U.part({ kind = "cube", name = "Patch2", parent = root,
         pos = { 14.0, 0.02, 12.0 }, scale = { 12.0, 0.05, 20.0 }, color = U.COLOR.grass_dark, emissive = 0.08 })
-    -- A dirt path/clearing in the middle where the fight happens.
-    U.part({ kind = "cube", name = "Clearing", parent = root,
-        pos = { 0.0, 0.03, -2.0 }, scale = { 26.0, 0.05, 22.0 }, color = U.COLOR.dirt, emissive = 0.06 })
-
     make_gold_mine(root, World.mine.x, World.mine.z)
     make_forest(root, World.forest.x, World.forest.z)
+    make_gold_mine(root, World.wilds_mine.x, World.wilds_mine.z)
+    make_forest(root, World.wilds_forest.x, World.wilds_forest.z)
 
     -- Keep these areas clear of scattered scenery: the central battlefield, the gold
-    -- mine, the lumber forest, and the player's base yard (back +z, where the Town
-    -- Hall / Barracks sit — see wb_game BUILDINGS).
+    -- mine, the lumber forest, the Wilds nodes, and the player's base yard (back +z,
+    -- where the Town Hall / Barracks sit — see wb_game BUILDINGS).
     local function clear_of_structures(x, z)
         if U.dist2(x, z, World.mine.x, World.mine.z) <= 8.0 then return false end
         if U.dist2(x, z, World.forest.x, World.forest.z) <= 9.0 then return false end
-        if z > 19.0 and math.abs(x) < 16.0 then return false end -- base yard
+        if U.dist2(x, z, World.wilds_mine.x, World.wilds_mine.z) <= 8.0 then return false end
+        if U.dist2(x, z, World.wilds_forest.x, World.wilds_forest.z) <= 9.0 then return false end
+        if z > 19.0 and math.abs(x) < 16.0 then return false end -- player base yard
+        if z < -19.0 and math.abs(x) < 16.0 then return false end -- Wilds base yard
         return true
     end
 
