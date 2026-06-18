@@ -8,6 +8,7 @@ local Selection = {}
 
 Selection.list = {}                 -- selected player units
 Selection.building = nil            -- a single selected player building (mutually exclusive with units)
+Selection.node = nil                -- a selected resource node (shows remaining amount; no orders)
 Selection.box = { active = false, x0 = 0, y0 = 0, x1 = 0, y1 = 0 }
 
 local DRAG_MIN = 8.0                 -- px movement before a click becomes a box
@@ -28,6 +29,14 @@ function Selection.clear()
     for _, u in ipairs(Selection.list) do WB.units.set_selected(u, false) end
     Selection.list = {}
     if Selection.building then WB.units.set_selected(Selection.building, false); Selection.building = nil end
+    Selection.node = nil
+end
+
+-- Select a resource node (clears any unit/building selection). Carries no ring/orders;
+-- the HUD reads Selection.node to show what's left to gather.
+function Selection.set_node(n)
+    Selection.clear()
+    Selection.node = n
 end
 
 function Selection.set(units)
@@ -116,9 +125,14 @@ function Selection.update(player_units, mouse_in_ui, state)
             if hit then
                 Selection.set({ hit })
             else
-                -- no unit under the cursor: try a player building, else clear
+                -- no unit under the cursor: try a player building, then a resource node, else clear
                 local b = WB.economy and WB.economy.building_at and WB.economy.building_at(press_x, press_y)
-                if b then Selection.set_building(b) else Selection.clear() end
+                if b then
+                    Selection.set_building(b)
+                else
+                    local n = WB.economy and WB.economy.node_near_click and WB.economy.node_near_click(press_x, press_y)
+                    if n then Selection.set_node(n) else Selection.clear() end
+                end
             end
         else
             local x0, x1 = math.min(press_x, ex), math.max(press_x, ex)

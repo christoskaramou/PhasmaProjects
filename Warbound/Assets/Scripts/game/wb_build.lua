@@ -106,6 +106,20 @@ function Build.place(state, E, type_key, x, z, workers)
     return b
 end
 
+-- (Re)assign every worker in `sel` to build `site` (resume a stopped build, or send
+-- helpers to speed one up). Pulls workers off harvest. Returns the count assigned.
+function Build.assign_builders(sel, site)
+    if not (site and site.alive and site.state == "site") then return 0 end
+    local n = 0
+    for _, u in ipairs(sel) do
+        if u.alive and u.arch_is_worker then
+            u.order = "build"; u.build_target = site; u.job = nil; u.target = nil
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- ---- construction tick -------------------------------------------------------
 
 function Build.update(dt, state)
@@ -113,21 +127,27 @@ function Build.update(dt, state)
     for _, fac in ipairs({ "player", "enemy" }) do
         for _, b in ipairs(state.econ[fac].buildings) do
             if b.alive and b.state == "site" then
-                -- progress only while the assigned worker is adjacent and building
-                local builder = nil
+                -- Count every worker assigned to this site and adjacent to it. More builders
+                -- build faster (capped), so extra workers meaningfully help finish.
+                local builders = {}
                 for _, u in ipairs(state.econ[fac].units) do
                     if u.alive and u.order == "build" and u.build_target == b
-                       and U.dist2(u.x, u.z, b.x, b.z) <= b.radius + 2.2 then builder = u; break end
+                       and U.dist2(u.x, u.z, b.x, b.z) <= b.radius + 2.2 then
+                        builders[#builders + 1] = u
+                    end
                 end
-                if builder then
-                    if (builder.attack_swing or 0.0) <= 0.0 then builder.attack_swing = 0.25 end
-                    b.build_t = b.build_t - dt
+                if #builders > 0 then
+                    local rate = math.min(#builders, 3) -- diminishing help past 3 workers
+                    for _, w in ipairs(builders) do
+                        if (w.attack_swing or 0.0) <= 0.0 then w.attack_swing = 0.25 end
+                    end
+                    b.build_t = b.build_t - dt * rate
                     b.hp = math.min(b.hp_max, b.hp_max * (0.1 + 0.9 * (1.0 - b.build_t / b.build_total)))
                     if b.build_t <= 0.0 then
                         b.state = "done"; b.hp = b.hp_max
                         Build.tint_site(b, false)
-                        builder.order = "idle"; builder.build_target = nil
-                        if pe_log then pe_log(string.format("[build] %s complete (%s)", Units.ARCH[b.arch].display, fac)) end
+                        for _, w in ipairs(builders) do w.order = "idle"; w.build_target = nil end
+                        if pe_log then pe_log(string.format("[build] %s complete (%s, %d builders)", Units.ARCH[b.arch].display, fac, #builders)) end
                     end
                 end
             end
@@ -160,7 +180,12 @@ function Build.update_placement(dt, state)
     if not placing then return end
     local mx, my = nil, nil
     if input and input.get_mouse_position then local m = input.get_mouse_position(); if m and m.x then mx, my = m.x, m.y end end
-    local gx, gz = mx and Camera.pick_ground(mx, my) or nil
+    -- NOTE: capture BOTH returns of pick_ground directly. The `mx and pick_ground() or nil`
+    -- idiom truncates multi-returns to one value, so gz was always nil -> World.clamp(gx, nil)
+    -- threw in U.clamp every frame, which aborted Build.update before the ghost was ever
+    -- positioned (no cursor-follow) and before placing.gx was set (left-click confirm no-op).
+    local gx, gz
+    if mx then gx, gz = Camera.pick_ground(mx, my) end
     if gx then
         local arch = Units.ARCH[placing.arch_name]
         placing.valid = Build.spot_valid(state, gx, gz, arch.radius)

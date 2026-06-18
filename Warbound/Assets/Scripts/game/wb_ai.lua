@@ -21,6 +21,8 @@ local TICK = 0.5
 local acc = 0.0
 local damage_recent_t = 0.0  -- set by Combat when an enemy building/unit is hit near base
 local attacking = false      -- true once a wave is committed; reset on defend so the next wave logs fresh
+local base_x, base_z = nil, nil -- Wilds hall position, cached each tick (for the defense radius)
+local BASE_DEF_R = 22.0      -- damage within this of the hall counts as "base under attack"
 
 local function enemy_workers(E)
     local out = {}
@@ -129,9 +131,17 @@ end
 
 -- ---- public API ---------------------------------------------------------------
 
-function AI.notify_base_attacked()
+-- Called from Combat when a Wilds thing is hit. Only damage NEAR the Wilds base counts
+-- as a base attack: without the radius gate, the AI recalled its own attack wave the
+-- instant it took return fire (any enemy taking damage anywhere set the flag) and never
+-- committed -- the army oscillated between attack and defend.
+function AI.notify_base_attacked(victim)
+    if base_x and victim and victim.x then
+        local dx, dz = victim.x - base_x, victim.z - base_z
+        if dx * dx + dz * dz > BASE_DEF_R * BASE_DEF_R then return end
+    end
     damage_recent_t = 3.0
-end  -- called from Combat when a Wilds thing is hit
+end
 
 function AI.update(dt, state)
     if damage_recent_t > 0 then damage_recent_t = damage_recent_t - dt end
@@ -139,6 +149,9 @@ function AI.update(dt, state)
     if acc < TICK then return end
     acc = 0.0
     local E = state.econ.enemy
+    for _, b in ipairs(E.buildings) do
+        if b.alive and b.arch == "enemy_town_hall" then base_x, base_z = b.x, b.z; break end
+    end
     tick_economy(state, E)
     tick_build(state, E)
     tick_military(state, E)

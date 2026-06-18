@@ -182,6 +182,27 @@ local function draw_portrait(state)
     local sel = WB.selection.list
     local pad = 14.0
 
+    -- Resource node selected: show what's left to gather.
+    local nsel = WB.selection.node
+    if nsel then
+        local label = (nsel.kind == "gold") and "Gold Mine" or "Lumber Grove"
+        local col = (nsel.kind == "gold") and U.COLOR.gold or U.COLOR.tree_leaf
+        local face = h * 0.42
+        quad("port_face", x + pad, y + pad, face, face, { col[1], col[2], col[3], 1.0 },
+            { border = U.COLOR.panel_edge, no_input = true })
+        local tx = x + pad + face + 14.0
+        local tw = w - pad - (tx - x)
+        quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 },
+            { body = label .. "  (" .. (nsel.faction == "player" and "yours" or "Wilds") .. ")",
+              font_scale = 1.2, no_input = true })
+        local pct = (nsel.max > 0) and (nsel.amount / nsel.max) or 0.0
+        bar("port_node", tx, y + pad + 44.0, tw, 30.0, pct, col,
+            string.format("%d / %d left", math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)))
+        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+            { body = (nsel.amount <= 0) and "Depleted" or "", font_scale = 1.0, no_input = true })
+        return
+    end
+
     local bsel = WB.selection.building
     if bsel then
         local face = h * 0.42
@@ -248,6 +269,17 @@ local function draw_command_card(state)
         local bx, by = slot(c, r)
         return button("cc_" .. id, bx, by, bw, bh, fill or { 0.12, 0.14, 0.18, 0.95 },
             { title = label, body = sub or "", font_scale = 1.0 })
+    end
+
+    -- Resource node selected: no commands, just the remaining amount (portrait shows the bar).
+    local nsel = WB.selection.node
+    if nsel then
+        quad("cc_node", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+            { body = string.format("%s\n%d / %d left",
+                (nsel.kind == "gold") and "Gold Mine" or "Lumber Grove",
+                math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)),
+              font_scale = 1.1, no_input = true, align = "center" })
+        return
     end
 
     -- Building command card: a train button + queue progress (mutually exclusive
@@ -384,6 +416,48 @@ local function draw_floating_hp(state)
     for _, u in ipairs(state.player_units) do maybe(u, u.selected) end
 end
 
+-- Floating HP bar over a building. Buildings live in E.buildings (not *_units), so
+-- draw_floating_hp never touches them; this handles them. Shown when the building is
+-- selected, damaged, or under construction (a blue progress bar for sites).
+local BUILDING_BAR_TOP = {
+    town_hall = 6.4, enemy_town_hall = 6.4,
+    barracks = 3.8,  enemy_barracks = 3.8,
+    tower = 5.6,     enemy_tower = 5.6,
+    farm = 2.2,      enemy_farm = 2.2,
+}
+local function draw_building_hp(state)
+    local sel = WB.selection and WB.selection.building
+    local function maybe(b)
+        if not (b.alive and b.hp_max and b.hp_max > 0) then return end
+        local selected = (b == sel)
+        local site = (b.state == "site")
+        local damaged = b.hp < b.hp_max
+        if not (selected or site or damaged) then return end
+        local top = BUILDING_BAR_TOP[b.arch] or ((b.radius or 2.0) + 2.5)
+        local px, py, depth = Camera.world_to_screen(b.x, top, b.z)
+        if not px or not depth or depth <= 0 then return end
+        if px < -80 or px > sw + 80 or py < -30 or py > sh then return end
+        local w = 72
+        local pct, col
+        if site then
+            pct = U.clamp(1.0 - (b.build_t or 0) / (b.build_total or 1), 0.0, 1.0)
+            col = { 0.45, 0.70, 0.95 } -- construction blue
+        else
+            pct = b.hp / b.hp_max
+            col = (b.faction == "player") and U.COLOR.hp_good or U.COLOR.hp_low
+            if pct <= 0.3 then col = U.COLOR.hp_low
+            elseif pct <= 0.6 and b.faction == "player" then col = U.COLOR.hp_warn end
+        end
+        local id = "bh" .. (b.id or 0)
+        quad(id .. "_bg", px - w * 0.5 - 1, py - 8, w + 2, 8, { 0.02, 0.02, 0.03, 0.92 }, { no_input = true })
+        quad(id .. "_fg", px - w * 0.5, py - 7, math.max(0.0, w * pct), 6, col, { no_input = true })
+    end
+    for _, fac in ipairs({ "player", "enemy" }) do
+        local E = state.econ and state.econ[fac]
+        if E then for _, b in ipairs(E.buildings) do maybe(b) end end
+    end
+end
+
 local function draw_select_box()
     local b = WB.selection.box
     if b.active then
@@ -484,6 +558,7 @@ function Hud.update(state)
               border = { 0.3, 0.6, 0.3, 0.9 } })
     end
     draw_floating_hp(state)
+    draw_building_hp(state)
     draw_select_box()
     draw_rally(state)
 

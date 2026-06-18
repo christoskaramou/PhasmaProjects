@@ -113,7 +113,7 @@ function Combat.apply_damage(target, amount, attacker, state)
     local mit = 1.0 - U.clamp(target.armor or 0.0, 0.0, 0.85)
     target.hp = target.hp - amount * mit
     target.hit_flash = 0.14
-    if target.faction == "enemy" and WB.ai then WB.ai.notify_base_attacked() end -- wake the Wilds defense director
+    if target.faction == "enemy" and WB.ai then WB.ai.notify_base_attacked(target) end -- wake the Wilds defense director (only if hit near base)
     if target.hp <= 0.0 then
         target.hp = 0.0
         Combat.die(target, attacker, state)

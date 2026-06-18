@@ -22,13 +22,13 @@ end
 
 function Orders.stop(sel)
     for _, u in ipairs(sel) do
-        u.order = "idle"; u.target = nil; u.job = nil; u.goal_x, u.goal_z = u.x, u.z
+        u.order = "idle"; u.target = nil; u.job = nil; u.build_target = nil; u.goal_x, u.goal_z = u.x, u.z
     end
 end
 
 function Orders.hold(sel)
     for _, u in ipairs(sel) do
-        u.order = "hold"; u.target = nil; u.job = nil; u.goal_x, u.goal_z = u.x, u.z
+        u.order = "hold"; u.target = nil; u.job = nil; u.build_target = nil; u.goal_x, u.goal_z = u.x, u.z
     end
 end
 
@@ -53,13 +53,13 @@ function Orders.move_to(sel, cx, cz)
     for i, u in ipairs(sel) do
         local p = pts[i]
         local gx, gz = World.clamp(p.x, p.z, 0.8)
-        u.order = "move"; u.target = nil; u.job = nil; u.goal_x, u.goal_z = gx, gz
+        u.order = "move"; u.target = nil; u.job = nil; u.build_target = nil; u.goal_x, u.goal_z = gx, gz
     end
 end
 
 function Orders.attack(sel, target)
     for _, u in ipairs(sel) do
-        u.order = "attack"; u.target = target; u.job = nil; u.attack_move = false
+        u.order = "attack"; u.target = target; u.job = nil; u.build_target = nil; u.attack_move = false
     end
 end
 
@@ -94,6 +94,17 @@ function Orders.handle_input(sel, enemy_units, mouse_in_ui)
     if down and not prev_right and not mouse_in_ui and #sel > 0 then
         local mx, my = mouse()
         if mx then
+            -- Right-click a friendly construction site with workers selected: (re)assign them
+            -- to build it -- resume a stopped build, or send helpers to finish it faster.
+            local site = WB.economy and WB.economy.building_at and WB.economy.building_at(mx, my)
+            if site and site.alive and site.state == "site" and site.faction == "player" then
+                local n = (WB.build and WB.build.assign_builders) and WB.build.assign_builders(sel, site) or 0
+                if n > 0 then
+                    WB.fx_ping(site.x, site.z, false)
+                    prev_right = down
+                    return
+                end
+            end
             local foe = WB.selection.unit_at(mx, my, enemy_units)
             if foe then
                 Orders.attack(sel, foe)
@@ -130,13 +141,21 @@ end
 
 -- ---- locomotion ---------------------------------------------------------------
 
+-- Effective collision radius. A unit actively attacking shrinks its footprint so a crowd
+-- around one target packs tighter and shoves far less -- that separation feedback loop is
+-- what made the attack-bunch jittery when many melee units fought over one enemy/building.
+local function collide_radius(u)
+    return u.radius * ((u.order == "attack") and 0.55 or 1.0)
+end
+
 -- Separation push for `unit` from nearby live units. Returns (dx,dz) unit-ish.
 local function separation(unit, units)
     local sx, sz = 0.0, 0.0
+    local ur = collide_radius(unit)
     for _, o in ipairs(units) do
         if o ~= unit and o.alive then
             local dx, dz = unit.x - o.x, unit.z - o.z
-            local min_d = unit.radius + o.radius + 0.1
+            local min_d = ur + collide_radius(o) + 0.1
             local d2 = dx * dx + dz * dz
             if d2 < min_d * min_d and d2 > 1e-5 then
                 local d = math.sqrt(d2)
@@ -149,7 +168,38 @@ local function separation(unit, units)
     return sx, sz
 end
 
-function Orders.locomote(dt, units)
+-- Push (x,z) out of any building footprint to its edge. Buildings aren't in the unit list,
+-- so separation can't keep units out of them; without this, units shoved by their peers
+-- phase into a building. Attackers thus hold at the collider edge instead of its center.
+local function resolve_buildings(x, z, r, buildings)
+    for _, b in ipairs(buildings) do
+        local dx, dz = x - b.x, z - b.z
+        local min_d = (b.radius or 0.0) + r
+        local d2 = dx * dx + dz * dz
+        if d2 < min_d * min_d then
+            if d2 > 1e-6 then
+                local d = math.sqrt(d2)
+                x = b.x + (dx / d) * min_d
+                z = b.z + (dz / d) * min_d
+            else
+                x = b.x + min_d -- exactly at center: eject along +x
+            end
+        end
+    end
+    return x, z
+end
+
+function Orders.locomote(dt, units, state)
+    -- Building obstacles (both factions): buildings aren't in `units`, so units would
+    -- phase through them. Gathered once per frame.
+    local buildings = {}
+    if state and state.econ then
+        for _, fac in ipairs({ "player", "enemy" }) do
+            for _, b in ipairs(state.econ[fac].buildings) do
+                if b.alive then buildings[#buildings + 1] = b end
+            end
+        end
+    end
     for _, u in ipairs(units) do
         if u.alive then
             -- slow debuff (Warstomp): decay timer + cut effective speed
@@ -162,7 +212,10 @@ function Orders.locomote(dt, units)
                 pt_x, pt_z, stop = u.goal_x, u.goal_z, 0.25
             elseif u.order == "attack" and u.target and u.target.alive then
                 pt_x, pt_z = u.target.x, u.target.z
-                stop = u.range * 0.85 + u.target.radius
+                -- Stop as soon as we're in attack reach (matches Combat.attacks' reach), so
+                -- units don't keep inching into a target they can already hit (a jitter
+                -- source) and don't walk toward a building's center -- they hold at the edge.
+                stop = u.range + (u.target.radius or 0.0) - 0.1
             elseif u.order == "build" and u.build_target and u.build_target.alive and u.build_target.state == "site" then
                 local b = u.build_target
                 pt_x, pt_z, stop = b.x, b.z, (b.radius + 1.2)
@@ -213,6 +266,12 @@ function Orders.locomote(dt, units)
             elseif u.order == "attack" and u.target and u.target.alive then
                 local fx, fz = U.norm2(u.target.x - u.x, u.target.z - u.z)
                 WB.units.face(u, fx, fz)
+            end
+
+            -- Keep the unit out of every building footprint (hit from the edge, no phasing).
+            if #buildings > 0 then
+                local cx, cz = resolve_buildings(u.x, u.z, u.radius, buildings)
+                if cx ~= u.x or cz ~= u.z then WB.units.place(u, cx, cz) end
             end
 
             u.moving = moving

@@ -47,6 +47,50 @@ function Economy.init(state)
     -- kept for API compatibility
 end
 
+-- ---- finite resource nodes ----------------------------------------------------
+-- Each node holds a finite amount that depletes as workers haul from it. Stored per
+-- match in state.nodes so selecting a node can show what's left, and workers stop when
+-- it runs dry.
+local NODE_MAX = { gold = 1500, lumber = 1200 }
+
+-- (Re)build the per-match resource registry. Called from wb_game reset_state.
+function Economy.reset_nodes(state)
+    state.nodes = {}
+    local function add(kind, faction, np)
+        if np and np.x then
+            state.nodes[#state.nodes + 1] = { kind = kind, faction = faction,
+                x = np.x, z = np.z, amount = NODE_MAX[kind] or 0, max = NODE_MAX[kind] or 0 }
+        end
+    end
+    add("gold", "player", World.mine)
+    add("lumber", "player", World.forest)
+    add("gold", "enemy", World.wilds_mine)
+    add("lumber", "enemy", World.wilds_forest)
+end
+
+-- The registry entry for a faction's resource of `kind` (or nil).
+function Economy.find_node(state, kind, faction)
+    if not (state and state.nodes) then return nil end
+    for _, n in ipairs(state.nodes) do
+        if n.kind == kind and n.faction == faction then return n end
+    end
+    return nil
+end
+
+-- The resource node nearest a screen click (either faction), for selection. nil if none.
+function Economy.node_near_click(sx, sy)
+    local state = WB.game and WB.game.state
+    if not (state and state.nodes) then return nil end
+    local gx, gz = Camera.pick_ground(sx, sy)
+    if not gx then return nil end
+    local best, bd
+    for _, n in ipairs(state.nodes) do
+        local d = U.dist2(gx, gz, n.x, n.z)
+        if d <= 6.5 and (not bd or d < bd) then best, bd = n, d end
+    end
+    return best
+end
+
 -- World position of a resource node by kind and faction.
 local function node_pos(kind, faction)
     if faction == "enemy" then
@@ -112,6 +156,12 @@ local function tick_worker(u, dt, state, E)
     local job = u.job
     if not u.hstate then u.hstate = "to_node" end
 
+    -- Stop on a depleted node (unless still carrying a final load to deliver).
+    local rnode = Economy.find_node(state, job.kind, E and E.faction)
+    if rnode and rnode.amount <= 0 and (u.carry or 0) <= 0 then
+        u.job = nil; u.hstate = nil; u.order = "idle"; return
+    end
+
     if u.hstate == "to_node" then
         local def = HARVEST[job.kind]
         local gx, gz = approach_point(job.nx, job.nz, u.x, u.z, def.reach)
@@ -128,7 +178,10 @@ local function tick_worker(u, dt, state, E)
         if (u.attack_swing or 0.0) <= 0.0 then u.attack_swing = 0.25 end
         u.htimer = (u.htimer or 0.0) - dt
         if u.htimer <= 0.0 then
-            u.carry = HARVEST[job.kind].amount
+            local node = Economy.find_node(state, job.kind, E.faction)
+            local amt = HARVEST[job.kind].amount
+            if node then amt = math.min(amt, node.amount); node.amount = node.amount - amt end
+            u.carry = amt
             u.carry_kind = job.kind
             u.hstate = "to_drop"
         end
@@ -197,7 +250,7 @@ local function spawn_trained(state, E, b, arch)
     local u = pool and table.remove(pool) or nil
     if not u then return end
     local rx = b.x + (b.spawn_n or 0) % 3 * 1.6 - 1.6
-    local rz = b.z - 2.0
+    local rz = b.z - ((b.radius or 2.0) + 1.5) -- clear the footprint so trained units don't spawn inside the rig
     b.spawn_n = (b.spawn_n or 0) + 1
     rx, rz = World.clamp(rx, rz, 1.0)
     Units.activate(u, rx, rz)

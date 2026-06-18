@@ -37,6 +37,7 @@ local function reset_state()
         enemy  = { faction = "enemy",  gold = 150, lumber = 80, food_cap = 0,
                    buildings = {}, units = state.enemy_units, unit_reserves = {}, building_reserves = {} },
     }
+    if Economy.reset_nodes then Economy.reset_nodes(state) end -- finite resource amounts
 end
 
 local actors = nil
@@ -395,7 +396,7 @@ function Game.update(dt)
     Economy.update(gdt, state)   -- sets worker harvest goals + ticks training queues
     if WB.build then WB.build.update(gdt, state) end
     if WB.ai and not env_ai_off then WB.ai.update(gdt, state) end -- AFTER build.update: AI.place appends to E.buildings mid-iteration otherwise
-    WB.orders.locomote(gdt, state.all_units)
+    WB.orders.locomote(gdt, state.all_units, state)
     WB.combat.attacks(gdt, state.all_units, state)
     WB.combat.buildings_pass(gdt, state)
     -- Abilities tick on REAL dt: the cooldown is a player-facing clock (an 8s cooldown
