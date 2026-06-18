@@ -1,9 +1,11 @@
 -- Warbound — boot entry.
 --
--- PhasmaPlayer auto-loads and runs every .lua in Assets/Scripts/Player/. This is the
--- one and only boot script: it bootstraps the module loader (raw fs.read + load,
--- since the loader file itself can't go through the loader), preloads the game, and
--- installs the per-frame driver via hooks{}.
+-- Referenced by skirmish.pescene's scene_scripts.on_play manifest (NOT the
+-- Scripts/Player auto-load), so this boot runs only when the Warbound scene plays —
+-- the scene owns its own gameplay driver. It bootstraps the module loader (raw
+-- fs.read + load, since the loader file itself can't go through the loader), preloads
+-- the game, and installs the per-frame driver via hooks{}. on_play scripts run with
+-- the PlayerOnly lifecycle: init at play, destroy on stop, update each frame.
 --
 -- The game world is built lazily on the FIRST update tick rather than in hooks.init,
 -- so the game still boots even on engine paths where init isn't called for a

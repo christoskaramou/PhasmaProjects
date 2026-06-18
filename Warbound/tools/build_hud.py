@@ -12,11 +12,23 @@ Workflow:  WB_BAKE=1 -> Assets/Scenes/baked (world + units) ;  copy to skirmish.
 Idempotent: a "UI_Root" group marks the start of the HUD block; re-running truncates
 from there and re-appends, leaving the world/unit nodes (and the camera node_index)
 untouched.
+
+Also (re)writes the scene_scripts manifest, which names the on_play boot script. The
+bake clears the scene (NewScene wipes the manifest) before scene.save, so the saved
+baked scene has no scene_scripts; this tool restores it the same way it restores the
+HUD, so normal play boots Warbound via the scene's on_play rather than a Scripts/Player
+auto-load.
 """
 import json
 import os
 
 SCENE = os.path.join(os.path.dirname(__file__), "..", "Assets", "Scenes", "skirmish.pescene")
+
+# The scene owns its gameplay driver via scene_scripts.on_play (warbound.lua lives in
+# Scripts/, NOT the auto-scanned Scripts/Player). Re-injected here so a re-bake keeps it.
+SCENE_SCRIPTS = {
+    "on_play": ["Assets/Scripts/warbound.lua"],
+}
 
 PANEL = [0.06, 0.07, 0.10, 0.92]
 EDGE = [0.45, 0.38, 0.22, 0.95]
@@ -100,8 +112,10 @@ def main():
     ui_root_index = len(nodes)
     nodes += build_hud(len(nodes), ui_root_index)
     doc["nodes"] = nodes
+    doc["scene_scripts"] = SCENE_SCRIPTS
     json.dump(doc, open(path, "w", encoding="utf-8"), indent=2)
-    print("HUD frames appended; total nodes:", len(nodes), "UI_Root at", ui_root_index)
+    print("HUD frames appended; total nodes:", len(nodes), "UI_Root at", ui_root_index,
+          "; scene_scripts.on_play:", SCENE_SCRIPTS["on_play"])
 
 
 if __name__ == "__main__":

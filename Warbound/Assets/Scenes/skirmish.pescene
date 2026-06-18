@@ -62875,5 +62875,10 @@
       "node_index": 0
     }
   ],
-  "active_camera": 0
+  "active_camera": 0,
+  "scene_scripts": {
+    "on_play": [
+      "Assets/Scripts/warbound.lua"
+    ]
+  }
 }
