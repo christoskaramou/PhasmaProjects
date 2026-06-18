@@ -27,7 +27,9 @@ local function nearest_foe(u, foe_units, foe_buildings, radius)
     local bd = best and U.dist2_sq(u.x, u.z, best.x, best.z) or nil
     local r2 = radius * radius
     for _, b in ipairs(foe_buildings or {}) do
-        if b.alive and b.state == "done" then
+        -- "done" buildings AND in-progress sites are valid targets (razing a site cancels
+        -- the build), so an attack-move into the enemy base actually razes everything.
+        if b.alive and (b.state == "done" or b.state == "site") then
             local d = U.dist2_sq(u.x, u.z, b.x, b.z)
             if d <= r2 and (not bd or d < bd) then best, bd = b, d end
         end
@@ -86,9 +88,16 @@ end
 function Combat.die(target, attacker, state)
     if not target.alive then return end
     if target.is_building then
-        WB.units.kill(target) -- sets alive=false; hides+parks the rig via set_visible (no rebuild)
         local E = state and state.econ and state.econ[target.faction]
-        if E then U.compact(E.buildings, function(b) return b.alive end) end
+        -- Deactivate (park+hide the rig, alive=false) rather than kill(): kill pools the rig
+        -- into a dead pool nobody reads, permanently shrinking the faction's reserves. Return
+        -- it to building_reserves so this type can be rebuilt later.
+        WB.units.deactivate(target)
+        if E then
+            U.compact(E.buildings, function(b) return b.alive end)
+            E.building_reserves[target.arch] = E.building_reserves[target.arch] or {}
+            table.insert(E.building_reserves[target.arch], target)
+        end
         if pe_log then pe_log("[combat] " .. (target.display or target.arch) .. " razed (" .. (target.faction or "?") .. ")") end
         return
     end

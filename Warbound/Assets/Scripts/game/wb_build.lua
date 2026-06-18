@@ -45,6 +45,18 @@ function Build.spot_valid(state, x, z, radius)
     return true
 end
 
+-- Why E can't build `type_key` right now (or "ok"): drives the HUD button color/hint and
+-- lets the AI skip a type whose reserve pool is empty instead of stalling on it.
+function Build.status(E, type_key)
+    local def = Build.DEFS[type_key]; if not def then return "none" end
+    if (E.gold or 0) < def.gold then return "gold" end
+    if (E.lumber or 0) < def.lumber then return "lumber" end
+    local arch_name = faction_arch(E, def.arch)
+    local pool = E.building_reserves[arch_name]
+    if not pool or #pool == 0 then return "reserve" end
+    return "ok"
+end
+
 local function borrow_reserve(E, arch)
     local pool = E.building_reserves[arch]
     return pool and table.remove(pool) or nil

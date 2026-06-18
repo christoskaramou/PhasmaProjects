@@ -14,6 +14,7 @@ local Economy = WB.economy
 local Build = WB.build
 local Orders = WB.orders
 local World = WB.world
+local Units = WB.units
 
 local AI = {}
 
@@ -61,22 +62,30 @@ local function tick_build(state, E)
     local hall = nil
     for _, b in ipairs(E.buildings) do if b.alive and b.state=="done" and b.arch=="enemy_town_hall" then hall=b; break end end
     if not hall then return end
+    -- Ordered preference per situation; the first entry that's actually buildable (cost +
+    -- a free reserve, via Build.status) wins, so an exhausted farm pool doesn't stall the
+    -- whole build order.
+    local prefs
+    if Economy.food_used(E) + 2 >= E.food_cap then prefs = { "farm", "barracks", "tower" }
+    elseif count_arch(E, "enemy_barracks") < 1 then prefs = { "barracks", "farm", "tower" }
+    elseif damage_recent_t > 0 and count_arch(E, "enemy_tower") < 2 then prefs = { "tower", "barracks", "farm" }
+    elseif (E.gold or 0) > 250 then prefs = { "barracks", "tower", "farm" }
+    else return end
     local want = nil
-    if Economy.food_used(E) + 2 >= E.food_cap then want = "farm"
-    elseif count_arch(E, "enemy_barracks") < 1 then want = "barracks"
-    elseif damage_recent_t > 0 and count_arch(E, "enemy_tower") < 2 then want = "tower"
-    elseif (E.gold or 0) > 250 then want = "barracks" end
+    for _, p in ipairs(prefs) do if Build.status(E, p) == "ok" then want = p; break end end
     if not want then return end
-    local def = Build.DEFS[want]; if not def then return end
-    if (E.gold or 0) < def.gold or (E.lumber or 0) < def.lumber then return end
     local w = free_worker(E); if not w then return end
+    -- Footprint radius of the real (faction) arch, so spot_valid matches what Build.place
+    -- re-checks (a too-small radius let validation pass then placement reject -> AI stall).
+    local arch_name = (E.faction == "enemy") and ("enemy_" .. Build.DEFS[want].arch) or Build.DEFS[want].arch
+    local rad = (Units.ARCH[arch_name] and Units.ARCH[arch_name].radius) or 2.0
     -- pick a spot in a ring around the hall, scan a few angles for a valid one
     for k = 0, 7 do
         local a = k * (math.pi / 4)
         local x = hall.x + math.cos(a) * 8.0
         local z = hall.z + math.sin(a) * 8.0
-        x, z = World.clamp(x, z, 3.0)
-        if Build.spot_valid(state, x, z, 2.0) then
+        x, z = World.clamp(x, z, rad + 1.0)
+        if Build.spot_valid(state, x, z, rad) then
             if pe_log then pe_log(string.format("[ai] build %s (enemy) at %.1f,%.1f", want, x, z)) end
             Build.place(state, E, want, x, z, { w })
             return

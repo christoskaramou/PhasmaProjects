@@ -335,11 +335,15 @@ local function draw_command_card(state)
             local def = WB.build and WB.build.DEFS and WB.build.DEFS[key]
             if def then
                 local PE = state.econ and state.econ.player
-                local affordable = PE and PE.gold >= def.gold and PE.lumber >= def.lumber
-                local fill = affordable and { 0.14, 0.18, 0.14, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
+                local status = (WB.build.status and WB.build.status(PE, key)) or "ok"
+                local ok = (status == "ok")
+                local fill = ok and { 0.14, 0.18, 0.14, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
+                -- "none left" when the reserve pool is empty, so the button reads as
+                -- unavailable instead of looking broken when nothing happens on click.
+                local sub = (status == "reserve") and "none left" or string.format("%dg %dw", def.gold, def.lumber)
                 local c, r = i % 4, 1 + math.floor(i / 4)
-                if btn(c, r, "bld_" .. key, def.label, string.format("%dg %dw", def.gold, def.lumber), fill) then
-                    if affordable then WB.build.begin(state, PE, key, sel) end
+                if btn(c, r, "bld_" .. key, def.label, sub, fill) then
+                    if ok then WB.build.begin(state, PE, key, sel) end
                 end
                 i = i + 1
             end
