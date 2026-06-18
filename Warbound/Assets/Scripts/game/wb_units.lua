@@ -223,6 +223,11 @@ function Units.adopt(node_name, arch_name, x, z)
             if n == "SelectRing" then ring = c else parts[n] = c end
         end
     end
+    -- Show the rig's meshes via cheap render-visibility (a prior play may have hidden them),
+    -- and enable the selection ring ONCE (it is authored set_enabled(false)) so selecting a
+    -- unit later is a cheap set_visible toggle rather than a raster-instance rebuild.
+    for _, c in pairs(parts) do if U.valid(c) then c:set_visible(true) end end
+    if U.valid(ring) then ring:set_enabled(true); ring:set_visible(false) end
     return make_unit_table(arch_name, root, parts, ring, x, z)
 end
 
@@ -241,9 +246,22 @@ function Units.face(unit, dx, dz)
     end
 end
 
+-- Cheaply show/hide a unit's whole rig via per-node render visibility (the CullingCS cull
+-- flag) instead of set_enabled. set_enabled forces a SYNCHRONOUS raster-instance rebuild
+-- (a GPU submit+wait) on EVERY call -- that is what spikes the frame on mass deaths and on
+-- selection changes. set_visible just flips a per-node flag re-uploaded on the existing
+-- per-frame uniform path (no rebuild, no stall). It is per-NODE (not hierarchical) and the
+-- rig root is an empty group, so we flip every mesh part explicitly.
+local function set_rig_visible(unit, vis)
+    if not unit.parts then return end
+    for _, n in pairs(unit.parts) do
+        if U.valid(n) then n:set_visible(vis) end
+    end
+end
+
 function Units.set_selected(unit, on)
     unit.selected = on
-    if U.valid(unit.ring) then unit.ring:set_enabled(on == true) end
+    if U.valid(unit.ring) then unit.ring:set_visible(on == true) end
 end
 
 -- Per-frame cosmetics: a little walk bob, a weapon swing on attack, and a hit
@@ -300,8 +318,8 @@ function Units.deactivate(unit)
     unit.order = "idle"
     unit.job = nil
     Units.set_selected(unit, false)
+    set_rig_visible(unit, false)
     if U.valid(unit.root) then
-        unit.root:set_enabled(false)
         unit.root:set_position(vec3(unit.x, PARK_Y, unit.z))
     end
 end
@@ -317,7 +335,7 @@ function Units.activate(unit, x, z)
     unit.attack_t = 0.0; unit.attack_swing = 0.0; unit.hit_flash = 0.0; unit.slow_t = 0.0
     unit.job = nil; unit.hstate = nil; unit.carry = 0; unit.carry_kind = nil
     unit.selected = false
-    if U.valid(unit.root) then unit.root:set_enabled(true) end
+    set_rig_visible(unit, true)
     Units.place(unit, x, z)
     Units.face(unit, 0.0, (arch.faction == "player") and -1.0 or 1.0)
     return unit
@@ -329,8 +347,8 @@ function Units.kill(unit)
     unit.alive = false
     unit.target = nil
     Units.set_selected(unit, false)
+    set_rig_visible(unit, false)
     if U.valid(unit.root) then
-        unit.root:set_enabled(false)
         unit.root:set_position(vec3(unit.x, PARK_Y, unit.z))
     end
     pools[unit.arch] = pools[unit.arch] or {}

@@ -66,6 +66,15 @@ WB.fx_death = function(x, z) emit("enemy_take", x, 0.6, z, { count = 16, r = 0.5
 WB.fx_levelup = function(x, z) emit("hero_take", x, 1.0, z, { count = 24, r = 0.7, life = 0.6, size = 0.3 }) end
 WB.fx_stomp = function(x, z, radius) emit("enemy_take", x, 0.3, z, { count = 30, r = (radius or 5) * 0.6, life = 0.4, size = 0.35 }) end
 
+-- Prewarm the particle buffer to its combat high-water mark at load. ParticleManager grows
+-- the GPU particle buffer with a full queue WaitIdle (ParticleManager.cpp UpdateEmitterBuffer),
+-- so the first heavy death-burst otherwise stalls the frame ~20-40ms mid-combat. One big
+-- off-screen burst at init forces the grow once (hidden by the load), and the buffer never
+-- shrinks, so subsequent combat bursts reuse the capacity with no further growth stalls.
+local function prewarm_fx()
+    emit("enemy_take", 0.0, -5000.0, 0.0, { count = 2048, r = 0.1, life = 0.05, size = 0.01 })
+end
+
 -- ---- roster -------------------------------------------------------------------
 -- Every actor is authored in the scene hierarchy under unique node names. The same
 -- roster drives BAKING (build the rigs once, scene.save) and ADOPTING (find the
@@ -234,6 +243,7 @@ function Game.init()
 
     recount()
     if pe_log then pe_log("[Warbound] match started: " .. state.player_alive .. " vs " .. state.enemy_alive) end
+    prewarm_fx() -- grow the particle buffer at load so combat death-bursts don't stall mid-fight
 
     -- DEV self-demo (WB_DEMO=1): send Laborers to chop lumber and march the warband
     -- into the camp, so a headless smoke run exercises economy + movement -> combat ->
