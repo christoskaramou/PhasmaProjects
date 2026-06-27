@@ -226,7 +226,8 @@ function update(dt)
     world_frames = (world_frames or 0) + 1
     if not world_ready then
         if world_frames < 2 then return end
-        voxel.create({ load_radius = 6, ground_y = GROUND_Y, upload_budget = 8 })
+        if settings and settings.set then settings.set("occlusion_culling", true) end -- temporal voxel Hi-Z
+        voxel.create({ load_radius = 8, ground_y = GROUND_Y, upload_budget = 16 })
         voxel.set_anchor(P.x, P.y, P.z)
         world_ready = true
     end
