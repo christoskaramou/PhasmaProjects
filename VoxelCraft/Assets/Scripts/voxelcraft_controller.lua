@@ -17,13 +17,14 @@
 -- NOTE: this script streams voxel geometry every frame (GPU-heavy, not editor-
 -- edit-mode safe yet), so keep its Script Component run mode = Player.
 --
--- Controls: mouse = look, WASD = walk, Space = jump, LMB/Q = break, RMB/E = place, 1/2/3 = block.
+-- Controls: mouse = look, WASD = walk, Shift = run, Space = jump, LMB/Q = break, RMB/E = place, 1/2/3 = block.
 
 local GROUND_Y = 64
 local HALF = { 0.3, 0.9, 0.3 } -- player AABB half-extents (center-anchored)
 local EYE = HALF[2] * 0.85     -- eye height above center
 local GRAVITY = 22.0
 local JUMP = 8.0
+local RUN_MULT = 1.8           -- walk speed multiplier while Shift is held
 local COYOTE = 0.12 -- grace window so a press still jumps across the 1-frame ground-contact flicker
 local REACH = 6.0            -- block edit reach
 local HOTBAR = {
@@ -210,7 +211,7 @@ function init()
         cam:set_position(vec3(P.x, P.y + EYE, P.z))
         cam:look_at(vec3(P.x, GROUND_Y, P.z - 12.0)) -- face forward, slightly down at the ground
     end
-    pe_log("[voxelcraft] mouse look, WASD move, Space jump, LMB/Q break, RMB/E place, 1/2/3 block")
+    pe_log("[voxelcraft] mouse look, WASD move, Shift run, Space jump, LMB/Q break, RMB/E place, 1/2/3 block")
 end
 
 function update(dt)
@@ -226,7 +227,10 @@ function update(dt)
     world_frames = (world_frames or 0) + 1
     if not world_ready then
         if world_frames < 2 then return end
-        if settings and settings.set then settings.set("occlusion_culling", true) end -- temporal voxel Hi-Z
+        if settings and settings.set then
+            settings.set("occlusion_culling", true) -- temporal voxel Hi-Z
+            settings.set("occlusion_culling_bias", 0.004) -- extra slack for 1-frame-late pyramid
+        end
         voxel.create({ load_radius = 8, ground_y = GROUND_Y, upload_budget = 16 })
         voxel.set_anchor(P.x, P.y, P.z)
         world_ready = true
@@ -263,6 +267,9 @@ function update(dt)
     if input.is_key_down("A") then mx = mx - rx; mz = mz - rz end
     local len = math.sqrt(mx * mx + mz * mz)
     local speed = cam:get_speed()
+    if input.is_key_down("Left Shift") or input.is_key_down("Right Shift") then
+        speed = speed * RUN_MULT
+    end
     if len > 1e-4 then mx, mz = mx / len * speed, mz / len * speed end
 
     -- Gravity + jump. Ground contact flickers a frame at a time while resting

@@ -74,6 +74,14 @@
         "draw_aabbs": false,
         "draw_grid": true,
         "aabbs_depth_aware": true,
+        "selection_outline": true,
+        "selection_outline_color_r": 0.05,
+        "selection_outline_color_g": 0.62,
+        "selection_outline_color_b": 1.0,
+        "selection_outline_color_a": 0.949998,
+        "selection_outline_thickness": 3.0,
+        "selection_outline_inner_fade": 2.0,
+        "selection_outline_outer_fade": 6.0,
         "dynamic_rendering": true,
         "ray_tracing_support": true,
         "render_mode": 1,
@@ -89,21 +97,21 @@
             "name": "Camera_0",
             "parent": -1,
             "local_matrix": [
-                -1.0,
+                -0.768432,
+                -0.0,
+                0.63993,
                 0.0,
-                6.278329465203569e-7,
+                0.262768,
+                0.911806,
+                0.315533,
                 0.0,
+                -0.583493,
+                0.410619,
+                -0.700661,
                 0.0,
-                1.0,
-                0.0,
-                0.0,
-                -6.278329465203569e-7,
-                0.0,
-                -1.0,
-                0.0,
-                0.0,
-                0.009998,
-                0.1,
+                2.576746,
+                8.109932,
+                1.332432,
                 1.0
             ],
             "component_flags": 8,
@@ -115,8 +123,8 @@
                 "far_plane": 3.4028234663852886e38,
                 "speed": 3.5,
                 "euler": [
-                    0.0,
-                    -3.141592,
+                    -0.423133,
+                    -2.447184,
                     0.0
                 ]
             }
@@ -130,12 +138,12 @@
                 0.0,
                 0.0,
                 0.0,
-                -0.001745,
-                -0.999997,
+                -0.44664,
+                -0.894711,
                 0.0,
                 0.0,
-                0.999997,
-                -0.001745,
+                0.894711,
+                -0.44664,
                 0.0,
                 0.0,
                 10.0,
@@ -254,10 +262,10 @@
                 0.0
             ],
             "rotation": [
-                0.707723,
+                0.850482,
                 0.0,
                 0.0,
-                -0.706489
+                -0.526003
             ],
             "name": "Directional Light 1"
         }
@@ -266,13 +274,13 @@
         {
             "name": "Camera_0",
             "position": [
-                0.0,
-                0.009998,
-                0.1
+                2.576746,
+                8.109932,
+                1.332432
             ],
             "euler": [
-                0.0,
-                -3.141592,
+                -0.423133,
+                -2.447184,
                 0.0
             ],
             "fovx": 1.518435,
