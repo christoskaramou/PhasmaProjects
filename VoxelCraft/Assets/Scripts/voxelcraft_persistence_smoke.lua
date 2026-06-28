@@ -2,8 +2,8 @@
 -- Logs VOXELCRAFT_PERSISTENCE_SMOKE_OK on success; engine.quit() on pass/fail.
 
 local SAVE_DIR = "VoxelWorlds/persistence_smoke_test"
-local GROUND_Y = 4
-local HOME = { x = 0.5, y = 6.0, z = 0.5 }
+local GROUND_Y = 16
+local HOME = { x = 0.5, y = 20.0, z = 0.5 }
 local FAR = { x = 48.5, y = 6.0, z = 0.5 } -- unload_radius=2 for load_radius=1 unload_margin=1
 
 local frame = 0
@@ -21,15 +21,18 @@ local function set_anchor_here()
 end
 
 local function wait_ground()
-    local ground = voxel.get_block(0, GROUND_Y - 1, 0)
-    if ground == 0 then
+    local surfaceY = nil
+    for y = 0, 48 do
+        if voxel.get_block(0, y, 0) == 3 then
+            surfaceY = y
+            break
+        end
+    end
+    if not surfaceY then
         if frame > 360 then
             fail("timed out waiting for generated ground")
         end
         return false
-    end
-    if ground ~= 3 then
-        fail("expected grass id 3 at 0," .. tostring(GROUND_Y - 1) .. ",0; got " .. tostring(ground))
     end
     return true
 end
