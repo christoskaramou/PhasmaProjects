@@ -231,7 +231,7 @@ function update(dt)
             settings.set("occlusion_culling", true) -- temporal voxel Hi-Z
             settings.set("occlusion_culling_bias", 0.004) -- extra slack for 1-frame-late pyramid
         end
-        voxel.create({ load_radius = 8, ground_y = GROUND_Y, upload_budget = 16 })
+        voxel.create({ load_radius = 8, ground_y = GROUND_Y, upload_budget = 16, save_dir = "VoxelWorlds/voxelcraft" })
         voxel.set_anchor(P.x, P.y, P.z)
         world_ready = true
     end
