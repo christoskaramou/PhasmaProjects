@@ -3,14 +3,21 @@
 
 local SAVE_DIR = "VoxelWorlds/persistence_smoke_test"
 local GROUND_Y = 4
+local HOME = { x = 0.5, y = 6.0, z = 0.5 }
+local FAR = { x = 48.5, y = 6.0, z = 0.5 } -- unload_radius=2 for load_radius=1 unload_margin=1
 
 local frame = 0
 local phase = "boot"
 local earlyEditQueued = false
+local anchor = { x = HOME.x, y = HOME.y, z = HOME.z }
 
 local function fail(msg)
     pe_log("[voxelcraft_persistence_smoke] FAIL " .. tostring(msg))
     engine.quit()
+end
+
+local function set_anchor_here()
+    voxel.set_anchor(anchor.x, anchor.y, anchor.z)
 end
 
 local function wait_ground()
@@ -27,6 +34,18 @@ local function wait_ground()
     return true
 end
 
+local function assert_home_edits()
+    if voxel.get_block(0, 4, 0) ~= 1 then
+        fail("section-0 edit missing at 0,4,0")
+    end
+    if voxel.get_block(0, 8, 0) ~= 1 then
+        fail("generation-time edit missing at 0,8,0")
+    end
+    if voxel.get_block(0, 20, 0) ~= 2 then
+        fail("section-1 edit missing at 0,20,0")
+    end
+end
+
 local function boot_world()
     voxel.create({
         load_radius = 1,
@@ -35,7 +54,8 @@ local function boot_world()
         upload_budget = 32,
         save_dir = SAVE_DIR,
     })
-    voxel.set_anchor(0.5, 6.0, 0.5)
+    anchor.x, anchor.y, anchor.z = HOME.x, HOME.y, HOME.z
+    set_anchor_here()
     if not earlyEditQueued then
         voxel.set_block(0, 8, 0, 1)
         earlyEditQueued = true
@@ -49,7 +69,7 @@ end
 
 function update()
     frame = frame + 1
-    voxel.set_anchor(0.5, 6.0, 0.5)
+    set_anchor_here()
 
     if phase == "boot" then
         if not wait_ground() then
@@ -100,15 +120,28 @@ function update()
         if not wait_ground() then
             return
         end
-        if voxel.get_block(0, 4, 0) ~= 1 then
-            fail("section-0 lost after section-1 save (truncation regression)")
+        assert_home_edits()
+        phase = "unload_away"
+        frame = 0
+        anchor.x, anchor.y, anchor.z = FAR.x, FAR.y, FAR.z
+        return
+    end
+
+    if phase == "unload_away" then
+        if frame < 90 then
+            return
         end
-        if voxel.get_block(0, 8, 0) ~= 1 then
-            fail("generation-time edit lost after section-1 save")
+        phase = "unload_return"
+        frame = 0
+        anchor.x, anchor.y, anchor.z = HOME.x, HOME.y, HOME.z
+        return
+    end
+
+    if phase == "unload_return" then
+        if not wait_ground() then
+            return
         end
-        if voxel.get_block(0, 20, 0) ~= 2 then
-            fail("section-1 edit lost after final reload")
-        end
+        assert_home_edits()
         phase = "done"
         return
     end

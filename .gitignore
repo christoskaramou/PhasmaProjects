@@ -11,6 +11,7 @@ __pycache__/
 */Assets/editor_windows.json
 */Assets/imgui.ini
 */Assets/Save/
+*/Assets/VoxelWorlds/
 
 # Local AI/agent runtime artifacts. Keep checked-in config, ignore session output.
 */Assets/Agent/image_*.png
