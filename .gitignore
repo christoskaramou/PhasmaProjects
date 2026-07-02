@@ -15,8 +15,10 @@ __pycache__/
 
 # Local AI/agent runtime artifacts. Keep checked-in config, ignore session output.
 */Assets/Agent/image_*.png
+*/Assets/Agent/image_*.json
 */Assets/Agent/sessions/
 */Assets/Agent/*.log
+*/Assets/Agent/*.bin
 */Assets/Agent/ss_*.png
 */Assets/HeroBrain/requests/
 */Assets/HeroBrain/responses/

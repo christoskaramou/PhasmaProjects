@@ -1,5 +1,5 @@
 {
-  "mcp": false,
+  "mcp": true,
   "indexing": {
     "directories": [],
     "include_files": [],
