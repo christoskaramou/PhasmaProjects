@@ -1,0 +1,1713 @@
+{
+    "settings": {
+        "right_handed": false,
+        "reverse_depth": true,
+        "frustum_culling": true,
+        "occlusion_culling": false,
+        "occlusion_culling_bias": 0.002,
+        "lod_enabled": true,
+        "lod_count": 4,
+        "lod_bias": 1.0,
+        "lod_distances": [
+            30.0,
+            90.0,
+            250.0
+        ],
+        "shadows": true,
+        "shadow_map_size": 2048,
+        "num_cascades": 4,
+        "shadow_distance": 250.0,
+        "shadow_cascade_lambda": 0.85,
+        "shadow_normal_bias": 1.5,
+        "shadow_fade_fraction": 0.15,
+        "shadow_filter_radius": 0.75,
+        "shadow_debug_mode": 0,
+        "render_scale": 0.75,
+        "ssao": true,
+        "ssao_radius": 0.5,
+        "ssao_bias": 0.025,
+        "ssao_intensity": 0.5,
+        "ssao_power": 1.0,
+        "ssao_samples": 16,
+        "forward_plus": true,
+        "fxaa": false,
+        "taa": true,
+        "cas_sharpening": true,
+        "cas_sharpness": 0.5,
+        "ssr": false,
+        "tonemapping": false,
+        "color_grading": false,
+        "color_grading_lift_r": 0.0,
+        "color_grading_lift_g": 0.0,
+        "color_grading_lift_b": 0.0,
+        "color_grading_gamma_r": 1.0,
+        "color_grading_gamma_g": 1.0,
+        "color_grading_gamma_b": 1.0,
+        "color_grading_gain_r": 1.0,
+        "color_grading_gain_g": 1.0,
+        "color_grading_gain_b": 1.0,
+        "color_grading_saturation": 1.0,
+        "color_grading_contrast": 1.0,
+        "color_grading_intensity": 1.0,
+        "dof": false,
+        "dof_focus_scale": 15.0,
+        "dof_blur_range": 5.0,
+        "bloom": false,
+        "bloom_strength": 1.0,
+        "bloom_range": 1.0,
+        "motion_blur": true,
+        "motion_blur_strength": 1.0,
+        "motion_blur_samples": 16,
+        "IBL": true,
+        "IBL_intensity": 1.0,
+        "lights_intensity": 1.0,
+        "randomize_lights": false,
+        "skybox_path": "",
+        "depth_bias": [
+            0.0,
+            0.0,
+            -6.199997
+        ],
+        "time_scale": 1.0,
+        "model_list": [],
+        "freeze_frustum_culling": false,
+        "draw_aabbs": false,
+        "draw_grid": true,
+        "aabbs_depth_aware": true,
+        "selection_outline": true,
+        "selection_outline_color_r": 0.05,
+        "selection_outline_color_g": 0.62,
+        "selection_outline_color_b": 1.0,
+        "selection_outline_color_a": 0.949998,
+        "selection_outline_thickness": 3.0,
+        "selection_outline_inner_fade": 2.0,
+        "selection_outline_outer_fade": 6.0,
+        "dynamic_rendering": true,
+        "ray_tracing_support": true,
+        "render_mode": 1,
+        "use_Disney_PBR": true,
+        "physical_point_falloff": false,
+        "present_mode": 2,
+        "scene_view_aspect_mode": 0
+    },
+    "sources": [
+        {
+            "primitive_type": "sphere",
+            "primitive_params": [
+                2.2
+            ]
+        },
+        {
+            "primitive_type": "uv_sphere",
+            "primitive_params": [
+                2.2,
+                32.0,
+                32.0
+            ]
+        },
+        {
+            "primitive_type": "torus",
+            "primitive_params": [
+                2.0,
+                0.699998,
+                48.0,
+                16.0
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                3.0
+            ]
+        },
+        {
+            "primitive_type": "ico_sphere",
+            "primitive_params": [
+                2.4,
+                3.0
+            ]
+        },
+        {
+            "primitive_type": "cylinder",
+            "primitive_params": [
+                1.6,
+                4.199997
+            ]
+        },
+        {
+            "primitive_type": "cone",
+            "primitive_params": [
+                2.2,
+                4.199997
+            ]
+        },
+        {
+            "primitive_type": "pyramid",
+            "primitive_params": [
+                3.2,
+                3.599997
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                2.599997
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.2
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.2
+            ]
+        },
+        {
+            "primitive_type": "cube",
+            "primitive_params": [
+                1.2
+            ]
+        }
+    ],
+    "meshes": [
+        {
+            "source": 0,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.949998,
+                    0.2,
+                    0.2,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.119998,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 1,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.819998,
+                    0.819998,
+                    0.85,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.899999,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 2,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    0.779999,
+                    0.34,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.219999,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 3,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.05,
+                    0.05,
+                    0.05,
+                    1.0,
+                    4.0,
+                    1.399999,
+                    0.2,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 4,
+            "source_mesh": 0,
+            "render_type": 4,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.899999,
+                    0.949998,
+                    1.0,
+                    0.25,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.029998,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    -1.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 5,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.2,
+                    0.5,
+                    0.899999,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.4,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 6,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.3,
+                    0.85,
+                    0.349999,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.55,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 7,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.699998,
+                    0.3,
+                    0.899999,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.6,
+                    0.3,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 8,
+            "source_mesh": 0,
+            "render_type": 3,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    1.0,
+                    0.4,
+                    0.699998,
+                    0.5,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 9,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.949998,
+                    0.85,
+                    0.2,
+                    1.0,
+                    1.2,
+                    1.0,
+                    0.2,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 10,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.949998,
+                    0.85,
+                    0.2,
+                    1.0,
+                    1.2,
+                    1.0,
+                    0.2,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        },
+        {
+            "source": 11,
+            "source_mesh": 0,
+            "render_type": 1,
+            "instanced": true,
+            "texture_mask": 0,
+            "double_sided": false,
+            "material_factors": [
+                [
+                    0.949998,
+                    0.85,
+                    0.2,
+                    1.0,
+                    1.2,
+                    1.0,
+                    0.2,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.5,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.5,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            "textures": {}
+        }
+    ],
+    "nodes": [
+        {
+            "name": "Camera_0",
+            "parent": -1,
+            "local_matrix": [
+                0.884208,
+                0.0,
+                -0.467091,
+                0.0,
+                0.000021,
+                1.0,
+                0.00004,
+                0.0,
+                0.467091,
+                -0.000046,
+                0.884208,
+                0.0,
+                14.629679,
+                91.332939,
+                -48.071971,
+                1.0
+            ],
+            "component_flags": 8,
+            "camera": {
+                "projection": "perspective",
+                "fovx": 1.647341,
+                "orthographic_size": 10.0,
+                "near_plane": 0.004999,
+                "far_plane": 3.4028234663852886e38,
+                "speed": 3.5,
+                "euler": [
+                    0.000046,
+                    0.485998,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "Scene Settings",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 16384
+        },
+        {
+            "name": "Camera_2",
+            "parent": -1,
+            "local_matrix": [
+                -1.0,
+                0.0,
+                -6.278329465203569e-7,
+                0.0,
+                1.1983362924183893e-7,
+                0.981615,
+                -0.190868,
+                0.0,
+                6.162905492601567e-7,
+                -0.190868,
+                -0.981615,
+                0.0,
+                18.0,
+                93.0,
+                -8.0,
+                1.0
+            ],
+            "component_flags": 8,
+            "camera": {
+                "projection": "perspective",
+                "fovx": 1.687067,
+                "orthographic_size": 10.0,
+                "near_plane": 0.004999,
+                "far_plane": 3.4028234663852886e38,
+                "speed": 3.5,
+                "euler": [
+                    0.192046,
+                    3.141592,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "Directional Light 3",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.001745,
+                -0.999997,
+                0.0,
+                0.0,
+                0.999997,
+                -0.001745,
+                0.0,
+                0.0,
+                10.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "directional",
+                "color": [
+                    1.0,
+                    0.97,
+                    0.899999,
+                    3.0
+                ]
+            }
+        },
+        {
+            "name": "Point Light 4",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "point",
+                "color": [
+                    1.0,
+                    0.2,
+                    0.2,
+                    60.0
+                ],
+                "radius": 35.0
+            }
+        },
+        {
+            "name": "Point Light 5",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "point",
+                "color": [
+                    0.2,
+                    1.0,
+                    0.3,
+                    60.0
+                ],
+                "radius": 35.0
+            }
+        },
+        {
+            "name": "Point Light 6",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "point",
+                "color": [
+                    0.3,
+                    0.4,
+                    1.0,
+                    60.0
+                ],
+                "radius": 35.0
+            }
+        },
+        {
+            "name": "Spot Light 7",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "spot",
+                "color": [
+                    1.0,
+                    1.0,
+                    0.8,
+                    90.0
+                ],
+                "range": 80.0,
+                "params": [
+                    35.0,
+                    1.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "Area Light 8",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 2,
+            "light": {
+                "type": "area",
+                "color": [
+                    0.8,
+                    0.899999,
+                    1.0,
+                    25.0
+                ],
+                "range": 50.0,
+                "size": [
+                    10.0,
+                    10.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "name": "MetalSphere",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -14.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 0,
+            "component_flags": 1
+        },
+        {
+            "name": "RoughSphere",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -6.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 1,
+            "component_flags": 1
+        },
+        {
+            "name": "GoldTorus",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                2.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 2,
+            "component_flags": 1
+        },
+        {
+            "name": "EmissiveCube",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                10.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 3,
+            "component_flags": 1
+        },
+        {
+            "name": "GlassSphere",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                18.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 4,
+            "component_flags": 1
+        },
+        {
+            "name": "Cylinder",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                26.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 5,
+            "component_flags": 1
+        },
+        {
+            "name": "Cone",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                34.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 6,
+            "component_flags": 1
+        },
+        {
+            "name": "Pyramid",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                42.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 7,
+            "component_flags": 1
+        },
+        {
+            "name": "AlphaBlendCube",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                50.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "mesh": 8,
+            "component_flags": 1
+        },
+        {
+            "name": "OrbitGroup",
+            "parent": -1,
+            "local_matrix": [
+                0.906306,
+                0.0,
+                -0.422618,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.422618,
+                0.0,
+                0.906306,
+                0.0,
+                18.0,
+                100.0,
+                -42.0,
+                1.0
+            ]
+        },
+        {
+            "name": "Orbit1",
+            "parent": 18,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -5.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 9,
+            "component_flags": 1
+        },
+        {
+            "name": "Orbit2",
+            "parent": 18,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 10,
+            "component_flags": 1
+        },
+        {
+            "name": "Orbit3",
+            "parent": 18,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                5.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "mesh": 11,
+            "component_flags": 1
+        },
+        {
+            "name": "AxisLines",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "name": "AudioEmitter",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                18.0,
+                88.0,
+                -42.0,
+                1.0
+            ],
+            "component_flags": 32,
+            "audio": {
+                "file": "Sounds/ambient.wav",
+                "volume": 1.0,
+                "pitch": 1.0,
+                "min_distance": 2.0,
+                "max_distance": 80.0,
+                "loop": true,
+                "spatial": true,
+                "autoplay": true
+            }
+        },
+        {
+            "name": "ShowcaseSettings",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 32768,
+            "triggerZone": {
+                "priority": 0.0,
+                "blend": 1.0,
+                "blend_distance": 0.0,
+                "runMode": 2,
+                "shape": 0,
+                "scriptEnabled": false,
+                "scriptPath": "",
+                "fireForCamera": true,
+                "onEnter": "on_enter",
+                "onExit": "on_exit",
+                "postProcessEnabled": false,
+                "postProcess": {
+                    "ssao": true,
+                    "ssao_radius": 0.5,
+                    "ssao_bias": 0.025,
+                    "ssao_intensity": 0.5,
+                    "ssao_power": 1.0,
+                    "ssao_samples": 16,
+                    "fxaa": false,
+                    "taa": true,
+                    "cas_sharpening": true,
+                    "cas_sharpness": 0.5,
+                    "ssr": true,
+                    "tonemapping": false,
+                    "color_grading": false,
+                    "color_grading_lift_r": 0.0,
+                    "color_grading_lift_g": 0.0,
+                    "color_grading_lift_b": 0.0,
+                    "color_grading_gamma_r": 1.0,
+                    "color_grading_gamma_g": 1.0,
+                    "color_grading_gamma_b": 1.0,
+                    "color_grading_gain_r": 1.0,
+                    "color_grading_gain_g": 1.0,
+                    "color_grading_gain_b": 1.0,
+                    "color_grading_saturation": 1.0,
+                    "color_grading_contrast": 1.0,
+                    "color_grading_intensity": 1.0,
+                    "dof": false,
+                    "dof_focus_scale": 15.0,
+                    "dof_blur_range": 5.0,
+                    "bloom": true,
+                    "bloom_strength": 1.0,
+                    "bloom_range": 1.0,
+                    "motion_blur": true,
+                    "motion_blur_strength": 1.0,
+                    "motion_blur_samples": 16,
+                    "IBL": true,
+                    "IBL_intensity": 1.0
+                },
+                "audioEnabled": false,
+                "audioSource": {
+                    "file": "",
+                    "volume": 1.0,
+                    "pitch": 1.0,
+                    "min_distance": 1.0,
+                    "max_distance": 50.0,
+                    "loop": false,
+                    "spatial": true
+                },
+                "physicsEnabled": false,
+                "physicsEngine": 0,
+                "physicsMode": 0,
+                "physicsBodyType": 0,
+                "physicsMass": 1.0,
+                "physicsFriction": 0.5,
+                "physicsRestitution": 0.3,
+                "physicsFilterTag": "",
+                "physicsScriptPath": "",
+                "physicsOnEnter": "on_enter",
+                "physicsOnExit": "on_exit",
+                "physicsForceField": false,
+                "physicsForceX": 0.0,
+                "physicsForceY": 20.0,
+                "physicsForceZ": 0.0,
+                "spawnEnabled": false,
+                "spawnPrefabPath": "",
+                "spawnDespawnOnExit": true,
+                "streamEnabled": false,
+                "streamTargetName": "",
+                "cameraEnabled": false,
+                "cameraTargetName": "",
+                "cameraFovDeg": 0.0
+            }
+        },
+        {
+            "name": "VoxelWorldHost",
+            "parent": -1,
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ]
+        }
+    ],
+    "lights": [
+        {
+            "type": "directional",
+            "color": [
+                1.0,
+                0.97,
+                0.899999,
+                3.0
+            ],
+            "position": [
+                0.0,
+                10.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.707723,
+                0.0,
+                0.0,
+                -0.706489
+            ],
+            "name": "Directional Light 3"
+        },
+        {
+            "type": "point",
+            "color": [
+                1.0,
+                0.2,
+                0.2,
+                60.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0,
+                35.0
+            ],
+            "name": "Point Light 4"
+        },
+        {
+            "type": "point",
+            "color": [
+                0.2,
+                1.0,
+                0.3,
+                60.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0,
+                35.0
+            ],
+            "name": "Point Light 5"
+        },
+        {
+            "type": "point",
+            "color": [
+                0.3,
+                0.4,
+                1.0,
+                60.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0,
+                35.0
+            ],
+            "name": "Point Light 6"
+        },
+        {
+            "type": "spot",
+            "color": [
+                1.0,
+                1.0,
+                0.8,
+                90.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0,
+                80.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "params": [
+                35.0,
+                1.0,
+                0.0,
+                0.0
+            ],
+            "name": "Spot Light 7"
+        },
+        {
+            "type": "area",
+            "color": [
+                0.8,
+                0.899999,
+                1.0,
+                25.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0,
+                50.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "size": [
+                10.0,
+                10.0,
+                0.0,
+                0.0
+            ],
+            "name": "Area Light 8"
+        }
+    ],
+    "cameras": [
+        {
+            "name": "Camera_0",
+            "position": [
+                14.629679,
+                91.332939,
+                -48.071971
+            ],
+            "euler": [
+                0.000046,
+                0.485998,
+                0.0
+            ],
+            "fovx": 1.647341,
+            "projection": "perspective",
+            "orthographic_size": 10.0,
+            "near_plane": 0.004999,
+            "far_plane": 3.4028234663852886e38,
+            "speed": 3.5,
+            "node_index": 0
+        },
+        {
+            "name": "Camera_2",
+            "position": [
+                18.0,
+                93.0,
+                -8.0
+            ],
+            "euler": [
+                0.192046,
+                3.141592,
+                0.0
+            ],
+            "fovx": 1.687067,
+            "projection": "perspective",
+            "orthographic_size": 10.0,
+            "near_plane": 0.004999,
+            "far_plane": 3.4028234663852886e38,
+            "speed": 3.5,
+            "node_index": 2
+        }
+    ],
+    "active_camera": 0
+}
