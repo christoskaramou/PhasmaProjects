@@ -1,0 +1,6 @@
+{
+    "version": 1,
+    "name": "Ylem",
+    "assets": "Assets",
+    "startup_scene": "Assets/Scenes/main.pescene"
+}
