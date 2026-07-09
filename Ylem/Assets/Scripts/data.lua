@@ -164,6 +164,29 @@ function D.get(z)
     return { z = e[1], sym = e[2], name = e[3], cat = e[4], lore = D.lore(z) }
 end
 
+-- Electron configuration (Madelung / Aufbau fill order) — the foundation for the orbital
+-- cloud view. FILL_ORDER lists subshells (n, l) in fill order up to 7p (covers Z 1..118);
+-- l = 0/1/2/3 = s/p/d/f, subshell capacity 2(2l+1).
+D.L_CHAR = { [0] = "s", [1] = "p", [2] = "d", [3] = "f" }
+D.FILL_ORDER = {
+    { 1, 0 }, { 2, 0 }, { 2, 1 }, { 3, 0 }, { 3, 1 }, { 4, 0 }, { 3, 2 }, { 4, 1 }, { 5, 0 }, { 4, 2 },
+    { 5, 1 }, { 6, 0 }, { 4, 3 }, { 5, 2 }, { 6, 1 }, { 7, 0 }, { 5, 3 }, { 6, 2 }, { 7, 1 },
+}
+
+-- subshells filling `nelec` electrons in Madelung order: { {n=,l=,e=}, ... }
+function D.config(nelec)
+    local out = {}
+    for _, s in ipairs(D.FILL_ORDER) do
+        if nelec <= 0 then break end
+        local cap = 2 * (2 * s[2] + 1)
+        local e = math.min(cap, nelec)
+        out[#out + 1] = { n = s[1], l = s[2], e = e }
+        nelec = nelec - e
+    end
+    return out
+end
+
+
 -- how many rings (periods) this element needs — used to size the atom.
 function D.period(z)
     local sum = 0
@@ -214,51 +237,134 @@ for _, e in ipairs(D.elements) do D.z_of[e[2]] = e[1] end
 -- Molecules the player can coalesce, with how to render them: "diatomic" = two equal
 -- nuclei sharing a cloud; "central" = a core nucleus (the built atom) with partner atoms
 -- bonded around it at the given angles (radians, y-down screen).
-D.molecules = {
-    H2  = { sym = "H2",  name = "Hydrogen gas",   render = "diatomic", core = "H",
-        lore = "The fuel of stars and the future; two atoms sharing, each now complete." },
-    O2  = { sym = "O2",  name = "Oxygen gas",     render = "diatomic", core = "O",
-        lore = "Two oxygens double-bonded; the air's fire - what everything that burns or breathes needs." },
-    N2  = { sym = "N2",  name = "Nitrogen gas",   render = "diatomic", core = "N",
-        lore = "Two nitrogens bound so tightly they make up 78% of the air and smother flame." },
-    -- `lone` = electrons in lone pairs on the CORE atom (0 = all valence electrons are in
-    -- bonds). Real: water's O has 2 lone pairs (4 e-), ammonia's N has 1 (2 e-); carbon in
-    -- CO2/CH4 has none — its electrons are all in the C=O / C-H bonds.
-    H2O = { sym = "H2O", name = "Water",          render = "central",  core = "O", lone = 4,
-        partners = { { "H", 2.478 }, { "H", 0.663 } },
-        lore = "You are 60% of this. Two hydrogens embracing one oxygen - the molecule of life." },
-    CO2 = { sym = "CO2", name = "Carbon dioxide", render = "central",  core = "C", lone = 0,
-        partners = { { "O", 0.0 }, { "O", math.pi } },
-        lore = "One carbon, two oxygens; the breath you exhale and the blanket warming the world." },
-    CH4 = { sym = "CH4", name = "Methane",        render = "central",  core = "C", lone = 0,
-        partners = { { "H", 0.785 }, { "H", 2.356 }, { "H", 3.927 }, { "H", 5.498 } },
-        lore = "One carbon, four hydrogens; natural gas, swamp gas, and the flame on your stove." },
-    NH3 = { sym = "NH3", name = "Ammonia",        render = "central",  core = "N", lone = 2,
-        partners = { { "H", 2.36 }, { "H", 1.57 }, { "H", 0.79 } },
-        lore = "One nitrogen, three hydrogens; the Haber process pulled it from the air and fed billions." },
-    SO2 = { sym = "SO2", name = "Sulfur dioxide",  render = "central",  core = "S", lone = 2,
-        partners = { { "O", 2.478 }, { "O", 0.663 } },
-        lore = "Sharp, choking gas of volcanoes and struck matches; the sting in acid rain." },
-    SO3 = { sym = "SO3", name = "Sulfur trioxide", render = "central",  core = "S", lone = 0,
-        partners = { { "O", -1.5708 }, { "O", 0.5236 }, { "O", 2.6180 } },
-        lore = "Reacts with water to make sulfuric acid - the most produced chemical on Earth." },
+-- ==================== MOLECULE / REACTION GENERATOR ====================
+-- Covalent binary compounds are NOT hand-listed. Each element's valence DERIVES: the formula
+-- (valence crossover), the shape (VSEPR steric number -> bond angles), the lone pairs, and the
+-- balanced formation equation. A small `overrides` table supplies only what a formula cannot:
+-- lore text, the real catalyst/condition, and the memorable industrial equation.
+--   ve  = valence electrons (main-group number)   val = normal covalent valence (# bonds)
+--   diatomic = forms an X2 gas   hydride = X + val H   chloride = X + val Cl
+--   ox  = oxidation states forming a single-central molecular oxide XO_(k/2)  (k even)
+local CHEM = {
+    H  = { ve = 1, val = 1, diatomic = true },
+    C  = { ve = 4, val = 4, hydride = true, chloride = true, ox = { 2, 4 } },
+    N  = { ve = 5, val = 3, diatomic = true, hydride = true, chloride = true, ox = { 2, 4 } },
+    O  = { ve = 6, val = 2, diatomic = true, hydride = true },
+    F  = { ve = 7, val = 1, diatomic = true, hydride = true },
+    Si = { ve = 4, val = 4, hydride = true, chloride = true },
+    P  = { ve = 5, val = 3, hydride = true, chloride = true },
+    S  = { ve = 6, val = 2, hydride = true, chloride = true, ox = { 4, 6 } },
+    Cl = { ve = 7, val = 1, diatomic = true, hydride = true },
 }
 
--- REAL reactions: build the `core` element, then coalesce `n` `partner` atoms into it to
--- form `product`, but only when the required catalyst + condition are present. This is
--- the valid-process layer: the catalysts/conditions are the real ones (Haber = Fe under
--- pressure; combustion = a spark; methanation = Ni + heat). (ponytail: v1 abstracts the
--- diatomic stoichiometry to core+partners-by-formula; a full N2+3H2 inventory is the
--- next depth. Formula + catalyst — the memorable chemistry — is correct.)
-D.reactions = {
-    H2  = { core = "H", partner = "H", n = 1, product = "H2" },
-    O2  = { core = "O", partner = "O", n = 1, product = "O2" },
-    N2  = { core = "N", partner = "N", n = 1, product = "N2" },
-    H2O = { core = "O", partner = "H", n = 2, cond = "spark", product = "H2O" },
-    CO2 = { core = "C", partner = "O", n = 2, cond = "spark", product = "CO2" },
-    CH4 = { core = "C", partner = "H", n = 4, cat = "Ni", cond = "heat", product = "CH4" },
-    NH3 = { core = "N", partner = "H", n = 3, cat = "Fe", cond = "pressure", product = "NH3" },
+-- what formulas can't give: lore + real conditions/catalysts + the memorable equation.
+local overrides = {
+    H2  = { name = "Hydrogen gas", lore = "The fuel of stars and the future; two atoms sharing, each now complete." },
+    O2  = { name = "Oxygen gas",   lore = "Two oxygens double-bonded; the air's fire - what everything that burns or breathes needs." },
+    N2  = { name = "Nitrogen gas", lore = "Two nitrogens bound so tightly they make up 78% of the air and smother flame." },
+    F2  = { name = "Fluorine gas", lore = "Pale-yellow and savage - the most reactive element; it burns almost anything." },
+    Cl2 = { name = "Chlorine gas", lore = "Green and choking - a war gas, and the guardian of clean water." },
+    H2O = { cond = "spark", eq = "2 H2 + O2 -> 2 H2O", lore = "You are 60% of this. Two hydrogens embracing one oxygen - the molecule of life." },
+    NH3 = { cat = "Fe", cond = "pressure", lore = "The Haber process pulled it from the air and fed billions." },
+    CH4 = { cat = "Ni", cond = "heat", lore = "Natural gas, swamp gas, and the flame on your stove." },
+    H2S = { cond = "heat", lore = "Rotten eggs and volcanic vents; deadlier than cyanide, yet life may have begun on it." },
+    HF  = { lore = "Etches glass and dissolves silicon; a weak acid with a vicious bite." },
+    HCl = { lore = "Your stomach's acid and the workhorse of the chemistry bench." },
+    PH3 = { lore = "Phosphine - toxic, spontaneously flammable, smelling of garlic and decay." },
+    SiH4 = { lore = "Silane - silicon's answer to methane; bursts into flame in air." },
+    CO  = { cond = "heat", lore = "The silent killer - odourless, it binds your blood 200x tighter than oxygen." },
+    CO2 = { cond = "spark", lore = "The breath you exhale and the blanket warming the world." },
+    NO  = { cond = "spark", lore = "Made by lightning and your own blood vessels; a signal molecule and smog's start." },
+    NO2 = { eq = "2 NO + O2 -> 2 NO2", lore = "The brown haze over cities; oxidises further and rains down as nitric acid." },
+    SO2 = { cond = "spark", lore = "Sharp, choking gas of volcanoes and struck matches; the sting in acid rain." },
+    SO3 = { cat = "V2O5", cond = "heat", eq = "2 SO2 + O2 -> 2 SO3", lore = "Reacts with water to make sulfuric acid - the most produced chemical on Earth." },
+    CCl4 = { lore = "Once a dry-cleaning solvent and fire extinguisher; now known to wreck ozone and liver." },
+    SiCl4 = { lore = "Fumes in moist air; the feedstock for pure silicon and optical fibre." },
+    PCl3 = { lore = "A fuming liquid that chlorinates almost anything it touches." },
+    SCl2 = { lore = "Cherry-red and foul; the precursor to mustard gas." },
+    NCl3 = { lore = "Nitrogen trichloride - an oily, touch-sensitive explosive." },
 }
-for key, r in pairs(D.reactions) do r.core_z = D.z_of[r.core] end
+local HYDRIDE_NAME = { CH4 = "Methane", NH3 = "Ammonia", H2O = "Water", HF = "Hydrogen fluoride",
+    SiH4 = "Silane", PH3 = "Phosphine", H2S = "Hydrogen sulfide", HCl = "Hydrogen chloride" }
+local OX_PREFIX = { [1] = "mon", [2] = "di", [3] = "tri", [4] = "tetr" }     -- + "oxide"
+local CL_PREFIX = { [1] = "mono", [2] = "di", [3] = "tri", [4] = "tetra" }   -- + "chloride"
+local HALF = math.pi / 2  -- "down" in y-down screen; bent/pyramidal molecules open downward
+
+local function sub(n) return n > 1 and tostring(n) or "" end            -- formula subscript
+local function coef(n) return n > 1 and (tostring(n) .. " ") or "" end  -- equation coefficient
+local function fullname(sym) local z = D.z_of[sym]; return z and D.get(z).name or sym end
+
+-- VSEPR: n bonding atoms + lp effective lone pairs -> screen angles (radians). Reproduces
+-- linear (CO2), bent (H2O/SO2/NO2), trigonal (SO3), pyramidal (NH3), tetrahedral (CH4).
+local function geometry(n, lp)
+    if n <= 1 then return { 0.0 } end
+    if n == 2 then
+        if lp <= 0 then return { 0.0, math.pi } end                 -- linear
+        local th = (lp == 1) and 2.09 or 1.81                       -- bent ~120 (SO2) / ~105 (H2O)
+        return { HALF - th / 2, HALF + th / 2 }
+    end
+    if n == 3 then
+        if lp <= 0 then return { HALF, HALF + 2.0944, HALF + 4.1888 } end  -- trigonal 120
+        return { HALF - 0.79, HALF, HALF + 0.79 }                   -- pyramidal (NH3)
+    end
+    local a = {}                                                    -- tetrahedral+: evenly spaced
+    for i = 0, n - 1 do a[i + 1] = 0.785 + i * (2 * math.pi / n) end
+    return a
+end
+
+-- balanced formation eq: a (core|core2) + b ligand2 -> c product.  ligand2 = "H2"/"O2"/"Cl2".
+local function formation_eq(core, coreDi, ligand2, n, product)
+    local a, b, c, corestr
+    if coreDi then a, b, c, corestr = 1, n, 2, core .. "2"                 -- X2 + n L2 -> 2 XLn
+    elseif n % 2 == 0 then a, b, c, corestr = 1, math.floor(n / 2), 1, core -- X + (n/2) L2 -> XLn
+    else a, b, c, corestr = 2, n, 2, core end                             -- 2 X + n L2 -> 2 XLn
+    return string.format("%s%s + %s%s -> %s%s", coef(a), corestr, coef(b), ligand2, coef(c), product)
+end
+
+D.molecules, D.reactions = {}, {}
+-- rem = non-bonding electrons on the core; a lone electron (radical, e.g. NO2) still bends the
+-- shape, so geometry rounds it up while the lone-pair dots show only full pairs.
+local function emit(sym, name, render, core, ligand, n, rem, eq)
+    local ov = overrides[sym] or {}
+    local m = { sym = sym, name = ov.name or name, render = render, core = core, lore = ov.lore or (name .. ".") }
+    if render == "central" then
+        local ang = geometry(n, math.ceil(rem / 2))
+        local p = {}
+        for i = 1, n do p[i] = { ligand, ang[i] } end
+        m.partners, m.lone = p, math.floor(rem / 2) * 2
+    end
+    D.molecules[sym] = m
+    D.reactions[sym] = { core = core, partner = ligand, n = n, product = sym,
+        cat = ov.cat, cond = ov.cond, eq = ov.eq or eq }
+end
+
+for sym, c in pairs(CHEM) do
+    local grp = c.ve + 10  -- main-group number (C=14 ... Cl=17)
+    if c.diatomic then
+        emit(sym .. "2", fullname(sym) .. " gas", "diatomic", sym, sym, 1, 0, sym .. " + " .. sym .. " -> " .. sym .. "2")
+    end
+    if c.hydride then
+        local v = c.val
+        local f = (grp >= 16) and ("H" .. sub(v) .. sym) or (sym .. "H" .. sub(v)) -- H first for O/F/S/Cl
+        emit(f, HYDRIDE_NAME[f] or (fullname(sym) .. " hydride"), "central", sym, "H", v, c.ve - v,
+            formation_eq(sym, c.diatomic, "H2", v, f))
+    end
+    if c.ox then
+        for _, k in ipairs(c.ox) do
+            local m = math.floor(k / 2)
+            local f = sym .. "O" .. sub(m)
+            emit(f, fullname(sym) .. " " .. (OX_PREFIX[m] or (m .. "-")) .. "oxide", "central", sym, "O", m, c.ve - k,
+                formation_eq(sym, c.diatomic, "O2", m, f))
+        end
+    end
+    if c.chloride then
+        local v = c.val
+        local f = sym .. "Cl" .. sub(v)
+        emit(f, fullname(sym) .. " " .. (CL_PREFIX[v] or (v .. "-")) .. "chloride", "central", sym, "Cl", v, c.ve - v,
+            formation_eq(sym, c.diatomic, "Cl2", v, f))
+    end
+end
+
+for _, r in pairs(D.reactions) do r.core_z = D.z_of[r.core] end
 
 return D
