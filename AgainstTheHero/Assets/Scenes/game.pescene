@@ -1647,6 +1647,7 @@
                 "id": "hud_gear",
                 "image": "../Textures/gear.png",
                 "action": "click",
+                "action_function": "on_toggle_gear",
                 "fill": [
                     0.0,
                     0.0,

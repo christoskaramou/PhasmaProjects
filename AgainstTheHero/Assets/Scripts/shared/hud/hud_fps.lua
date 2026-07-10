@@ -33,7 +33,10 @@ hooks {
         local pad = h * 0.16
         local labw = w * 0.30
         -- Purple "FPS" label on the left (matches the arena clock's label color).
-        A.quad("__scene_ui", "hud_fps_label", x + pad, y + pad, labw, h - 2.0 * pad, { 0, 0, 0, 0 },
+        -- The backend top-anchors a label at (top + 15*text_scale); give it a
+        -- full-height box shifted up so the text centres instead of clipping.
+        local ly = y + h * 0.5 - A.s("text") * 21.0
+        A.quad("__scene_ui", "hud_fps_label", x + pad, ly, labw, h, { 0, 0, 0, 0 },
             { label = "FPS", text_color = { 0.55, 0.45, 0.82, 1.0 }, no_input = true })
         -- 7-segment digits fill the rest.
         local dax = x + labw + pad

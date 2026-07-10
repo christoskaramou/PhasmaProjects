@@ -53,6 +53,63 @@ local TELEGRAPH_T_BIG = 0.75      -- longer, scarier warn for elites/brutes
 local TELEGRAPH_BIG_COST = 4      -- threat_cost at/above which a spawn reads as "big"
 local CPROJ_POOL = 24             -- pooled creep projectile spheres (never deleted)
 
+-- Kill-feel + loot constants (fun pass).
+local CRIT_MULT = 2.0             -- a crit doubles the hit
+local MELEE_FLUSH_T = 0.32        -- melee dt-damage aggregates into a popup this often
+local DMGNUM_POOL = 26            -- concurrent floating damage numbers
+local DMGNUM_LIFE = 0.7           -- seconds a number floats/fades
+local COIN_POOL = 40              -- pooled gold coin nodes on the ground
+local BEACON_POOL = 8             -- pooled item-drop beacons on the ground
+local COIN_COLLECT_R = 1.1       -- world radius at which a magnetised coin banks
+local BEACON_COLLECT_R = 1.8      -- walk-over pickup FLOOR; live hero.pickup_range wins when larger
+local PICKUP_RANGE_BASE = 4.5     -- base coin-magnet / item-grab radius (Brotato-generous)
+local HITSTOP_SCALE = 0.12        -- sim speed during a hitstop beat
+local ELITE_HP_MULT = 2.6
+local ELITE_DPS_MULT = 1.4
+
+-- Wave-start draft — pick 1 of 3 run-scoped boons. Effects use the same stat
+-- vocabulary as gear (applied on top of base + gear by recompute_hero_stats);
+-- `heal` fires once at pick time. A mode may override via config.draft_cards.
+local DRAFT_CARDS = {
+    { id = "whetstone", name = "Whetstone", rarity = "common", desc = "+15% damage",
+      effect = { dps_mult = 1.15 } },
+    { id = "quick_hands", name = "Quick Hands", rarity = "common", desc = "+12% attack speed",
+      effect = { fire_interval_mult = 0.88 } },
+    { id = "field_rations", name = "Field Rations", rarity = "common", desc = "+25 max HP, heal 40",
+      effect = { hp_max_add = 25.0, heal = 40.0 } },
+    { id = "swift_soles", name = "Swift Soles", rarity = "common", desc = "+10% move speed",
+      effect = { speed_mult = 1.10, kite_speed_mult = 1.10 } },
+    { id = "tough_hide", name = "Tough Hide", rarity = "common", desc = "+8% armor",
+      effect = { armor_add = 0.08 } },
+    { id = "long_arms", name = "Long Arms", rarity = "common", desc = "+1.5 attack range",
+      effect = { attack_range_add = 1.5 } },
+    { id = "extra_bolt", name = "Extra Bolt", rarity = "uncommon", desc = "+1 shot per volley",
+      effect = { cleave_add = 1 } },
+    { id = "leech_fang", name = "Leech Fang", rarity = "uncommon", desc = "+2 lifesteal per hit",
+      effect = { lifesteal_add = 2.0 } },
+    { id = "green_blood", name = "Green Blood", rarity = "uncommon", desc = "+1.5 HP/s regen",
+      effect = { regen_add = 1.5 } },
+    { id = "bramble_coat", name = "Bramble Coat", rarity = "uncommon", desc = "+6 thorns",
+      effect = { thorns_add = 6.0 } },
+    { id = "magnet_pouch", name = "Magnet Pouch", rarity = "uncommon", desc = "+1.2 pickup range, +25% gold",
+      effect = { pickup_range_add = 1.2, gold_find_add = 0.25 } },
+    { id = "keen_eye", name = "Keen Eye", rarity = "uncommon", desc = "+15% crit chance",
+      effect = { crit_add = 0.15 } },
+    { id = "whirlwind", name = "Whirlwind", rarity = "rare", desc = "Spin attack around you",
+      effect = { whirl_add = 1 } },
+    { id = "chill_aura", name = "Chill Aura", rarity = "rare", desc = "Nearby enemies slow to a crawl",
+      effect = { slow_aura = true } },
+    { id = "glass_edge", name = "Glass Edge", rarity = "rare", desc = "+35% damage, -8% move",
+      effect = { dps_mult = 1.35, speed_mult = 0.92, kite_speed_mult = 0.92 } },
+}
+local DRAFT_WEIGHTS = { common = 60, uncommon = 32, rare = 8 }
+local RARITY_COLOR = {
+    common   = { 0.66, 0.70, 0.76, 1.0 },
+    uncommon = { 0.42, 0.84, 0.48, 1.0 },
+    rare     = { 0.38, 0.64, 0.97, 1.0 },
+    epic     = { 0.78, 0.48, 0.96, 1.0 },
+}
+
 local function clampn(value, low, high)
     if value < low then return low end
     if value > high then return high end
@@ -70,7 +127,14 @@ end
 local function ui_pointer()
     if input and input.get_mouse_position then
         local p = input.get_mouse_position()
-        if p and p.x then return p.x, p.y end
+        if p and p.x then
+            local w = engine and engine.get_window_size and engine.get_window_size() or nil
+            local s = runtime_ui and runtime_ui.get_surface_size and runtime_ui.get_surface_size() or nil
+            if w and s and w.w > 0 and w.h > 0 and s.w > 0 and s.h > 0 then
+                return p.x * s.w / w.w, p.y * s.h / w.h
+            end
+            return p.x, p.y
+        end
     end
     return nil
 end
@@ -359,6 +423,8 @@ function Duel:create_hero()
         dead = false, death_t = 0.0,
         lifesteal = 0.0, regen = 0.0, whirl = 0, whirl_t = 0.0,
         armor = 0.0, thorns = 0.0, dash = 0,
+        crit_chance = (cls and cls.crit_chance) or 0.03,
+        pickup_range = PICKUP_RANGE_BASE, gold_find = 1.0,
         -- Transient per-frame multipliers a mode's mechanic may set in
         -- on_combat_tick to slow/shrink the hero WITHOUT corrupting card-stacked
         -- stats (ice slow, mud, sandstorm). Mode-owned: set every tick, 1.0 = off.
@@ -378,6 +444,9 @@ function Duel:create_hero()
         whirl = hero.whirl,
         thorns = hero.thorns,
         dash = hero.dash,
+        crit_chance = hero.crit_chance,
+        pickup_range = hero.pickup_range,
+        gold_find = hero.gold_find,
     }
     -- fire_interval is kept as a sibling base field rather than folded into
     -- base_stats: recompute_hero_stats / gear_preview_stats both reset it from here
@@ -508,7 +577,7 @@ function Duel:hero_attack(hero, dt)
         local nx, nz = (d > 0.001) and dx / d or 0.0, (d > 0.001) and dz / d or 0.0
         -- Knock scaled by dt because melee damage is continuous: a gentle shove,
         -- not the one-shot punt a discrete bolt/whirl delivers.
-        if self:hit_creep(c, hero.dps * mult * dt, nx * CREEP_KNOCK_MELEE * dt, nz * CREEP_KNOCK_MELEE * dt) then
+        if self:hit_creep(c, hero.dps * mult * dt, nx * CREEP_KNOCK_MELEE * dt, nz * CREEP_KNOCK_MELEE * dt, { melee = true }) then
             if hero.lifesteal > 0.0 then hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal) end
         end
     end
@@ -591,13 +660,17 @@ function Duel:spawn_hero_bolt(hero, target)
     slot.vx, slot.vz = dx / d * HPROJ_SPEED, dz / d * HPROJ_SPEED
     slot.life = HPROJ_LIFE
     slot.damage = (hero.dps or 10.0) * 0.6
+    slot.trail_t = 0.03
     local bc = hero.bolt_color or { 1.0, 0.90, 0.42 }
     local bs = hero.bolt_scale or 0.34
     slot.col = bc
     if Art.valid(slot.node) then
         material.set(slot.node, "base_color", vec4(bc[1], bc[2], bc[3], 1.0))
-        material.set(slot.node, "emissive", vec3(bc[1] * 1.5, bc[2] * 1.5, bc[3] * 1.5))
-        slot.node:set_scale(vec3(bs, bs, bs))
+        material.set(slot.node, "emissive", vec3(bc[1] * 2.2, bc[2] * 2.2, bc[3] * 2.2))
+        -- Tracer look: stretch the sphere along its flight line and yaw it into
+        -- the travel direction (velocity is constant, so orient once at spawn).
+        slot.node:set_scale(vec3(bs * 0.55, bs * 0.55, bs * 2.1))
+        slot.node:set_rotation(vec3(0.0, math.deg(math.atan(slot.vx, slot.vz)), 0.0))
         slot.node:set_position(vec3(slot.x, 0.7, slot.z))
     end
 end
@@ -633,6 +706,7 @@ function Duel:update_hero_projectiles(dt)
     if not self.hproj then return end
     local hero = self.hero
     local A = self.arena
+    local trail_budget = 6 -- particle emits per frame across all bolts
     for _, p in ipairs(self.hproj) do
         if p.active then
             p.x = p.x + p.vx * dt
@@ -652,19 +726,33 @@ function Duel:update_hero_projectiles(dt)
                 -- punts the creep along its flight direction (discrete = full knock).
                 local d = math.sqrt(p.vx * p.vx + p.vz * p.vz)
                 local nx, nz = (d > 0.001) and p.vx / d or 0.0, (d > 0.001) and p.vz / d or 0.0
-                if self:hit_creep(hit, p.damage, nx * CREEP_KNOCK_BOLT, nz * CREEP_KNOCK_BOLT)
-                    and hero and (hero.lifesteal or 0.0) > 0.0 then
+                local killed, was_crit = self:hit_creep(hit, p.damage,
+                    nx * CREEP_KNOCK_BOLT, nz * CREEP_KNOCK_BOLT, { discrete = true })
+                if killed and hero and (hero.lifesteal or 0.0) > 0.0 then
                     hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal)
                 end
-                local ic = p.col or { 1.0, 0.92, 0.5 }
+                local ic = was_crit and { 1.0, 0.72, 0.2 } or (p.col or { 1.0, 0.92, 0.5 })
                 Art.burst("ath_hero_hit_" .. tostring(hit.id), vec3(p.x, 0.6, p.z),
-                    { preset = "enemy_take", count = 10, life_max = 0.18, spawn_radius = 0.16,
+                    { preset = "enemy_take", count = was_crit and 18 or 10,
+                      life_max = was_crit and 0.26 or 0.18, spawn_radius = was_crit and 0.28 or 0.16,
+                      size_max = was_crit and 0.22 or 0.16,
                       color_start = vec4(ic[1], ic[2], ic[3], 1.0) })
                 self:hproj_hide(p)
             elseif p.life <= 0.0 or off then
                 self:hproj_hide(p)
             elseif Art.valid(p.node) then
                 p.node:set_position(vec3(p.x, 0.7, p.z))
+                -- Fading ember trail behind the tracer (budgeted per frame).
+                p.trail_t = (p.trail_t or 0.0) - dt
+                if p.trail_t <= 0.0 and trail_budget > 0 then
+                    trail_budget = trail_budget - 1
+                    p.trail_t = 0.055
+                    local tc = p.col or { 1.0, 0.9, 0.4 }
+                    Art.burst("ath_bolt_trail", vec3(p.x, 0.7, p.z),
+                        { preset = "hero_take", count = 2, life_max = 0.16, spawn_radius = 0.05,
+                          size_max = 0.10, noise_strength = 0.6,
+                          color_start = vec4(tc[1], tc[2], tc[3], 0.9) })
+                end
             end
         end
     end
@@ -673,15 +761,412 @@ end
 -- ---------------------------------------------------------------------------
 -- Hit feedback — one funnel for damaging a creep so every source (melee cleave,
 -- whirl, thorns, hero bolt) lights the flash + applies the same knockback model.
+-- Discrete hits (bolts) roll a REAL crit here and pop a floating damage number;
+-- continuous melee dt-damage aggregates per creep and flushes on a short cadence
+-- (see update_creeps) so numbers stay readable instead of per-frame confetti.
 -- ---------------------------------------------------------------------------
-function Duel:hit_creep(c, amount, kx, kz)
+function Duel:roll_crit()
+    local hero = self.hero
+    return hero and math.random() < (hero.crit_chance or 0.0)
+end
+
+function Duel:hit_creep(c, amount, kx, kz, opts)
     if not c or not c.alive then return false end
+    local crit = false
+    if opts and opts.discrete then
+        crit = self:roll_crit()
+        if crit then amount = amount * CRIT_MULT end
+        self:spawn_damage_number(c.x, c.z, amount, crit)
+    elseif opts and opts.melee then
+        c._mdmg = (c._mdmg or 0.0) + amount
+        c._mdmg_t = c._mdmg_t or MELEE_FLUSH_T
+    end
     local killed = Creep.damage(c, amount)
     if not killed then
         c.hit_flash = HIT_FLASH_T
         if (kx and kx ~= 0.0) or (kz and kz ~= 0.0) then Creep.knock(c, kx or 0.0, kz or 0.0) end
     end
-    return killed
+    return killed, crit
+end
+
+-- Flush a creep's aggregated melee packet: roll the crit for the window (a crit
+-- deals the same packet AGAIN as bonus damage, so crit_chance genuinely raises
+-- melee dps) and pop one number.
+function Duel:flush_melee_packet(c)
+    local amt = c._mdmg or 0.0
+    if amt < 0.5 then c._mdmg = 0.0; c._mdmg_t = nil; return end
+    local crit = self:roll_crit()
+    if crit and c.alive then
+        if Creep.damage(c, amt) then c.alive = false end
+        amt = amt * CRIT_MULT
+    end
+    self:spawn_damage_number(c.x, c.z, amt, crit)
+    c._mdmg = 0.0
+    c._mdmg_t = nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Floating damage numbers — a fixed pool of screen-space text quads projected
+-- from world positions (runtime_ui.set_quad is retained + cheap per frame).
+-- Crits pop bigger, gold pickups reuse the same pool tinted gold.
+-- ---------------------------------------------------------------------------
+function Duel:spawn_damage_number(x, z, amount, crit, opts)
+    if not (runtime_ui and runtime_ui.set_quad) then return end
+    self.dmgnums = self.dmgnums or {}
+    local n = math.floor((tonumber(amount) or 0.0) + 0.5)
+    if n < 1 and not (opts and opts.text) then return end
+    local slot
+    for i = 1, DMGNUM_POOL do
+        local e = self.dmgnums[i]
+        if not e then
+            e = { id = "dmg_" .. i }
+            self.dmgnums[i] = e
+            slot = e
+            break
+        elseif not e.active then
+            slot = e
+            break
+        end
+    end
+    if not slot then return end -- pool saturated this frame; drop the popup
+    slot.active = true
+    slot.x = x
+    slot.z = z
+    slot.t = 0.0
+    slot.text = (opts and opts.text) or tostring(n)
+    slot.crit = crit == true
+    slot.color = (opts and opts.color) or (crit and { 1.0, 0.72, 0.2 } or { 0.97, 0.97, 1.0 })
+    slot.jx = (math.random() - 0.5) * 0.8
+end
+
+function Duel:update_damage_numbers(dt)
+    local list = self.dmgnums
+    if not list then return end
+    local vp_mat = Art.view_projection and Art.view_projection() or nil
+    for _, e in ipairs(list) do
+        if e.active then
+            e.t = e.t + dt
+            if e.t >= DMGNUM_LIFE or not vp_mat then
+                e.active = false
+                if runtime_ui.remove then runtime_ui.remove(self.hud, e.id) end
+            else
+                local k = e.t / DMGNUM_LIFE
+                local sx, sy = Art.world_to_screen(vp_mat, e.x + e.jx, 0.8, e.z)
+                if sx then
+                    -- fit=true lets the Text widget auto-size to the glyphs; a
+                    -- fixed small box clips the (large-font) number to nothing.
+                    local fs = (e.crit and 1.9 or 1.2) * (1.0 + 0.25 * math.min(1.0, e.t * 8.0))
+                    local a = k < 0.65 and 1.0 or (1.0 - (k - 0.65) / 0.35)
+                    runtime_ui.set_quad(self.hud, e.id, {
+                        x = sx - 34.0, y = sy - 52.0 * k - 30.0, style = "text", fit = true,
+                        body = e.text,
+                        fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+                        text_color = { e.color[1], e.color[2], e.color[3], a },
+                        font_scale = fs * Art.s("text") / (Art._ui_scale or 1.0),
+                        align_h = "center", no_input = true, bring_to_front = true, z = 8000.0,
+                    })
+                else
+                    e.active = false
+                    if runtime_ui.remove then runtime_ui.remove(self.hud, e.id) end
+                end
+            end
+        end
+    end
+end
+
+function Duel:clear_damage_numbers()
+    for _, e in ipairs(self.dmgnums or {}) do
+        if e.active then
+            e.active = false
+            if runtime_ui and runtime_ui.remove then runtime_ui.remove(self.hud, e.id) end
+        end
+    end
+end
+
+-- A short freeze-frame beat on meaty kills. Real dt keeps ticking; sim dt is
+-- scaled way down for the duration (see Duel:update).
+function Duel:hitstop(seconds)
+    self.hitstop_t = math.max(self.hitstop_t or 0.0, seconds or 0.05)
+end
+
+-- ---------------------------------------------------------------------------
+-- Death animation — a dead creep's rig spins flat + flashes out for a beat
+-- BEFORE being parked (Creep.destroy is deferred, pooling untouched). Purely
+-- visual: the creep is already dead, counted, and has dropped its loot. Only
+-- rotation/material writes (per-frame scale on sprites is unreliable).
+-- ---------------------------------------------------------------------------
+function Duel:begin_death_anim(c)
+    if not (c and Art.valid(c.root)) then
+        Creep.destroy(c)
+        return
+    end
+    self.dying = self.dying or {}
+    local dur = (c.stats and c.stats.boss) and 0.30 or 0.16
+    self.dying[#self.dying + 1] = { c = c, t = dur, dur = dur, dir = (c.id % 2 == 0) and 1.0 or -1.0 }
+end
+
+function Duel:update_dying(dt)
+    local list = self.dying
+    if not list or #list == 0 then return end
+    local keep = {}
+    for _, d in ipairs(list) do
+        d.t = d.t - dt
+        local c = d.c
+        if d.t <= 0.0 or not Art.valid(c.root) then
+            Creep.destroy(c)
+        else
+            local k = d.t / d.dur
+            c.root:set_rotation(vec3(0.0, (1.0 - k) * 640.0 * d.dir, 0.0))
+            local body = c.parts and c.parts.body
+            if Art.valid(body) then
+                local e = 7.0 * k
+                material.set(body, "emissive", vec3(e, e, e))
+            end
+            keep[#keep + 1] = d
+        end
+    end
+    self.dying = keep
+end
+
+function Duel:flush_dying()
+    for _, d in ipairs(self.dying or {}) do Creep.destroy(d.c) end
+    self.dying = {}
+end
+
+-- ---------------------------------------------------------------------------
+-- Ground pickups — kills scatter PHYSICAL gold coins and item beacons instead
+-- of silently crediting the counters. Coins magnetise to the hero inside
+-- hero.pickup_range and bank on contact; item beacons are rarity-tinted discs
+-- picked up by walking over them. Both are pooled nodes (parked offstage, never
+-- deleted mid-combat — the same swap-and-pop rule as every other combat node).
+-- ---------------------------------------------------------------------------
+local PICKUP_PARK = vec3(-1000.0, -1000.0, -1000.0)
+
+function Duel:ensure_pickup_pools()
+    if self.coins or not (self.groups and self.groups.world) then return end
+    self.coins = {}
+    for i = 1, COIN_POOL do
+        local node = Art.cylinder("Coin_" .. i, PICKUP_PARK, vec3(0.34, 0.06, 0.34),
+            { 1.0, 0.84, 0.25, 1.0 }, self.groups.world, 1.8)
+        self.coins[i] = { node = node, active = false }
+    end
+    self.beacons = {}
+    for i = 1, BEACON_POOL do
+        -- Root group carries disc + icon so the two share one transform: a
+        -- screen-projected icon drifted off the circle per-machine (round 4);
+        -- a child quad atop the disc cannot.
+        local root = Art.group("ItemBeacon_" .. i, self.groups.world)
+        root:set_position(PICKUP_PARK)
+        -- 2.1 disc + 1.5 icon = the round-4 user-confirmed proportions: the
+        -- rarity ring stays visible around the icon art.
+        local disc = Art.cylinder("BeaconDisc_" .. i, vec3(0.0, 0.0, 0.0), vec3(2.1, 0.05, 2.1),
+            { 0.7, 0.7, 0.8, 1.0 }, root, 1.4)
+        local icon = Art.part({
+            name = "BeaconIcon_" .. i, kind = "quad", quad_width = 1.5, quad_height = 1.5,
+            position = { 0.0, 0.16, 0.0 }, rotation = { -90.0, 0.0, 0.0 },
+            texture = "Textures/ui/items/weapon.png", emissive_texture = true,
+        }, root)
+        self.beacons[i] = { node = root, disc = disc, icon = icon, pool_index = i, active = false }
+    end
+end
+
+local function park_pickup(e)
+    e.active = false
+    if Art.valid(e.node) then e.node:set_position(PICKUP_PARK) end
+end
+
+function Duel:spawn_coin(x, z, value)
+    self:ensure_pickup_pools()
+    if not self.coins then return end
+    local slot
+    for _, e in ipairs(self.coins) do
+        if not e.active then slot = e; break end
+    end
+    if not slot then
+        -- Pool saturated: merge the value into an active coin so no gold is lost.
+        for _, e in ipairs(self.coins) do
+            if e.active then e.value = e.value + (value or 1); return end
+        end
+        return
+    end
+    slot.active = true
+    slot.x, slot.z = x, z
+    slot.value = value or 1
+    local ang = math.random() * 6.2831
+    local sp = 2.5 + math.random() * 2.5
+    slot.vx, slot.vz = math.sin(ang) * sp, math.cos(ang) * sp
+    if Art.valid(slot.node) then slot.node:set_position(vec3(x, 0.22, z)) end
+end
+
+function Duel:spawn_item_beacon(x, z, item)
+    self:ensure_pickup_pools()
+    if not (item and self.beacons) then return end
+    local slot
+    for _, e in ipairs(self.beacons) do
+        if not e.active then slot = e; break end
+    end
+    if not slot then
+        -- No free beacon: fall back to the old straight-to-bag path.
+        if Inventory.add_item(self, item) then self:set_flash("Found " .. tostring(item.name or item.id)) end
+        return
+    end
+    slot.active = true
+    slot.x, slot.z = x, z
+    slot.item = item
+    slot.retry_t = 0.0
+    local col = RARITY_COLOR[item.rarity or "common"] or RARITY_COLOR.common
+    if Art.valid(slot.node) then
+        slot.node:set_position(vec3(x, 0.06, z))
+        material.set(slot.disc, "base_color", vec4(col[1], col[2], col[3], 1.0))
+        local icon = Inventory.SLOT_ICON[item.slot]
+        if icon and Art.valid(slot.icon) then
+            Art.texture(slot.icon, "Textures/" .. icon)
+            Art.texture(slot.icon, "Textures/" .. icon, "emissive")
+        end
+    end
+end
+
+function Duel:update_pickups(dt)
+    local hero = self.hero
+    if not (hero and self.coins) then return end
+    local pr = hero.pickup_range or PICKUP_RANGE_BASE
+    local gf = hero.gold_find or 1.0
+    for _, e in ipairs(self.coins) do
+        if e.active then
+            local dx, dz = hero.x - e.x, hero.z - e.z
+            local d = math.sqrt(dx * dx + dz * dz)
+            if not hero.dead and d <= COIN_COLLECT_R then
+                self.gold = (self.gold or 0) + math.max(1, math.floor(e.value * gf + 0.5))
+                self._gold_pop = (self._gold_pop or 0) + math.max(1, math.floor(e.value * gf + 0.5))
+                park_pickup(e)
+            else
+                if not hero.dead and d <= pr and d > 0.001 then
+                    -- Magnet: accelerate toward the hero, harder the closer it gets.
+                    local pull = 30.0 + 40.0 * (1.0 - d / pr)
+                    e.vx = e.vx + dx / d * pull * dt
+                    e.vz = e.vz + dz / d * pull * dt
+                else
+                    e.vx = e.vx * math.max(0.0, 1.0 - 6.0 * dt)
+                    e.vz = e.vz * math.max(0.0, 1.0 - 6.0 * dt)
+                end
+                local sp = math.sqrt(e.vx * e.vx + e.vz * e.vz)
+                if sp > 22.0 then e.vx, e.vz = e.vx / sp * 22.0, e.vz / sp * 22.0 end
+                e.x = e.x + e.vx * dt
+                e.z = e.z + e.vz * dt
+                if Art.valid(e.node) then e.node:set_position(vec3(e.x, 0.22, e.z)) end
+            end
+        end
+    end
+    -- Aggregate the gold popup so a coin shower reads as one rising "+N".
+    self._gold_pop_t = math.max(0.0, (self._gold_pop_t or 0.0) - dt)
+    if (self._gold_pop or 0) > 0 and self._gold_pop_t <= 0.0 then
+        self:spawn_damage_number(hero.x, hero.z, 0, false,
+            { text = "+" .. tostring(self._gold_pop), color = { 1.0, 0.85, 0.3 } })
+        Art.burst("ath_gold_pop", vec3(hero.x, 0.6, hero.z),
+            { preset = "hero_take", count = 6, life_max = 0.22, spawn_radius = 0.25, size_max = 0.12,
+              color_start = vec4(1.0, 0.85, 0.3, 1.0), gravity = vec3(0.0, 2.0, 0.0) })
+        self._gold_pop = 0
+        self._gold_pop_t = 0.45
+    end
+    local pickup_vp = Art.view_projection and Art.view_projection() or nil
+    local mx, my = ui_pointer()
+    local hovered
+    for _, e in ipairs(self.beacons or {}) do
+        if e.active then
+            e.retry_t = math.max(0.0, (e.retry_t or 0.0) - dt)
+            local item = e.item
+            local col = RARITY_COLOR[(item and item.rarity) or "common"] or RARITY_COLOR.common
+            if Art.valid(e.node) then
+                local p = 0.7 + 0.6 * math.abs(math.sin(self.realtime * 5.0))
+                material.set(e.disc, "emissive", vec3(col[1] * p, col[2] * p, col[3] * p))
+            end
+            if pickup_vp and item and mx and runtime_ui and runtime_ui.set_quad then
+                local sx, sy = Art.world_to_screen(pickup_vp, e.x, 0.35, e.z)
+                if sx then
+                    local ex, ey = Art.world_to_screen(pickup_vp, e.x + 1.05, 0.35, e.z)
+                    local zx, zy = Art.world_to_screen(pickup_vp, e.x, 0.35, e.z + 1.05)
+                    local hr = 36.0
+                    if ex and zx then
+                        hr = math.min(110.0, math.max(hr, math.sqrt(
+                            (ex - sx) ^ 2 + (ey - sy) ^ 2 + (zx - sx) ^ 2 + (zy - sy) ^ 2)))
+                    end
+                    local dx, dy = mx - sx, my - sy
+                    local d2 = dx * dx + dy * dy
+                    if d2 <= hr * hr and (not hovered or d2 < hovered.d2) then
+                        hovered = { item = item, col = col, sx = sx, sy = sy, d2 = d2 }
+                    end
+                end
+            end
+            local dx, dz = hero.x - e.x, hero.z - e.z
+            local br = math.max(BEACON_COLLECT_R, pr)
+            if not hero.dead and e.retry_t <= 0.0 and (dx * dx + dz * dz) <= br * br then
+                if Inventory.add_item(self, e.item) then
+                    self:log("found " .. tostring(e.item.id))
+                    self:set_flash("Found " .. tostring(e.item.name or e.item.id))
+                    self:spawn_damage_number(e.x, e.z, 0, false,
+                        { text = tostring(e.item.name or e.item.id),
+                          color = RARITY_COLOR[e.item.rarity or "common"] or RARITY_COLOR.common })
+                    self:haptic(10)
+                    park_pickup(e)
+                else
+                    self:set_flash("Bag full!")
+                    -- Also say it AT the item — the top flash is easy to miss.
+                    self:spawn_damage_number(e.x, e.z, 0, false,
+                        { text = "BAG FULL", color = { 1.0, 0.38, 0.3 } })
+                    e.retry_t = 1.2
+                end
+            end
+        end
+    end
+    if hovered then
+        local ts = Art.s("text")
+        local vp = Art._vp
+        local tw, th = 175.0 * ts, 42.0 * ts
+        local tx = math.max(vp.x, math.min(hovered.sx + 24.0, vp.x + vp.w - tw))
+        local ty = math.max(vp.y, math.min(hovered.sy - 70.0, vp.y + vp.h - th))
+        runtime_ui.set_quad(self.hud, "beacon_tip", {
+            x = tx, y = ty, style = "text", fit = true,
+            body = tostring(hovered.item.name or hovered.item.id) .. "\n" .. tostring(hovered.item.desc or ""),
+            fill = { 0.025, 0.03, 0.045, 0.92 }, border = hovered.col,
+            text_color = { 0.94, 0.96, 1.0, 1.0 },
+            font_scale = 0.72 * Art.s("text") / (Art._ui_scale or 1.0),
+            align_h = "left", align_v = "top", no_input = true,
+            bring_to_front = true, z = 7000.0,
+        })
+    elseif runtime_ui and runtime_ui.remove then
+        runtime_ui.remove(self.hud, "beacon_tip")
+    end
+end
+
+-- Bank everything left on the floor (wave clear / boss down): forgiving, so no
+-- loot is ever stranded behind a wave transition.
+function Duel:vacuum_pickups()
+    local hero = self.hero
+    local gf = (hero and hero.gold_find) or 1.0
+    for _, e in ipairs(self.coins or {}) do
+        if e.active then
+            self.gold = (self.gold or 0) + math.max(1, math.floor(e.value * gf + 0.5))
+            park_pickup(e)
+        end
+    end
+    for _, e in ipairs(self.beacons or {}) do
+        if e.active then
+            if Inventory.add_item(self, e.item) then
+                self:set_flash("Found " .. tostring(e.item.name or e.item.id))
+            else
+                self:set_flash("Bag full - " .. tostring(e.item.name or e.item.id) .. " lost")
+            end
+            park_pickup(e)
+        end
+    end
+    if runtime_ui and runtime_ui.remove then runtime_ui.remove(self.hud, "beacon_tip") end
+end
+
+function Duel:reset_pickups()
+    for _, e in ipairs(self.coins or {}) do park_pickup(e) end
+    for _, e in ipairs(self.beacons or {}) do park_pickup(e) end
+    if runtime_ui and runtime_ui.remove then runtime_ui.remove(self.hud, "beacon_tip") end
+    self._gold_pop = 0
 end
 
 -- ---------------------------------------------------------------------------
@@ -730,12 +1215,21 @@ function Duel:spawn_creep_proj(desc)
     slot.hit_r = desc.hit_radius or 0.6
     local col = desc.color or { 1.0, 0.5, 0.3, 1.0 }
     slot.col = col
+    slot.pulse = desc.pulse == true
+    slot.base_e = desc.emissive or 1.0
+    slot.trail_t = 0.05
     local sz = desc.particle_size or 0.22
     if Art.valid(slot.node) then
-        local e = desc.emissive or 1.0
+        local e = slot.base_e
         material.set(slot.node, "base_color", vec4(col[1], col[2], col[3], 1.0))
         material.set(slot.node, "emissive", vec3(col[1] * e, col[2] * e, col[3] * e))
-        slot.node:set_scale(vec3(sz, sz, sz))
+        -- Use the archetype's authored projectile shape (arrows are long, cobs
+        -- are chunky) and aim it along the flight line at spawn.
+        local sc = desc.scale or { sz, sz, sz }
+        slot.node:set_scale(vec3(sc[1] or sz, sc[2] or sz, sc[3] or sz))
+        local horiz = math.sqrt(slot.vx * slot.vx + slot.vz * slot.vz)
+        slot.node:set_rotation(vec3(-math.deg(math.atan(slot.vy or 0.0, math.max(horiz, 0.001))),
+            math.deg(math.atan(slot.vx, slot.vz)), 0.0))
         slot.node:set_position(vec3(slot.x, slot.y, slot.z))
     end
     -- Muzzle spark at the shooter, tinted to the bolt.
@@ -762,6 +1256,7 @@ function Duel:update_creep_projectiles(dt)
     if not self.cproj then return end
     local hero = self.hero
     local A = self.arena
+    local ctrail_budget = 4 -- particle emits per frame across all creep bolts
     for _, p in ipairs(self.cproj) do
         if p.active then
             if (p.gravity or 0.0) ~= 0.0 then p.vy = (p.vy or 0.0) - p.gravity * dt end
@@ -792,6 +1287,20 @@ function Duel:update_creep_projectiles(dt)
                 self:cproj_hide(p)
             elseif Art.valid(p.node) then
                 p.node:set_position(vec3(p.x, p.y or 0.7, p.z))
+                -- Throb pulsing shots (necromancer orbs, mortar cobs) + a light trail.
+                if p.pulse then
+                    local k = p.base_e * (1.0 + 0.5 * math.sin(self.realtime * 14.0))
+                    material.set(p.node, "emissive", vec3(p.col[1] * k, p.col[2] * k, p.col[3] * k))
+                end
+                p.trail_t = (p.trail_t or 0.0) - dt
+                if p.trail_t <= 0.0 and ctrail_budget > 0 then
+                    ctrail_budget = ctrail_budget - 1
+                    p.trail_t = 0.09
+                    Art.burst("ath_cbolt_trail", vec3(p.x, p.y or 0.7, p.z),
+                        { preset = "enemy_give", count = 2, life_max = 0.15, spawn_radius = 0.05,
+                          size_max = 0.09, noise_strength = 0.6,
+                          color_start = vec4(p.col[1], p.col[2], p.col[3], 0.85) })
+                end
             end
         end
     end
@@ -1132,18 +1641,32 @@ function Duel:spawn_one(spawn, arch, free)
     self.next_id = self.next_id + 1
     local jx = (self.spawn_counter % 5 - 2) * 0.3
     local jz = (self.spawn_counter % 7 - 3) * 0.3
+    -- ELITE roll (manual arena, wave 2+, budget-paid spawns only): a scaled-up,
+    -- gold-tinted variant with a guaranteed item drop. Splits/summons/boss are
+    -- exempt (`free`), and so is anything already big (boss, cost > 5).
+    local elite = false
+    if self.manual_hero and not free and (self.wave_index or 1) >= 2 and cost <= 5 then
+        local def = Creep.archetypes[Creep.resolve_archetype(arch)] or {}
+        if not def.boss then
+            elite = math.random() < (0.03 + 0.012 * (self.wave_index or 1))
+        end
+    end
     local creep = Creep.create({
         id = self.next_id, archetype = arch,
         x = spawn.x + jx, z = spawn.y + jz,
         parent = self.groups.actors,
         hp_multiplier = self.config.creep_hp_mult or 1.0,
+        elite = elite,
         -- POOLING IS LOAD-BEARING: deleting rig nodes mid-combat (a no_pool
         -- experiment) shuffles node storage via swap-and-pop and leaves mesh
         -- draw-constants pointing at OTHER nodes' world matrices — sprites
         -- then render with arbitrary (often giant) transforms. Park & reuse.
-        mods = { speed_add = self.buffs.speed, dps_add = self.buffs.power, hp_add = self.buffs.hp },
+        mods = { speed_add = self.buffs.speed, dps_add = self.buffs.power, hp_add = self.buffs.hp,
+                 hp_multiplier = elite and ELITE_HP_MULT or nil,
+                 dps_multiplier = elite and ELITE_DPS_MULT or nil },
     })
     self:dress_creep(creep)
+    if creep.stats and creep.stats.boss then self.boss_creep = creep end
     self.creeps[#self.creeps + 1] = creep
     if self.config.hooks and self.config.hooks.on_spawn then self.config.hooks.on_spawn(self, creep) end
     return creep
@@ -1273,6 +1796,7 @@ function Duel:dress_creep(creep)
     if Art.valid(creep.root) then
         local cbase = (arch_def and arch_def.scale) or 1.0
         local cw = cbase * Art.s("char")
+        if creep.elite then cw = cw * 1.35 end
         creep.root:set_scale(vec3(cw, cw, cw))
     end
 end
@@ -1359,6 +1883,7 @@ function Duel:update_creeps(dt)
     local hero = self.hero
     local kill_fx_budget = self.config.kill_fx_budget_per_frame
     local kill_fx_used = 0
+    local dust_budget = 3 -- dash-dust emits per frame across all chargers
     local survivors = {}
     local incoming = 0.0
     local contact = false
@@ -1368,13 +1893,62 @@ function Duel:update_creeps(dt)
         if c.alive then ev = Creep.update(c, dt, self.field, self.map, hero) end
         self:clamp_creep_to_arena(c)
         if c.hit_flash then c.hit_flash = math.max(0.0, c.hit_flash - dt) end
+        -- Aggregated melee damage flushes into one readable popup on a cadence.
+        if c.alive and c._mdmg_t then
+            c._mdmg_t = c._mdmg_t - dt
+            if c._mdmg_t <= 0.0 then self:flush_melee_packet(c) end
+        end
+        -- Behaviour FX: a red warning puff when a charger plants, an ignition
+        -- spark when a fuse lights, and kicked-up dust along a dash.
+        if ev and ev.windup then
+            Art.burst("ath_windup_" .. tostring(c.id), vec3(c.x, 0.4, c.z),
+                { preset = "enemy_give", count = 10, life_max = 0.30, spawn_radius = 0.35, size_max = 0.16,
+                  color_start = vec4(1.0, 0.35, 0.3, 1.0) })
+        end
+        if ev and ev.fuse_started then
+            Art.burst("ath_fuse_" .. tostring(c.id), vec3(c.x, 0.5, c.z),
+                { preset = "enemy_give", count = 6, life_max = 0.25, spawn_radius = 0.2, size_max = 0.14,
+                  color_start = vec4(1.0, 0.6, 0.25, 1.0) })
+        end
+        if c.alive and c.charge_state == "dash" then
+            c._dust_t = (c._dust_t or 0.0) - dt
+            if c._dust_t <= 0.0 and dust_budget > 0 then
+                dust_budget = dust_budget - 1
+                c._dust_t = 0.07
+                Art.burst("ath_dash_dust_" .. tostring(c.id), vec3(c.x, 0.15, c.z),
+                    { preset = "enemy_take", count = 3, life_max = 0.28, spawn_radius = 0.22, size_max = 0.14,
+                      color_start = vec4(0.62, 0.52, 0.38, 0.9), gravity = vec3(0.0, 0.8, 0.0) })
+            end
+        end
         -- Necromancer-style summons (Creep.update returns these; previously dropped).
         -- Arena-only for now to keep this pass from altering the archived menu duels.
         -- CAVEAT: ev.summon is fed straight into the spawn queue, so any archetype
         -- that sets summon_archetype MUST also appear in the mode's prewarm_order —
         -- otherwise its rig is built mid-combat (the frame spike the prewarm pool
-        -- exists to avoid). No current arena archetype summons, so this is dormant.
+        -- exists to avoid).
         if self.manual_hero and ev and ev.summon then self:enqueue_spawn(1, ev.summon, true) end
+        -- Walking bomb popped its fuse: the creep killed itself; blast the hero if
+        -- caught in the radius. Killing it BEFORE the fuse ends skips all of this.
+        if ev and ev.exploded then
+            local exs = (c.stats and c.stats.explode) or {}
+            c._exploded = true
+            local ex_r = exs.radius or 2.2
+            Art.burst("ath_explode_" .. tostring(c.id), vec3(c.x, 0.5, c.z),
+                { preset = "enemy_give", count = 30, life_max = 0.4, spawn_radius = ex_r * 0.45,
+                  size_max = 0.30, noise_strength = 6.0, color_start = vec4(1.0, 0.55, 0.2, 1.0) })
+            if hero and not hero.dead then
+                local dx, dz = hero.x - c.x, hero.z - c.z
+                local d2 = dx * dx + dz * dz
+                if d2 <= ex_r * ex_r then
+                    self:apply_hero_damage(exs.damage or 20.0)
+                    local d = math.sqrt(math.max(d2, 0.0001))
+                    hero.knock_x = (hero.knock_x or 0.0) + dx / d * 6.0
+                    hero.knock_z = (hero.knock_z or 0.0) + dz / d * 6.0
+                    self:hitstop(0.07)
+                end
+            end
+            Art.shake(0.45, 0.35)
+        end
         if c.alive and not hero.dead then
             if self.manual_hero and Creep.is_ranged(c) then
                 -- Manual arena: ranged enemies do NOT deal silent contact dps; they
@@ -1385,21 +1959,72 @@ function Duel:update_creeps(dt)
                 local dx, dz = hero.x - c.x, hero.z - c.z
                 local d = math.sqrt(dx * dx + dz * dz)
                 if d <= hero.body_radius + (c.stats.range or 0.5) then
-                    incoming = incoming + (c.stats.dps or 1.0)
-                    contact = true
-                    contacters[#contacters + 1] = c
+                    if c.charge_state == "dash" then
+                        -- A landed charge is a one-shot slam, not contact dps.
+                        local cg = c.stats.charge or {}
+                        self:apply_hero_damage((c.stats.dps or 1.0) * (cg.dmg_mult or 1.6))
+                        c.charge_state = nil
+                        c.charge_cd = cg.cooldown or 3.0
+                        hero.knock_x = (hero.knock_x or 0.0) + (c.charge_dx or 0.0) * 7.0
+                        hero.knock_z = (hero.knock_z or 0.0) + (c.charge_dz or 0.0) * 7.0
+                        Art.shake(0.4, 0.3)
+                        self:hitstop(0.06)
+                        Art.burst("ath_slam_" .. tostring(c.id), vec3(hero.x, 0.7, hero.z),
+                            { preset = "hero_take", count = 16, life_max = 0.28, spawn_radius = 0.3, size_max = 0.2 })
+                    else
+                        incoming = incoming + (c.stats.dps or 1.0)
+                        contact = true
+                        contacters[#contacters + 1] = c
+                    end
                 end
             end
         end
         if c.alive then
             survivors[#survivors + 1] = c
         else
+            if (c._mdmg or 0.0) > 0.5 then self:flush_melee_packet(c) end
+            local s = c.stats or {}
+            local col = s.color or { 0.9, 0.5, 0.3 }
+            local big = (s.threat_cost or 1) >= TELEGRAPH_BIG_COST or c.elite or s.boss
             if kill_fx_budget == nil or kill_fx_used < kill_fx_budget then
-                Art.burst("ath_duel_kill_" .. tostring(c.id), vec3(c.x, 0.6, c.z),
-                    { preset = "enemy_take", count = 12, life_max = 0.22, spawn_radius = 0.18 })
+                -- Two-stage pop: radial gibs in the creep's colour + an upward puff,
+                -- so deaths read as a squash-pop even on flat sprites.
+                Art.burst("ath_duel_kill_" .. tostring(c.id), vec3(c.x, 0.5, c.z),
+                    { preset = "enemy_take", count = big and 22 or 12, life_max = big and 0.34 or 0.24,
+                      spawn_radius = big and 0.4 or 0.2, size_max = big and 0.26 or 0.16,
+                      color_start = vec4(col[1], col[2], col[3], 1.0) })
+                Art.burst("ath_duel_pop_" .. tostring(c.id), vec3(c.x, 0.7, c.z),
+                    { preset = "enemy_give", count = big and 10 or 5, life_max = 0.3, spawn_radius = 0.15,
+                      size_max = 0.14, gravity = vec3(0.0, 2.2, 0.0),
+                      color_start = vec4(col[1] * 1.3, col[2] * 1.3, col[3] * 1.3, 1.0) })
+                if big then
+                    -- Ground shockwave: a wide, low dust ring under heavy kills.
+                    Art.burst("ath_duel_ring_" .. tostring(c.id), vec3(c.x, 0.16, c.z),
+                        { preset = "enemy_take", count = 14, life_max = 0.32, spawn_radius = 0.95,
+                          size_max = 0.18, noise_strength = 1.2, gravity = vec3(0.0, 0.6, 0.0),
+                          color_start = vec4(0.72, 0.66, 0.52, 0.9) })
+                end
                 kill_fx_used = kill_fx_used + 1
             end
-            Creep.destroy(c)
+            -- Death splits (pumpkins burst into sprouts) — direct spawns at the corpse.
+            if self.manual_hero and s.split_into and not c._exploded then
+                local n = s.split_into.count or 2
+                for i = 1, n do
+                    local ang = (i / n) * 6.2831
+                    self:spawn_one({ x = c.x + math.sin(ang) * 0.7, y = c.z + math.cos(ang) * 0.7 },
+                        s.split_into.archetype, true)
+                end
+            end
+            if big then
+                self:hitstop(s.boss and 0.12 or (c.elite and 0.07 or 0.045))
+                Art.shake(s.boss and 0.85 or 0.1, s.boss and 0.6 or 0.2)
+            end
+            if self.boss_creep == c then
+                self.boss_creep = nil
+                self:set_flash((self.config.boss_title and ("THE " .. self.config.boss_title .. " FALLS"))
+                    or "CHAMPION DOWN")
+            end
+            self:begin_death_anim(c) -- defers Creep.destroy by a spin-out beat
             self.kills = self.kills + 1
             self:maybe_drop_manual_gear(c)
         end
@@ -1460,6 +2085,9 @@ function Duel:apply_hero_damage(amount, opts)
     local mitig = opts.ignore_armor and 1.0 or (1.0 - clampn(hero.armor or 0.0, -0.5, 0.85))
     hero.hp = hero.hp - amount * mitig
     hero.hit_flash = HIT_FLASH_T
+    -- Hurt vignette pulse (drawn by update_hud) + a jolt on meaty single hits.
+    self._hurt_t = 0.25
+    if amount * mitig >= 14.0 then Art.shake(0.3, 0.25) end
     if hero.hp <= 0.0 then
         hero.hp = 0.0
         hero.dead = true
@@ -1492,7 +2120,7 @@ function Duel:apply_front(e)
     if e.armor_add then hero.armor = clampn((hero.armor or 0.0) + e.armor_add, -0.5, 0.85) end
     if e.thorns_add then hero.thorns = (hero.thorns or 0.0) + e.thorns_add end
     if e.dash_add then hero.dash = (hero.dash or 0) + e.dash_add end
-    if e.crit_add then hero.dps = hero.dps * (1.0 + 0.5 * e.crit_add) end -- crit modelled as expected dps
+    if e.crit_add then hero.crit_chance = (hero.crit_chance or 0.0) + e.crit_add end -- real rolled crits
 end
 
 function Duel:apply_back(e)
@@ -1561,6 +2189,9 @@ end
 -- ---------------------------------------------------------------------------
 
 function Duel:manual_wave_budget(index)
+    -- An explicit ATH_DUEL_RESERVE pins EVERY wave's budget (smoke/tuning knob).
+    local env = ATH_COMMON.getenv_number("ATH_DUEL_RESERVE", nil)
+    if env then return env end
     local budgets = self.wave_cfg and self.wave_cfg.budgets
     if budgets and budgets[index] then return budgets[index] end
     local base = (self.wave_cfg and self.wave_cfg.reserve_start) or self.reserve_start or 300.0
@@ -1600,7 +2231,7 @@ function Duel:choose_class(index)
     self:reset_hero_projectiles()
     if self.config.hooks and self.config.hooks.on_reset then self.config.hooks.on_reset(self) end
     if self.mode_started then self:warm_creep_pool() end
-    self:begin_manual_wave(1)
+    self:begin_manual_wave(ATH_COMMON.getenv_number("ATH_DUEL_WAVE", 1))
 end
 
 function Duel:begin_manual_wave(index)
@@ -1613,9 +2244,68 @@ function Duel:begin_manual_wave(index)
     self.spawn_queue = {}
     self:clear_telegraphs()
     self:reset_creep_projectiles()
-    self.state = "combat"
-    self:set_flash("WAVE " .. tostring(self.wave_index))
+    -- PLAN step 2: every round opens with a 1-of-3 draft of run-scoped boons;
+    -- combat starts when the player picks (see pick_draft_card).
+    local catalog = self.config.draft_cards or DRAFT_CARDS
+    if self.manual_hero and #catalog > 0 then
+        self:begin_draft(catalog)
+    else
+        self.state = "combat"
+        self:set_flash("WAVE " .. tostring(self.wave_index))
+    end
     self:log(string.format("wave start wave=%d budget=%.0f", self.wave_index, self.reserve_start))
+end
+
+-- ---------------------------------------------------------------------------
+-- Wave-start draft — 3 rarity-weighted, distinct boons from the catalog.
+-- Picked cards stack in D.run_cards for the rest of the run (cleared on reset)
+-- and are applied by recompute_hero_stats on top of base + gear.
+-- ---------------------------------------------------------------------------
+function Duel:begin_draft(catalog)
+    local picks, used = {}, {}
+    for _ = 1, 200 do
+        if #picks >= 3 then break end
+        local total = 0
+        for _, cd in ipairs(catalog) do
+            if not used[cd.id] then total = total + (DRAFT_WEIGHTS[cd.rarity or "common"] or 10) end
+        end
+        if total <= 0 then break end
+        local r = math.random() * total
+        for _, cd in ipairs(catalog) do
+            if not used[cd.id] then
+                r = r - (DRAFT_WEIGHTS[cd.rarity or "common"] or 10)
+                if r <= 0 then
+                    used[cd.id] = true
+                    picks[#picks + 1] = cd
+                    break
+                end
+            end
+        end
+    end
+    if #picks == 0 then
+        self.state = "combat"
+        self:set_flash("WAVE " .. tostring(self.wave_index))
+        return
+    end
+    self.draft_offer = picks
+    self.state = "draft"
+    self:set_flash("WAVE " .. tostring(self.wave_index) .. " - CHOOSE A BOON")
+end
+
+function Duel:pick_draft_card(i)
+    local card = self.draft_offer and self.draft_offer[i]
+    if not card then return end
+    self.run_cards = self.run_cards or {}
+    self.run_cards[#self.run_cards + 1] = card
+    self:recompute_hero_stats()
+    if card.effect and card.effect.heal and self.hero then
+        self.hero.hp = math.min(self.hero.hp_max, self.hero.hp + card.effect.heal)
+    end
+    self.draft_offer = nil
+    self.state = "combat"
+    self:set_flash(tostring(card.name) .. " - WAVE " .. tostring(self.wave_index))
+    self:haptic(12)
+    self:log(string.format("draft pick wave=%d card=%s", self.wave_index or 1, tostring(card.id)))
 end
 
 function Duel:manual_wave_done()
@@ -1625,26 +2315,50 @@ function Duel:manual_wave_done()
         and self:count_alive() == 0
 end
 
-function Duel:maybe_drop_manual_gear(_creep)
+local RARITY_RANK = { common = 1, uncommon = 2, rare = 3, epic = 4 }
+function Duel:pick_drop_item(items, min_rarity)
+    local min_rank = RARITY_RANK[min_rarity or "common"] or 1
+    local pool = {}
+    for _, it in ipairs(items) do
+        if (RARITY_RANK[it.rarity or "common"] or 1) >= min_rank then pool[#pool + 1] = it end
+    end
+    if #pool == 0 then pool = items end
+    return pool[math.random(#pool)]
+end
+
+-- Kills drop PHYSICAL loot at the corpse: gold coins always (heftier enemies
+-- shower more), an item beacon on the drop cadence, a guaranteed piece from
+-- elites, and a two-piece rare-or-better shower from the boss.
+function Duel:maybe_drop_manual_gear(c)
     if not self.manual_hero then return end
-    self.gold = (self.gold or 0) + (self.gear_cfg.gold_per_kill or 1)
+    local s = (c and c.stats) or {}
+    local x = (c and c.x) or (self.hero and self.hero.x) or 0.0
+    local z = (c and c.z) or (self.hero and self.hero.z) or 0.0
+    local cost = s.threat_cost or 1
+    local base_gold = self.gear_cfg.gold_per_kill or 1
+    local coins = 1
+    if s.boss then coins = 7 elseif c and c.elite then coins = 4 elseif cost >= TELEGRAPH_BIG_COST then coins = 2 end
+    for _ = 1, coins do
+        self:spawn_coin(x, z, base_gold * (cost >= TELEGRAPH_BIG_COST and 2 or 1))
+    end
 
     local items = self.gear_cfg.items or {}
+    if #items == 0 then return end
+    if s.boss then
+        self:spawn_item_beacon(x - 0.9, z, self:pick_drop_item(items, "rare"))
+        self:spawn_item_beacon(x + 0.9, z, self:pick_drop_item(items, "uncommon"))
+        return
+    end
+    if c and c.elite then
+        self:spawn_item_beacon(x, z, self:pick_drop_item(items))
+        return
+    end
     local every = math.max(1, math.floor(self.gear_cfg.drop_every or 6))
-    if #items == 0 or (self.kills % every) ~= 0 then return end
-
-    -- Cycle the loot table and drop the next piece into the first free bag slot
-    -- (duplicates allowed — it's a real backpack now, not a one-of-each list).
+    if (self.kills % every) ~= 0 then return end
+    -- Cycle the loot table so early drops stay curated (duplicates allowed).
     local index = ((self.gear_drop_cursor or 0) % #items) + 1
     self.gear_drop_cursor = index
-    local item = items[index]
-    if item then
-        if Inventory.add_item(self, item) then
-            self:set_flash("Found " .. tostring(item.name or item.id))
-        else
-            self:set_flash("Bag full!")
-        end
-    end
+    self:spawn_item_beacon(x, z, items[index])
 end
 
 local function apply_gear_effect(hero, effect)
@@ -1662,9 +2376,13 @@ local function apply_gear_effect(hero, effect)
     if effect.whirl_add then hero.whirl = (hero.whirl or 0) + effect.whirl_add end
     if effect.thorns_add then hero.thorns = (hero.thorns or 0.0) + effect.thorns_add end
     if effect.dash_add then hero.dash = (hero.dash or 0) + effect.dash_add end
-    -- Attack-speed gear (ranged): lowers fire_interval. Crit modelled as expected dps.
+    -- Attack-speed gear (ranged): lowers fire_interval.
     if effect.fire_interval_mult then hero.fire_interval = (hero.fire_interval or 0.28) * effect.fire_interval_mult end
-    if effect.crit_add then hero.dps = hero.dps * (1.0 + 0.5 * effect.crit_add) end
+    -- Crit is ROLLED per hit now (see hit_creep), not folded into average dps.
+    if effect.crit_add then hero.crit_chance = (hero.crit_chance or 0.0) + effect.crit_add end
+    if effect.pickup_range_add then hero.pickup_range = (hero.pickup_range or PICKUP_RANGE_BASE) + effect.pickup_range_add end
+    if effect.gold_find_add then hero.gold_find = (hero.gold_find or 1.0) + effect.gold_find_add end
+    if effect.slow_aura then hero.slow_aura = true end
 end
 
 function Duel:recompute_hero_stats()
@@ -1686,11 +2404,19 @@ function Duel:recompute_hero_stats()
     hero.whirl = base.whirl or 0
     hero.thorns = base.thorns or 0.0
     hero.dash = base.dash or 0
+    hero.crit_chance = base.crit_chance or 0.03
+    hero.pickup_range = base.pickup_range or PICKUP_RANGE_BASE
+    hero.gold_find = base.gold_find or 1.0
+    hero.slow_aura = false
     hero.fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28
 
     for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
         local item = self.gear_equipped and self.gear_equipped[slot]
         if item then apply_gear_effect(hero, item.effect) end
+    end
+    -- Run-scoped drafted boons stack on top of base + gear.
+    for _, card in ipairs(self.run_cards or {}) do
+        apply_gear_effect(hero, card.effect)
     end
 
     local delta = hero.hp_max - old_max
@@ -1706,6 +2432,8 @@ function Duel:reset_manual_gear()
     self.inv_grid = {}
     self.gear_equipped = { helmet = nil, body = nil, pants = nil, gloves = nil, weapon = nil, jewelry = nil }
     self.gear_drop_cursor = 0
+    self.run_cards = {}
+    self.draft_offer = nil
     self._inv_drag = nil
     self._inv_last_click = nil
     self._between_wave = nil
@@ -1731,11 +2459,17 @@ function Duel:gear_preview_stats()
         whirl = base.whirl or 0,
         thorns = base.thorns or 0.0,
         dash = base.dash or 0,
+        crit_chance = base.crit_chance or 0.03,
+        pickup_range = base.pickup_range or PICKUP_RANGE_BASE,
+        gold_find = base.gold_find or 1.0,
         fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28,
     }
     for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
         local item = self.gear_equipped and self.gear_equipped[slot]
         if item then apply_gear_effect(t, item.effect) end
+    end
+    for _, card in ipairs(self.run_cards or {}) do
+        apply_gear_effect(t, card.effect)
     end
     return t
 end
@@ -1858,6 +2592,12 @@ end
 
 function Duel:begin_pause()
     if self.manual_hero then
+        self:vacuum_pickups() -- bank whatever's still on the floor before the pause
+        if self.hero and not self.hero.dead then
+            Art.burst("ath_wave_clear", vec3(self.hero.x, 0.8, self.hero.z),
+                { preset = "hero_take", count = 26, life_max = 0.5, spawn_radius = 0.6, size_max = 0.2,
+                  color_start = vec4(1.0, 0.9, 0.4, 1.0), gravity = vec3(0.0, 2.6, 0.0) })
+        end
         self.state = "pause"
         self._between_wave = true -- a wave-flow pause: NEXT WAVE advances the run
         self:haptic(25)
@@ -1918,6 +2658,7 @@ end
 function Duel:reset_run()
     for _, c in ipairs(self.creeps) do Creep.destroy(c) end
     self.creeps = {}
+    self:flush_dying()
     -- Drop parked rigs before the hero (their scene sibling under the actors
     -- group) is deleted+rebuilt: the swap-and-pop on that delete would stale
     -- their handles. New rigs are built only as the spawn queue drains.
@@ -1938,10 +2679,15 @@ function Duel:reset_run()
     self.buffs = { speed = 0.0, power = 0.0, hp = 0.0 }
     self.spawn_mods = { batch_add = 0, cap_add = 0, interval_mult = 1.0 }
     self.slowmo_t = 0.0
+    self.hitstop_t = 0.0
+    self._hurt_t = 0.0
+    self.boss_spawned = false
+    self.boss_creep = nil
     self.field = nil
     self.field_t = 0.0
     self:clear_telegraphs()
     self:reset_creep_projectiles()
+    self:clear_damage_numbers()
     if self.manual_hero then
         self.player_seat = nil
         self.ai_seat = nil
@@ -1950,10 +2696,12 @@ function Duel:reset_run()
         self:reset_hero_projectiles()
         self:ensure_creep_projectiles()
         self:ensure_telegraph_pool()
+        self:ensure_pickup_pools()
+        self:reset_pickups()
         if self.config.hero and self.config.hero.classes then
             self:begin_class_pick()
         else
-            self:begin_manual_wave(1)
+            self:begin_manual_wave(ATH_COMMON.getenv_number("ATH_DUEL_WAVE", 1))
         end
     else
         self.state = "combat"
@@ -1979,6 +2727,24 @@ function Duel:update_input(dt)
             if self:key_pressed(tostring(i)) or Art.consume_click(self.hud, "classpick_" .. i) then
                 self:choose_class(i)
                 return
+            end
+        end
+        return
+    end
+
+    if self.state == "draft" then
+        for i = 1, #(self.draft_offer or {}) do
+            if self:key_pressed(tostring(i)) or Art.consume_click(self.hud, "draft_" .. i) then
+                self:pick_draft_card(i)
+                return
+            end
+        end
+        -- Headless smokes (ATH_DUEL_AUTOPLAY) pick the first boon automatically.
+        if self.autoplay then
+            self.autoplay_t = (self.autoplay_t or 0.4) - dt
+            if self.autoplay_t <= 0.0 then
+                self.autoplay_t = 0.4
+                self:pick_draft_card(1)
             end
         end
         return
@@ -2145,6 +2911,61 @@ function Duel:update_hud()
         Art.remove_ids(self.hud, { "gear_equipped", "gear_inv_slot1", "gear_inv_slot2", "gear_inv_slot3", "gear_inv_slot4", "gear_inv_slot5" })
     end
 
+    -- Boss HP bar: top center, tucked right under the hero bar — the bottom band
+    -- belongs to the defeat/pause panels and mid-arena sat on the boss itself.
+    local boss = self.boss_creep
+    if boss and boss.alive then
+        local bw2 = S(640.0)
+        Art.bar(self.hud, "boss", sw * 0.5 - bw2 * 0.5, S(70.0), bw2, S(30.0),
+            clampn((boss.hp or 0.0) / math.max(1.0, boss.hp_max or 1.0), 0.0, 1.0),
+            { 0.78, 0.30, 0.86, 0.95 },
+            { label = self.config.boss_title or "BOSS", border = { 0.5, 0.2, 0.6, 0.95 } })
+    else
+        Art.remove_ids(self.hud, { "boss_bg", "boss_fg", "boss_label" })
+    end
+
+    -- Hurt vignette: a brief red wash on damage + a low-HP pulse. Combat only so
+    -- it never tints menus/inventory.
+    local vg_a = 0.0
+    if self.manual_hero and self.state == "combat" and hero and not hero.dead then
+        vg_a = math.max(vg_a, 0.30 * ((self._hurt_t or 0.0) / 0.25))
+        local pct2 = (hero.hp or 0.0) / math.max(1.0, hero.hp_max or 1.0)
+        if pct2 < 0.35 then
+            vg_a = math.max(vg_a, 0.09 + 0.07 * math.abs(math.sin(self.realtime * 4.0)))
+        end
+    end
+    if vg_a > 0.01 then
+        local vp = Art._vp
+        Art.quad(self.hud, "vignette", -vp.x, -vp.y, vp.rw, vp.rh, { 0.72, 0.07, 0.05, vg_a }, { no_input = true })
+    else
+        Art.remove(self.hud, "vignette")
+    end
+
+    -- Wave-start draft overlay: pick 1 of 3 run-scoped boons (keys 1-3 / click).
+    if self.state == "draft" then
+        local offer = self.draft_offer or {}
+        local n = math.max(1, #offer)
+        local cw, ch, gap = S(210.0), S(240.0), S(16.0)
+        local row_w = n * (cw + gap) - gap
+        local sx0 = sw * 0.5 - row_w * 0.5
+        local cyc = sh * 0.5 - ch * 0.5 + S(10.0)
+        -- Compact quads draw `label` (title/subtitle sit below a tall reserved
+        -- art band and vanish on short panels — the shell learned this too).
+        Art.quad(self.hud, "draft_title", sw * 0.5 - S(280.0), cyc - S(72.0), S(560.0), S(54.0),
+            { 0.05, 0.05, 0.10, 0.94 }, { border = accent, no_input = true,
+              label = "WAVE " .. tostring(self.wave_index or 1) .. " - CHOOSE A BOON  ([1-" .. n .. "] or click)" })
+        for i, cd in ipairs(offer) do
+            Art.quad(self.hud, "draft_" .. i, sx0 + (i - 1) * (cw + gap), cyc, cw, ch,
+                { 0.09, 0.10, 0.15, 0.97 }, {
+                    border = RARITY_COLOR[cd.rarity or "common"] or accent,
+                    title = cd.name,
+                    body = "[" .. i .. "]  " .. string.upper(cd.rarity or "common") .. "\n\n" .. (cd.desc or ""),
+                })
+        end
+    else
+        Art.remove_ids(self.hud, { "draft_title", "draft_1", "draft_2", "draft_3" })
+    end
+
     -- Class pick overlay (run start): one card per class, click or number key.
     if self.state == "classpick" then
         local list = self.config.hero and self.config.hero.classes or {}
@@ -2231,7 +3052,7 @@ end
 function Duel:update(dt)
     self.realtime = self.realtime + dt
     Console.update(self)
-    Art.tick_iso_camera()
+    Art.tick_iso_camera(dt)
 
     -- DIAG: the rendered view sometimes ends up ~19x more zoomed-in than the
     -- ortho size we set at start. Log the live camera state to catch who/when.
@@ -2276,6 +3097,13 @@ function Duel:update(dt)
         self.slowmo_t = self.slowmo_t - dt
         sim_dt = dt * SLOWMO_SCALE
     end
+    -- Hitstop: a few frames of near-freeze on meaty kills. Runs on REAL dt so it
+    -- can't deadlock, and stacks under slowmo (the death beat).
+    if (self.hitstop_t or 0.0) > 0.0 then
+        self.hitstop_t = self.hitstop_t - dt
+        sim_dt = sim_dt * HITSTOP_SCALE
+    end
+    self._hurt_t = math.max(0.0, (self._hurt_t or 0.0) - dt)
 
     self:update_input(dt)
 
@@ -2290,12 +3118,27 @@ function Duel:update(dt)
         self:update_creeps(sim_dt)
         self:update_telegraphs(sim_dt)
         self:update_creep_projectiles(sim_dt)
+        self:update_pickups(sim_dt)
         if self.config.hooks and self.config.hooks.on_combat_tick then self.config.hooks.on_combat_tick(self, sim_dt) end
         if self.manual_hero and self.state == "combat" and self:manual_wave_done() then
             if (self.wave_index or 1) >= (self.wave_cfg.count or 5) then
-                self.state = "hero_win"
-                self:set_flash("RUN CLEARED")
-                self:log(string.format("RUN CLEARED waves=%d kills=%d gold=%d", self.wave_index or 1, self.kills, self.gold or 0))
+                -- The last wave ends with the BOSS: spawned once via a big
+                -- telegraph (which keeps manual_wave_done false until it dies).
+                local boss_arch = self.config.boss_archetype
+                if boss_arch and not self.boss_spawned then
+                    self.boss_spawned = true
+                    self:vacuum_pickups()
+                    self:set_flash(self.config.boss_title
+                        and ("THE " .. self.config.boss_title .. " RISES") or "A CHAMPION RISES")
+                    Art.shake(0.5, 0.5)
+                    self:add_telegraph(self:pick_spawn_point(), boss_arch, true)
+                    self:log("boss telegraphed arch=" .. tostring(boss_arch))
+                else
+                    self:vacuum_pickups()
+                    self.state = "hero_win"
+                    self:set_flash("RUN CLEARED")
+                    self:log(string.format("RUN CLEARED waves=%d kills=%d gold=%d", self.wave_index or 1, self.kills, self.gold or 0))
+                end
             else
                 self:begin_pause()
             end
@@ -2306,19 +3149,27 @@ function Duel:update(dt)
         elseif self.state == "combat" and self.round_t <= 0.0 then
             if not self.manual_hero then self:begin_pause() end
         end
-    elseif self.state == "pause" or self.state == "classpick" then
+    elseif self.state == "pause" or self.state == "classpick" or self.state == "draft" then
         -- Sim frozen; UI + camera keep running.
     else
         self:update_hero(sim_dt)
         self:update_creeps(sim_dt)
+        self:update_pickups(sim_dt)
     end
+    self:update_damage_numbers(dt)
+    self:update_dying(dt)
 
     self.flash_t = math.max((self.flash_t or 0.0) - dt, 0.0)
     if self.flash and self.flash ~= self.last_flash then
         self.flash_t = 2.0
         self.last_flash = self.flash
     end
-    if self.flash_t <= 0.0 then self.flash = "" end
+    -- Clear last_flash too, or a REPEATED message (second "Bag full!", two
+    -- identical "Found X" in a row) never re-displays after the first fades.
+    if self.flash_t <= 0.0 then
+        self.flash = ""
+        self.last_flash = nil
+    end
 
     self:update_hud()
 end
@@ -2328,6 +3179,11 @@ end
 -- ---------------------------------------------------------------------------
 
 function Duel:start()
+    -- Wipe the transient HUD first: if the previous run's teardown threw
+    -- mid-stop (it's pcall'd on the death/scene reload), its retained quads —
+    -- ground item icons, damage numbers — survive as untouchable GHOSTS
+    -- scattered over the new run's field.
+    if runtime_ui and runtime_ui.clear then runtime_ui.clear(self.hud) end
     Creep.archetypes = self.config.archetypes or Creep.archetypes
     Creep.default_archetype = self:role_archetype("swarm")
     Creep.aliases = {}
@@ -2358,10 +3214,13 @@ function Duel:start()
 end
 
 function Duel:stop()
+    -- Clear the HUD before touching scene handles: teardown below can throw on
+    -- a scene reload, and anything after the throw is silently skipped (pcall).
+    if runtime_ui and runtime_ui.clear then runtime_ui.clear(self.hud) end
     for _, c in ipairs(self.creeps or {}) do Creep.destroy(c) end
     self.creeps = {}
+    self:flush_dying()
     Creep.clear_pool()
-    if runtime_ui and runtime_ui.clear then runtime_ui.clear(self.hud) end
     if Art.valid(self.root) then scene.delete_node(self.root) end
     -- The pooled-node tables point into the scene group just deleted; drop them so
     -- a fresh start rebuilds the pools instead of reusing stale handles.
@@ -2369,6 +3228,10 @@ function Duel:stop()
     self.tele_pool = nil
     self.cproj = nil
     self.hproj = nil
+    self.coins = nil
+    self.beacons = nil
+    self.dmgnums = nil
+    self.boss_creep = nil
 end
 
 return Duel
