@@ -475,18 +475,60 @@ function Art.setup_iso_camera(center, opts)
     return cam
 end
 
+-- Camera shake — a short decaying jolt applied on top of the iso rig each
+-- frame (pure translation, so the ortho framing never tilts). Trigger with
+-- Art.shake(amplitude); big hits stack by keeping the larger amplitude.
+Art._shake = { amp = 0.0, t = 0.0 }
+function Art.shake(amp, dur)
+    local s = Art._shake
+    s.amp = math.max(s.amp * (s.t > 0.0 and 1.0 or 0.0), amp or 0.3)
+    s.t = math.max(s.t, dur or 0.28)
+    s.dur = math.max(s.dur or 0.28, dur or 0.28)
+end
+
 -- Re-assert the iso camera every frame (cheap setters). Fixes runs where the
 -- startup scene's camera state lands AFTER the one-shot setup and the view
--- renders massively zoomed-in.
-function Art.tick_iso_camera()
+-- renders massively zoomed-in. `dt` (optional) advances the shake decay.
+function Art.tick_iso_camera(dt)
     local iso = Art._iso
     if not iso then return end
     local cam = (get_camera and get_camera()) or nil
     if not cam then return end
+    local sx, sz = 0.0, 0.0
+    local s = Art._shake
+    if s.t > 0.0 then
+        s.t = math.max(0.0, s.t - (dt or 1.0 / 60.0))
+        local k = s.amp * (s.t / math.max(s.dur or 0.28, 0.01))
+        local ph = s.t * 61.0
+        sx = math.sin(ph) * k
+        sz = math.cos(ph * 1.31) * k
+        if s.t <= 0.0 then s.amp = 0.0; s.dur = 0.0 end
+    end
     if cam.set_projection_mode then cam:set_projection_mode("orthographic") end
     if cam.set_orthographic_size then cam:set_orthographic_size(iso.ortho) end
-    cam:set_position(vec3(iso.cx + iso.off.x, iso.off.y, iso.cz + iso.off.z))
-    if cam.look_at then cam:look_at(vec3(iso.cx, 0.0, iso.cz)) end
+    cam:set_position(vec3(iso.cx + iso.off.x + sx, iso.off.y, iso.cz + iso.off.z + sz))
+    if cam.look_at then cam:look_at(vec3(iso.cx + sx, 0.0, iso.cz + sz)) end
+end
+
+-- Project a world point to raw-surface pixel coordinates through the live
+-- orthographic camera. The cached view-projection lags the camera setters by a
+-- frame; ATH reasserts and shakes that camera every tick, so it cannot anchor UI.
+function Art.view_projection()
+    local cam = (get_camera and get_camera()) or nil
+    return cam and cam.is_orthographic and cam:is_orthographic() and cam or nil
+end
+
+function Art.world_to_screen(cam, x, y, z)
+    if not cam then return nil end
+    local p, r, u = cam:get_position(), cam:get_right(), cam:get_up()
+    local dx, dy, dz = x - p.x, (y or 0.0) - p.y, z - p.z
+    local half_h = cam:get_orthographic_size() * 0.5
+    local half_w = half_h * cam:get_aspect()
+    if half_w <= 0.0 or half_h <= 0.0 then return nil end
+    local vp = Art._vp
+    local sx = (0.5 - (dx * r.x + dy * r.y + dz * r.z) / half_w * 0.5) * (vp.rw or 2400.0)
+    local sy = (0.5 + (dx * u.x + dy * u.y + dz * u.z) / half_h * 0.5) * (vp.rh or 1080.0)
+    return sx, sy
 end
 
 -- Configure the render stage the way the duel modes expect (mirrors horde): grid
@@ -727,7 +769,9 @@ function Art.draw_fps_clock(screen, sw)
     local py = margin
     Art.quad(screen, "fps_panel", px, py, panel_w, panel_h, { 0.03, 0.03, 0.06, 0.85 },
         { border = { 0.32, 0.24, 0.5, 0.9 }, no_input = true })
-    Art.quad(screen, "fps_label", px + pad, py + pad, labw - U(6.0), dh, { 0, 0, 0, 0 },
+    -- Full-height box shifted so the label centres (backend top-anchors text at
+    -- top + 15*text_scale, which clips in a digit-height box).
+    Art.quad(screen, "fps_label", px + pad, py + panel_h * 0.5 - Art.s("text") * 21.0, labw - U(6.0), panel_h, { 0, 0, 0, 0 },
         { label = "FPS", text_color = { 0.55, 0.45, 0.82, 1.0 }, no_input = true })
     local x0 = px + pad + labw
     local y0 = py + pad

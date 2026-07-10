@@ -53,7 +53,33 @@ local ARCHETYPES = {
     -- Fast ranged flier: darts, holds at ~5, pelts quick stingers. Below hero
     -- speed so a committed chase still catches it.
     wasp          = tuned(Spud.archetypes.wasp,          { speed = 5.2 }),
+    -- BLAST BUD (wave 3+) — a walking bomb: sprout art tinted hot orange; the
+    -- fuse strobe (View) warns, then it pops for real AoE damage. Killing it
+    -- before the fuse ends defuses it — shoot it at range or step away.
+    blast_bud     = tuned(Spud.archetypes.sprout,        {
+        name = "Blast Bud", threat_cost = 2, hp = 9, dps = 1.0, range = 0.4, speed = 4.6,
+        tint = { 1.5, 0.55, 0.35 },
+        explode = { trigger = 2.6, fuse = 0.75, radius = 2.6, damage = 24.0, fuse_speed_mult = 1.35 },
+    }),
+    -- RAM BEETLE (wave 2+) — a telegraphed charger: beetle art tinted crimson;
+    -- it plants, shivers red (windup), then dashes a locked line. Step aside —
+    -- a landed slam hits hard and shoves.
+    ram_beetle    = tuned(Spud.archetypes.beetle,        {
+        name = "Ram Beetle", threat_cost = 3, hp = 26, dps = 9.0, range = 0.6, speed = 2.3,
+        knockback_resist = 0.6, tint = { 1.6, 0.55, 0.55 },
+        charge = { trigger = 8.0, windup = 0.55, mult = 3.4, duration = 0.85, cooldown = 3.2, dmg_mult = 1.8 },
+    }),
+    -- GOURD KING — the wave-5 boss. A huge gold-tinted pumpkin: charges like a
+    -- ram, sheds sprout summons, and showers rare loot on death.
+    gourd_king    = tuned(Spud.archetypes.pumpkin_brute, {
+        name = "Gourd King", threat_cost = 20, hp = 620, dps = 26.0, range = 1.1, speed = 2.7,
+        scale = 2.2, knockback_resist = 1.0, boss = true, tint = { 1.35, 1.1, 0.55 },
+        charge = { trigger = 11.0, windup = 0.8, mult = 3.0, duration = 1.1, cooldown = 4.5, dmg_mult = 2.0 },
+        summon_archetype = "sprout", summon_every = 4.5,
+    }),
 }
+-- The brute now splits on death: a felled pumpkin bursts into three sprouts.
+ARCHETYPES.pumpkin_brute.split_into = { archetype = "sprout", count = 3 }
 
 return {
     meta = {
@@ -173,6 +199,9 @@ return {
             count = 5,
             budgets = { 130, 173, 230, 302, 389 },
         },
+        -- Wave 5 clears into the boss fight; the title feeds the HUD bar + flashes.
+        boss_archetype = "gourd_king",
+        boss_title = "GOURD KING",
         reserve_start = 130.0,
         round_seconds = 9999.0,
         -- Creeps spawn a bit beefier than their base archetype HP (applied in
@@ -180,13 +209,13 @@ return {
         creep_hp_mult = 1.56,
         kill_fx_budget_per_frame = 6,
         warm_pool_count = 0,
-        prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute", "seed_spitter", "beetle", "corn_mortar", "wasp" },
+        prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute", "seed_spitter", "beetle", "corn_mortar", "wasp", "ram_beetle", "blast_bud", "gourd_king" },
         -- Pre-build + PARK this many rigs per type at run start (warm_archetype
         -- now populates the pool). Kept ABOVE each type's realistic peak-alive at
         -- cap_max=85 so the pool never empties -> combat spawns reuse parked rigs
         -- and never build a rig mid-frame (the spawn spike). Also avoids the
         -- mid-combat alpha-cut geometry-add RT hazard.
-        prewarm = { sprout = 56, husk_knight = 32, pumpkin_brute = 16, crow = 22, seed_spitter = 14, beetle = 26, corn_mortar = 10, wasp = 18 },
+        prewarm = { sprout = 56, husk_knight = 32, pumpkin_brute = 16, crow = 22, seed_spitter = 14, beetle = 26, corn_mortar = 10, wasp = 18, ram_beetle = 10, blast_bud = 12, gourd_king = 1 },
 
         gear = {
             gold_per_kill = 1,
@@ -227,8 +256,13 @@ return {
                   desc = "+12% move, +8 HP", effect = { speed_mult = 1.12, kite_speed_mult = 1.12, hp_max_add = 8.0 } },
                 { id = "red_charm", slot = "jewelry", rarity = "uncommon", name = "Red Charm",
                   desc = "+1 lifesteal, +10% damage", effect = { lifesteal_add = 1.0, dps_mult = 1.10 } },
+                { id = "magnet_charm", slot = "jewelry", rarity = "uncommon", name = "Magnet Charm",
+                  desc = "+1.4 pickup range, +25% gold", effect = { pickup_range_add = 1.4, gold_find_add = 0.25 } },
                 { id = "crit_ring", slot = "jewelry", rarity = "rare", name = "Crit Ring",
                   desc = "+30% crit, +5 damage", effect = { crit_add = 0.30, dps_add = 5.0 } },
+                -- boss-tier (rare pool feeds the Gourd King's shower)
+                { id = "kings_crown", slot = "helmet", rarity = "rare", name = "King's Crown",
+                  desc = "+40 HP, +10% damage, +20% gold", effect = { hp_max_add = 40.0, dps_mult = 1.10, gold_find_add = 0.2 } },
             },
         },
 
@@ -236,9 +270,14 @@ return {
         -- projectiles), so its damage is attributable and dodgeable instead of the
         -- old silent stand-off field.
         auto_mix = function(D)
+            local wave = D.wave_index or 1
             if D.combat_time >= D.spawn_cfg.brute_after and (D.spawn_counter % 13 == 0) then
                 return "pumpkin_brute"
             end
+            -- Behaviour enemies phase in as the run deepens: chargers wave 2+,
+            -- walking bombs wave 3+.
+            if wave >= 3 and D.spawn_counter % 10 == 0 then return "blast_bud" end
+            if wave >= 2 and D.spawn_counter % 9 == 0 then return "ram_beetle" end
             if D.spawn_counter % 11 == 0 then return "corn_mortar" end
             if D.spawn_counter % 8 == 0 then return "crow" end
             if D.spawn_counter % 7 == 0 then return "wasp" end

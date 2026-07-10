@@ -146,6 +146,11 @@ function View.on_spawn(D, creep)
             creep._hitbox_ring_r = r
         end
     end
+    -- Spawn flourish: a decelerating spin-in over the first beat (prewarm rigs
+    -- are built+parked instantly and skip it).
+    if not creep.no_pool then
+        creep._spawn_spin_until = (D.realtime or 0.0) + 0.18
+    end
     local dressed = D._topdown_dressed
     if not dressed then dressed = {}; D._topdown_dressed = dressed end
     if dressed[body] then return end
@@ -209,27 +214,71 @@ local function skin_hero(D)
 end
 
 -- Per-creep sprite JUICE (feature pass): a white hit-flash (emissive whiteout
--- that fades to the sprite's normal 1,1,1) plus a small walk waddle (yaw rock on
--- the flat card) and a sharper recoil tilt right after a hit. Sprites only;
--- per-frame position/rotation/material writes are the engine-reliable ones — NOT
--- scale — so all the motion lives in yaw + emissive.
+-- that fades to the sprite's normal tint) plus a small walk waddle (yaw rock on
+-- the flat card) and a sharper recoil tilt right after a hit. Behaviour
+-- telegraphs ride the same emissive channel: chargers pulse red during windup,
+-- exploders strobe orange while the fuse burns, elites carry a golden tint.
+-- Sprites only; per-frame position/rotation/material writes are the
+-- engine-reliable ones — NOT scale — so all the motion lives in yaw + emissive.
+View.ELITE_TINT = { 1.45, 1.10, 0.45 }
+
+local function base_tint(c)
+    if c.elite then return View.ELITE_TINT end
+    return (c.stats and c.stats.tint) or nil
+end
+
 function View.animate_creeps(D)
     local pitch, base_yaw, roll = View.FLAT_ROT[1], View.FLAT_ROT[2], View.FLAT_ROT[3]
+    local now = D.realtime or 0.0
+    local hero = D.hero
     for _, c in ipairs(D.creeps or {}) do
         if c.alive and c.stats and c.stats.sprite then
             local body = c.parts and c.parts.body
             if Art.valid(body) then
                 local t = c.hit_flash or 0.0
+                local tint = base_tint(c)
+                local wob = math.sin(c.phase or 0.0) * 7.0
+                -- Spawn spin-in: a fast decelerating twirl on the first beat.
+                if c._spawn_spin_until then
+                    local left = c._spawn_spin_until - now
+                    if left > 0.0 then
+                        local k = left / 0.18
+                        wob = wob + k * k * 260.0 * ((c.id % 2 == 0) and 1.0 or -1.0)
+                    else
+                        c._spawn_spin_until = nil
+                    end
+                end
+                -- Bite shiver when snapping at the hero point-blank.
+                if hero and not hero.dead then
+                    local dx, dz = (hero.x or 0.0) - c.x, (hero.z or 0.0) - c.z
+                    if dx * dx + dz * dz < 2.6 then
+                        wob = wob + math.sin(now * 18.0 + (c.id or 0)) * 6.0
+                    end
+                end
                 if t > 0.0 then
                     local k = 1.0 + 16.0 * t
                     material.set(body, "emissive", vec3(k, k, k))
                     c._flashing = true
-                elseif c._flashing then
-                    material.set(body, "emissive", vec3(1.0, 1.0, 1.0))
+                elseif c.fuse_t then
+                    -- Fuse strobe: orange flicker that speeds up as the pop nears.
+                    local rate = 10.0 + 26.0 * (1.0 - math.min(1.0, c.fuse_t / ((c.stats.explode and c.stats.explode.fuse) or 0.8)))
+                    local p = 0.55 + 0.45 * math.sin(now * rate)
+                    material.set(body, "emissive", vec3(1.0 + 2.2 * p, 0.7 + 0.5 * p, 0.35))
+                    c._flashing = true
+                elseif c.charge_state == "windup" then
+                    -- Windup pulse: red throb + an exaggerated shiver.
+                    local p = 0.5 + 0.5 * math.sin(now * 26.0)
+                    material.set(body, "emissive", vec3(1.2 + 1.6 * p, 0.45, 0.4))
+                    wob = wob + math.sin(now * 47.0) * 9.0
+                    c._flashing = true
+                elseif c._flashing or (tint and not c._tinted) then
+                    local b = tint or { 1.0, 1.0, 1.0 }
+                    material.set(body, "emissive", vec3(b[1], b[2], b[3]))
                     c._flashing = false
+                    c._tinted = tint ~= nil
                 end
-                local wob = math.sin(c.phase or 0.0) * 7.0
                 if t > 0.0 then wob = wob + t * 90.0 end -- recoil snap
+                if c.charge_state == "dash" then wob = wob * 0.2 end
                 body:set_rotation(vec3(pitch, base_yaw + wob, roll))
             end
         end
@@ -255,14 +304,26 @@ function View.tick(D)
             -- original flat-lay so this pass doesn't change their hero feel.
             local bp = (hero.actor and hero.actor.base and hero.actor.base.body and hero.actor.base.body.position) or { 0.0, 1.1, 0.0 }
             local by = bp[2] or 1.1
-            -- Attack lunge: a subtle nudge toward the aim direction when firing.
+            -- Attack feel by class: melee LUNGES into the swing; ranged KICKS
+            -- back against the shot (recoil), both along the facing line.
             local pop = 0.0
-            if (hero.attack_flash or 0.0) > 0.0 then pop = 0.10 * math.min(1.0, hero.attack_flash / 0.12) end
+            if (hero.attack_flash or 0.0) > 0.0 then
+                local k = math.min(1.0, hero.attack_flash / 0.12)
+                pop = (hero.attack_type == "melee") and (0.14 * k) or (-0.07 * k)
+            end
             local fx, fz = math.sin(hero.facing or 0.0), math.cos(hero.facing or 0.0)
             body:set_position(vec3(fx * pop, by, fz * pop))
             -- Faint walk waddle while moving + a recoil tilt when struck.
             local sp = math.sqrt((hero.vel_x or 0.0) * (hero.vel_x or 0.0) + (hero.vel_z or 0.0) * (hero.vel_z or 0.0))
             local wob = (sp > 0.1) and (math.sin(hero.phase or 0.0) * 1.8) or 0.0
+            -- Footstep dust while running (cadence-timed off realtime).
+            if sp > 3.0 and (D.realtime or 0.0) >= (D._hero_dust_next or 0.0) then
+                D._hero_dust_next = (D.realtime or 0.0) + 0.20
+                Art.burst("ath_hero_dust", vec3(hero.x - fx * 0.3, 0.12, hero.z - fz * 0.3),
+                    { preset = "hero_take", count = 2, life_max = 0.22, spawn_radius = 0.14,
+                      size_max = 0.10, noise_strength = 0.8,
+                      color_start = vec4(0.66, 0.58, 0.44, 0.8), gravity = vec3(0.0, 0.7, 0.0) })
+            end
             local t = hero.hit_flash or 0.0
             if t > 0.0 then wob = wob + t * 70.0 end
             body:set_rotation(vec3(View.FLAT_ROT[1], View.FLAT_ROT[2] + wob, View.FLAT_ROT[3]))

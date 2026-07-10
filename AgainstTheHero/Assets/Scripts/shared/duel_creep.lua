@@ -476,6 +476,13 @@ function Creep.create(args)
         flies = arch.flies == true,
         scale = arch.scale,
         knockback_resist = arch.knockback_resist,
+        -- Behaviour opt-ins (see Creep.update): a telegraphed dash, a walking
+        -- bomb, death-splitting, a sprite tint, and the boss flag.
+        charge = arch.charge,
+        explode = arch.explode,
+        split_into = arch.split_into,
+        tint = arch.tint,
+        boss = arch.boss == true,
     }
     local self = {
         id = args.id,
@@ -769,6 +776,61 @@ function Creep.update(self, dt, field, map, hero)
         end
     end
 
+    -- CHARGE — a telegraphed dash. Windup: plant + flash (View reads
+    -- charge_state), direction LOCKED at windup start so the player can step
+    -- aside. Dash: sprint the locked line; a dash contact one-shots via the
+    -- Duel (stats.charge.dmg_mult) and ends the dash.
+    local charge_mult = 1.0
+    local cg = self.stats.charge
+    if cg then
+        self.charge_cd = math.max(0.0, (self.charge_cd or cg.cooldown or 3.0) - dt)
+        if self.charge_state == "windup" then
+            self.charge_t = (self.charge_t or 0.0) - dt
+            vx, vz = 0.0, 0.0
+            if self.charge_t <= 0.0 then
+                self.charge_state = "dash"
+                self.charge_t = cg.duration or 0.9
+            end
+        elseif self.charge_state == "dash" then
+            self.charge_t = (self.charge_t or 0.0) - dt
+            vx, vz = self.charge_dx or 0.0, self.charge_dz or 0.0
+            charge_mult = cg.mult or 3.0
+            if self.charge_t <= 0.0 then
+                self.charge_state = nil
+                self.charge_cd = cg.cooldown or 3.0
+            end
+        elseif self.charge_cd <= 0.0 and hero_dist < (cg.trigger or 7.0) and hero_dist > 1.1 then
+            self.charge_state = "windup"
+            self.charge_t = cg.windup or 0.55
+            self.charge_dx = dxh / math.max(hero_dist, 0.001)
+            self.charge_dz = dzh / math.max(hero_dist, 0.001)
+            event = event or {}
+            event.windup = true
+        end
+    end
+
+    -- EXPLODE — a walking bomb: within trigger range the fuse lights (View
+    -- strobes it); when it runs out the creep pops itself and the Duel applies
+    -- the AoE. Killing it before the fuse ends = no explosion (the dodge/shoot
+    -- reward), which falls out naturally: dead creeps never reach this update.
+    local ex = self.stats.explode
+    if ex then
+        if self.fuse_t then
+            self.fuse_t = self.fuse_t - dt
+            charge_mult = ex.fuse_speed_mult or 1.3
+            if self.fuse_t <= 0.0 then
+                self.alive = false
+                event = event or {}
+                event.exploded = true
+                return event
+            end
+        elseif hero_dist < (ex.trigger or 2.6) then
+            self.fuse_t = ex.fuse or 0.8
+            event = event or {}
+            event.fuse_started = true
+        end
+    end
+
     -- Close-quarters slow is now an OPT-IN HERO BUFF (hero.slow_aura), OFF by
     -- default: creeps keep FULL base speed all the way in, so the swarm keeps its
     -- pressure on the ranged hero. A future gear/card sets hero.slow_aura=true (a
@@ -784,7 +846,7 @@ function Creep.update(self, dt, field, map, hero)
         end
         speed_scale = Creep.SPEED_SCALE + (1.0 - Creep.SPEED_SCALE) * slow_t
     end
-    local speed = (self.stats.speed or 1.0) * speed_scale
+    local speed = (self.stats.speed or 1.0) * speed_scale * charge_mult
     -- Hit knockback: a short decaying impulse added on top of pursuit, so a hit
     -- visibly shoves the creep back (stagger) without permanently changing course.
     local kx = self.knock_x or 0.0

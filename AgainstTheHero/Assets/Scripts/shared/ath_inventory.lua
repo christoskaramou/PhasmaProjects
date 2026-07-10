@@ -39,6 +39,13 @@ Inv.RARITY = {
     epic     = { 0.78, 0.48, 0.96, 1.0 },
 }
 
+-- Pixel-art icon per paper-doll slot (Assets/Textures/ui/items). Shared with the
+-- duel's ground drops so an item looks the same on the floor and in the bag.
+Inv.SLOT_ICON = {
+    helmet = "ui/items/helmet.png", body = "ui/items/body.png", pants = "ui/items/pants.png",
+    gloves = "ui/items/gloves.png", weapon = "ui/items/weapon.png", jewelry = "ui/items/jewelry.png",
+}
+
 -- Empty-slot palette — kept in sync with tools/build_scenes.py so a redrawn slot
 -- matches its authored default exactly.
 local SLOT_BG = { 0.07, 0.08, 0.11, 0.95 }
@@ -209,7 +216,7 @@ function Inv.refresh(D)
     -- use the set_quad `label`, which the default quad style draws.)
     if valid(b.title) then
         b.title:set_ui({ body = string.format(
-            "WAVE %d CLEARED - GEAR UP   (drag or double-click to equip)", D.wave_index or 1) })
+            "WAVE %d CLEARED - GEAR UP   (right-click to equip, drag below the bag to destroy)", D.wave_index or 1) })
     end
 
     for _, s in ipairs(Inv.slots(D)) do
@@ -218,16 +225,21 @@ function Inv.refresh(D)
             local item = Inv.item_at(D, s)
             local dragging = D._inv_drag and D._inv_drag.from.id == s.id
             if item then
+                -- Name drops to the tile bottom; the icon overlay (draw_overlay)
+                -- floats over the upper half.
                 node:set_ui({
                     body = tile_label(item), text_color = SLOT_TEXT,
                     fill = dragging and ITEM_BG_DRAG or ITEM_BG,
                     border = Inv.RARITY[item.rarity or "common"],
+                    align_h = "center", align_v = "bottom",
                 })
             elseif s.kind == "equip" then
                 node:set_ui({ body = Inv.SLOT_LABEL[s.key], text_color = EMPTY_TEXT,
-                    fill = EQUIP_BG, border = EQUIP_BORDER })
+                    fill = EQUIP_BG, border = EQUIP_BORDER,
+                    align_h = "default", align_v = "default" })
             else
-                node:set_ui({ body = "", text_color = SLOT_TEXT, fill = SLOT_BG, border = SLOT_BORDER })
+                node:set_ui({ body = "", text_color = SLOT_TEXT, fill = SLOT_BG, border = SLOT_BORDER,
+                    align_h = "default", align_v = "default" })
             end
         end
     end
@@ -255,13 +267,14 @@ function Inv.update(D)
 
     -- Pickups + hover. A press on a draggable slot becomes a DRAG (the engine
     -- swallows `clicked`); a clean tap is detected on release for double-tap equip.
-    local hover, tap_slot = nil, nil
+    local hover, tap_slot, rclick_slot = nil, nil, nil
     for _, s in ipairs(slots) do
         local item = Inv.item_at(D, s)
         if item then
             local stt = runtime_ui.get_state(SCREEN, s.id)
             if stt then
-                if stt.hovered then hover = { item = item, mx = stt.mouse_x, my = stt.mouse_y } end
+                if stt.hovered then hover = { item = item, slot = s, mx = stt.mouse_x, my = stt.mouse_y } end
+                if stt.right_clicked then rclick_slot = s end
                 if stt.drag_started and not D._inv_drag then
                     D._inv_drag = { from = s, mx = stt.mouse_x, my = stt.mouse_y }
                 elseif stt.clicked and not stt.dragging and not D._inv_drag then
@@ -271,6 +284,16 @@ function Inv.update(D)
         end
     end
     D._inv_hover = (not D._inv_drag) and hover or nil
+
+    -- RIGHT-CLICK equips a bag item / unequips a doll item, via the widget's own
+    -- right_clicked state (the global input.* mouse reads return false whenever
+    -- the UI has mouse capture — i.e. exactly when hovering a slot). Double-tap
+    -- below stays as the touch path — Android has no right button.
+    if rclick_slot and not D._inv_drag then
+        if rclick_slot.kind == "grid" then Inv.try_equip(D, rclick_slot.key) else Inv.try_unequip(D, rclick_slot.key) end
+        D._inv_hover = nil -- the item just moved; drop the stale tooltip this frame
+        D._inv_last_click = nil
+    end
 
     -- Drag in flight: follow the cursor; on release, hit-test the LIVE rects (so a
     -- slot the user moved in the editor still resolves) and move, or register a tap.
@@ -283,6 +306,7 @@ function Inv.update(D)
             if stt.mouse_x then drag.mx, drag.my = stt.mouse_x, stt.mouse_y end
             if stt.drag_released then
                 local mx, my = drag.mx or 0.0, drag.my or 0.0
+                local tr = Inv.trash_rect(D)
                 local target = nil
                 for _, s in ipairs(slots) do
                     local r = valid(s.node) and s.node.get_ui_rect and s.node:get_ui_rect() or nil
@@ -290,7 +314,15 @@ function Inv.update(D)
                         target = s; break
                     end
                 end
-                if target and target.id ~= drag.from.id then
+                if tr and mx >= tr.x and mx <= tr.x + tr.w and my >= tr.y and my <= tr.y + tr.h then
+                    -- Dropped on the DESTROY plate: the item is gone for good.
+                    local gone = Inv.item_at(D, drag.from)
+                    Inv.set_raw(D, drag.from, nil)
+                    if D.recompute_hero_stats then D:recompute_hero_stats() end
+                    if gone and D.set_flash then D:set_flash("Destroyed " .. tostring(gone.name or gone.id)) end
+                    if D.haptic then D:haptic(12) end
+                    D._inv_last_click = nil
+                elseif target and target.id ~= drag.from.id then
                     Inv.move(D, drag.from, target)
                     D._inv_last_click = nil
                 else
@@ -318,6 +350,49 @@ function Inv.update(D)
 end
 
 -- ---------------------------------------------------------------------------
+-- Hover COMPARE — hovering a bag item shows what equipping it would change vs
+-- the currently equipped piece in its slot, as +/- stat deltas. Computed by
+-- swapping the item into a copy of the preview pipeline (mutate-and-restore on
+-- D.gear_equipped; gear_preview_stats is pure over it).
+-- ---------------------------------------------------------------------------
+local COMPARE_STATS = {
+    { key = "hp_max", label = "HP", fmt = "%+.0f" },
+    { key = "dps", label = "Damage", fmt = "%+.0f" },
+    { key = "attack_range", label = "Range", fmt = "%+.1f" },
+    { key = "cleave", label = "Shots", fmt = "%+.0f" },
+    { key = "fire_interval", label = "Fire time", fmt = "%+.2fs" },
+    { key = "speed", label = "Move", fmt = "%+.1f" },
+    { key = "armor", label = "Armor", fmt = "%+.0f%%", pct = true },
+    { key = "crit_chance", label = "Crit", fmt = "%+.0f%%", pct = true },
+    { key = "lifesteal", label = "Lifesteal", fmt = "%+.1f" },
+    { key = "regen", label = "Regen", fmt = "%+.1f" },
+    { key = "pickup_range", label = "Pickup", fmt = "%+.1f" },
+    { key = "gold_find", label = "Gold", fmt = "%+.0f%%", pct = true },
+}
+
+function Inv.compare_text(D, hv)
+    if not (hv.slot and hv.slot.kind == "grid" and hv.item.slot and D.gear_preview_stats) then return nil end
+    local slot = hv.item.slot
+    local equipped = D.gear_equipped and D.gear_equipped[slot]
+    local before = D:gear_preview_stats()
+    D.gear_equipped[slot] = hv.item
+    local after = D:gear_preview_stats()
+    D.gear_equipped[slot] = equipped
+    local lines = {}
+    for _, st in ipairs(COMPARE_STATS) do
+        local d = (after[st.key] or 0.0) - (before[st.key] or 0.0)
+        if st.pct then d = d * 100.0 end
+        if math.abs(d) > 0.005 then
+            lines[#lines + 1] = string.format("%-10s " .. st.fmt, st.label, d)
+        end
+    end
+    if #lines == 0 then return nil end
+    local head = equipped and ("- vs " .. tostring(equipped.name or equipped.id) .. " -")
+        or "- if equipped -"
+    return head .. "\n" .. table.concat(lines, "\n")
+end
+
+-- ---------------------------------------------------------------------------
 -- Cursor overlays — the drag ghost + hover tooltip FOLLOW the mouse, so they're
 -- transient set_quad widgets (not authored nodes). They are drawn on the SAME
 -- screen as the authored slots ("__scene_ui") with a high `z` + bring_to_front so
@@ -327,12 +402,54 @@ end
 -- ---------------------------------------------------------------------------
 local OVERLAY_Z = 9000.0
 
+-- The destroy zone exists only while a drag is in flight: a red plate spanning
+-- the width of the bag grid, just under it (LIVE rects, so an editor re-layout
+-- still lines up). nil until the authored nodes resolve.
+function Inv.trash_rect(D)
+    local b = Inv.bind(D)
+    if not b then return nil end
+    local x0, y0, x1, y1
+    for i = 1, Inv.GRID_SIZE do
+        local n = b.bag[i]
+        local r = valid(n) and n.get_ui_rect and n:get_ui_rect() or nil
+        if r and r.x then
+            x0 = math.min(x0 or r.x, r.x)
+            y0 = math.min(y0 or r.y, r.y)
+            x1 = math.max(x1 or 0.0, r.x + r.w)
+            y1 = math.max(y1 or 0.0, r.y + r.h)
+        end
+    end
+    if not x0 then return nil end
+    local hud = Art.s("hud")
+    return { x = x0, y = y1 + 10.0 * hud, w = x1 - x0, h = 52.0 * hud }
+end
+
 function Inv.draw_overlay(D)
     if not (runtime_ui and runtime_ui.set_quad) then return end
     Art.surface_size()
     local vp = Art._vp
     local rw, rh = vp.rw or 2400.0, vp.rh or 1080.0
     local function S(v) return v * Art.s("hud") end
+
+    -- Per-item slot icons: text-style widgets can't render images, so each
+    -- occupied tile gets a transient image quad floated over its upper half.
+    for _, s in ipairs(Inv.slots(D)) do
+        local id = "inv_ic_" .. s.id
+        local item = Inv.item_at(D, s)
+        local icon = item and Inv.SLOT_ICON[item.slot]
+        local r = icon and valid(s.node) and s.node.get_ui_rect and s.node:get_ui_rect() or nil
+        if r and r.x and not (D._inv_drag and D._inv_drag.from.id == s.id) then
+            local isz = math.min(r.w, r.h) * 0.46
+            runtime_ui.set_quad(SCREEN, id, {
+                x = r.x + (r.w - isz) * 0.5, y = r.y + r.h * 0.05,
+                width = isz, height = isz, style = "image", image = icon,
+                fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+                no_input = true, bring_to_front = true, z = OVERLAY_Z - 1000.0,
+            })
+        else
+            runtime_ui.remove(SCREEN, id)
+        end
+    end
 
     if D._inv_drag then
         local item = Inv.item_at(D, D._inv_drag.from)
@@ -341,15 +458,31 @@ function Inv.draw_overlay(D)
             runtime_ui.set_quad(SCREEN, "inv_ghost", {
                 x = (D._inv_drag.mx or 0.0) - cell * 0.5,
                 y = (D._inv_drag.my or 0.0) - cell * 0.5,
-                width = cell, height = cell, style = "text",
+                width = cell, height = cell,
+                image = Inv.SLOT_ICON[item.slot],
                 fill = { 0.16, 0.18, 0.24, 0.96 }, border = Inv.RARITY[item.rarity or "common"],
+                accent = { 0.0, 0.0, 0.0, 0.0 },
                 body = tile_label(item), text_color = SLOT_TEXT,
-                font_scale = 0.85, align_h = "center", align_v = "middle",
+                font_scale = 0.85, align_h = "center",
                 no_input = true, bring_to_front = true, z = OVERLAY_Z,
+            })
+        end
+        local tr = Inv.trash_rect(D)
+        if tr then
+            local mx, my = D._inv_drag.mx or 0.0, D._inv_drag.my or 0.0
+            local over = mx >= tr.x and mx <= tr.x + tr.w and my >= tr.y and my <= tr.y + tr.h
+            runtime_ui.set_quad(SCREEN, "inv_trash", {
+                x = tr.x, y = tr.y, width = tr.w, height = tr.h, style = "text",
+                fill = over and { 0.45, 0.09, 0.08, 0.97 } or { 0.16, 0.05, 0.05, 0.92 },
+                border = { 0.95, 0.32, 0.26, 0.95 },
+                body = "DROP HERE TO DESTROY", text_color = { 1.0, 0.6, 0.55, 1.0 },
+                font_scale = 1.4, align_h = "center", align_v = "middle",
+                no_input = true, bring_to_front = true, z = OVERLAY_Z - 500.0,
             })
         end
     else
         runtime_ui.remove(SCREEN, "inv_ghost")
+        runtime_ui.remove(SCREEN, "inv_trash")
     end
 
     local hv = D._inv_hover
@@ -357,6 +490,8 @@ function Inv.draw_overlay(D)
         local tip = string.format("%s\n%s  -  %s\n%s",
             hv.item.name or hv.item.id, Inv.SLOT_LABEL[hv.item.slot] or "?",
             string.upper(hv.item.rarity or "common"), hv.item.desc or "")
+        local cmp = Inv.compare_text(D, hv)
+        if cmp then tip = tip .. "\n" .. cmp end
         -- The engine auto-fits the box to the text (fit=true); tw/th are generous
         -- upper bounds used only to keep the popup on-screen near the edges.
         local tw, th = S(420.0), S(190.0)
@@ -395,6 +530,9 @@ function Inv.clear(D)
     if runtime_ui and runtime_ui.remove then
         runtime_ui.remove(SCREEN, "inv_ghost")
         runtime_ui.remove(SCREEN, "inv_tip")
+        runtime_ui.remove(SCREEN, "inv_trash")
+        for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
+        for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
     end
     D._inv_drag = nil
     D._inv_hover = nil

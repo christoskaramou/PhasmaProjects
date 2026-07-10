@@ -624,7 +624,9 @@ local function draw_fps_clock(sw)
     local py = margin
     Art.quad(HUD, "fps_panel", px, py, panel_w, panel_h, { 0.03, 0.03, 0.06, 0.85 },
         { border = { 0.32, 0.24, 0.5, 0.9 }, no_input = true })
-    Art.quad(HUD, "fps_label", px + pad, py + pad, labw - U(6.0), dh, { 0, 0, 0, 0 },
+    -- Full-height box shifted so the label centres (backend top-anchors text at
+    -- top + 15*text_scale, which clips in a digit-height box).
+    Art.quad(HUD, "fps_label", px + pad, py + panel_h * 0.5 - Art.s("text") * 21.0, labw - U(6.0), panel_h, { 0, 0, 0, 0 },
         { label = "FPS", text_color = { 0.55, 0.45, 0.82, 1.0 }, no_input = true })
     local x0 = px + pad + labw
     local y0 = py + pad
