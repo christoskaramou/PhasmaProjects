@@ -291,6 +291,47 @@ function M.reset()
     M.questOpen = false -- the pick-any-target quest catalog under the TARGET button
 end
 
+-- ==================== PERSISTENCE ====================
+-- Progress (discovered board, molecule strip, shelf, stats, target range, view) survives
+-- relaunch. Saved as a Lua chunk under Assets/Save/ (gitignored); loaded with the same
+-- read+load pattern as data.lua. Restart resets only the atom, never the save.
+local SAVE_PATH = "Save/progress.lua"
+
+local function ser(t)
+    local parts = {}
+    for k, v in pairs(t) do
+        local key = (type(k) == "number") and ("[" .. k .. "]") or ("[" .. string.format("%q", k) .. "]")
+        local val
+        if type(v) == "table" then val = ser(v)
+        elseif type(v) == "string" then val = string.format("%q", v)
+        else val = tostring(v) end
+        parts[#parts + 1] = key .. "=" .. val
+    end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+
+local function save_progress()
+    if not (fs and fs.write) then return end
+    fs.write(SAVE_PATH, "return " .. ser({ v = 1, discovered = M.discovered, carded = M.carded,
+        mol_disc = M.mol_disc, shelf = M.shelf, stats = M.stats, tcount = M.tcount, view = M.view }))
+end
+
+local function load_progress()
+    if not (fs and fs.read) then return end
+    local src = fs.read(SAVE_PATH)
+    if not src then return end
+    local ok, t = pcall(function() return load(src, "@" .. SAVE_PATH, "t", {})() end)
+    if not ok or type(t) ~= "table" or t.v ~= 1 then return end
+    M.discovered = t.discovered or M.discovered
+    M.carded = t.carded or M.carded
+    M.mol_disc = t.mol_disc or M.mol_disc
+    M.shelf = t.shelf or M.shelf
+    M.stats = t.stats or M.stats
+    M.discovered[1], M.carded[1] = true, true
+    if t.view == "bohr" or t.view == "cloud" or t.view == "shells" then M.view = t.view end
+    M.tcount = t.tcount or 0
+end
+
 local function target_label()
     if not M.target then return "?" end
     if M.target.kind == "mol" then
@@ -399,6 +440,9 @@ function M.init()
     runtime_ui.show(SCREEN)
     if os and os.time then math.randomseed(os.time()) end
     M.reset()
+    load_progress()
+    -- a returning player rolls a fresh target at their restored progression range
+    if (M.tcount or 0) > 0 then M.tcount = M.tcount - 1; new_target() end
     M._prev = {}
     M._live = {}
     M._opt = {}
@@ -2124,6 +2168,18 @@ function M.update(dt)
     update_fly(dt)
     draw()
     reconcile()
+    -- autosave: cheap progress signature every ~2s, write only when it actually changed
+    M._st = (M._st or 0) + 1
+    if M._st >= 150 then
+        M._st = 0
+        local dn, md, sh = 0, 0, 0
+        for _ in pairs(M.discovered) do dn = dn + 1 end
+        for _ in pairs(M.mol_disc) do md = md + 1 end
+        for _, v in pairs(M.shelf) do sh = sh + v end
+        local sig = string.format("%d|%d|%d|%d|%d|%d|%s", dn, md, sh,
+            M.stats.decays or 0, M.stats.quenched or 0, M.tcount or 0, M.view)
+        if sig ~= M._sig then M._sig = sig; save_progress() end
+    end
 end
 
 return M
