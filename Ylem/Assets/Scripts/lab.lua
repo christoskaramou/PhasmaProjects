@@ -42,8 +42,7 @@ local WOB_FREQ = 26.0
 local WOB_DAMP = 9.0
 local CARD_HOLD = 12.0
 local CARD_SLIDE = 0.42
-local DECAY_BASE = 2.6  -- seconds an unstable isotope trembles before it decays
-local DECAY_MIN = 0.9   -- ...floor (further from stability decays faster)
+local DECAY_MIN = 0.9   -- game-clock floor; the clock itself maps the REAL half-life (see advance)
 local TOAST_DUR = 3.0   -- decay toast on-screen time
 local EMIT_DUR = 0.9    -- emitted decay particle lifetime
 local BOND_DUR = 0.85   -- coalesce animation (two atoms -> molecule)
@@ -90,6 +89,18 @@ local CPK = {
 }
 local E_MAX_PER_RING = 12 -- cap electron dots per ring (perf: heavy atoms have up to 32)
 local E_GLOW_MAX = 18     -- drop the per-electron soft glow once the atom has more e- than this
+-- "last radiation fired": a persistent readout (bottom-right) naming the most recent
+-- emission, with a hover legend explaining what that radiation actually is.
+local RAD_INFO = {
+    alpha   = { name = "alpha", c = C_PROTON, desc = "A helium-4 nucleus (2p+2n). Heavy and charged - a sheet of paper stops it." },
+    betam   = { name = "beta-", c = C_ELEC, desc = "An electron flung out as a neutron becomes a proton. Millimetres of aluminium stop it." },
+    betap   = { name = "beta+", c = C_POSITRON, desc = "A positron - antimatter. It meets an electron and annihilates into gamma rays; that is a PET scan." },
+    ec      = { name = "e- capture", c = C_ELEC, desc = "The nucleus swallows one of its own inner electrons; a proton becomes a neutron and an X-ray follows." },
+    n       = { name = "neutron", c = C_NEUTRON, desc = "A free neutron - no charge, deeply penetrating, and it can make other atoms radioactive." },
+    gamma   = { name = "gamma", c = C_GAMMA, desc = "A high-energy photon shed by an excited nucleus. It takes lead or thick concrete to stop." },
+    fission = { name = "fission", c = C_UNSTABLE, desc = "The nucleus tears into two fragments plus free neutrons - the energy source of reactors." },
+}
+local function set_lastrad(key, note) M.lastrad = { key = key, note = note } end
 local CATALYSTS = { "spark", "heat", "pressure", "Fe", "Ni", "V2O5" } -- the lab's real helpers (toggle chips)
 local STEPPERS = { -- the left-hand assembly atom's manual controls
     { kind = "p", plus = "st_p_plus", minus = "st_p_minus" },
@@ -101,6 +112,7 @@ local STEPPERS = { -- the left-hand assembly atom's manual controls
 -- per-shell occupancy, and a quantum orbital / probability cloud.
 local VIEWS = {
     { key = "bohr", name = "Bohr model" },
+    { key = "shells", name = "True shells" },
     { key = "cloud", name = "Orbital cloud" },
 }
 local function view_name(key)
@@ -137,15 +149,24 @@ local function mass() return M.atom.protons + M.atom.neutrons end
 local function is_stable_iso() return data.is_stable(M.atom.protons, M.atom.neutrons) end
 local function can_add_proton() return M.atom.protons < data.MAX_Z end
 local function can_add_electron() return electrons() < M.atom.protons end
--- neutron drip line (rough): a nucleus stops binding neutrons around N ~ 2Z+2 — this nails the
--- light drip line (He-8, Li-11, Be-14) and stays sane up the table. ponytail: simple proxy;
--- a per-isotope table would be exact but the game already approximates stability.
-local function neutron_max(z) return 2 * z + 2 end
+-- neutron drip line: exact through neon, playable stand-in beyond (see data.DRIP).
+local function neutron_max(z) return data.neutron_max(z) end
 local function can_add_neutron()
     if M.atom.protons < 1 then return false end
     return M.atom.neutrons < neutron_max(M.atom.protons)
 end
 local function iso_name() return string.format("%s-%d", element().sym, mass()) end
+
+-- electrons grouped by principal quantum number n from the real Madelung config — the
+-- True-shells (Aufbau) view. K(19) reads 2/8/8/1, not the period rings' 2/8/9.
+local function n_shell_occ(e)
+    local occ = {}
+    for _, s in ipairs(data.config(e)) do occ[s.n] = (occ[s.n] or 0) + s.e end
+    local out, nmax = {}, 0
+    for i = 1, 7 do if occ[i] and occ[i] > 0 then nmax = i end end
+    for i = 1, nmax do out[i] = occ[i] or 0 end
+    return out, nmax
+end
 
 -- how far outside the stable band (0 = stable); drives tremble + decay speed. Elements
 -- with no stable isotope (Z>83) are always unstable — the radioactive endgame.
@@ -154,7 +175,8 @@ local function instability()
     if not data.has_stable(z) then return 1 + math.abs(n - data.principal(z)) end
     local lo, hi = data.stable_span(z)
     if n > hi then return n - hi elseif n < lo then return lo - n end
-    return 0
+    -- inside the span but on a real HOLE (K-40, Cl-36, Kr-85...): mildly unstable
+    return data.is_stable(z, n) and 0 or 1
 end
 
 -- "stabilize-the-decay": would dropping one <kind> particle land the nucleus on a STABLE
@@ -190,7 +212,11 @@ end
 local function reqs_of(r)
     local q = {}
     if r.cat then q[#q + 1] = r.cat end
-    if r.cond then q[#q + 1] = r.cond end
+    if type(r.cond) == "table" then
+        for _, c in ipairs(r.cond) do q[#q + 1] = c end -- Haber really needs heat AND pressure
+    elseif r.cond then
+        q[#q + 1] = r.cond
+    end
     return q
 end
 
@@ -255,9 +281,13 @@ function M.reset()
     M.cat = {} -- active catalysts / conditions (the toggle chips)
     M.carded = { [1] = true } -- elements whose birth card was shown (H is the starting point)
     M.target = { kind = "el", z = 2 } -- first target: Helium (teaches proton + shell-lock)
+    M.shelf = {} -- synthesized molecules by species count — the bench's reagent inventory
+    M.mol_disc = {} -- molecules ever made (fills the discovered strip)
+    M.lastrad = nil -- most recent radiation event (readout, bottom-right)
     M.view = M.view or "bohr" -- atom representation mode (dropdown); persists across runs
-    if M.view ~= "bohr" and M.view ~= "cloud" then M.view = "bohr" end
+    if M.view ~= "bohr" and M.view ~= "cloud" and M.view ~= "shells" then M.view = "bohr" end
     M.viewOpen = false
+    M.questOpen = false -- the pick-any-target quest catalog under the TARGET button
 end
 
 local function target_label()
@@ -279,6 +309,14 @@ local function new_target()
     local mols = {}
     for key, r in pairs(data.reactions) do
         if r.core_z <= cap then mols[#mols + 1] = key end
+    end
+    -- bench products (acids...) become targets once every reagent has been made before
+    for _, s in ipairs(data.species) do
+        local known = true
+        for k in pairs(s.needs) do if not M.mol_disc[k] then known = false; break end end
+        if known then
+            for k in pairs(s.gives) do if not M.mol_disc[k] then mols[#mols + 1] = k end end
+        end
     end
     if M.tcount >= 3 and #mols > 0 and math.random() < 0.28 then
         M.target = { kind = "mol", key = mols[math.random(#mols)] }
@@ -302,6 +340,46 @@ local function check_target()
         M.gtoast = { msg = "SYNTHESIZED   " .. target_label(), age = 0.0 }
         if M.target.kind == "el" then M.discovered[M.target.z] = true end
         sfx(SFX_CARD)
+    end
+end
+
+-- THE BENCH: true species-level stoichiometry. Reactions between MOLECULES pulled from
+-- the shelf (N2 + 3 H2 needs three H2 you actually made), gated by the same catalyst
+-- chips as formation reactions. Products land back on the shelf; new species get a card.
+local function bench_offers()
+    local out = {}
+    for _, s in ipairs(data.species) do
+        local ok = true
+        for k, cnt in pairs(s.needs) do
+            if (M.shelf[k] or 0) < cnt then ok = false; break end
+        end
+        if ok then out[#out + 1] = s end
+    end
+    return out
+end
+
+local function bench_react(s)
+    for k, cnt in pairs(s.needs) do M.shelf[k] = M.shelf[k] - cnt end
+    local newk, won = nil, false
+    for k, cnt in pairs(s.gives) do
+        M.shelf[k] = (M.shelf[k] or 0) + cnt
+        if not M.mol_disc[k] then newk = newk or k end
+        M.mol_disc[k] = true
+        if M.target and M.target.kind == "mol" and M.target.key == k and not M.won then
+            M.won = true
+            won = true
+            M.goalflash = 1.0
+            M.gtoast = { msg = "SYNTHESIZED   " .. target_label(), age = 0.0 }
+        end
+    end
+    if not won then M.gtoast = { msg = "REACTION   " .. s.eq, age = 0.0 } end
+    if newk then
+        local m = data.molecules[newk]
+        M.card = { el = { sym = m.sym, name = m.name, lore = m.lore, eq = s.eq }, age = 0.0 }
+        M.hold = HOLD_DUR
+        sfx(SFX_CARD)
+    else
+        sfx(SFX_LOCK)
     end
 end
 
@@ -420,6 +498,16 @@ local function layout()
     g.stgap = g.unit * 0.085           -- +/- horizontal offset from the row centre
     g.mergew, g.mergeh = g.unit * 0.24, g.unit * 0.058
     g.mergey = g.stepy + 3 * g.stepdy + g.unit * 0.02
+
+    -- molecule discovered-strip: every species (covalent, acids, salts) in two rows along
+    -- the bottom, filling in as you synthesize. Cells sized so the whole list always fits.
+    g.msN = #data.mol_list
+    g.msCols = math.ceil(g.msN / 2)
+    g.msW = g.w * 0.985
+    g.msCell = g.msW / g.msCols
+    g.msH = g.unit * 0.034
+    g.msX = (g.w - g.msW) * 0.5
+    g.msY = g.h - 2 * (g.msH + g.unit * 0.004) - g.unit * 0.006
     return true
 end
 
@@ -553,6 +641,7 @@ local function apply_fusion(f)
     M.acted = true
     M.flash = exo and 1.4 or 0.8
     M.gamma = { t = 0.0 } -- radiative capture (n,gamma): the compound nucleus sheds a gamma
+    set_lastrad("gamma", "radiative capture")
     M.hold = HOLD_DUR
     M.sw = { r = g.nucR, spd = (g.unit * (exo and 0.78 or 0.5) - g.nucR) / SW_DUR, alpha = 1.0 }
     M.wob = { t = 0.0, amp = g.unit * 0.035, dx = 1.0, dy = 0.0 }
@@ -588,14 +677,17 @@ local function start_fission()
     M.fission = { phase = "in", t = 0.0, nx = g.w + g.unit * 0.05, ny = g.cy, parts = nil }
 end
 
-local function apply_fission()
+-- Shared by neutron-induced fission (absorbed = 1) and SPONTANEOUS fission (absorbed = 0):
+-- the nucleus splits ~40/60, the main atom keeps the heavy fragment, the light fragment and
+-- a few free neutrons fly off.
+local function split_nucleus(absorbed)
     local g = M.g
     local z, n = M.atom.protons, M.atom.neutrons
     local from = iso_name()
     local kfree = (n >= 6) and 3 or 2                    -- free neutrons released (~2.4 avg)
     local z1 = math.max(1, math.floor(z * 0.42 + 0.5))   -- light fragment protons
     local z2 = math.max(1, z - z1)                       -- heavy fragment protons (kept)
-    local navail = math.max(0, n + 1 - kfree)            -- +1 = the absorbed neutron
+    local navail = math.max(0, n + absorbed - kfree)
     local n1 = math.min(navail, math.floor(navail * (z1 / z) + 0.5))
     local n2 = navail - n1
     M.atom.protons, M.atom.neutrons = z2, n2             -- the main atom becomes the heavy fragment
@@ -609,6 +701,7 @@ local function apply_fission()
         parts[#parts + 1] = { kind = "n", life = 1.0, x = g.cx, y = g.cy,
             vx = math.cos(a) * g.unit * 1.4, vy = math.sin(a) * g.unit * 1.4 }
     end
+    M.fission = M.fission or { t = 0.0 } -- spontaneous fission arrives with no "in" phase
     M.fission.parts = parts
     M.fission.phase = "out"; M.fission.t = 0.0
     M.flash = 1.5
@@ -617,43 +710,73 @@ local function apply_fission()
     M.sw = { r = g.nucR, spd = (g.unit * 0.85 - g.nucR) / SW_DUR, alpha = 1.0 }
     M.wob = { t = 0.0, amp = g.unit * 0.04, dx = 1.0, dy = 0.0 }
     local le, he = data.get(z1), data.get(z2)
-    M.toast = { msg = string.format("%s + n  ->  %s-%d + %s-%d + %dn", from,
+    M.toast = { msg = string.format("%s%s  ->  %s-%d + %s-%d + %dn", from, absorbed > 0 and " + n" or "",
         he and he.sym or "?", z2 + n2, le and le.sym or "?", z1 + n1, kfree), age = 0.0 }
     M.stats.decays = (M.stats.decays or 0) + 1
+    set_lastrad("fission", absorbed > 0 and "induced fission" or "spontaneous fission")
     sfx(SFX_LOCK)
 end
+
+local function apply_fission() split_nucleus(1) end
 
 -- Decay: one step toward the stable valley -----------------------------------
 local function decay_step()
     local g = M.g
     local z, n = M.atom.protons, M.atom.neutrons
     local from = iso_name()
-    local mode
-    if not data.has_stable(z) and z > 2 then
-        -- heavy radioactive: alpha decay (emit a He-4 nucleus), walk down toward lead
-        M.atom.protons, M.atom.neutrons = z - 2, math.max(0, n - 2)
-        M.emit = { kind = "a" }; mode = "alpha decay"
-    else
-        local lo, hi = data.stable_span(z)
-        if n > hi then
-            if z < data.MAX_Z then          -- beta-minus: neutron -> proton + emitted electron
-                M.atom.protons, M.atom.neutrons = z + 1, n - 1
-                M.emit = { kind = "e" }; mode = "beta- decay"
-            else                            -- neutron-rich at the ceiling: eject a neutron
-                M.atom.neutrons = n - 1
-                M.emit = { kind = "n" }; mode = "neutron emission"
-            end
-        elseif n < lo then                  -- proton-rich: p -> n, either beta+ or capture
-            M.atom.protons, M.atom.neutrons = math.max(1, z - 1), n + 1
-            if z >= EC_Z then               -- heavier: an inner electron is captured (p + e- -> n)
-                M.emit = { kind = "e", inward = true }; mode = "electron capture"
-            else                            -- lighter: positron emission
-                M.emit = { kind = "p" }; mode = "beta+ decay"
-            end
+    -- REAL dominant mode when the nuclide is charted (data.nuclides covers every principal
+    -- isotope, all four natural decay chains, and the reported superheavy chains — so U-238
+    -- walks the textbook alpha/beta- zigzag to Pb-206). Heuristics fire only off that map.
+    local mode = data.mode_of(z, n)
+    if not mode then
+        if z > 83 then
+            -- uncharted heavy: neutron-rich beta-decays back toward the valley, else alpha;
+            -- past Z=100 a high fissility parameter (Z^2/A > 41) tears it apart instead.
+            if z > 100 and (z * z) / (z + n) > 41.0 then mode = "sf"
+            elseif n > data.principal(z) and z < data.MAX_Z then mode = "betam"
+            else mode = "alpha" end
         else
-            return
+            local lo, hi = data.stable_span(z)
+            if not data.has_stable(z) then
+                -- Tc / Pm: NO stable N exists — the valley bottom itself decays (Tc-98 goes
+                -- beta-, Pm-145 electron-captures; proton-rich isotopes go EC/beta+ as usual).
+                if z == 61 or n < data.principal(z) then lo, hi = n + 1, n + 1
+                else lo, hi = n - 1, n - 1 end
+            elseif n >= lo and n <= hi and not data.is_stable(z, n) then
+                -- an in-band HOLE (K-40, Cl-36, Kr-85, Zr-93): beta- dominates in practice
+                lo, hi = n - 1, n - 1
+            end
+            if n > hi then
+                mode = (z < data.MAX_Z) and "betam" or "nemit"
+            elseif n < lo then
+                -- beta+ needs Q > 1.022 MeV (light nuclei's steep mass parabolas provide it);
+                -- heavy proton-rich nuclei electron-capture. Charted isotopes carry their
+                -- real mode above; this threshold covers only the unknown.
+                mode = (z >= EC_Z) and "ec" or "betap"
+            else
+                return
+            end
         end
     end
+    if mode == "sf" then split_nucleus(0); return end
+    local txt, radkey
+    if mode == "alpha" then
+        M.atom.protons, M.atom.neutrons = math.max(1, z - 2), math.max(0, n - 2)
+        M.emit = { kind = "a" }; txt = "alpha decay"; radkey = "alpha"
+    elseif mode == "betam" then
+        M.atom.protons, M.atom.neutrons = z + 1, n - 1
+        M.emit = { kind = "e" }; txt = "beta- decay"; radkey = "betam"
+    elseif mode == "nemit" then
+        M.atom.neutrons = n - 1
+        M.emit = { kind = "n" }; txt = "neutron emission"; radkey = "n"
+    elseif mode == "ec" then
+        M.atom.protons, M.atom.neutrons = math.max(1, z - 1), n + 1
+        M.emit = { kind = "e", inward = true }; txt = "electron capture"; radkey = "ec"
+    else -- betap
+        M.atom.protons, M.atom.neutrons = math.max(1, z - 1), n + 1
+        M.emit = { kind = "p" }; txt = "beta+ decay"; radkey = "betap"
+    end
+    mode = txt
     reneutralize()
     M.discovered[M.atom.protons] = true
     M.flash = 1.0
@@ -671,6 +794,7 @@ local function decay_step()
     M.emit.life = 1.0
     M.toast = { msg = from .. "   ->   " .. iso_name() .. "     " .. mode, age = 0.0 }
     M.stats.decays = M.stats.decays + 1
+    set_lastrad(radkey, mode)
     sfx(SFX_LOCK)
 end
 
@@ -726,7 +850,14 @@ local function advance(dt)
     -- unstable nucleus trembles and a decay timer ticks (paused while a card is up).
     local inst = instability()
     if inst > 0 and not M.card and not M.held_id and not M.fusing and not M.fission then -- pause while pouring/animating
-        if not M.decay then M.decay = { t = math.max(DECAY_MIN, DECAY_BASE - inst * 0.5), dur0 = 0 } end
+        if not M.decay then
+            -- the game clock breathes with the REAL half-life (log-compressed): U-238's
+            -- 4.5 Gy gives you ~4.3s to act; Og-294's 0.7 ms is gone in about a second.
+            local hs = data.halflife_s(M.atom.protons, M.atom.neutrons)
+            local t = 1.0 + 0.155 * (math.log(hs) / math.log(10) + 4.0)
+            if t < DECAY_MIN then t = DECAY_MIN elseif t > 6.0 then t = 6.0 end
+            M.decay = { t = t, dur0 = 0, hl = data.fmt_hl(hs) }
+        end
         M.decay.dur0 = math.max(M.decay.dur0, M.decay.t)
         M.decay.t = M.decay.t - dt
         -- throttle nucleus tremble: heavy atoms every 4th frame (hold-skip 3/4), light every 3rd.
@@ -781,6 +912,9 @@ local function advance(dt)
             local m = data.molecules[M.bonding.kind]
             local rr = data.reactions[M.bonding.kind]
             M.molecule = { kind = M.bonding.kind }
+            -- onto the shelf: molecules are the bench's reagents (species stoichiometry)
+            M.shelf[M.bonding.kind] = (M.shelf[M.bonding.kind] or 0) + 1
+            M.mol_disc[M.bonding.kind] = true
             M.bonding = nil
             M.hold = HOLD_DUR
             M.card = { el = { sym = m.sym, name = m.name, lore = m.lore, eq = rr and rr.eq }, age = 0.0 }
@@ -846,6 +980,30 @@ end
 
 local function handle_input()
     local g = M.g
+    -- quest catalog: pick any element/molecule as the target. Modal while open.
+    local qb = runtime_ui.get_state(SCREEN, "questbtn")
+    if qb and qb.clicked then M.questOpen = not M.questOpen; return end
+    if M.questOpen then
+        for z = 1, data.MAX_Z do
+            local st = runtime_ui.get_state(SCREEN, "q_el" .. z)
+            if st and st.clicked then
+                M.target = { kind = "el", z = z }
+                M.questOpen = false
+                reset_atom()
+                return
+            end
+        end
+        for i, key in ipairs(data.mol_list) do
+            local st = runtime_ui.get_state(SCREEN, "q_mol" .. i)
+            if st and st.clicked then
+                M.target = { kind = "mol", key = key }
+                M.questOpen = false
+                reset_atom()
+                return
+            end
+        end
+        return -- swallow everything else while the catalog is open
+    end
     local rs = runtime_ui.get_state(SCREEN, "reset")
     if rs and rs.clicked then reset_atom(); return end
     local ts = runtime_ui.get_state(SCREEN, "target_btn")
@@ -872,6 +1030,19 @@ local function handle_input()
         return
     end
 
+    -- bench reactions stay clickable even while a finished molecule is on display
+    for i = 1, 3 do
+        local s = M._bench and M._bench[i]
+        if s then
+            local bs = runtime_ui.get_state(SCREEN, "bench" .. i)
+            if bs and bs.clicked then
+                if reqs_met(s) then bench_react(s)
+                else M.toast = { msg = "needs: " .. table.concat(reqs_of(s), " + "), age = 0.0 } end
+                return
+            end
+        end
+    end
+
     -- once bonded, or mid-coalesce / fusion / fission, the atom builder is inert.
     if M.molecule or M.bonding or M.fusing or M.fission then return end
     -- coalesce is a gesture: grab the reagent and drag it into the atom. It only fires when
@@ -881,7 +1052,7 @@ local function handle_input()
         local bs = runtime_ui.get_state(SCREEN, "bond_src")
         if bs then
             if bs.drag_started then
-                M.fly = { kind = "bond", mol = r.product, state = "drag", src = "bond_src",
+                M.fly = { kind = "bond", mol = r.product, psym = r.partner, state = "drag", src = "bond_src",
                     x = bs.mouse_x or g.cx, y = bs.mouse_y or g.cy }
                 return
             elseif bs.clicked and not bs.dragging then
@@ -956,7 +1127,10 @@ local function draw_nucleus(idp, x, y, protons, neutrons, al, cap, ballcol)
     if total > cap then dot(idp .. "core", x, y, nucR * 1.7, col(C_PROTON, 0.5 * al), 21.0) end
     for i = 1, shown do
         local a = i * 2.399963
-        local rr = nucR * 0.82 * math.sqrt(i / shown)
+        -- pack from the CENTRE out: nucleon 1 sits dead centre, each new one accretes onto
+        -- the rim, and the whole cluster grows with mass (sqrt(i/shown) left the centre
+        -- empty — a lone proton drew at the rim).
+        local rr = nucR * 0.82 * math.sqrt((i - 1) / math.max(1, shown - 1))
         dot(idp .. i, x + math.cos(a) * rr, y + math.sin(a) * rr, g.dp,
             col((i / shown) <= (protons / math.max(1, total)) and C_PROTON or C_NEUTRON, al), 22.0)
     end
@@ -989,7 +1163,7 @@ local function mini_atom(idp, x, y, p, n, e, R, al)
     if M.view == "cloud" then
         draw_orbital(idp .. "orb", x, y, e, R, al)
     else
-        local esh = stage_shells(e)
+        local esh = (M.view == "shells") and n_shell_occ(e) or stage_shells(e)
         local nr = math.max(1, #esh)
         local r0 = R * 0.33
         local step = nr > 1 and (R - r0) / (nr - 1) or 0
@@ -1007,12 +1181,13 @@ local function mini_atom(idp, x, y, p, n, e, R, al)
     draw_nucleus(idp .. "n", x, y, p, n, math.min(1.0, al + 0.30))
 end
 
--- a hydrogen glyph (proton + one orbiting electron) — the in-flight ghost of the bond
--- partner you drag toward the atom. `s` scales it.
-local function draw_hydrogen(idp, x, y, s, z)
+-- the in-flight ghost of the bond partner you drag toward the atom: a CPK-tinted ball
+-- with one orbiting electron. `s` scales it.
+local function draw_partner_ghost(idp, x, y, s, z, sym)
     local g = M.g
-    dot(idp .. "g", x, y, g.de * 2.4 * s, col(C_PROTON, 0.20), z)
-    dot(idp .. "p", x, y, g.dp * 1.1 * s, C_PROTON, z + 1.0)
+    local c = CPK[sym or "H"] or C_PROTON
+    dot(idp .. "g", x, y, g.de * 2.4 * s, col(c, 0.20), z)
+    dot(idp .. "p", x, y, g.dp * 1.4 * s, c, z + 1.0)
     local a = M.clock * 2.2
     dot(idp .. "e", x + math.cos(a) * g.de * 1.5 * s, y + math.sin(a) * g.de * 1.5 * s,
         g.de * 0.7 * s, C_ELEC, z + 2.0)
@@ -1038,7 +1213,33 @@ local function draw_molecule()
     local JIT = g.unit * 0.0011
     local function jit(k) return math.sin(M.clock * 2.3 + k) * JIT, math.cos(M.clock * 1.9 + k * 1.7) * JIT end
 
-    if m.render == "diatomic" then
+    if m.render == "lattice" then
+        -- IONIC: no shared cloud — a grid of ions in the exact a:b ratio (electron transfer,
+        -- not sharing). Anions draw bigger (they gained electrons), cations smaller; 1:1
+        -- salts get the classic rock-salt checkerboard. The fly-in converges the lattice.
+        local cols, rows = 4, 3
+        local pitch = g.unit * 0.075
+        local x0, y0 = cx - (cols - 1) * 0.5 * pitch, cy - (rows - 1) * 0.5 * pitch
+        local ccol = CPK[m.cation] or C_PROTON
+        local acol = CPK[m.anion] or C_NEUTRON
+        local ab = m.a + m.b
+        for i = 0, cols * rows - 1 do
+            local ri = math.floor(i / cols)
+            local ci = i % cols
+            local isCat
+            if ab == 2 then isCat = ((ci + ri) % 2) == 0        -- 1:1 rock-salt checkerboard
+            else isCat = ((i * m.a) % ab) < m.a end             -- exact-ratio spread (1:2, 2:3...)
+            local gx, gy = x0 + ci * pitch, y0 + ri * pitch
+            local ex = M.bonding and lerp(cx + (gx - cx) * 2.6, gx, prog) or gx
+            local ey = M.bonding and lerp(cy + (gy - cy) * 2.6, gy, prog) or gy
+            local jx, jy = jit(i * 1.3)
+            local d = isCat and g.nucR * 1.5 or g.nucR * 2.4
+            dot("lat" .. i, ex + jx * 0.5, ey + jy * 0.5, d, col(isCat and ccol or acol, 0.55 + 0.45 * prog), 22.0)
+        end
+        label("lat_legend", cx, y0 + rows * pitch + g.unit * 0.005, g.unit * 0.6, g.unit * 0.04,
+            string.format("%s%s / %s%s   ionic lattice", m.cation, string.rep("+", m.chg),
+                m.anion, string.rep("-", m.achg)), C_DIMTEXT, 1.5, 41.0)
+    elseif m.render == "diatomic" then
         local pz, pn = partner_pn(m.core)
         local bd = g.unit * (m.core == "H" and 0.062 or 0.085)
         local lx = cx - bd
@@ -1168,7 +1369,9 @@ local function draw_element_tip(z, mx, my)
     local tx = math.max(g.unit * 0.01, math.min(mx + g.unit * 0.015, g.w - tw - g.unit * 0.01))
     local ty = math.max(g.unit * 0.01, math.min(my + g.unit * 0.02, g.h - th - g.unit * 0.01))
     local mass0 = e.z + data.principal(e.z)
-    local stable = data.has_stable(e.z) and "stable" or "radioactive"
+    -- t1/2 implies radioactive; the word itself would overflow the non-wrapping footer.
+    local stable = data.has_stable(e.z) and "stable"
+        or ("t1/2 " .. data.fmt_hl(data.halflife_s(e.z, data.principal(e.z))))
     -- footer is a single non-wrapping line in the backend, so keep it short (it overflowed
     -- before); the atomic number lives in the corner label and the lore wraps in the body.
     quad("eltip", {
@@ -1185,7 +1388,7 @@ end
 -- what each condition chip does + when to use it (real chemistry + the fusion gate).
 local CHIP_TIP = {
     spark    = { t = "spark  -  ignition", b = "Activation energy that starts a reaction (a flame or lightning). Lights combustion.", f = "use: H2O, CO2" },
-    heat     = { t = "heat  -  thermal energy", b = "Drives endothermic reactions; past the iron peak it also powers endothermic FUSION (a stellar core).", f = "use: CH4   -   fusion Z>26" },
+    heat     = { t = "heat  -  thermal energy", b = "Drives endothermic reactions; past the iron peak it also powers endothermic FUSION (a stellar core).", f = "use: CH4, NH3, SO3, sulfides  -  fusion Z>26" },
     pressure = { t = "pressure", b = "Pushes an equilibrium reaction toward its product (Le Chatelier). With heat, enables fusion past iron.", f = "use: NH3   -   fusion Z>26" },
     Fe       = { t = "Fe  -  iron catalyst", b = "Speeds a reaction without being used up. Iron catalyses the Haber process, N2 + 3H2 -> NH3.", f = "use: NH3 (Haber)" },
     Ni       = { t = "Ni  -  nickel catalyst", b = "Nickel catalyses hydrogenation - adding hydrogen onto carbon.", f = "use: CH4" },
@@ -1216,6 +1419,17 @@ local function draw_view_bg(acx, acy, bright)
         -- the OUTERMOST electron's exact orbital psi_{n,l,m}, sized to the Bohr outer ring so
         -- both views read as the same-size atom (m from Hund's rule; +/-m share |psi|^2).
         draw_orbital("orbital", acx, acy, electrons(), g.rmax, bright)
+    elseif M.view == "shells" then
+        -- Aufbau-exact: one ring per principal shell n, occupancy from the real Madelung
+        -- config; alpha tracks fill vs the true 2n^2 capacity. No lock juice — gameplay
+        -- locking stays on the Bohr period rings. (Highest occupied n == period, so the
+        -- period-ring radii fit as-is.)
+        local occ, nmax = n_shell_occ(electrons())
+        for si = 1, math.max(1, nmax) do
+            local frac = (occ[si] or 0) / (2 * si * si)
+            ring("ring" .. si, acx, acy, g.radii[si],
+                col(C_RING, math.min(1.0, (0.24 + 0.66 * frac) * bright)), 12.0)
+        end
     else -- bohr
         for si, sh in ipairs(M.atom.shells) do
             if si <= g.nrings then -- period rings + any extra shell an anion's electron occupies
@@ -1240,20 +1454,35 @@ local function draw_view_fg(ecx, ecy, bright)
     -- Sub-pixel motion is invisible on a soft sprite, so this is as smooth as the display can
     -- show while still rate-limiting submits to each dot's pixel-crossing rate (and avoiding
     -- per-frame opts-table churn for dots that haven't visibly moved).
+    local function edot(si, i, ex, ey)
+        local px = math.floor(ex) * 16384.0 + math.floor(ey) -- packed pixel key
+        local id = "e" .. si .. "_" .. i
+        if M._eang[id] == px then
+            M._live[id] = true
+            if glow then M._live["eh" .. si .. "_" .. i] = true end
+        else
+            M._eang[id] = px
+            if glow then dot("eh" .. si .. "_" .. i, ex, ey, g.de * 2.1, col(C_ELECGLW, math.min(1.0, C_ELECGLW[4] * bright)), 29.0) end
+            dot(id, ex, ey, g.de, C_ELEC, 30.0)
+        end
+    end
+    if M.view == "shells" then
+        -- True-shells dots are DERIVED from the config (not the gameplay electron objects),
+        -- spinning per-ring like the assembly preview.
+        local occ, nmax = n_shell_occ(electrons())
+        for si = 1, nmax do
+            local cnt = math.min(occ[si] or 0, E_MAX_PER_RING)
+            for i = 1, cnt do
+                local ang = M.clock * (RING_SPIN[si] or 0.5) + (i - 1) / cnt * TAU + si * 1.1
+                edot(si, i, ecx + math.cos(ang) * g.radii[si], ecy + math.sin(ang) * g.radii[si])
+            end
+        end
+        return
+    end
     for si, sh in ipairs(M.atom.shells) do
         for i = 1, math.min(#sh.e, E_MAX_PER_RING) do
             local ang = sh.phase + sh.e[i].spread
-            local ex, ey = ecx + math.cos(ang) * g.radii[si], ecy + math.sin(ang) * g.radii[si]
-            local px = math.floor(ex) * 16384.0 + math.floor(ey) -- packed pixel key
-            local id = "e" .. si .. "_" .. i
-            if M._eang[id] == px then
-                M._live[id] = true
-                if glow then M._live["eh" .. si .. "_" .. i] = true end
-            else
-                M._eang[id] = px
-                if glow then dot("eh" .. si .. "_" .. i, ex, ey, g.de * 2.1, col(C_ELECGLW, math.min(1.0, C_ELECGLW[4] * bright)), 29.0) end
-                dot(id, ex, ey, g.de, C_ELEC, 30.0)
-            end
+            edot(si, i, ecx + math.cos(ang) * g.radii[si], ecy + math.sin(ang) * g.radii[si])
         end
     end
 end
@@ -1315,7 +1544,8 @@ local function draw()
         if total > NUC_MAX_DOTS then dot("nuccore", ncx, ncy, nucR * 1.7, col(C_PROTON, 0.5), 21.0) end
         for i = 1, shown do
             local a = i * 2.399963
-            local rr = nucR * 0.82 * math.sqrt(i / shown)
+            -- centre-out packing (see draw_nucleus): first nucleon dead centre, newest on the rim
+            local rr = nucR * 0.82 * math.sqrt((i - 1) / math.max(1, shown - 1))
             local c = (i / shown) <= (M.atom.protons / math.max(1, total)) and C_PROTON or C_NEUTRON
             dot("nuc" .. i, ncx + math.cos(a) * rr, ncy + math.sin(a) * rr, g.dp, c, 22.0)
         end
@@ -1333,7 +1563,7 @@ local function draw()
 
     if M.fly then
         if M.fly.kind == "bond" then
-            draw_hydrogen("fly", M.fly.x, M.fly.y, 1.15, 50.0)
+            draw_partner_ghost("fly", M.fly.x, M.fly.y, 1.15, 50.0, M.fly.psym)
         else
             local c = M.fly.kind == "e" and C_ELEC or (M.fly.kind == "p" and C_PROTON or C_NEUTRON)
             dot("flyh", M.fly.x, M.fly.y, g.de * 2.6, col(c, 0.22), 49.0)
@@ -1394,6 +1624,12 @@ local function draw()
                     string.format("outer  %d%s  (%d, %d, %d)", val.n, data.L_CHAR[val.l], val.n, val.l, m),
                     col(C_ELEC, 0.92), 1.7, 41.0)
             end
+        elseif M.view == "shells" then
+            local occ, nmax = n_shell_occ(electrons())
+            local parts = {}
+            for i = 1, nmax do parts[i] = tostring(occ[i] or 0) end
+            label("ident_orb", g.cx, g.iy + g.unit * 0.170, g.unit * 0.6, g.unit * 0.05,
+                "shells  " .. table.concat(parts, " . "), col(C_ELEC, 0.92), 1.7, 41.0)
         end
     end
 
@@ -1410,6 +1646,10 @@ local function draw()
             or "no stable route - let it decay"
         label("decay_hint", g.cx, py + g.unit * 0.052, g.unit * 0.75, g.unit * 0.04, hint,
             { 0.92, 0.86, 0.72, 0.92 }, 1.6, 43.0)
+        if M.decay.hl then
+            label("decay_hl", g.cx, py + g.unit * 0.092, g.unit * 0.6, g.unit * 0.036,
+                "real half-life  " .. M.decay.hl, C_DIMTEXT, 1.4, 43.0)
+        end
     end
 
     -- coalesce reagent: when a reaction is available (a molecule target whose core you've
@@ -1420,7 +1660,7 @@ local function draw()
     if rx and not M.card and not M.fusing and not M.fission and (not M.fly or bdrag) then
         local met = reqs_met(rx)
         local bx, by = g.cx + g.unit * 0.40, g.cy
-        local pc = (rx.partner == "H" and C_PROTON) or (rx.partner == "O" and C_RING) or C_NEUTRON
+        local pc = CPK[rx.partner] or C_NEUTRON
         if not bdrag then
             local pulse = 1.0 + 0.10 * math.sin(M.clock * 3.0)
             ring("bond_ring", bx, by, g.td * 0.60 * (met and pulse or 1.0), col(pc, met and 0.5 or 0.18), 39.0)
@@ -1446,6 +1686,9 @@ local function draw()
     do
         local need = {}
         if rx then for _, k in ipairs(reqs_of(rx)) do need[k] = true end end
+        for _, s in ipairs(M._bench or {}) do
+            if not reqs_met(s) then for _, k in ipairs(reqs_of(s)) do need[k] = true end end
+        end
         local cw, chh = g.unit * 0.085, g.unit * 0.044
         local x0 = g.w - cw - g.unit * 0.02
         local y0 = g.unit * 0.135
@@ -1508,6 +1751,104 @@ local function draw()
         if st and st.hovered then draw_chip_tip(c, st.mouse_x or g.cx, st.mouse_y or g.cy); break end
     end
 
+    -- THE BENCH (bottom-left): species reactions runnable from the shelf right now. The
+    -- balanced eq is the recipe; the shelf counts are consumed on click.
+    M._bench = bench_offers()
+    do
+        local nb = math.min(3, #M._bench)
+        local bw, bh = g.unit * 0.36, g.unit * 0.042
+        for i = 1, nb do
+            local s = M._bench[i]
+            local met = reqs_met(s)
+            local by0 = g.msY - g.unit * 0.012 - (nb - i + 1) * (bh + g.unit * 0.008)
+            quad("bench" .. i, { x = g.unit * 0.015, y = by0, width = bw, height = bh, z = 46.0,
+                style = "button", font_scale = 1.3,
+                title = "REACT:  " .. s.eq .. (met and "" or ("    needs " .. table.concat(reqs_of(s), "+"))),
+                fill = met and { 0.10, 0.16, 0.11, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
+                border = met and col(C_LOCK, 0.9) or col(C_UNSTABLE, 0.7),
+                accent = col(C_LOCK, 0.8),
+                text_color = met and { 0.92, 0.96, 0.90, 1.0 } or { 0.75, 0.78, 0.85, 0.9 } })
+        end
+    end
+
+    -- molecule discovered-strip (bottom, two rows): every species fills in as you make it;
+    -- shelf counts show as xN. Dirty-skip like the board: re-submit on signature change only.
+    do
+        local msum, mdisc = 0, 0
+        for _, v in pairs(M.shelf) do msum = msum + v end
+        for _ in pairs(M.mol_disc) do mdisc = mdisc + 1 end
+        local mtkey = (M.target and M.target.kind == "mol") and M.target.key or "-"
+        local mskey = string.format("%d|%d|%s|%.1f", msum, mdisc, mtkey, g.msCell)
+        for i = 1, g.msN do M._live["ms" .. i] = true end
+        if mskey ~= M._mskey then
+            M._mskey = mskey
+            for i, key in ipairs(data.mol_list) do
+                local r0 = math.floor((i - 1) / g.msCols)
+                local c0 = (i - 1) % g.msCols
+                local x = g.msX + c0 * g.msCell
+                local y = g.msY + r0 * (g.msH + g.unit * 0.004)
+                local disc = M.mol_disc[key]
+                local cnt = M.shelf[key] or 0
+                local fill, border, tc
+                if M.target and M.target.kind == "mol" and M.target.key == key then
+                    fill = { 0.24, 0.18, 0.05, 0.95 }; border = col(C_LOCK, 0.95); tc = { 1.0, 0.90, 0.60, 1.0 }
+                elseif disc then
+                    fill = { 0.10, 0.13, 0.19, 0.92 }; border = { 0.40, 0.45, 0.55, 0.6 }; tc = { 0.94, 0.88, 0.72, 1.0 }
+                else
+                    fill = { 0.05, 0.06, 0.09, 0.5 }; border = { 0.20, 0.24, 0.30, 0.4 }; tc = { 0.42, 0.46, 0.54, 0.7 }
+                end
+                quad("ms" .. i, { x = x + g.msCell * 0.04, y = y, width = g.msCell * 0.92, height = g.msH,
+                    z = 44.0, style = "text", body = key .. (cnt > 0 and (" x" .. cnt) or ""),
+                    align_h = "center", align_v = "middle",
+                    font_scale = math.max(0.65, math.min(1.15, g.msCell * 0.016)),
+                    fill = fill, border = border, text_color = tc,
+                    no_input = not disc }) -- discovered cells are hoverable for a tooltip
+            end
+        end
+        -- hover a discovered molecule -> its name + lore
+        for i, key in ipairs(data.mol_list) do
+            if M.mol_disc[key] then
+                local st = runtime_ui.get_state(SCREEN, "ms" .. i)
+                if st and st.hovered then
+                    local mm = data.molecules[key]
+                    local tw, th = g.unit * 0.42, g.unit * 0.16
+                    local tx = math.max(g.unit * 0.01, math.min((st.mouse_x or g.cx) - tw * 0.5, g.w - tw - g.unit * 0.01))
+                    quad("mstip", {
+                        x = tx, y = g.msY - th - g.unit * 0.012, width = tw, height = th, z = 63.0,
+                        style = "panel", font_scale = 1.7, bring_to_front = true, no_input = true,
+                        label = "on shelf: " .. (M.shelf[key] or 0), title = mm.name .. "   (" .. mm.sym .. ")",
+                        body = mm.lore,
+                        fill = { 0.05, 0.06, 0.10, 0.98 }, border = C_LOCK,
+                        accent = { 1.00, 0.82, 0.34, 1.0 }, text_color = { 0.92, 0.94, 0.98, 1.0 },
+                    })
+                    break
+                end
+            end
+        end
+    end
+
+    -- last radiation fired (bottom-right): persists until the next event; hover = legend.
+    if M.lastrad and RAD_INFO[M.lastrad.key] then
+        local ri = RAD_INFO[M.lastrad.key]
+        local rw, rh = g.unit * 0.24, g.unit * 0.048
+        local rxx = g.w - rw - g.unit * 0.02
+        local ryy = g.msY - g.unit * 0.012 - rh
+        quad("radout", { x = rxx, y = ryy, width = rw, height = rh, z = 46.0, style = "button",
+            title = "radiation:  " .. ri.name, font_scale = 1.4,
+            fill = { 0.07, 0.08, 0.12, 0.92 }, border = col(ri.c, 0.8), accent = col(ri.c, 0.9),
+            text_color = { 0.88, 0.90, 0.95, 1.0 } })
+        dot("radoutdot", rxx - g.unit * 0.018, ryy + rh * 0.5, g.de, ri.c, 47.0)
+        local st = runtime_ui.get_state(SCREEN, "radout")
+        if st and st.hovered then
+            quad("radtip", { x = rxx + rw - g.unit * 0.44, y = ryy - g.unit * 0.172,
+                width = g.unit * 0.44, height = g.unit * 0.16, z = 63.0,
+                style = "panel", font_scale = 1.7, bring_to_front = true, no_input = true,
+                label = M.lastrad.note or "", title = ri.name, body = ri.desc,
+                fill = { 0.05, 0.06, 0.10, 0.98 }, border = col(ri.c, 0.9), accent = col(ri.c, 0.9),
+                text_color = { 0.92, 0.94, 0.98, 1.0 } })
+        end
+    end
+
     -- TARGET banner (top-left). Click to reroll / advance to a new target.
     do
         local tx, ty = g.unit * 0.02, g.unit * 0.025
@@ -1520,9 +1861,68 @@ local function draw()
             border = M.won and C_LOCK or col(C_ELEC, 0.6), accent = col(C_LOCK, 0.8), text_color = tc })
         quad("target_sub", { x = tx, y = ty + g.unit * 0.072, width = g.unit * 0.36, height = g.unit * 0.03,
             z = 46.0, style = "text",
-            body = M.won and "click for a new target" or "synthesize this  -  assemble on the left, then MERGE",
+            body = M.won and "click for a new target"
+                or (M.target and M.target.kind == "mol" and not data.reactions[M.target.key])
+                and "made on the BENCH  -  react shelf molecules (bottom-left)"
+                or "synthesize this  -  assemble on the left, then MERGE",
             align_h = "left", align_v = "middle", font_scale = 1.2,
             fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, text_color = C_DIMTEXT, no_input = true })
+    end
+
+    -- QUESTS: pick any element or molecule as the next target; the TARGET button above
+    -- stays the random roll. A modal catalog — input is swallowed while it is open.
+    do
+        local qx, qy = g.unit * 0.02, g.unit * 0.105
+        local qw, qh = g.unit * 0.32, g.unit * 0.036
+        quad("questbtn", { x = qx, y = qy, width = qw, height = qh, z = 47.0, style = "button",
+            title = "QUESTS  " .. (M.questOpen and "^" or "v"), font_scale = 1.4,
+            fill = { 0.09, 0.11, 0.17, 0.94 }, border = col(C_LOCK, 0.55),
+            accent = col(C_LOCK, 0.7), text_color = { 0.92, 0.90, 0.80, 0.96 } })
+        if M.questOpen then
+            local ec, mcw, mch = g.unit * 0.036, g.unit * 0.068, g.unit * 0.030
+            local ecols, mcols = 15, 8
+            local erows = math.ceil(data.MAX_Z / ecols)
+            local mrows = math.ceil(#data.mol_list / mcols)
+            local px, py2 = qx, qy + qh + g.unit * 0.008
+            local pw = math.max(ecols * ec, mcols * mcw) + g.unit * 0.024
+            local ph = erows * ec + mrows * mch + g.unit * 0.096
+            quad("questpanel", { x = px, y = py2, width = pw, height = ph, z = 61.0,
+                style = "panel", bring_to_front = true, no_input = true,
+                fill = { 0.04, 0.05, 0.09, 0.98 }, border = col(C_LOCK, 0.6),
+                accent = col(C_LOCK, 0.7), text_color = { 0.9, 0.9, 0.9, 1.0 } })
+            label("quest_he", px + pw * 0.5, py2 + g.unit * 0.006, pw, g.unit * 0.024, "ELEMENTS", C_HINT, 1.2, 62.0)
+            local gx0, gy0 = px + g.unit * 0.012, py2 + g.unit * 0.034
+            for z = 1, data.MAX_Z do
+                local r0 = math.floor((z - 1) / ecols)
+                local c0 = (z - 1) % ecols
+                local e = data.get(z)
+                local hit = M.target and M.target.kind == "el" and M.target.z == z
+                quad("q_el" .. z, { x = gx0 + c0 * ec, y = gy0 + r0 * ec,
+                    width = ec * 0.92, height = ec * 0.92, z = 62.0, style = "text",
+                    body = e.sym, align_h = "center", align_v = "middle", font_scale = 0.9,
+                    bring_to_front = true,
+                    fill = hit and { 0.24, 0.18, 0.05, 0.95 }
+                        or (M.discovered[z] and { 0.10, 0.13, 0.19, 0.92 } or { 0.06, 0.07, 0.11, 0.9 }),
+                    border = hit and col(C_LOCK, 0.95) or { 0.30, 0.34, 0.44, 0.5 },
+                    text_color = M.discovered[z] and { 0.94, 0.88, 0.72, 1.0 } or { 0.55, 0.60, 0.70, 0.9 } })
+            end
+            local my0 = gy0 + erows * ec + g.unit * 0.004
+            label("quest_hm", px + pw * 0.5, my0, pw, g.unit * 0.024, "MOLECULES", C_HINT, 1.2, 62.0)
+            local mgy0 = my0 + g.unit * 0.028
+            for i, key in ipairs(data.mol_list) do
+                local r0 = math.floor((i - 1) / mcols)
+                local c0 = (i - 1) % mcols
+                local hit = M.target and M.target.kind == "mol" and M.target.key == key
+                quad("q_mol" .. i, { x = gx0 + c0 * mcw, y = mgy0 + r0 * mch,
+                    width = mcw * 0.94, height = mch * 0.9, z = 62.0, style = "text",
+                    body = key, align_h = "center", align_v = "middle", font_scale = 0.85,
+                    bring_to_front = true,
+                    fill = hit and { 0.24, 0.18, 0.05, 0.95 }
+                        or (M.mol_disc[key] and { 0.10, 0.13, 0.19, 0.92 } or { 0.06, 0.07, 0.11, 0.9 }),
+                    border = hit and col(C_LOCK, 0.95) or { 0.30, 0.34, 0.44, 0.5 },
+                    text_color = M.mol_disc[key] and { 0.94, 0.88, 0.72, 1.0 } or { 0.55, 0.60, 0.70, 0.9 } })
+            end
+        end
     end
 
     -- assembly atom + steppers + MERGE (hidden while a card is up or bonded). Build the
@@ -1530,7 +1930,7 @@ local function draw()
     if not M.card and not M.molecule and not M.bonding and not M.fusing and not M.fission then
         draw_stage()
         if not M.acted then
-            label("hint", g.cx, g.h * 0.955, g.unit * 0.8, g.unit * 0.045,
+            label("hint", g.cx, g.msY - g.unit * 0.052, g.unit * 0.8, g.unit * 0.045,
                 "assemble an atom on the left  -  HOLD + to pour  -  then MERGE it in", C_HINT, 2.0, 42.0)
         end
     end
@@ -1582,7 +1982,7 @@ local function draw()
     -- table counterpart to fusion. Only offered when the atom is heavy enough.
     if can_fission() and not M.card and not M.molecule and not M.bonding and not M.fusing and not M.fission then
         local pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(M.clock * 3.0))
-        quad("fission", { x = g.cx - g.unit * 0.15, y = g.h * 0.90, width = g.unit * 0.30, height = g.unit * 0.06, z = 46.0,
+        quad("fission", { x = g.cx - g.unit * 0.15, y = g.h * 0.82, width = g.unit * 0.30, height = g.unit * 0.06, z = 46.0,
             style = "button", title = "FISSION  -  fire neutron", font_scale = 1.6,
             fill = { 0.20, 0.10, 0.10, 0.95 }, border = col(C_UNSTABLE, pulse), accent = col(C_NEUTRON, 0.9),
             text_color = { 1.0, 0.86, 0.80, 1.0 } })
