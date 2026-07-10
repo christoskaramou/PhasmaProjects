@@ -101,7 +101,7 @@ local RAD_INFO = {
     fission = { name = "fission", c = C_UNSTABLE, desc = "The nucleus tears into two fragments plus free neutrons - the energy source of reactors." },
 }
 local function set_lastrad(key, note) M.lastrad = { key = key, note = note } end
-local CATALYSTS = { "spark", "heat", "pressure", "Fe", "Ni", "V2O5" } -- the lab's real helpers (toggle chips)
+local CATALYSTS = { "spark", "heat", "pressure", "Fe", "Ni", "Pt", "V2O5" } -- the lab's real helpers (toggle chips)
 local STEPPERS = { -- the left-hand assembly atom's manual controls
     { kind = "p", plus = "st_p_plus", minus = "st_p_minus" },
     { kind = "n", plus = "st_n_plus", minus = "st_n_minus" },
@@ -268,6 +268,7 @@ local function reset_atom()
     M.hold_t = 0.0
     M.stream_acc = 0.0
     M.stage = { p = 0, n = 0, e = 0 } -- the left-hand assembly atom: build a chunk, then MERGE it in
+    M.chain = {} -- spontaneous-decay breadcrumb (U-238 > Th-234 > ...); manual builds clear it
 end
 
 function M.reset()
@@ -350,8 +351,15 @@ local function bench_offers()
     local out = {}
     for _, s in ipairs(data.species) do
         local ok = true
-        for k, cnt in pairs(s.needs) do
-            if (M.shelf[k] or 0) < cnt then ok = false; break end
+        if s.core then -- acid + metal: the reaction consumes the BUILT atom as its metal
+            local el = element()
+            ok = el ~= nil and el.sym == s.core and is_neutral() and is_stable_iso()
+                and not (M.molecule or M.bonding or M.fusing or M.fission)
+        end
+        if ok then
+            for k, cnt in pairs(s.needs) do
+                if (M.shelf[k] or 0) < cnt then ok = false; break end
+            end
         end
         if ok then out[#out + 1] = s end
     end
@@ -359,7 +367,9 @@ local function bench_offers()
 end
 
 local function bench_react(s)
-    for k, cnt in pairs(s.needs) do M.shelf[k] = M.shelf[k] - cnt end
+    if s.core then reset_atom() end -- the acid dissolves the built metal atom (before the
+    -- card/win below — reset_atom clears M.card and M.won)
+    for k, cnt in pairs(s.needs) do M.shelf[k] = (M.shelf[k] or 0) - cnt end
     local newk, won = nil, false
     for k, cnt in pairs(s.gives) do
         M.shelf[k] = (M.shelf[k] or 0) + cnt
@@ -568,6 +578,7 @@ end
 local function on_proton_added(a0)
     local g = M.g
     M.acted = true
+    M.chain = {} -- hand-building breaks the spontaneous-decay story
     M.flash = 1.0
     -- a proton brings the neutrons of the element's principal stable isotope, so
     -- hand-built atoms stay stable; any extra neutrons the player added carry over.
@@ -579,6 +590,7 @@ end
 local function on_neutron_added(a0)
     local g = M.g
     M.acted = true
+    M.chain = {}
     M.flash = 0.7
     M.wob = { t = 0.0, amp = g.unit * 0.012, dx = math.cos(a0), dy = math.sin(a0) }
     thump()
@@ -639,6 +651,7 @@ local function apply_fusion(f)
     for _, sh in ipairs(M.atom.shells) do sh.locked = #sh.e >= sh.cap end
     M.discovered[M.atom.protons] = true
     M.acted = true
+    M.chain = {}
     M.flash = exo and 1.4 or 0.8
     M.gamma = { t = 0.0 } -- radiative capture (n,gamma): the compound nucleus sheds a gamma
     set_lastrad("gamma", "radiative capture")
@@ -677,6 +690,12 @@ local function start_fission()
     M.fission = { phase = "in", t = 0.0, nx = g.w + g.unit * 0.05, ny = g.cy, parts = nil }
 end
 
+-- decay-chain breadcrumb: record each spontaneous step (seeded with the starting isotope).
+local function chain_push(from, to)
+    if #M.chain == 0 then M.chain[1] = from end
+    M.chain[#M.chain + 1] = to
+end
+
 -- Shared by neutron-induced fission (absorbed = 1) and SPONTANEOUS fission (absorbed = 0):
 -- the nucleus splits ~40/60, the main atom keeps the heavy fragment, the light fragment and
 -- a few free neutrons fly off.
@@ -713,6 +732,8 @@ local function split_nucleus(absorbed)
     M.toast = { msg = string.format("%s%s  ->  %s-%d + %s-%d + %dn", from, absorbed > 0 and " + n" or "",
         he and he.sym or "?", z2 + n2, le and le.sym or "?", z1 + n1, kfree), age = 0.0 }
     M.stats.decays = (M.stats.decays or 0) + 1
+    if absorbed > 0 then M.chain = {} -- player-fired: not part of a spontaneous chain
+    else chain_push(from, iso_name()) end
     set_lastrad("fission", absorbed > 0 and "induced fission" or "spontaneous fission")
     sfx(SFX_LOCK)
 end
@@ -794,11 +815,18 @@ local function decay_step()
     M.emit.life = 1.0
     M.toast = { msg = from .. "   ->   " .. iso_name() .. "     " .. mode, age = 0.0 }
     M.stats.decays = M.stats.decays + 1
+    chain_push(from, iso_name())
     set_lastrad(radkey, mode)
     sfx(SFX_LOCK)
 end
 
 -- Catches -------------------------------------------------------------------
+-- begin a coalesce; ionic bonds run longer to fit the electron-transfer beat first.
+local function start_bond(kind)
+    local r = data.reactions[kind]
+    M.bonding = { kind = kind, t = 0.0, dur = (r and r.ionic) and (BOND_DUR * 1.6) or BOND_DUR }
+end
+
 local function start_ecatch(x, y)
     local si = target_shell()
     if not si or not can_add_electron() then return false end
@@ -907,7 +935,7 @@ local function advance(dt)
         if M.emit.life <= 0.0 then M.emit = nil end
     end
     if M.bonding then
-        M.bonding.t = M.bonding.t + dt / BOND_DUR
+        M.bonding.t = M.bonding.t + dt / (M.bonding.dur or BOND_DUR)
         if M.bonding.t >= 1.0 then
             local m = data.molecules[M.bonding.kind]
             local rr = data.reactions[M.bonding.kind]
@@ -1056,7 +1084,7 @@ local function handle_input()
                     x = bs.mouse_x or g.cx, y = bs.mouse_y or g.cy }
                 return
             elseif bs.clicked and not bs.dragging then
-                M.bonding = { kind = r.product, t = 0.0 }; return
+                start_bond(r.product); return
             end
         end
     end
@@ -1068,7 +1096,7 @@ local function handle_input()
             if st.drag_released then
                 local d = math.sqrt((M.fly.x - g.cx) ^ 2 + (M.fly.y - g.cy) ^ 2)
                 if M.fly.kind == "bond" then
-                    if d < g.catchR then M.bonding = { kind = M.fly.mol, t = 0.0 } end
+                    if d < g.catchR then start_bond(M.fly.mol) end
                     M.fly = nil; return
                 end
                 local ok
@@ -1214,31 +1242,54 @@ local function draw_molecule()
     local function jit(k) return math.sin(M.clock * 2.3 + k) * JIT, math.cos(M.clock * 1.9 + k * 1.7) * JIT end
 
     if m.render == "lattice" then
-        -- IONIC: no shared cloud — a grid of ions in the exact a:b ratio (electron transfer,
-        -- not sharing). Anions draw bigger (they gained electrons), cations smaller; 1:1
-        -- salts get the classic rock-salt checkerboard. The fly-in converges the lattice.
-        local cols, rows = 4, 3
-        local pitch = g.unit * 0.075
-        local x0, y0 = cx - (cols - 1) * 0.5 * pitch, cy - (rows - 1) * 0.5 * pitch
+        -- IONIC: no shared cloud. Phase 1 (bonding only): the ELECTRON TRANSFER — the
+        -- metal's valence electron(s) visibly leap to the incoming nonmetal, because that
+        -- jump IS the ionic bond. Phase 2: the charged ions snap into a grid in the exact
+        -- a:b ratio (1:1 = rock-salt checkerboard), anions bigger, cations smaller.
+        local tt = M.bonding and clamp01(M.bonding.t) or 1.0
+        local XFER = 0.42
         local ccol = CPK[m.cation] or C_PROTON
         local acol = CPK[m.anion] or C_NEUTRON
-        local ab = m.a + m.b
-        for i = 0, cols * rows - 1 do
-            local ri = math.floor(i / cols)
-            local ci = i % cols
-            local isCat
-            if ab == 2 then isCat = ((ci + ri) % 2) == 0        -- 1:1 rock-salt checkerboard
-            else isCat = ((i * m.a) % ab) < m.a end             -- exact-ratio spread (1:2, 2:3...)
-            local gx, gy = x0 + ci * pitch, y0 + ri * pitch
-            local ex = M.bonding and lerp(cx + (gx - cx) * 2.6, gx, prog) or gx
-            local ey = M.bonding and lerp(cy + (gy - cy) * 2.6, gy, prog) or gy
-            local jx, jy = jit(i * 1.3)
-            local d = isCat and g.nucR * 1.5 or g.nucR * 2.4
-            dot("lat" .. i, ex + jx * 0.5, ey + jy * 0.5, d, col(isCat and ccol or acol, 0.55 + 0.45 * prog), 22.0)
+        if M.bonding and tt < XFER then
+            local et = ease_out(tt / XFER)
+            local ax = cx + lerp(g.unit * 0.52, g.unit * 0.17, et) -- the anion glides in
+            dot("latxmg", cx, cy, g.nucR * 4.4, col(ccol, 0.16), 18.0)
+            dot("latxm", cx, cy, g.nucR * 2.2, ccol, 22.0)
+            dot("latxag", ax, cy, g.nucR * 6.0, col(acol, 0.14), 18.0)
+            dot("latxa", ax, cy, g.nucR * 3.0, acol, 22.0)
+            for k = 1, m.chg do -- one hop per transferred electron, slightly staggered
+                local ek = clamp01((et - (k - 1) * 0.12) / 0.82)
+                local ex = lerp(cx, ax, ek)
+                local ey = cy - math.sin(ek * math.pi) * g.unit * 0.055 - (k - 1) * g.unit * 0.012
+                dot("latxeh" .. k, ex, ey, g.de * 2.0, col(C_ELECGLW, 0.22), 29.0)
+                dot("latxe" .. k, ex, ey, g.de, C_ELEC, 30.0)
+            end
+            label("latxlbl", cx, cy + g.unit * 0.10, g.unit * 0.7, g.unit * 0.035,
+                string.format("%s gives %d electron%s  ->  %s", m.cation, m.chg,
+                    m.chg > 1 and "s" or "", m.anion), C_DIMTEXT, 1.5, 41.0)
+        else
+            local prog2 = M.bonding and ease_out(clamp01((tt - XFER) / (1.0 - XFER))) or 1.0
+            local cols, rows = 4, 3
+            local pitch = g.unit * 0.075
+            local x0, y0 = cx - (cols - 1) * 0.5 * pitch, cy - (rows - 1) * 0.5 * pitch
+            local ab = m.a + m.b
+            for i = 0, cols * rows - 1 do
+                local ri = math.floor(i / cols)
+                local ci = i % cols
+                local isCat
+                if ab == 2 then isCat = ((ci + ri) % 2) == 0        -- 1:1 rock-salt checkerboard
+                else isCat = ((i * m.a) % ab) < m.a end             -- exact-ratio spread (1:2, 2:3...)
+                local gx, gy = x0 + ci * pitch, y0 + ri * pitch
+                local ex = M.bonding and lerp(cx + (gx - cx) * 2.6, gx, prog2) or gx
+                local ey = M.bonding and lerp(cy + (gy - cy) * 2.6, gy, prog2) or gy
+                local jx, jy = jit(i * 1.3)
+                local d = isCat and g.nucR * 1.5 or g.nucR * 2.4
+                dot("lat" .. i, ex + jx * 0.5, ey + jy * 0.5, d, col(isCat and ccol or acol, 0.55 + 0.45 * prog2), 22.0)
+            end
+            label("lat_legend", cx, y0 + rows * pitch + g.unit * 0.005, g.unit * 0.6, g.unit * 0.04,
+                string.format("%s%s / %s%s   ionic lattice", m.cation, string.rep("+", m.chg),
+                    m.anion, string.rep("-", m.achg)), C_DIMTEXT, 1.5, 41.0)
         end
-        label("lat_legend", cx, y0 + rows * pitch + g.unit * 0.005, g.unit * 0.6, g.unit * 0.04,
-            string.format("%s%s / %s%s   ionic lattice", m.cation, string.rep("+", m.chg),
-                m.anion, string.rep("-", m.achg)), C_DIMTEXT, 1.5, 41.0)
     elseif m.render == "diatomic" then
         local pz, pn = partner_pn(m.core)
         local bd = g.unit * (m.core == "H" and 0.062 or 0.085)
@@ -1392,6 +1443,7 @@ local CHIP_TIP = {
     pressure = { t = "pressure", b = "Pushes an equilibrium reaction toward its product (Le Chatelier). With heat, enables fusion past iron.", f = "use: NH3   -   fusion Z>26" },
     Fe       = { t = "Fe  -  iron catalyst", b = "Speeds a reaction without being used up. Iron catalyses the Haber process, N2 + 3H2 -> NH3.", f = "use: NH3 (Haber)" },
     Ni       = { t = "Ni  -  nickel catalyst", b = "Nickel catalyses hydrogenation - adding hydrogen onto carbon.", f = "use: CH4" },
+    Pt       = { t = "Pt  -  platinum catalyst", b = "The Ostwald process: burns ammonia to NO on platinum gauze - the road from Haber to nitric acid.", f = "use: NO from NH3 (needs heat)" },
     V2O5     = { t = "V2O5  -  vanadium(V) oxide", b = "The Contact-process catalyst: oxidises SO2 to SO3 on its surface at ~450C.", f = "use: SO3 (needs heat)" },
 }
 
@@ -1638,7 +1690,8 @@ local function draw()
     -- "stabilize-the-decay": under the decay clock, name the stakes and the save move.
     -- Drop the hinted particle before the tick to QUENCH it; or let it decay (also valid).
     if M.decay and not M.card then
-        local py = g.cy + g.rmax + g.unit * 0.04
+        -- period-7 atoms are huge: clamp so the 3-line block never spills into the strip
+        local py = math.min(g.cy + g.rmax + g.unit * 0.04, g.msY - g.unit * 0.155)
         label("decay_hdr", g.cx, py, g.unit * 0.6, g.unit * 0.05, "UNSTABLE  -  DECAYING",
             col(C_UNSTABLE, pulse_a("decay", 7.0, 0.55, 1.0)), 2.2, 43.0)
         local hint = (stabilizes("n") and "MERGE +1 neutron to stabilize")
@@ -1827,6 +1880,19 @@ local function draw()
         end
     end
 
+    -- decay-chain breadcrumb (bottom-centre): the spontaneous chain walked so far —
+    -- U-238 > Th-234 > Pa-234 > ... Truncates to the last 8 hops; count keeps the total.
+    if M.chain and #M.chain > 1 then
+        local MAXSHOW = 8
+        local first = math.max(1, #M.chain - MAXSHOW + 1)
+        local parts = {}
+        if first > 1 then parts[1] = "..." end
+        for i = first, #M.chain do parts[#parts + 1] = M.chain[i] end
+        label("chain", g.cx, g.msY - g.unit * 0.040, g.w * 0.9, g.unit * 0.03,
+            string.format("DECAY CHAIN  (%d steps):   %s", #M.chain - 1, table.concat(parts, "  >  ")),
+            { 0.92, 0.82, 0.56, 0.92 }, 1.5, 43.0)
+    end
+
     -- last radiation fired (bottom-right): persists until the next event; hover = legend.
     if M.lastrad and RAD_INFO[M.lastrad.key] then
         local ri = RAD_INFO[M.lastrad.key]
@@ -1929,7 +1995,7 @@ local function draw()
     -- chunk on the left by hand, HOLD +/- to pour fast, then MERGE it into the atom.
     if not M.card and not M.molecule and not M.bonding and not M.fusing and not M.fission then
         draw_stage()
-        if not M.acted then
+        if not M.acted and #(M.chain or {}) <= 1 then -- the chain breadcrumb owns this line
             label("hint", g.cx, g.msY - g.unit * 0.052, g.unit * 0.8, g.unit * 0.045,
                 "assemble an atom on the left  -  HOLD + to pour  -  then MERGE it in", C_HINT, 2.0, 42.0)
         end
@@ -1982,7 +2048,7 @@ local function draw()
     -- table counterpart to fusion. Only offered when the atom is heavy enough.
     if can_fission() and not M.card and not M.molecule and not M.bonding and not M.fusing and not M.fission then
         local pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(M.clock * 3.0))
-        quad("fission", { x = g.cx - g.unit * 0.15, y = g.h * 0.82, width = g.unit * 0.30, height = g.unit * 0.06, z = 46.0,
+        quad("fission", { x = g.cx - g.unit * 0.15, y = g.h * 0.78, width = g.unit * 0.30, height = g.unit * 0.06, z = 46.0,
             style = "button", title = "FISSION  -  fire neutron", font_scale = 1.6,
             fill = { 0.20, 0.10, 0.10, 0.95 }, border = col(C_UNSTABLE, pulse), accent = col(C_NEUTRON, 0.9),
             text_color = { 1.0, 0.86, 0.80, 1.0 } })

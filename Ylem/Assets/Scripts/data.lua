@@ -592,6 +592,12 @@ local ACIDS = {
     { "H2SO3", "Sulfurous acid", "Acid rain's opening act - sulfur dioxide dissolved in cloud water." },
     { "H2CO3", "Carbonic acid", "The fizz in soda and the slow sculptor of caves." },
     { "HNO3", "Nitric acid", "Aqua fortis - dissolves silver, feeds crops, and fuels explosives." },
+    -- other bench-only products (same treatment: card + strip, no live render)
+    { "NH4Cl", "Ammonium chloride", "The white-smoke demo - two invisible gases meet and a salt snows out of thin air." },
+    { "MgSO4", "Magnesium sulfate", "Epsom salt - bath soaks, laxatives, and the gardener's magnesium fix." },
+    { "CaSO4", "Calcium sulfate", "Gypsum - plaster casts, drywall, and chalkboard chalk." },
+    { "SiO2", "Silicon dioxide", "Quartz, sand, and glass - the skin of the Earth." },
+    { "O3", "Ozone", "The sharp smell after lightning; the fragile shield soaking up the sun's UV." },
 }
 for _, a in ipairs(ACIDS) do
     D.molecules[a[1]] = { sym = a[1], name = a[2], lore = a[3] }
@@ -658,6 +664,19 @@ D.species = {
     { needs = { SO2 = 1, H2O = 1 }, gives = { H2SO3 = 1 }, eq = "SO2 + H2O -> H2SO3" },
     { needs = { CO2 = 1, H2O = 1 }, gives = { H2CO3 = 1 }, eq = "CO2 + H2O -> H2CO3" },
     { needs = { NO2 = 3, H2O = 1 }, gives = { HNO3 = 2, NO = 1 }, eq = "3 NO2 + H2O -> 2 HNO3 + NO" },
+    -- gas-phase classics
+    { needs = { NH3 = 1, HCl = 1 }, gives = { NH4Cl = 1 }, eq = "NH3 + HCl -> NH4Cl" }, -- white smoke, on contact
+    { needs = { H2S = 2, O2 = 3 }, gives = { SO2 = 2, H2O = 2 }, cond = "spark", eq = "2 H2S + 3 O2 -> 2 SO2 + 2 H2O" },
+    { needs = { NH3 = 4, O2 = 5 }, gives = { NO = 4, H2O = 6 }, cat = "Pt", cond = "heat",
+        eq = "4 NH3 + 5 O2 -> 4 NO + 6 H2O" }, -- Ostwald: Haber -> here -> NO2 -> HNO3
+    { needs = { SiH4 = 1, O2 = 2 }, gives = { SiO2 = 1, H2O = 2 }, eq = "SiH4 + 2 O2 -> SiO2 + 2 H2O" }, -- silane is pyrophoric
+    { needs = { O2 = 3 }, gives = { O3 = 2 }, cond = "spark", eq = "3 O2 -> 2 O3" }, -- lightning makes ozone
+    -- acid + metal -> salt + hydrogen: `core` = the reaction consumes the BUILT atom as the
+    -- metal reagent (divalent metals only, so whole H2 molecules come off one atom).
+    { core = "Mg", needs = { H2SO4 = 1 }, gives = { MgSO4 = 1, H2 = 1 }, eq = "Mg + H2SO4 -> MgSO4 + H2" },
+    { core = "Ca", needs = { H2SO4 = 1 }, gives = { CaSO4 = 1, H2 = 1 }, eq = "Ca + H2SO4 -> CaSO4 + H2" },
+    { core = "Mg", needs = { HCl = 2 }, gives = { MgCl2 = 1, H2 = 1 }, eq = "Mg + 2 HCl -> MgCl2 + H2" },
+    { core = "Ca", needs = { HCl = 2 }, gives = { CaCl2 = 1, H2 = 1 }, eq = "Ca + 2 HCl -> CaCl2 + H2" },
 }
 
 return D
