@@ -629,7 +629,7 @@ function Art.quad(screen, id, x, y, w, h, fill, opts)
         border = opts.border or { 0.0, 0.0, 0.0, 0.0 },
         accent = opts.accent or { 0.0, 0.0, 0.0, 0.0 },
         text_color = opts.text_color or { 0.92, 0.94, 0.98, 1.0 },
-        image = opts.image, image_tint = opts.image_tint,
+        image = opts.image, image_tint = opts.image_tint, style = opts.style, align_h = opts.align_h,
         -- All UI text auto-scales: a caller's font_scale is RELATIVE to the global
         -- text scale, so bumping Art.SCALE.text grows every label everywhere. The
         -- /Art._ui_scale cancels the backend's DPI font bump so high-DPI phones get

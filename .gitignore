@@ -14,6 +14,7 @@ __pycache__/
 */Assets/VoxelWorlds/
 
 # Local AI/agent runtime artifacts. Keep checked-in config, ignore session output.
+/AgainstTheHero/.ath_private_plan.md
 */Assets/Agent/image_*.png
 */Assets/Agent/image_*.json
 */Assets/Agent/sessions/
