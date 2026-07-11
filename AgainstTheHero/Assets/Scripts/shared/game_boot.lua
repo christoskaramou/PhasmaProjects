@@ -88,6 +88,10 @@ local function init()
     _G.ATH_ACTIVE_DUEL = active
     active:start()
     local idx = R.hero_index or 1
+    local requested = Common.getenv("ATH_HERO_CLASS", nil)
+    for i, class in ipairs((mode.config.hero and mode.config.hero.classes) or {}) do
+        if class.id == requested then idx = i; break end
+    end
     if active.choose_class then active:choose_class(idx) end
     if pe_log then pe_log("[ATH] game boot: battlefield=" .. field .. " hero_index=" .. tostring(idx)) end
 end

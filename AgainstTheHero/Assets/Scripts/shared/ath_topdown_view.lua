@@ -260,16 +260,29 @@ function View.animate_creeps(D)
                     material.set(body, "emissive", vec3(k, k, k))
                     c._flashing = true
                 elseif c.fuse_t then
-                    -- Fuse strobe: orange flicker that speeds up as the pop nears.
+                    -- Fuse strobe: RED flicker (must-dodge grammar) that speeds up
+                    -- as the pop nears; the ground decal marks the blast radius.
                     local rate = 10.0 + 26.0 * (1.0 - math.min(1.0, c.fuse_t / ((c.stats.explode and c.stats.explode.fuse) or 0.8)))
                     local p = 0.55 + 0.45 * math.sin(now * rate)
-                    material.set(body, "emissive", vec3(1.0 + 2.2 * p, 0.7 + 0.5 * p, 0.35))
+                    material.set(body, "emissive", vec3(1.2 + 2.2 * p, 0.40, 0.30))
                     c._flashing = true
                 elseif c.charge_state == "windup" then
-                    -- Windup pulse: red throb + an exaggerated shiver.
+                    -- Windup pulse: red throb + an exaggerated shiver (must-dodge).
                     local p = 0.5 + 0.5 * math.sin(now * 26.0)
                     material.set(body, "emissive", vec3(1.2 + 1.6 * p, 0.45, 0.4))
                     wob = wob + math.sin(now * 47.0) * 9.0
+                    c._flashing = true
+                elseif c.charge_state == "dash" then
+                    -- The dash stays red-hot: THE attack to dodge through.
+                    material.set(body, "emissive", vec3(2.4, 0.35, 0.30))
+                    c._flashing = true
+                elseif c.bite_windup or c.shoot_windup then
+                    -- Attack windup (telegraph grammar): a white flash that RAMPS UP
+                    -- over 0.4s — brightest right before the bite/shot lands. Distinct
+                    -- from the hit flash, which starts bright and fades.
+                    local w = c.bite_windup or c.shoot_windup
+                    local k = 1.0 + 7.0 * (1.0 - math.min(1.0, w / 0.4))
+                    material.set(body, "emissive", vec3(k, k, k))
                     c._flashing = true
                 elseif c._flashing or (tint and not c._tinted) then
                     local b = tint or { 1.0, 1.0, 1.0 }

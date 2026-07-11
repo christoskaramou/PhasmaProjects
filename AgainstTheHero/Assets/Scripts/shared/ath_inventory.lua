@@ -66,6 +66,10 @@ local function cap(k)
     return k:sub(1, 1):upper() .. k:sub(2)
 end
 
+local function changed(D)
+    if D.save_profile then D:save_profile() end
+end
+
 -- ---------------------------------------------------------------------------
 -- Model helpers (pure data over D.inv_grid + D.gear_equipped).
 -- ---------------------------------------------------------------------------
@@ -114,6 +118,7 @@ function Inv.move(D, from, to)
     end
     if D.recompute_hero_stats then D:recompute_hero_stats() end
     if D.haptic then D:haptic(8) end -- equip/move feedback (no-op without the binding)
+    changed(D)
 end
 
 function Inv.try_equip(D, grid_index)
@@ -130,6 +135,7 @@ function Inv.try_unequip(D, slot)
         D.gear_equipped[slot] = nil
         if D.recompute_hero_stats then D:recompute_hero_stats() end
         if D.haptic then D:haptic(8) end
+        changed(D)
     end
 end
 
@@ -145,8 +151,15 @@ function Inv.bind(D)
     b.group = scene.find_model("Pause Menu")
     if not valid(b.group) then D._inv_nodes = nil; return nil end
     b.title = scene.find_model("Pause Title")
+    b.inventory = scene.find_model("Inventory")
     b.stats_values = scene.find_model("Inv Stats Values")
     b.next_wave = scene.find_model("Pause Next Wave")
+    b.store = scene.find_model("Town Store")
+    b.store_gold = scene.find_model("Store Gold")
+    b.store_toggle = scene.find_model("Town Shop Toggle")
+    b.enter_map = scene.find_model("Store Enter Map")
+    b.store_items = {}
+    for _, slot in ipairs(Inv.SLOTS) do b.store_items[slot] = scene.find_model("Store " .. cap(slot)) end
     for _, k in ipairs(Inv.SLOTS) do b.eq[k] = scene.find_model("Inv Equip " .. cap(k)) end
     for i = 1, Inv.GRID_SIZE do b.bag[i] = scene.find_model("Inv Bag " .. i) end
     D._inv_nodes = b
@@ -199,10 +212,10 @@ end
 -- value under the "Health" row (the labels start with a "TOTAL STATS" header).
 function Inv.stats_values_text(st)
     local function pct(v) return string.format("%d%%", math.floor((v or 0.0) * 100.0 + 0.5)) end
-    return string.format("\n%d\n%d\n%.1f\n%d\n%.2fs\n%.1f\n%s\n%.1f\n%.1f/s",
+    return string.format("\n%d\n%d\n%.1f\n%d\n%.2fs\n%.1f\n%d %s\n%s\n%.1f\n%.1f/s",
         math.floor((st.hp_max or 0) + 0.5), math.floor((st.dps or 0) + 0.5),
         st.attack_range or 0.0, math.floor((st.cleave or 0) + 0.5),
-        st.fire_interval or 0.0, st.speed or 0.0,
+        st.fire_interval or 0.0, st.speed or 0.0, st.equip_load or 0, st.equip_load_tier or "LIGHT",
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
 
@@ -215,8 +228,12 @@ function Inv.refresh(D)
     -- backend's Text-widget path. (The transient cursor ghost/tooltip below still
     -- use the set_quad `label`, which the default quad style draws.)
     if valid(b.title) then
-        b.title:set_ui({ body = string.format(
-            "WAVE %d CLEARED - GEAR UP   (right-click to equip, drag below the bag to destroy)", D.wave_index or 1) })
+        local title = D.state == "town" and D._town_shop
+            and "TOWN SHOP - BUY GEAR   (click the coins to return to inventory)"
+            or D.state == "town"
+            and "TOWN - GEAR UP   (click the coins to open the shop)"
+            or string.format("WAVE %d CLEARED - GEAR UP   (right-click to equip, drag below the bag to destroy)", D.wave_index or 1)
+        b.title:set_ui({ body = title })
     end
 
     for _, s in ipairs(Inv.slots(D)) do
@@ -254,6 +271,25 @@ function Inv.refresh(D)
     if valid(b.next_wave) and b.next_wave.set_enabled then
         b.next_wave:set_enabled(D.state == "pause" and D._between_wave == true)
     end
+    local in_town = D.state == "town"
+    local in_shop = in_town and D._town_shop == true
+    if valid(b.inventory) and b.inventory.set_enabled then b.inventory:set_enabled(not in_shop) end
+    if valid(b.store) and b.store.set_enabled then b.store:set_enabled(in_shop) end
+    if valid(b.store_toggle) and b.store_toggle.set_enabled then b.store_toggle:set_enabled(in_town) end
+    if valid(b.enter_map) and b.enter_map.set_enabled then b.enter_map:set_enabled(in_town) end
+    if in_shop then
+        if valid(b.store_gold) then b.store_gold:set_ui({ body = "GOLD  " .. tostring(D.gold or 0) }) end
+        for i, slot in ipairs(Inv.SLOTS) do
+            local node = b.store_items and b.store_items[slot]
+            local item = D.store_offers and D.store_offers[slot]
+            if valid(node) and item then
+                local price = D.store_price and D:store_price(item) or 0
+                node:set_ui({ title = string.format("[%d] %s\n%s\n%d GOLD", i,
+                    item.name or item.id, item.desc or "", price), body = "",
+                    border = Inv.RARITY[item.rarity or "common"] })
+            end
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -261,6 +297,7 @@ end
 -- ---------------------------------------------------------------------------
 function Inv.update(D)
     Inv.ensure(D)
+    if D.state == "town" and D._town_shop then Inv.clear(D); return end
     if not (runtime_ui and runtime_ui.get_state) then return end
     local slots = Inv.slots(D)
     if #slots == 0 then return end
@@ -321,6 +358,7 @@ function Inv.update(D)
                     if D.recompute_hero_stats then D:recompute_hero_stats() end
                     if gone and D.set_flash then D:set_flash("Destroyed " .. tostring(gone.name or gone.id)) end
                     if D.haptic then D:haptic(12) end
+                    changed(D)
                     D._inv_last_click = nil
                 elseif target and target.id ~= drag.from.id then
                     Inv.move(D, drag.from, target)
@@ -362,12 +400,15 @@ local COMPARE_STATS = {
     { key = "cleave", label = "Shots", fmt = "%+.0f" },
     { key = "fire_interval", label = "Fire time", fmt = "%+.2fs" },
     { key = "speed", label = "Move", fmt = "%+.1f" },
+    { key = "equip_load", label = "Weight", fmt = "%+.0f" },
     { key = "armor", label = "Armor", fmt = "%+.0f%%", pct = true },
     { key = "crit_chance", label = "Crit", fmt = "%+.0f%%", pct = true },
     { key = "lifesteal", label = "Lifesteal", fmt = "%+.1f" },
     { key = "regen", label = "Regen", fmt = "%+.1f" },
     { key = "pickup_range", label = "Pickup", fmt = "%+.1f" },
     { key = "gold_find", label = "Gold", fmt = "%+.0f%%", pct = true },
+    { key = "dodge_charges_max", label = "Dodges", fmt = "%+.0f" },
+    { key = "dodge_recharge", label = "Dodge CD", fmt = "%+.1fs" },
 }
 
 function Inv.compare_text(D, hv)
@@ -487,9 +528,10 @@ function Inv.draw_overlay(D)
 
     local hv = D._inv_hover
     if hv and hv.item and not D._inv_drag then
-        local tip = string.format("%s\n%s  -  %s\n%s",
+        local tip = string.format("%s\n%s  -  %s\n%s%s",
             hv.item.name or hv.item.id, Inv.SLOT_LABEL[hv.item.slot] or "?",
-            string.upper(hv.item.rarity or "common"), hv.item.desc or "")
+            string.upper(hv.item.rarity or "common"), hv.item.desc or "",
+            hv.item.weight and ("\nWeight: " .. tostring(hv.item.weight)) or "")
         local cmp = Inv.compare_text(D, hv)
         if cmp then tip = tip .. "\n" .. cmp end
         -- The engine auto-fits the box to the text (fit=true); tw/th are generous

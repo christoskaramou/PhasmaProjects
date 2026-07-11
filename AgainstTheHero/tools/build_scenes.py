@@ -134,8 +134,8 @@ def build_simple(path, ui_node_names):
 # ---------------------------------------------------------------------------
 # Pause Menu palette + layout (offsets are from screen CENTER; anchor/pivot 0.5).
 # ---------------------------------------------------------------------------
-CELL, GAP, PITCH = 110.0, 14.0, 124.0
-EQ_LEFT, BAG_LEFT, ROW_TOP = -800.0, 60.0, -300.0
+CELL, GAP, PITCH = 150.0, 14.0, 164.0
+EQ_LEFT, BAG_LEFT, ROW_TOP = -700.0, -100.0, -300.0
 
 SLOT_BG = [0.07, 0.08, 0.11, 0.95]
 SLOT_BORDER = [0.26, 0.28, 0.34, 0.95]
@@ -160,7 +160,8 @@ SLOTS = ["helmet", "body", "pants", "gloves", "weapon", "jewelry"]
 SLOT_LABEL = {"helmet": "Helmet", "body": "Body", "pants": "Pants",
               "gloves": "Gloves", "weapon": "Weapon", "jewelry": "Jewelry"}
 STATS_LABELS = ("TOTAL STATS\nHealth\nAttack Damage\nAttack Range\n"
-                "Attacks/Hit\nAttack Rate\nMove Speed\nArmor\nLife Steal\nRegen")
+                "Attacks/Hit\nAttack Rate\nMove Speed\nEquip Load\nArmor\nLife Steal\nRegen")
+STORE_SCRIPT = "Assets/Scripts/shared/hud/town_store.lua"
 
 
 def add_pause_menu(b):
@@ -184,12 +185,12 @@ def add_pause_menu(b):
     eq_hdr_x = EQ_LEFT + (3.0 * PITCH - GAP) * 0.5
     bag_hdr_x = BAG_LEFT + (6.0 * PITCH - GAP) * 0.5
     b.ui_node("Inv Equipped Header", "Inventory", "text", "inv_hdr_equipped",
-              358.0, 50.0, eq_hdr_x, ROW_TOP - 70.0, fill=HDR_FILL, border=HDR_BORDER,
-              body="EQUIPPED", text_color=HDR_TEXT, font_scale=1.3,
+              3.0 * PITCH - GAP, 50.0, eq_hdr_x, ROW_TOP - 70.0, fill=HDR_FILL, border=HDR_BORDER,
+              body="EQUIPPED", text_color=HDR_TEXT, font_scale=1.8,
               text_align_h=2, text_align_v=2, no_input=True)
     b.ui_node("Inv Backpack Header", "Inventory", "text", "inv_hdr_backpack",
-              360.0, 50.0, bag_hdr_x, ROW_TOP - 70.0, fill=HDR_FILL, border=HDR_BORDER,
-              body="BACKPACK", text_color=HDR_TEXT, font_scale=1.3,
+              6.0 * PITCH - GAP, 50.0, bag_hdr_x, ROW_TOP - 70.0, fill=HDR_FILL, border=HDR_BORDER,
+              body="BACKPACK", text_color=HDR_TEXT, font_scale=1.8,
               text_align_h=2, text_align_v=2, no_input=True)
 
     # Paper-doll equip slots (3 cols x 2 rows). Draggable text widgets.
@@ -199,7 +200,7 @@ def add_pause_menu(b):
         cy = ROW_TOP + CELL * 0.5 + row * PITCH
         b.ui_node("Inv Equip " + SLOT_LABEL[key], "Inventory", "text", "inv_eq_" + key,
                   CELL, CELL, cx, cy, fill=EQUIP_BG, border=EQUIP_BORDER,
-                  body=SLOT_LABEL[key], text_color=EMPTY_TEXT, font_scale=0.85,
+                  body=SLOT_LABEL[key], text_color=EMPTY_TEXT, font_scale=1.3,
                   text_align_h=2, text_align_v=2, draggable=True, bring_to_front=True)
 
     # Backpack grid (6 cols x 4 rows).
@@ -209,20 +210,56 @@ def add_pause_menu(b):
         cy = ROW_TOP + CELL * 0.5 + row * PITCH
         b.ui_node("Inv Bag " + str(idx), "Inventory", "text", "inv_bag_" + str(idx),
                   CELL, CELL, cx, cy, fill=SLOT_BG, border=SLOT_BORDER,
-                  body="", text_color=SLOT_TEXT, font_scale=0.85,
+                   body="", text_color=SLOT_TEXT, font_scale=1.3,
                   text_align_h=2, text_align_v=2, draggable=True, bring_to_front=True)
 
     # Live stat panel (labels static; values script-driven). Left/top aligned.
     b.ui_node("Inv Stats Panel", "Inventory", "panel", "inv_stats_bg",
-              470.0, 430.0, -621.0, 180.0, fill=STATS_BG, border=ACCENT, no_input=True)
+              478.0, 430.0, -461.0, 280.0, fill=STATS_BG, border=ACCENT, no_input=True)
     b.ui_node("Inv Stats Labels", "Inventory", "text", "inv_stats_labels",
-              250.0, 400.0, -700.0, 180.0, body=STATS_LABELS,
-              text_color=[0.92, 0.94, 0.98, 1.0], font_scale=0.95, no_input=True,
+              250.0, 400.0, -540.0, 280.0, body=STATS_LABELS,
+              text_color=[0.92, 0.94, 0.98, 1.0], font_scale=1.25, no_input=True,
               bring_to_front=True)
     b.ui_node("Inv Stats Values", "Inventory", "text", "inv_stats_values",
-              220.0, 400.0, -470.0, 180.0, body="",
-              text_color=[0.96, 0.92, 0.70, 1.0], font_scale=0.95, no_input=True,
+              220.0, 400.0, -310.0, 280.0, body="",
+              text_color=[0.96, 0.92, 0.70, 1.0], font_scale=1.25, no_input=True,
               bring_to_front=True)
+
+    # Town-only shop is a separate view. Inventory toggles this whole group and
+    # supplies live item names/prices; the top-left ring toggles between views.
+    b.group("Town Store", "Pause Menu")
+    store_x, store_y = -504.0, -260.0
+    b.ui_node("Store Header", "Town Store", "text", "store_header",
+              1008.0, 58.0, 0.0, ROW_TOP - 40.0, fill=HDR_FILL, border=ACCENT,
+              body="GEAR FOR SALE", text_color=HDR_TEXT, font_scale=1.5,
+              text_align_h=2, text_align_v=2, no_input=True)
+    actions = {
+        "helmet": "on_buy_helmet", "body": "on_buy_body", "pants": "on_buy_pants",
+        "gloves": "on_buy_gloves", "weapon": "on_buy_weapon", "jewelry": "on_buy_jewelry",
+    }
+    for i, key in enumerate(SLOTS):
+        col, row = i % 3, i // 3
+        cx, cy = store_x + col * 344.0 + 160.0, store_y + row * 224.0 + 100.0
+        b.ui_node("Store " + SLOT_LABEL[key], "Town Store", "button", "store_" + key,
+                  320.0, 200.0, cx, cy, flags=528, script=STORE_SCRIPT,
+                  action_function=actions[key], title=SLOT_LABEL[key], body="",
+                  fill=CARD_FILL, border=CARD_BORDER, accent=ACCENT,
+                  text_color=SLOT_TEXT, font_scale=1.15, bring_to_front=True)
+    b.ui_node("Store Gold", "Town Store", "text", "store_gold",
+              320.0, 68.0, 0.0, 260.0, fill=HDR_FILL, border=ACCENT,
+              body="GOLD  0", text_color=[0.96, 0.82, 0.30, 1.0], font_scale=1.2,
+              text_align_h=2, text_align_v=2, no_input=True)
+
+    # Town navigation stays outside both views so it remains usable on either.
+    b.ui_node("Town Shop Toggle", "Pause Menu", "image", "town_shop_toggle",
+              110.0, 110.0, -1080.0, -470.0, flags=528, script=STORE_SCRIPT,
+              action_function="on_toggle_shop", image="../Textures/ui/shop_coins.png",
+              image_tint=[1.0, 1.0, 1.0, 1.0], bring_to_front=True)
+    b.ui_node("Store Enter Map", "Pause Menu", "button", "store_enter_map",
+              360.0, 84.0, 0.0, 560.0, flags=528, script=STORE_SCRIPT,
+              action_function="on_enter_map", title="ENTER MAP  [Enter]",
+              fill=NW_FILL, border=NW_BORDER, accent=NW_BORDER, text_color=NW_TEXT,
+              font_scale=1.05, text_align_h=2, text_align_v=2, bring_to_front=True)
 
     # Draft cards (placeholder group; disabled until card-draft logic lands).
     b.group("Cards", "Pause Menu", enabled=False)
@@ -256,7 +293,8 @@ def build_game(path):
     b.keep("Stage")
     for n in ["Floor", "Wall_N", "Wall_S", "Wall_W", "Wall_E",
               "Spawn_1", "Spawn_2", "Spawn_3", "Spawn_4", "Spawn_5", "Spawn_6"]:
-        b.keep(n, "Stage")
+        if n in b.src:
+            b.keep(n, "Stage")
 
     # Hero rig (existing "Hero" group + sprite child).
     b.keep("Hero")
@@ -266,7 +304,8 @@ def build_game(path):
     b.group("HUD")
     for n in ["HUD HP BG", "HUD HP Fill", "HUD HP Text", "HUD Spawn BG",
               "HUD Spawn Fill", "HUD FPS", "HUD Gear", "HUD Gear Hit"]:
-        b.keep(n, "HUD")
+        if n in b.src:
+            b.keep(n, "HUD")
 
     # Authored pause/inventory screen (was script-drawn).
     add_pause_menu(b)

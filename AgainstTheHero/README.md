@@ -1,8 +1,8 @@
 # AgainstTheHero (ATH)
 
-A card-fed auto-battler prototype built on **PhasmaEngine**. The pitch is simple:
-heroes and hordes fight automatically, while cards, sides, battlefields, and AI
-policy shape the run.
+A persistent-character top-down auto-battler ARPG built on **PhasmaEngine**. Choose a
+hero, gear up in town, buy equipment with banked gold, then move through five
+auto-attack waves and a boss. Drafted cards last for one map; gold and gear persist.
 
 This project directory contains the game's assets, Lua gameplay systems, and project
 configuration. Engine binaries are maintained separately.
@@ -28,16 +28,18 @@ engine build output dir, create `phasma_settings.json` like:
 
 Absolute paths work too.
 
-The game entry script defaults to the menu flow: pick a side, pick a battlefield, and
-run the duel. The menu-launchable battlefields are listed in
-`Assets/Scripts/shared/ath_modes_index.lua`.
+The authored scene flow is `intro.pescene` -> hero selection -> map selection ->
+`game.pescene`. The game scene opens in town, where the store, six-slot paper doll,
+backpack, and Enter Map button are available before each run. Local progress is saved
+under `Assets/Save/` (gitignored).
 
-`Assets/Scenes/` is currently empty in this collection, so `phasma_project.json` does
-not pin a startup scene yet. Create or restore a scene in the editor, attach
-`Assets/Scripts/Player/against_the_hero.lua`, then save it as the project startup
-scene before launching directly in `PhasmaPlayer.exe`.
+For a Release smoke on display 1:
 
-Useful environment knobs once a startup scene is wired:
+```powershell
+.\run_smoke.ps1 -Seconds 30
+```
+
+Useful environment knobs for direct/debug launch paths:
 
 ```bash
 ATH_MODE=menu PhasmaPlayer.exe

@@ -5,10 +5,15 @@
 #
 #   .\run_smoke.ps1                 # wave 1, auto-draft, killed after 30s
 #   .\run_smoke.ps1 -Wave 5 -Seconds 60   # jump to wave 5 (boss coverage)
-#   .\run_smoke.ps1 -KeepAlive      # leave the player running to drive WASD
+#   .\run_smoke.ps1 -HeroClass brawler   # exercise the melee class
 param(
     [int]$Wave = 1,
+    [int]$Map = 0,
     [int]$Seconds = 30,
+    [ValidateSet("ranger", "brawler", "sower")]
+    [string]$HeroClass = "ranger",
+    [ValidateSet("", "mid", "top")]
+    [string]$GearSet = "",
     [switch]$KeepAlive
 )
 $ErrorActionPreference = "Stop"
@@ -29,15 +34,19 @@ $log = Join-Path $exeDir "PhasmaEngine.log"
 
 @{ project_path = $project; startup_scene = $startup } | ConvertTo-Json | Set-Content -Encoding UTF8 $settings
 
-# Headless knobs: auto-pick the first draft boon, optionally start at a later wave.
+# Headless knobs: auto-pick the first draft boon, optionally start at a later
+# wave / on a specific map / with a fixed balance loadout.
 $env:ATH_DUEL_AUTOPLAY = "1"
 $env:ATH_DUEL_WAVE = "$Wave"
+$env:ATH_HERO_CLASS = $HeroClass
+if ($Map -gt 0) { $env:ATH_DUEL_MAP = "$Map" } else { Remove-Item Env:ATH_DUEL_MAP -ErrorAction SilentlyContinue }
+if ($GearSet) { $env:ATH_DUEL_GEARSET = $GearSet } else { Remove-Item Env:ATH_DUEL_GEARSET -ErrorAction SilentlyContinue }
 
 Get-Process PhasmaPlayer -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 if (Test-Path $log) { Remove-Item -Force $log -ErrorAction SilentlyContinue }
 
-Write-Host "Launching $exe --api $api (wave $Wave, ${Seconds}s) ..."
+Write-Host "Launching $exe --api $api ($HeroClass, wave $Wave, ${Seconds}s) ..."
 $proc = Start-Process $exe -ArgumentList '--api', $api, '--display', '1' -WorkingDirectory $exeDir -PassThru
 Start-Sleep -Seconds $Seconds
 

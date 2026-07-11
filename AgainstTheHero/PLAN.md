@@ -8,18 +8,17 @@
 
 ## What it is
 
-Top-down hero auto-battler **ARPG**, Brotato / Vampire-Survivors-shaped, where **you are the
-hero**. Move-only control + auto-attack — positioning is the whole game (kite / dodge / tackle
-/ avoid). The depth lives in the **loot loop**: gear, drops, gold, a 6-slot paper-doll, and a
-town store. Lua-only on PhasmaPlayer; spine is `Assets/Scripts/shared/ath_duel.lua`.
+Top-down hero auto-battler **ARPG**, wave-survivor-shaped, where **you are the hero**. Move-only
+control + auto-attack — positioning is the whole game (kite / dodge / tackle / avoid). The depth
+lives in the **loot loop**: gear, drops, gold, a 6-slot paper-doll, and a town store. Lua-only on
+PhasmaPlayer; spine is `Assets/Scripts/shared/ath_duel.lua`.
 
 **Combat identity (decided 2026-06-14):** auto-attack comes in **both melee and ranged**
 flavors, and there will be **multiple classes** (each class an attack identity — e.g. a melee
 cleaver vs a ranged shooter — that gear/cards then bend). This supersedes the original
 "move-only + auto-attack *cleave*" wording: the control model is unchanged (move-only), but the
-attack is class-dependent. The `arena` testbed currently ships the **ranged** auto-attack
-(pooled bolts, `cleave` = bolts per volley) as the first of these; the melee cleave path
-(`Duel:hero_attack`) still exists and is the second flavor to wire to a class.
+attack is class-dependent. The `arena` testbed ships ranged bolts, Brawler melee cleave + orbit
+damage, and Sower scatter shots.
 
 ## Core loop
 
@@ -50,8 +49,7 @@ Town (store + 6-slot paper-doll + stash)
 
 ## Stat vocabulary (v1)
 
-What *both* gear and cards manipulate — this is the mechanical depth of a move-only +
-auto-attack game. Gear adds flat/%; cards bend for one run. Editable.
+What *both* gear and cards manipulate. Gear adds flat/%; cards bend for one run. Editable.
 
 `max_hp`, `armor`, `damage`, `attack_speed`, `attack_range`/`area`, `projectile_count`,
 `move_speed`, `crit_chance`, `pickup_range`, `gold_find`, `life_steal`
@@ -76,7 +74,10 @@ the store is town-only.
    you move; do you want one more run? If "movement itself is dull" → fix action feel (attack
    juice, enemy variety, hit feedback), NOT systems.
 2. If yes → **wave-end card draft** (1-of-3 run modifiers over the stat vocab).
-3. → **full 6-slot paper-doll + drops + rarity + town store + persistence/save**.
+3. ~~→ **full 6-slot paper-doll + drops + rarity + town store + persistence/save**.~~ **DONE** —
+   the game now opens in an authored town inventory/store, banks gold and item-template ids in
+   `Assets/Save/profile.lua`, preserves equipped gear/backpack contents across runs and relaunches,
+   and returns to town after a win or death.
 4. → maps/bosses + more battlefields (`arena` / `spud_fields` / `alien_hive` already exist).
 
 ## Parked (do not build without the user)
