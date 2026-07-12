@@ -61,6 +61,7 @@ local CRIT_MULT = RULES.crit.damage_mult
 local MELEE_FLUSH_T = 0.32        -- melee dt-damage aggregates into a popup this often
 local DMGNUM_POOL = 128           -- five Mage layers across geared multi-shot volleys
 local DMGNUM_LIFE = 0.7           -- seconds a number floats/fades
+local DMGNUM_STEP = 1.0 / 30.0    -- UI text motion is smooth enough at 30 Hz
 local COIN_POOL = 40              -- pooled gold coin nodes on the ground
 local BEACON_POOL = 8             -- pooled item-drop beacons on the ground
 local COIN_COLLECT_R = 1.1       -- world radius at which a magnetised coin banks
@@ -86,6 +87,9 @@ local MANA_MAX = RULES.mana.max
 local MANA_KILL = RULES.mana.normal_kill
 local MANA_ELITE_KILL = RULES.mana.elite_kill
 local MANA_BOSS_HIT_CAP = RULES.mana.boss_hit_cap
+local RAGE = RULES.rage
+local MINIONS = Balance.minions
+local MINION_POOL = 8
 local BOSS_ARMOR_MULT = RULES.boss.armored_damage_mult
 local ARMOR_BREAK_T = RULES.boss.armor_break_seconds
 local CLASS_SKILLS = Balance.skills
@@ -102,7 +106,6 @@ local SHOT_WINDUP = RULES.enemy.shot_windup
 -- Balance-smoke loadouts and draft cards live beside the other tuning data.
 local GEARSETS = Balance.gearsets
 local DRAFT_CARDS = Balance.draft_cards
-local DRAFT_WEIGHTS = RULES.economy.draft_weights
 local RARITY_COLOR = {
     common    = { 0.66, 0.70, 0.76, 1.0 },
     uncommon  = { 0.42, 0.84, 0.48, 1.0 },
@@ -110,12 +113,28 @@ local RARITY_COLOR = {
     epic      = { 0.78, 0.48, 0.96, 1.0 },
     legendary = { 0.96, 0.74, 0.30, 1.0 },
     specialization = { 0.66, 0.48, 1.0, 1.0 },
+    universal = { 0.30, 0.78, 0.92, 1.0 },
 }
 local STATUS_COLOR = {
     fire = { 1.00, 0.35, 0.04 },
     ice = { 0.28, 0.90, 1.00 },
     earth = { 0.88, 0.58, 0.16 },
     air = { 0.45, 0.55, 1.00 },
+    poison = { 0.42, 0.92, 0.28 },
+    bleed = { 0.95, 0.14, 0.20 },
+    curse = { 0.72, 0.30, 0.95 },
+    frost = { 0.28, 0.90, 1.00 },
+    seed = { 0.54, 0.82, 0.40 },
+    thorns = { 0.30, 0.72, 0.32 },
+    shadow = { 0.48, 0.38, 0.88 },
+    daze = { 0.92, 0.78, 0.30 },
+    explosion = { 0.96, 0.58, 0.18 },
+    shockwave = { 0.92, 0.42, 0.34 },
+    vampirism = { 0.88, 0.18, 0.42 },
+    revive = { 0.62, 0.95, 0.72 },
+    frenzy = { 0.96, 0.55, 0.20 },
+    piercing = { 0.96, 0.84, 0.36 },
+    daggers = { 0.72, 0.30, 0.82 },
 }
 
 -- Display name for damage sources / the death recap.
@@ -559,17 +578,142 @@ function Duel:mage_effects()
     }
 end
 
-function Duel:deal_status_damage(c, amount, color, number_offset)
+function Duel:deal_status_damage(c, amount, color, number_offset, pure)
     if not c or (amount or 0.0) <= 0.0 then return false, 0.0 end
     if not c.alive then
         self:spawn_damage_number(c.x, c.z, amount, false,
             { color = color, jx = number_offset, scale = 1.15 })
         return false, 0.0
     end
-    local killed, _, dealt = self:hit_creep(c, amount)
+    local killed, _, dealt = self:hit_creep(c, amount, nil, nil,
+        { no_mana = true, armor_applied = pure == true })
     self:spawn_damage_number(c.x, c.z, dealt, false,
         { color = color, jx = number_offset, scale = 1.15 })
     return killed, dealt
+end
+
+function Duel:spend_on_hit(c, spec, rank, free)
+    local hero = self.hero
+    local cost = spec.cost or 1
+    if spec.kind == "summon" then
+        local cap = math.min(MINIONS.skeleton.cap_max,
+            (spec.cap_base or 2) + (math.max(1, rank or 1) - 1) * (spec.cap_per_rank or 1))
+        if (c and c.revive_cap or 0) > 0 then return false end
+        local pending = 0
+        for _, other in ipairs(self.creeps or {}) do
+            if other.alive and (other.revive_cap or 0) > 0 then pending = pending + 1 end
+        end
+        if self:count_minions("skeleton") + pending >= cap then return false end
+    end
+    if free then return true end
+    if not hero or (hero.mana or 0) < cost then return false end
+    hero.mana = hero.mana - cost
+    return true
+end
+
+function Duel:mark_status(c, status, duration)
+    if not c then return end
+    c.on_hit_statuses = c.on_hit_statuses or {}
+    c.on_hit_statuses[status] = math.max(c.on_hit_statuses[status] or 0.0,
+        duration or Balance.on_hit.duration)
+    self:flash_creep_status(c, status)
+end
+
+function Duel:apply_on_hit_dot(c, status, initial, tick, spread, lifesteal_mult)
+    local color = STATUS_COLOR[status] or STATUS_COLOR.poison
+    local _, dealt = self:deal_status_damage(c, initial, color, 0.0)
+    if (lifesteal_mult or 0.0) > 0.0 and self.hero then
+        self.hero.hp = math.min(self.hero.hp_max, self.hero.hp + dealt * lifesteal_mult)
+    end
+    if not c.alive then return end
+    c.on_hit_dots = c.on_hit_dots or {}
+    local dot = c.on_hit_dots[status] or {}
+    dot.damage = math.max(dot.damage or 0.0, tick)
+    dot.t, dot.tick_t = Balance.on_hit.duration, Balance.on_hit.tick
+    dot.spread, dot.lifesteal_mult = spread == true, lifesteal_mult or 0.0
+    c.on_hit_dots[status] = dot
+    self:mark_status(c, status, dot.t)
+end
+
+function Duel:apply_on_hit_specializations(c, hit_damage, hit_dx, hit_dz, free)
+    local hero, class = self.hero, self:active_class()
+    if not hero or not class or not c then return false end
+    local ranks = hero.specialization_ranks or {}
+    local piercing = false
+    for _, spec in ipairs(class.specializations or {}) do
+        local rank = ranks[spec.id] or 0
+        if rank > 0 and spec.kind ~= "preservation" and self:spend_on_hit(c, spec, rank, free) then
+            local status = spec.status
+            local spread_mult = spec.spread and Balance.on_hit.spread_damage_mult or 1.0
+            if spec.kind == "dot" then
+                self:apply_on_hit_dot(c, status,
+                    hit_damage * (spec.initial_per_rank or 0.0) * rank * spread_mult,
+                    hit_damage * (spec.tick_per_rank or 0.0) * rank * spread_mult,
+                    spec.spread)
+            elseif spec.kind == "stack_dot" then
+                c.on_hit_stacks = c.on_hit_stacks or {}
+                local stacks = math.min(spec.max_stacks or 5, (c.on_hit_stacks[status] or 0) + 1)
+                c.on_hit_stacks[status] = stacks
+                local amount = hit_damage * stacks
+                    * ((spec.stack_base or 0.20) + (rank - 1) * (spec.stack_rank_add or 0.10))
+                self:apply_on_hit_dot(c, status, amount, amount, false, false)
+            elseif spec.kind == "frost" then
+                self:deal_status_damage(c, hit_damage * (spec.damage_per_rank or 0.0) * rank,
+                    STATUS_COLOR.frost, 0.0)
+                if c.alive then
+                    c.spell_slow_t = spec.duration or 3.0
+                    c.spell_slow_mult = math.max(0.25, 1.0 - (spec.slow_per_rank or 0.0) * rank)
+                    c.attack_slow_t = spec.duration or 3.0
+                    c.attack_slow_mult = math.min(c.attack_slow_mult or 1.0, c.spell_slow_mult)
+                    self:mark_status(c, status, spec.duration)
+                end
+            elseif spec.kind == "shadow" then
+                self:deal_status_damage(c, hit_damage * (spec.damage_per_rank or 0.0) * rank,
+                    STATUS_COLOR.shadow, 0.0, true)
+                if c.alive then
+                    c.smoke_t = spec.duration or 3.0
+                    c.smoke_miss = math.min(0.75, (spec.miss_per_rank or 0.0) * rank)
+                    self:mark_status(c, status, spec.duration)
+                end
+            elseif spec.kind == "vampirism" then
+                self:apply_on_hit_dot(c, status,
+                    hit_damage * (spec.initial_per_rank or 0.0) * rank,
+                    hit_damage * (spec.tick_per_rank or 0.0) * rank, false, spec.lifesteal_mult)
+            elseif spec.kind == "frenzy" then
+                hero.frenzy_stacks = math.min(spec.max_stacks or 5, (hero.frenzy_stacks or 0) + 1)
+                hero.frenzy_mult = hero.frenzy_stacks * (spec.stack_per_rank or 0.10) * rank
+                hero.frenzy_t = spec.duration or 3.0
+                self:mark_status(c, status, 0.22)
+            elseif spec.kind == "daze" then
+                local reduction = math.min(0.75, (spec.reduction_per_rank or 0.0) * rank)
+                c.daze_t, c.daze_mult = spec.duration or 3.0, 1.0 - reduction
+                c.spell_slow_t, c.spell_slow_mult = c.daze_t,
+                    math.min(c.spell_slow_mult or 1.0, c.daze_mult)
+                c.attack_slow_t, c.attack_slow_mult = c.daze_t,
+                    math.min(c.attack_slow_mult or 1.0, c.daze_mult)
+                c.damage_down_t, c.damage_mult = c.daze_t,
+                    math.min(c.damage_mult or 1.0, c.daze_mult)
+                self:mark_status(c, status, c.daze_t)
+            elseif spec.kind == "explosion" or spec.kind == "shockwave" then
+                c.on_hit_death = c.on_hit_death or {}
+                c.on_hit_death[spec.kind] = {
+                    damage = hit_damage * ((spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)),
+                    radius = spec.radius or 3.0, dx = hit_dx or 0.0, dz = hit_dz or 0.0,
+                }
+                self:mark_status(c, status, Balance.on_hit.duration)
+            elseif spec.kind == "summon" then
+                c.revive_cap = math.min(MINIONS.skeleton.cap_max,
+                    (spec.cap_base or 2) + (rank - 1) * (spec.cap_per_rank or 1))
+                self:mark_status(c, status, Balance.on_hit.duration)
+            elseif spec.kind == "pierce" then
+                self:deal_status_damage(c,
+                    hit_damage * ((spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)),
+                    STATUS_COLOR[status] or STATUS_COLOR.earth, 0.0)
+                piercing = true
+            end
+        end
+    end
+    return piercing
 end
 
 function Duel:apply_burn(c, effects)
@@ -605,7 +749,7 @@ function Duel:apply_mage_effects(c, effects)
                 local boss_mult = c.stats and c.stats.boss and effects.boss_freeze_mult or 1.0
                 c.freeze_t = effects.freeze_seconds * boss_mult
                 Art.burst("ath_freeze_" .. tostring(c.id), vec3(c.x, 0.75, c.z),
-                    { preset = "hero_take", count = 30, life_min = 0.24, life_max = 0.58,
+                    { preset = "hero_take", count = 16, life_min = 0.24, life_max = 0.58,
                       spawn_radius = 0.48, size_min = 0.09, size_max = 0.30,
                       color_start = vec4(0.70, 0.96, 1.0, 1.0),
                       color_end = vec4(0.08, 0.40, 1.0, 0.0) })
@@ -648,6 +792,13 @@ function Duel:update_creep_status_tint(c)
         if (c.spell_slow_t or 0.0) > 0.0 then active[#active + 1] = "ice" end
         if (c.armor_debuff_t or 0.0) > 0.0 then active[#active + 1] = "earth" end
         if (c.storm_tint_t or 0.0) > 0.0 then active[#active + 1] = "air" end
+        if (c.poison_t or 0.0) > 0.0 then active[#active + 1] = "poison" end
+        if (c.bleed_t or 0.0) > 0.0 then active[#active + 1] = "bleed" end
+        if (c.curse_t or 0.0) > 0.0 then active[#active + 1] = "curse" end
+        for status, t in pairs(c.on_hit_statuses or {}) do
+            if t > 0.0 then active[#active + 1] = status end
+        end
+        table.sort(active)
     end
     local flash = (c.status_flash_t or 0.0) > 0.0
     local statuses = active
@@ -689,11 +840,11 @@ end
 
 function Duel:fire_hit_burst(x, z, tag)
     Art.burst("ath_fire_core_" .. tag, vec3(x, 0.62, z),
-        { preset = "enemy_take", count = 10, life_min = 0.06, life_max = 0.18,
+        { preset = "enemy_take", count = 8, life_min = 0.06, life_max = 0.18,
           spawn_radius = 0.12, noise_strength = 8.0, size_min = 0.08, size_max = 0.20,
           color_start = vec4(1.0, 0.94, 0.32, 1.0), color_end = vec4(1.0, 0.16, 0.01, 0.0) })
     Art.burst("ath_fire_embers_" .. tag, vec3(x, 0.46, z),
-        { preset = "enemy_give", count = 18, life_min = 0.18, life_max = 0.52,
+        { preset = "enemy_give", count = 16, life_min = 0.18, life_max = 0.52,
           spawn_radius = 0.30, noise_strength = 5.0, size_min = 0.05, size_max = 0.16,
           velocity = vec3(0.0, 4.2, 0.0), drag = 1.6,
           color_start = vec4(1.0, 0.56, 0.04, 1.0), color_end = vec4(0.72, 0.01, 0.0, 0.0) })
@@ -701,7 +852,7 @@ end
 
 function Duel:ice_hit_burst(x, z, tag)
     Art.burst("ath_ice_core_" .. tag, vec3(x, 0.68, z),
-        { preset = "hero_take", count = 10, life_min = 0.08, life_max = 0.20,
+        { preset = "hero_take", count = 8, life_min = 0.08, life_max = 0.20,
           spawn_radius = 0.10, noise_strength = 3.0, size_min = 0.06, size_max = 0.16,
           color_start = vec4(1.0, 1.0, 1.0, 1.0), color_end = vec4(0.08, 0.62, 1.0, 0.0) })
     for i = 1, 6 do
@@ -716,7 +867,7 @@ end
 
 function Duel:earth_hit_burst(x, z, tag)
     Art.burst("ath_earth_core_" .. tag, vec3(x, 0.18, z),
-        { preset = "enemy_take", count = 14, life_min = 0.16, life_max = 0.38,
+        { preset = "enemy_take", count = 8, life_min = 0.16, life_max = 0.38,
           spawn_radius = 0.26, noise_strength = 2.0, size_min = 0.12, size_max = 0.28,
           velocity = vec3(0.0, 3.0, 0.0), gravity = vec3(0.0, -8.0, 0.0),
           color_start = vec4(0.92, 0.60, 0.18, 1.0), color_end = vec4(0.20, 0.07, 0.01, 0.0) })
@@ -739,14 +890,14 @@ function Duel:storm_hit_burst(x, z, tag)
     for i = 1, 4 do
         local a = i * 1.5708 + (self.realtime or 0.0) * 7.0
         Art.burst("ath_storm_spark_" .. tag .. "_" .. i, vec3(x, 0.70, z),
-            { preset = "hero_take", count = 3, life_min = 0.07, life_max = 0.20,
+            { preset = "hero_take", count = 2, life_min = 0.07, life_max = 0.20,
               spawn_radius = 0.06, noise_strength = 2.0, size_min = 0.04, size_max = 0.10,
               velocity = vec3(math.sin(a) * 7.0, 2.0, math.cos(a) * 7.0), orientation = "velocity",
               color_start = vec4(1.0, 1.0, 1.0, 1.0), color_end = vec4(0.04, 0.28, 1.0, 0.0) })
     end
     for branch = 1, 3 do
         local a = branch * 2.0944 + (self.realtime or 0.0) * 3.0
-        for step = 1, 3 do
+        for step = 1, 2 do
             local reach = step * 0.34
             local fork = (step % 2 == 0 and 0.10 or -0.10)
             Art.burst("ath_storm_fork_" .. tag .. "_" .. branch .. "_" .. step,
@@ -791,9 +942,48 @@ function Duel:spread_burn(source)
         local c = candidates[i].creep
         self:apply_burn(c, burn)
         Art.burst("ath_burn_spread_" .. tostring(c.id), vec3(c.x, 0.55, c.z),
-            { preset = "enemy_give", count = 10, life_max = 0.28, spawn_radius = 0.25,
+            { preset = "enemy_give", count = 8, life_max = 0.28, spawn_radius = 0.25,
               size_max = 0.16, color_start = vec4(1.0, 0.24, 0.04, 1.0) })
     end
+end
+
+function Duel:trigger_on_hit_death(source)
+    if not source then return end
+    for status, dot in pairs(source.on_hit_dots or {}) do
+        if dot.spread then
+            local best, best_d
+            for _, c in ipairs(self.creeps) do
+                if c.alive and c ~= source then
+                    local dx, dz = c.x - source.x, c.z - source.z
+                    local d2 = dx * dx + dz * dz
+                    if d2 <= Balance.on_hit.spread_radius ^ 2 and (not best or d2 < best_d) then
+                        best, best_d = c, d2
+                    end
+                end
+            end
+            if best then
+                self:apply_on_hit_dot(best, status, dot.damage, dot.damage, true, dot.lifesteal_mult)
+            end
+        end
+    end
+    for kind, effect in pairs(source.on_hit_death or {}) do
+        local r2 = effect.radius * effect.radius
+        for _, c in ipairs(self.creeps) do
+            if c.alive and c ~= source then
+                local dx, dz = c.x - source.x, c.z - source.z
+                local d2 = dx * dx + dz * dz
+                local ahead = kind ~= "shockwave" or dx * effect.dx + dz * effect.dz > 0.0
+                if d2 <= r2 and ahead then
+                    self:deal_status_damage(c, effect.damage, STATUS_COLOR[kind], 0.0)
+                    self:mark_status(c, kind, 0.22)
+                end
+            end
+        end
+    end
+    if source._hero_killed and (source.revive_cap or 0) > 0 then
+        self:try_summon_minion("skeleton", source.revive_cap, source.x, source.z)
+    end
+    source.on_hit_death, source.revive_cap = nil, nil
 end
 
 function Duel:mage_chain_lightning(source, effects)
@@ -848,28 +1038,38 @@ function Duel:rogue_effects()
     }
 end
 
-function Duel:apply_rogue_effects(c, effects)
+-- `basic` = the rider came from a BASIC attack (mage-style): status components
+-- (poison, execute) apply with their colored texts/tints, while the burst,
+-- energy-economy and i-frame components stay exclusive to the skill hit.
+function Duel:apply_rogue_effects(c, effects, basic)
     if not c or not c.alive then return end
     if effects.poison_rank > 0 then
-        c.poison_stacks = math.min(effects.poison_max_stacks, (c.poison_stacks or 0) + 1)
+        local before = c.poison_stacks or 0
+        c.poison_stacks = math.min(effects.poison_max_stacks, before + 1)
         c.poison_t = effects.poison_seconds
         c.poison_dps = effects.poison_dps
-        Art.burst("ath_poison_hit_" .. tostring(c.id), vec3(c.x, 0.52, c.z),
-            { preset = "hero_take", count = 8, life_max = 0.26, spawn_radius = 0.22,
-              size_max = 0.13, color_start = vec4(0.42, 0.92, 0.28, 1.0) })
+        self:flash_creep_status(c, "poison")
+        if c.poison_stacks > before then -- stack-ups spray; refreshes keep the tint
+            Art.burst("ath_poison_hit_" .. tostring(c.id), vec3(c.x, 0.52, c.z),
+                { preset = "hero_take", count = 8, life_max = 0.26, spawn_radius = 0.22,
+                  size_max = 0.13, color_start = vec4(0.42, 0.92, 0.28, 1.0) })
+        end
     end
-    if effects.hemorrhage_rank > 0 then
+    if effects.hemorrhage_rank > 0 and not basic then
         c.hemorrhage_hits = (c.hemorrhage_hits or 0) + 1
         c.hemorrhage_t = effects.hemorrhage_seconds
         if c.hemorrhage_hits >= effects.hemorrhage_hits then
             c.hemorrhage_hits = 0
-            self:hit_creep(c, effects.hemorrhage_damage, nil, nil, { discrete = true, skill = true })
+            -- Status damage: a red rupture number, never a white crit, and never
+            -- a skill hit (a passive proc must not re-arm boss armor break).
+            self:deal_status_damage(c, effects.hemorrhage_damage, STATUS_COLOR.bleed, -1.6)
+            if c.alive then self:flash_creep_status(c, "bleed") end
             Art.burst("ath_rupture_" .. tostring(c.id), vec3(c.x, 0.55, c.z),
                 { preset = "enemy_give", count = 18, life_max = 0.30, spawn_radius = 0.28,
                   size_max = 0.18, color_start = vec4(0.92, 0.12, 0.22, 1.0) })
         end
     end
-    if effects.shadow_rank > 0 and self.hero then
+    if effects.shadow_rank > 0 and not basic and self.hero then
         self.hero.mana = math.min(self.hero.mana_max, self.hero.mana + effects.energy_refund)
         Art.burst("ath_shadow_hit_" .. tostring(c.id), vec3(c.x, 0.60, c.z),
             { preset = "hero_take", count = 7, life_max = 0.20, spawn_radius = 0.18,
@@ -882,6 +1082,125 @@ function Duel:apply_rogue_effects(c, effects)
             self:spawn_damage_number(c.x, c.z, 0, true, { text = "EXECUTE", color = { 1.0, 0.72, 0.22 } })
         end
     end
+end
+
+function Duel:warrior_effects()
+    local hero = self.hero
+    local ranks = hero and hero.specialization_ranks or {}
+    local bleed = Balance.specialization("warrior", "bleed") or {}
+    local berserker = Balance.specialization("warrior", "berserker") or {}
+    local vanguard = Balance.specialization("warrior", "vanguard") or {}
+    local warlord = Balance.specialization("warrior", "warlord") or {}
+    local br, kr, vr, wr = ranks.bleed or 0, ranks.berserker or 0, ranks.vanguard or 0, ranks.warlord or 0
+    return {
+        bleed_rank = br,
+        bleed_dps = (hero and hero.dps or 0.0) * (bleed.bleed_dps_per_rank or 0.0) * br,
+        bleed_seconds = bleed.bleed_seconds or 0.0,
+        berserker_rank = kr,
+        frenzy = (berserker.frenzy_damage_per_rank or 0.0) * kr,
+        frenzy_seconds = berserker.frenzy_seconds or 0.0,
+        rage_refund = (berserker.rage_refund_per_rank or 0) * kr,
+        vanguard_rank = vr,
+        guard = (vanguard.guard_per_rank or 0.0) * vr,
+        guard_seconds = vanguard.guard_seconds or 0.0,
+        poise = (vanguard.poise_per_rank or 0.0) * vr,
+        warlord_rank = wr,
+        armor_reduction = (warlord.armor_reduction_per_rank or 0.0) * wr,
+        stagger_seconds = (warlord.stagger_seconds_per_rank or 0.0) * wr,
+        knockback_mult = 1.0 + (warlord.knockback_per_rank or 0.0) * wr,
+        warlord_seconds = warlord.debuff_seconds or 3.0,
+    }
+end
+
+-- Per-target rider on every Rage Slam hit (self-buffs are applied once at the
+-- cast site). Effects coexist: a slammed foe can bleed AND be armor-broken.
+-- `basic` (mage-style): melee packets apply the bleed status only; armor break,
+-- stagger and knockback remain slam exclusives.
+function Duel:apply_warrior_effects(c, effects, basic)
+    if not c or not c.alive then return end
+    if effects.bleed_rank > 0 then
+        local fresh = (c.bleed_t or 0.0) <= 0.0
+        c.bleed_t = math.max(c.bleed_t or 0.0, effects.bleed_seconds)
+        c.bleed_dps = math.max(c.bleed_dps or 0.0, effects.bleed_dps)
+        self:flash_creep_status(c, "bleed")
+        if fresh then -- refreshes keep the tint; only new wounds spray
+            Art.burst("ath_lacerate_" .. tostring(c.id), vec3(c.x, 0.55, c.z),
+                { preset = "enemy_give", count = 8, life_max = 0.26, spawn_radius = 0.24,
+                  size_max = 0.14, color_start = vec4(0.95, 0.14, 0.20, 1.0) })
+        end
+    end
+    if effects.warlord_rank > 0 and not basic then
+        c.armor_debuff_t = math.max(c.armor_debuff_t or 0.0, effects.warlord_seconds)
+        c.armor_reduction = math.max(c.armor_reduction or 0.0, effects.armor_reduction)
+        c.freeze_t = math.max(c.freeze_t or 0.0, effects.stagger_seconds)
+        c.geo_fx_t = 0.12
+        self:flash_creep_status(c, "earth")
+        Art.burst("ath_sunder_" .. tostring(c.id), vec3(c.x, 0.30, c.z),
+            { preset = "enemy_take", count = 6, life_max = 0.24, spawn_radius = 0.26,
+              size_max = 0.15, velocity = vec3(0.0, 2.0, 0.0), gravity = vec3(0.0, -7.0, 0.0),
+              color_start = vec4(0.92, 0.78, 0.30, 1.0) })
+    end
+end
+
+function Duel:necro_effects()
+    local hero = self.hero
+    local ranks = hero and hero.specialization_ranks or {}
+    local curse = Balance.specialization("necromancer", "curse") or {}
+    local steal = Balance.specialization("necromancer", "steal") or {}
+    local bone = Balance.specialization("necromancer", "bone") or {}
+    local demon = Balance.specialization("necromancer", "demon") or {}
+    local cr, sr, br, dr = ranks.curse or 0, ranks.steal or 0, ranks.bone or 0, ranks.demon or 0
+    return {
+        curse_rank = cr,
+        curse_amp = (curse.curse_amp_per_rank or 0.0) * cr,
+        curse_seconds = curse.curse_seconds or 0.0,
+        steal_rank = sr,
+        mana_steal = (steal.mana_steal_per_rank or 0) * sr,
+        slow_mult = math.max(steal.slow_min or 0.0, 1.0 - (steal.slow_per_rank or 0.0) * sr),
+        slow_seconds = steal.slow_seconds or 0.0,
+        bone_rank = br,
+        bone_cap = br > 0 and math.min((bone.cap_base or 1) + (bone.cap_per_rank or 1) * br,
+            MINIONS.skeleton.cap_max) or 0,
+        demon_rank = dr,
+        demon_cap = dr > 0 and math.min((demon.cap_base or 1) + (demon.cap_per_rank or 1) * dr,
+            MINIONS.imp.cap_max) or 0,
+    }
+end
+
+-- `basic` (mage-style basic-attack rider): the curse debuff and the stolen-speed
+-- slow read on every hit; mana siphon and summons remain Soul Bolt exclusives.
+function Duel:apply_necro_effects(c, effects, basic)
+    if not c then return end
+    if effects.curse_rank > 0 and c.alive then
+        local fresh = (c.curse_t or 0.0) <= 0.0
+        c.curse_t = effects.curse_seconds
+        c.curse_amp = math.max(c.curse_amp or 0.0, effects.curse_amp)
+        self:flash_creep_status(c, "curse")
+        if fresh then
+            Art.burst("ath_curse_" .. tostring(c.id), vec3(c.x, 0.65, c.z),
+                { preset = "hero_take", count = 8, life_max = 0.30, spawn_radius = 0.26,
+                  size_max = 0.14, velocity = vec3(0.0, 1.4, 0.0),
+                  color_start = vec4(0.72, 0.30, 0.95, 1.0) })
+        end
+    end
+    if effects.steal_rank > 0 then
+        if c.alive then
+            c.spell_slow_t = math.max(c.spell_slow_t or 0.0, effects.slow_seconds)
+            c.spell_slow_mult = math.min(c.spell_slow_mult or 1.0, effects.slow_mult)
+        end
+        local gained = not basic and self:gain_mana(effects.mana_steal) or 0
+        if gained > 0 then
+            Art.burst("ath_siphon_" .. tostring(c.id), vec3(c.x, 0.60, c.z),
+                { preset = "hero_take", count = 6, life_max = 0.24, spawn_radius = 0.20,
+                  size_max = 0.12, color_start = vec4(0.40, 0.88, 0.95, 1.0) })
+        end
+    end
+    -- Summons rise AT the victim: one per pact per SKILL hit, capped by rank.
+    if not basic then
+        if effects.bone_rank > 0 then self:try_summon_minion("skeleton", effects.bone_cap, c.x, c.z) end
+        if effects.demon_rank > 0 then self:try_summon_minion("imp", effects.demon_cap, c.x, c.z) end
+    end
+    if c.alive then self:flash_creep_status(c) end
 end
 
 function Duel:ranger_effects()
@@ -1235,7 +1554,9 @@ function Duel:try_flask(kind)
     if self.state ~= "combat" or not hero or hero.dead or (charges or 0) < 1 or full
         or (hero.flask_lock_t or 0.0) > 0.0 or (hero.flask_drink_t or 0.0) > 0.0 then return false end
     hero.flask_drink_kind = kind
+    -- Melee heroes fight inside the swarm: their committed drink is half as long.
     hero.flask_drink_t = FLASK_DRINK_T
+        * (hero.attack_type == "melee" and RULES.flask.melee_drink_mult or 1.0)
     for _, c in ipairs(self.creeps) do
         if c.alive and c.stats and c.stats.flask_hunter and not c.charge_state then
             local dx, dz = hero.x - c.x, hero.z - c.z
@@ -1292,6 +1613,16 @@ function Duel:gain_mana(amount)
     return hero.mana - before
 end
 
+-- Rage has NO passive generation: it accrues here (from damage dealt, called by
+-- hit_creep) and from damage received (apply_hero_damage, wave-capped there).
+function Duel:gain_rage(amount)
+    local hero = self.hero
+    if not hero or hero.resource_type ~= "rage" then return 0 end
+    local before = hero.mana or 0
+    hero.mana = math.min(hero.mana_max or RAGE.max, before + math.max(0, amount or 0))
+    return hero.mana - before
+end
+
 function Duel:hero_burst(radius, damage, color)
     local hero = self.hero
     if not hero or damage <= 0.0 then return 0 end
@@ -1337,11 +1668,14 @@ function Duel:try_skill(dirx, dirz)
     if self.state ~= "combat" or not hero or hero.dead or not skill or (hero.mana or 0) < skill.cost
         or (hero.flask_drink_t or 0.0) > 0.0 then return false end
     local target, target_dist = self:nearest_creep(hero)
-    if not target or (self.hero_class == "brawler" and target_dist > skill.radius) then return false end
+    -- Self-centred instant AoE skills (Brawler, Warrior) only fire with a foe in radius.
+    local aoe_close = skill.hit == "aoe" and skill.delivery == "instant"
+    if not target or (aoe_close and target_dist > skill.radius) then return false end
     dirx, dirz = self:skill_direction(hero, dirx, dirz)
 
     local shot
-    if self.hero_class == "ranger" or self.hero_class == "mage" or self.hero_class == "rogue" then
+    if self.hero_class == "ranger" or self.hero_class == "mage" or self.hero_class == "rogue"
+        or self.hero_class == "necromancer" then
         shot = self:spawn_hero_bolt(hero, { x = hero.x + dirx, z = hero.z + dirz })
         if not shot then return false end
         local col = skill.color or { 0.55, 0.86, 1.0 }
@@ -1352,6 +1686,7 @@ function Duel:try_skill(dirx, dirz)
         shot.hit_ids = {}
         shot.skill = true
         if self.hero_class == "rogue" then shot.rogue_effects = self:rogue_effects() end
+        if self.hero_class == "necromancer" then shot.necro_effects = self:necro_effects() end
         shot.col = col
         if Art.valid(shot.node) then
             material.set(shot.node, "base_color", vec4(col[1], col[2], col[3], 1.0))
@@ -1378,8 +1713,12 @@ function Duel:try_skill(dirx, dirz)
           size_max = 0.20, noise_strength = 1.2,
           color_start = vec4(cast_col[1], cast_col[2], cast_col[3], 1.0) })
 
-    if self.hero_class == "brawler" then
+    if aoe_close then
         local effects = skill.effects or {}
+        local wfx = self.hero_class == "warrior" and self:warrior_effects() or nil
+        local knock = CREEP_KNOCK_MELEE * (effects.knockback or 2.4) * (wfx and wfx.knockback_mult or 1.0)
+        local damage = hero.dps * skill.damage
+            * (1.0 + math.max(0, (self.wave_index or 1) - 1) * (skill.round_growth or 0.0))
         local r2 = skill.radius * skill.radius
         for _, c in ipairs(self.creeps) do
             if c.alive then
@@ -1387,16 +1726,31 @@ function Duel:try_skill(dirx, dirz)
                 local d2 = dx * dx + dz * dz
                 if d2 <= r2 then
                     local d = math.sqrt(math.max(d2, 0.0001))
-                    self:hit_creep(c, hero.dps * skill.damage,
-                        dx / d * CREEP_KNOCK_MELEE * (effects.knockback or 2.4),
-                        dz / d * CREEP_KNOCK_MELEE * (effects.knockback or 2.4),
+                    self:hit_creep(c, damage, dx / d * knock, dz / d * knock,
                         { discrete = true, skill = true, armor_break_t = effects.armor_break })
+                    if wfx then self:apply_warrior_effects(c, wfx) end
                 end
             end
         end
+        if wfx then
+            -- Self-buffs arm once per slam: Berserker tempo + rage return,
+            -- Vanguard guard + poise (consumed by apply_hero_damage / knockback).
+            if wfx.berserker_rank > 0 then
+                hero.frenzy_t = wfx.frenzy_seconds
+                hero.frenzy_mult = wfx.frenzy
+                self:gain_rage(wfx.rage_refund)
+            end
+            if wfx.vanguard_rank > 0 then
+                hero.skill_guard_t = wfx.guard_seconds
+                hero.skill_guard = wfx.guard
+                hero.skill_poise = wfx.poise
+            end
+        end
+        local slam_col = self.hero_class == "warrior" and vec4(0.95, 0.32, 0.20, 1.0)
+            or vec4(0.95, 0.68, 0.28, 1.0)
         Art.burst("ath_ground_slam", vec3(hero.x, 0.15, hero.z),
             { preset = "enemy_take", count = 30, life_max = 0.42, spawn_radius = skill.radius * 0.65,
-              size_max = 0.28, noise_strength = 2.0, color_start = vec4(0.95, 0.68, 0.28, 1.0) })
+              size_max = 0.28, noise_strength = 2.0, color_start = slam_col })
         Art.shake(0.5, 0.35)
     elseif self.hero_class == "sower" then
         local effects = skill.effects or {}
@@ -1517,6 +1871,7 @@ function Duel:hero_attack(hero, dt)
     table.sort(in_range, function(a, b) return a.d < b.d end)
     hero.attack_flash = 0.12
     local attack_rate = (hero.base_fire_interval or hero.fire_interval or 0.28) / (hero.fire_interval or 0.28)
+        * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_mult or 0.0) or 0.0))
     local targets = math.min(hero.cleave, #in_range)
     for i = 1, targets do
         local mult = (i == 1) and 1.0 or RULES.basic_attack.melee_secondary_mult
@@ -1575,6 +1930,8 @@ function Duel:hproj_hide(p)
     p.active = false
     p.mage_effects = nil
     p.rogue_effects = nil
+    p.necro_effects = nil
+    p.rogue_basic, p.necro_basic, p.free_on_hit = nil, nil, nil
     if Art.valid(p.node) then
         p.node:set_position(vec3(-1000.0, -1000.0, -1000.0))
         p.node:set_scale(vec3(0.0001, 0.0001, 0.0001))
@@ -1614,6 +1971,7 @@ function Duel:spawn_hero_bolt(hero, target)
     slot.life = HPROJ_LIFE
     slot.damage = (hero.dps or 10.0) * RULES.basic_attack.ranged_damage_mult
     slot.piercing, slot.hit_ids, slot.skill, slot.mage_effects, slot.rogue_effects = nil, nil, nil, nil, nil
+    slot.necro_effects, slot.rogue_basic, slot.necro_basic, slot.free_on_hit = nil, nil, nil, nil
     slot.trail_t = 0.03
     local bc = hero.bolt_color or { 1.0, 0.90, 0.42 }
     local bs = hero.bolt_scale or 0.34
@@ -1648,10 +2006,8 @@ function Duel:hero_fire(hero, dt)
     hero.fire_t = hero.fire_interval or 0.28
     hero.attack_flash = 0.12
     local shots = math.max(1, math.floor(hero.cleave or 1))
-    local mage_effects = self.hero_class == "mage" and self:mage_effects() or nil
     for i = 1, math.min(shots, #cand) do
-        local shot = self:spawn_hero_bolt(hero, cand[i].c)
-        if shot then shot.mage_effects = mage_effects end
+        self:spawn_hero_bolt(hero, cand[i].c)
     end
     local mc = hero.bolt_color or { 1.0, 0.92, 0.5 }
     Art.burst("ath_hero_muzzle", vec3(hero.x, 0.7, hero.z),
@@ -1683,34 +2039,25 @@ function Duel:update_hero_projectiles(dt)
                 -- punts the creep along its flight direction (discrete = full knock).
                 local d = math.sqrt(p.vx * p.vx + p.vz * p.vz)
                 local nx, nz = (d > 0.001) and p.vx / d or 0.0, (d > 0.001) and p.vz / d or 0.0
-                if p.mage_effects then
-                    local e, statuses = p.mage_effects, {}
-                    if e.fire_rank > 0 then statuses[#statuses + 1] = "fire" end
-                    if e.ice_rank > 0 then statuses[#statuses + 1] = "ice" end
-                    if e.earth_rank > 0 then statuses[#statuses + 1] = "earth" end
-                    if e.air_rank > 0 then statuses[#statuses + 1] = "air" end
-                    self:flash_creep_status(hit, statuses)
-                end
+                local piercing = self:apply_on_hit_specializations(hit, p.damage, nx, nz, p.free_on_hit)
                 local killed, was_crit = self:hit_creep(hit, p.damage,
                     nx * CREEP_KNOCK_BOLT, nz * CREEP_KNOCK_BOLT,
-                    { discrete = true, skill = p.skill == true })
-                if p.mage_effects then
-                    self:apply_mage_effects(hit, p.mage_effects)
-                    self:mage_chain_lightning(hit, p.mage_effects)
-                end
-                if p.rogue_effects then self:apply_rogue_effects(hit, p.rogue_effects) end
+                    { discrete = true })
                 if killed and hero and (hero.lifesteal or 0.0) > 0.0 then
                     hero.hp = math.min(hero.hp_max, hero.hp + hero.lifesteal)
                 end
-                if not p.mage_effects then
-                    local ic = was_crit and { 1.0, 0.72, 0.2 } or (p.col or { 1.0, 0.92, 0.5 })
-                    Art.burst("ath_hero_hit_" .. tostring(hit.id), vec3(p.x, 0.6, p.z),
-                        { preset = "enemy_take", count = was_crit and 18 or 10,
-                          life_max = was_crit and 0.26 or 0.18, spawn_radius = was_crit and 0.28 or 0.16,
-                          size_max = was_crit and 0.22 or 0.16,
-                          color_start = vec4(ic[1], ic[2], ic[3], 1.0) })
+                local ic = was_crit and { 1.0, 0.72, 0.2 } or (p.col or { 1.0, 0.92, 0.5 })
+                Art.burst("ath_hero_hit_" .. tostring(hit.id), vec3(p.x, 0.6, p.z),
+                    { preset = "enemy_take", count = was_crit and 18 or 10,
+                      life_max = was_crit and 0.26 or 0.18, spawn_radius = was_crit and 0.28 or 0.16,
+                      size_max = was_crit and 0.22 or 0.16,
+                      color_start = vec4(ic[1], ic[2], ic[3], 1.0) })
+                if piercing then
+                    p.hit_ids = p.hit_ids or {}
+                    p.hit_ids[hit.id] = true
+                else
+                    self:hproj_hide(p)
                 end
-                if p.piercing then p.hit_ids[hit.id] = true else self:hproj_hide(p) end
             elseif p.life <= 0.0 or off then
                 self:hproj_hide(p)
             elseif Art.valid(p.node) then
@@ -1726,6 +2073,161 @@ function Duel:update_hero_projectiles(dt)
                           size_max = 0.10, noise_strength = 0.6,
                           color_start = vec4(tc[1], tc[2], tc[3], 0.9) })
                 end
+            end
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Necromancer minions — pooled friendly assistants raised by Soul Bolt hits.
+-- Kind-locked flat-sprite pools (one quad per slot, texture + scale baked at
+-- creation — no mid-combat node builds or texture swaps). Minions seek the
+-- nearest creep, bite/shoot on an interval through the SAME hit_creep /
+-- hero-bolt funnels as the hero (so kills feed mana and pop numbers), get
+-- chewed by creeps standing on them, and park on wave end / reset / death.
+-- All tuning lives in Balance.minions + the necromancer specialization rows.
+-- ---------------------------------------------------------------------------
+
+function Duel:ensure_minion_pool()
+    if self.minions then return end
+    if not (self.groups and self.groups.actors) then return end
+    self.minions = {}
+    for kind, spec in pairs(MINIONS) do
+        for i = 1, spec.cap_max do
+            local size = 1.8 * (spec.scale or 1.0) * Art.s("char")
+            local node = Art.part({
+                name = "Minion_" .. kind .. "_" .. i, kind = "quad",
+                quad_width = size, quad_height = size * 1.25,
+                position = { -1000.0, 0.9, -1000.0 }, rotation = { -90.0, 0.0, 0.0 },
+                color = { 1.0, 1.0, 1.0 }, emissive = 1.0, emissive_texture = true,
+                texture = spec.texture,
+            }, self.groups.actors)
+            self.minions[#self.minions + 1] = { node = node, kind = kind, active = false }
+        end
+    end
+end
+
+function Duel:park_minion(m)
+    m.active = false
+    if Art.valid(m.node) then
+        m.node:set_position(vec3(-1000.0, 0.9, -1000.0))
+        material.set(m.node, "emissive", vec3(1.0, 1.0, 1.0)) -- no tint leaks on reuse
+    end
+end
+
+function Duel:park_all_minions()
+    for _, m in ipairs(self.minions or {}) do
+        if m.active then self:park_minion(m) end
+    end
+end
+
+function Duel:count_minions(kind)
+    local n = 0
+    for _, m in ipairs(self.minions or {}) do
+        if m.active and m.kind == kind then n = n + 1 end
+    end
+    return n
+end
+
+function Duel:try_summon_minion(kind, cap, x, z)
+    self:ensure_minion_pool()
+    if not self.minions or self:count_minions(kind) >= (cap or 0) then return end
+    local slot
+    for _, m in ipairs(self.minions) do
+        if not m.active and m.kind == kind then slot = m break end
+    end
+    if not slot then return end
+    local spec = MINIONS[kind]
+    local hero = self.hero
+    local A = self.arena
+    local minx, maxx, minz, maxz = arena_actor_bounds(A, 0.8)
+    slot.active = true
+    slot.x = clampn(x or (hero and hero.x) or 0.0, minx, maxx)
+    slot.z = clampn(z or (hero and hero.z) or 0.0, minz, maxz)
+    slot.hp = spec.hp_mult * ((hero and hero.hp_max) or 100.0)
+    slot.hp_max = slot.hp
+    slot.dps = spec.dps_mult * ((hero and hero.dps) or 10.0)
+    slot.life = spec.duration
+    slot.attack_t = 0.0
+    if Art.valid(slot.node) then slot.node:set_position(vec3(slot.x, 0.9, slot.z)) end
+    Art.burst("ath_summon_" .. kind, vec3(slot.x, 0.4, slot.z),
+        { preset = "hero_take", count = 12, life_max = 0.35, spawn_radius = 0.4,
+          size_max = 0.16, velocity = vec3(0.0, 2.2, 0.0),
+          color_start = vec4(spec.color[1], spec.color[2], spec.color[3], 1.0) })
+    return slot
+end
+
+function Duel:update_minions(dt)
+    if not self.minions then return end
+    local hero = self.hero
+    for _, m in ipairs(self.minions) do
+        if m.active then
+            local spec = MINIONS[m.kind]
+            m.life = m.life - dt
+            -- Creeps standing on a minion chew it down (contact only — nothing
+            -- retargets off the hero, so assistants BUY space, not aggro).
+            for _, c in ipairs(self.creeps) do
+                if c.alive then
+                    local dx, dz = c.x - m.x, c.z - m.z
+                    local reach = 0.5 + ((c.stats and c.stats.range) or 0.5)
+                    if dx * dx + dz * dz <= reach * reach then
+                        m.hp = m.hp - ((c.stats and c.stats.dps) or 1.0) * dt
+                    end
+                end
+            end
+            if m.life <= 0.0 or m.hp <= 0.0 then
+                Art.burst("ath_minion_out_" .. tostring(m.kind), vec3(m.x, 0.4, m.z),
+                    { preset = "enemy_take", count = 10, life_max = 0.30, spawn_radius = 0.3,
+                      size_max = 0.14, color_start = vec4(spec.color[1], spec.color[2], spec.color[3], 0.9) })
+                self:park_minion(m)
+            else
+                -- Seek the nearest living creep; hold at attack range and strike
+                -- on the balance interval through the shared damage funnels.
+                local target, best_d
+                for _, c in ipairs(self.creeps) do
+                    if c.alive then
+                        local dx, dz = c.x - m.x, c.z - m.z
+                        local d2 = dx * dx + dz * dz
+                        if not target or d2 < best_d then target, best_d = c, d2 end
+                    end
+                end
+                m.attack_t = math.max(0.0, (m.attack_t or 0.0) - dt)
+                if target then
+                    local d = math.sqrt(best_d)
+                    if d > spec.range then
+                        local A = self.arena
+                        local minx, maxx, minz, maxz = arena_actor_bounds(A, 0.8)
+                        local step = spec.speed * dt / math.max(d, 0.001)
+                        m.x = clampn(m.x + (target.x - m.x) * step, minx, maxx)
+                        m.z = clampn(m.z + (target.z - m.z) * step, minz, maxz)
+                    elseif m.attack_t <= 0.0 then
+                        m.attack_t = spec.attack_interval
+                        if spec.kind == "ranged" then
+                            local shot = self:spawn_hero_bolt(
+                                { x = m.x, z = m.z, dps = m.dps,
+                                  bolt_color = spec.bolt_color, bolt_scale = spec.bolt_scale }, target)
+                            if shot then
+                                shot.damage = m.dps * spec.attack_interval
+                                shot.free_on_hit = true
+                            end
+                        else
+                            local dx, dz = target.x - m.x, target.z - m.z
+                            local n = math.max(d, 0.001)
+                            self:hit_creep(target, m.dps * spec.attack_interval,
+                                dx / n * CREEP_KNOCK_MELEE, dz / n * CREEP_KNOCK_MELEE,
+                                { discrete = true })
+                        end
+                    end
+                elseif hero and not hero.dead then
+                    -- No foes: drift back to heel so the pack reads as the hero's.
+                    local dx, dz = hero.x - m.x, hero.z - m.z
+                    local d = math.sqrt(dx * dx + dz * dz)
+                    if d > 3.0 then
+                        m.x = m.x + dx / d * spec.speed * 0.6 * dt
+                        m.z = m.z + dz / d * spec.speed * 0.6 * dt
+                    end
+                end
+                if Art.valid(m.node) then m.node:set_position(vec3(m.x, 0.9, m.z)) end
             end
         end
     end
@@ -1757,6 +2259,12 @@ function Duel:hit_creep(c, amount, kx, kz, opts)
     if (c.armor_debuff_t or 0.0) > 0.0 then
         amount = amount * (1.0 + (c.armor_reduction or 0.0))
     end
+    if (c.curse_t or 0.0) > 0.0 then
+        amount = amount * (1.0 + (c.curse_amp or 0.0))
+    end
+    if self.hero and (self.hero.frenzy_t or 0.0) > 0.0 then
+        amount = amount * (1.0 + (self.hero.frenzy_mult or 0.0))
+    end
     local crit = opts.crit == true
     if opts.discrete then
         crit = self:roll_crit()
@@ -1768,6 +2276,31 @@ function Duel:hit_creep(c, amount, kx, kz, opts)
     end
     local hp_before = c.hp
     local killed = Creep.damage(c, amount)
+    -- Rage from damage DEALT, normalised by hero DPS so gear never inflates the
+    -- cast rate. The slam itself (opts.skill) and passive reflects (opts.no_mana)
+    -- never feed back into the meter.
+    if self.hero and self.hero.resource_type == "rage" and not opts.skill and not opts.no_mana then
+        self:gain_rage(math.min(hp_before, amount) / math.max(1.0, self.hero.dps) * RAGE.dealt_rate)
+    end
+    -- Melee sustain: landed blows trickle health-flask charges back (same
+    -- dps-second normalisation). Banked at one pending charge while full so a
+    -- spent flask refills quickly in the thick of it.
+    if self.manual_hero and self.hero and self.hero.attack_type == "melee"
+        and not opts.skill and not opts.no_mana then
+        local hero = self.hero
+        hero.flask_hit_charge = (hero.flask_hit_charge or 0.0)
+            + math.min(hp_before, amount) / math.max(1.0, hero.dps) * RULES.flask.melee_refill_rate
+        if hero.flask_hit_charge >= 1.0 then
+            if self:flask_total() < FLASK_CHARGES then
+                hero.flask_hit_charge = hero.flask_hit_charge - 1.0
+                self:restore_flask_charges(1)
+                self:spawn_damage_number(hero.x, hero.z, 0, false,
+                    { text = "+FLASK", color = { 0.42, 0.86, 0.52 } })
+            else
+                hero.flask_hit_charge = 1.0
+            end
+        end
+    end
     if crit and not killed and self.hero and (self.hero.bleed_on_crit or 0.0) > 0.0 then
         c.bleed_t = RULES.crit.bleed_seconds
         c.bleed_dps = math.max(c.bleed_dps or 0.0, self.hero.bleed_on_crit)
@@ -1793,6 +2326,13 @@ end
 function Duel:flush_melee_packet(c)
     local amt = c._mdmg or 0.0
     if amt < 0.5 then c._mdmg = 0.0; c._mdmg_t = nil; return end
+    local hero = self.hero
+    if hero then
+        local dx, dz = c.x - hero.x, c.z - hero.z
+        local d = math.sqrt(dx * dx + dz * dz)
+        self:apply_on_hit_specializations(c, amt,
+            d > 0.001 and dx / d or 0.0, d > 0.001 and dz / d or 0.0)
+    end
     local crit = self:roll_crit()
     if crit and c.alive then
         self:hit_creep(c, amt, nil, nil, { armor_applied = true, crit = true })
@@ -1841,6 +2381,9 @@ end
 function Duel:update_damage_numbers(dt)
     local list = self.dmgnums
     if not list then return end
+    self._dmgnum_t = (self._dmgnum_t or 0.0) + dt
+    if self._dmgnum_t < DMGNUM_STEP then return end
+    dt, self._dmgnum_t = self._dmgnum_t, 0.0
     local vp_mat = Art.view_projection and Art.view_projection() or nil
     for _, e in ipairs(list) do
         if e.active then
@@ -1875,6 +2418,7 @@ function Duel:update_damage_numbers(dt)
 end
 
 function Duel:clear_damage_numbers()
+    self._dmgnum_t = 0.0
     for _, e in ipairs(self.dmgnums or {}) do
         if e.active then
             e.active = false
@@ -1896,6 +2440,10 @@ end
 -- rotation/material writes (per-frame scale on sprites is unreliable).
 -- ---------------------------------------------------------------------------
 function Duel:begin_death_anim(c)
+    -- Force the status tint back to base BEFORE the rig parks: a creep killed
+    -- after this frame's tint pass (melee packet flush, thorns) would otherwise
+    -- pool its body still poison-green/bleed-red (on_spawn only resets emissive).
+    if c then self:update_creep_status_tint(c) end
     if not (c and Art.valid(c.root)) then
         Creep.destroy(c)
         return
@@ -2017,6 +2565,7 @@ function Duel:spawn_essence(x, z)
 end
 
 function Duel:spawn_item_beacon(x, z, item)
+    if item and self.loot_filter and self.loot_filter[item.rarity or "common"] == false then return end
     self:ensure_pickup_pools()
     if not (item and self.beacons) then return end
     local slot
@@ -2268,6 +2817,12 @@ function Duel:spawn_creep_proj(desc)
           color_start = vec4(col[1], col[2], col[3], 1.0) })
 end
 
+function Duel:creep_attack_misses(c)
+    if (c.smoke_t or 0.0) <= 0.0 or math.random() >= (c.smoke_miss or 0.0) then return false end
+    self:spawn_damage_number(c.x, c.z, 0, false, { text = "MISS", color = STATUS_COLOR.shadow })
+    return true
+end
+
 function Duel:try_fire_creep(c, hero, dt)
     if hero.dead or not Creep.is_ranged(c) then return end
     local spec = c.stats.projectile
@@ -2282,6 +2837,7 @@ function Duel:try_fire_creep(c, hero, dt)
         local desc = c._pending_shot
         c._pending_shot = nil
         if desc then
+            if self:creep_attack_misses(c) then return end
             if (desc.gravity or 0.0) == 0.0 then
                 local dxr, dzr = hero.x - c.x, hero.z - c.z
                 local dyr = (desc.ty or 0.55) - (desc.sy or 0.7)
@@ -2301,9 +2857,11 @@ function Duel:try_fire_creep(c, hero, dt)
     -- (float jitter otherwise flickers the edge check).
     local rng = (c.stats.hold_range or c.stats.range or 6.0) + 1.0
     if dx * dx + dz * dz > rng * rng then return end
+    local attack_slow = c.attack_slow_mult or 1.0
     local cd = spec.cooldown or 0.9
-    local desc = Creep.attack_projectile(c, hero, (c.stats.dps or 2.0) * cd)
+    local desc = Creep.attack_projectile(c, hero, (c.stats.dps or 2.0) * cd * (c.damage_mult or 1.0))
     if desc then
+        c.projectile_t = (c.projectile_t or cd) / math.max(0.1, attack_slow)
         desc.source = creep_name(c) .. " (shot)"
         if self.manual_hero then
             c._pending_shot = desc
@@ -2559,6 +3117,10 @@ function Duel:update_hero(dt)
 
     hero.flask_lock_t = math.max(0.0, (hero.flask_lock_t or 0.0) - dt)
     hero.retaliate_cd = math.max(0.0, (hero.retaliate_cd or 0.0) - dt)
+    hero.frenzy_t = math.max(0.0, (hero.frenzy_t or 0.0) - dt)
+    if hero.frenzy_t <= 0.0 then hero.frenzy_stacks, hero.frenzy_mult = nil, nil end
+    hero.skill_guard_t = math.max(0.0, (hero.skill_guard_t or 0.0) - dt)
+    hero.preservation_t = math.max(0.0, (hero.preservation_t or 0.0) - dt)
     if hero.resource_type == "energy" then
         hero.mana = math.min(hero.mana_max, hero.mana + RULES.energy.regen_per_second * dt)
     end
@@ -2572,6 +3134,12 @@ function Duel:update_hero(dt)
     end
 
     if hero.regen > 0.0 then hero.hp = math.min(hero.hp_max, hero.hp + hero.regen * dt) end
+    local preservation_rank = self.hero_class == "warrior"
+        and ((hero.specialization_ranks or {}).preservation or 0) or 0
+    if preservation_rank > 0 and hero.preservation_t > 0.0 then
+        local _, healing, seconds = Balance.preservation_effect(preservation_rank)
+        hero.hp = math.min(hero.hp_max, hero.hp + hero.hp_max * healing / seconds * dt)
+    end
     hero.hit_flash = math.max(0.0, (hero.hit_flash or 0.0) - dt)
     hero.dodge_iframe_t = math.max(0.0, (hero.dodge_iframe_t or 0.0) - dt)
     hero.auto_skill_t = math.max(0.0, (hero.auto_skill_t or 0.0) - dt)
@@ -2616,8 +3184,7 @@ function Duel:update_hero(dt)
             if (hero.flask_drink_t or 0.0) <= 0.0 then
                 if hpf < 0.35 then
                     self:try_flask("health")
-                elseif hero.resource_type == "mana" and target
-                    and (hero.mana or 0) < ((self:active_skill() or {}).cost or 35) then
+                elseif hero.resource_type == "mana" and target and (hero.mana or 0) < 20 then
                     self:try_flask("mana")
                 end
             end
@@ -2635,7 +3202,6 @@ function Duel:update_hero(dt)
                     end
                 end
             end
-            if target and hero.auto_skill_t <= 0.0 and self:try_skill(dirx, dirz) then hero.auto_skill_t = 1.0 end
         end
         -- Dodge: Space dashes along the movement input (hero facing when idle).
         -- This is the shared manual-movement choke point, so every manual-hero
@@ -2650,7 +3216,6 @@ function Duel:update_hero(dt)
         if not console_open then
             if self:key_pressed("Q") then self:try_flask("health") end
             if self:key_pressed("F") then self:try_flask("mana") end
-            if self:key_pressed("E") then self:try_skill(dirx, dirz) end
             if self:key_pressed("Space") then self:try_dodge(dirx, dirz) end
         end
         if hero.dodge_t > 0.0 then
@@ -2658,8 +3223,10 @@ function Duel:update_hero(dt)
             local step = math.min(dt, hero.dodge_t)
             hero.dodge_t = hero.dodge_t - dt
             self:move_hero(hero, hero.dodge_dx, hero.dodge_dz, hero.dodge_speed or (DODGE_DIST / DODGE_DUR), step)
-            hero.vel_x = hero.dodge_dx * hero.speed -- exit the dash at run speed
-            hero.vel_z = hero.dodge_dz * hero.speed
+            local move_speed = hero.speed
+                * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_mult or 0.0) or 0.0))
+            hero.vel_x = hero.dodge_dx * move_speed -- exit the dash at run speed
+            hero.vel_z = hero.dodge_dz * move_speed
         else
             -- Smooth the input asymmetrically: starts/turns ease in over ~50 ms,
             -- but releasing the keys bites in ~25 ms — the hero plants almost
@@ -2667,8 +3234,10 @@ function Duel:update_hero(dt)
             local mag = math.sqrt(dirx * dirx + dirz * dirz)
             local tvx, tvz = 0.0, 0.0
             if mag > 0.001 then
-                tvx = dirx / mag * hero.speed
-                tvz = dirz / mag * hero.speed
+                local move_speed = hero.speed
+                    * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_mult or 0.0) or 0.0))
+                tvx = dirx / mag * move_speed
+                tvz = dirz / mag * move_speed
             end
             local rate = (mag > 0.001) and 20.0 or 40.0
             local blend = math.min(1.0, rate * dt)
@@ -2722,7 +3291,9 @@ function Duel:update_hero(dt)
     if (hero.knock_x or 0.0) ~= 0.0 or (hero.knock_z or 0.0) ~= 0.0 then
         local A = self.arena
         local minx, maxx, minz, maxz = arena_actor_bounds(A, 0.8)
-        local stagger_mult = 1.0 - clampn(hero.stagger_resist or 0.0, 0.0, 0.9)
+        local poise = (hero.stagger_resist or 0.0)
+            + ((hero.skill_guard_t or 0.0) > 0.0 and (hero.skill_poise or 0.0) or 0.0)
+        local stagger_mult = 1.0 - clampn(poise, 0.0, 0.9)
         hero.x = clampn(hero.x + hero.knock_x * dt * stagger_mult, minx, maxx)
         hero.z = clampn(hero.z + hero.knock_z * dt * stagger_mult, minz, maxz)
         local dd = math.max(0.0, 1.0 - 18.0 * dt)
@@ -3162,9 +3733,51 @@ function Duel:update_creeps(dt)
     local contact = false
     local contacters = {}
     for _, c in ipairs(self.creeps) do
+        for status, dot in pairs(c.on_hit_dots or {}) do
+            if c.alive then
+                dot.t = dot.t - dt
+                dot.tick_t = dot.tick_t - dt
+                if dot.tick_t <= 0.0 then
+                    local _, dealt = self:deal_status_damage(c, dot.damage,
+                        STATUS_COLOR[status] or STATUS_COLOR.poison, 0.0)
+                    if (dot.lifesteal_mult or 0.0) > 0.0 and hero then
+                        hero.hp = math.min(hero.hp_max, hero.hp + dealt * dot.lifesteal_mult)
+                    end
+                    dot.tick_t = dot.tick_t + Balance.on_hit.tick
+                end
+            end
+            if dot.t <= 0.0 then c.on_hit_dots[status] = nil end
+        end
+        for status, t in pairs(c.on_hit_statuses or {}) do
+            t = math.max(0.0, t - dt)
+            c.on_hit_statuses[status] = t > 0.0 and t or nil
+        end
+        if (c.smoke_t or 0.0) > 0.0 then
+            c.smoke_t = math.max(0.0, c.smoke_t - dt)
+            if c.smoke_t <= 0.0 then c.smoke_miss = nil end
+        end
+        if (c.daze_t or 0.0) > 0.0 then
+            c.daze_t = math.max(0.0, c.daze_t - dt)
+            if c.daze_t <= 0.0 then c.daze_mult = nil end
+        end
+        if (c.attack_slow_t or 0.0) > 0.0 then
+            c.attack_slow_t = math.max(0.0, c.attack_slow_t - dt)
+            if c.attack_slow_t <= 0.0 then c.attack_slow_mult = nil end
+        end
+        if (c.damage_down_t or 0.0) > 0.0 then
+            c.damage_down_t = math.max(0.0, c.damage_down_t - dt)
+            if c.damage_down_t <= 0.0 then c.damage_mult = nil end
+        end
         if c.alive and (c.bleed_t or 0.0) > 0.0 then
             c.bleed_t = c.bleed_t - dt
-            self:hit_creep(c, (c.bleed_dps or 0.0) * dt)
+            c.bleed_tick_t = (c.bleed_tick_t or 0.5) - dt
+            if c.bleed_tick_t <= 0.0 then
+                local _, _, dealt = self:hit_creep(c, (c.bleed_dps or 0.0) * 0.5)
+                self:spawn_damage_number(c.x, c.z, dealt, false,
+                    { color = STATUS_COLOR.bleed, jx = -0.4, scale = 1.15 })
+                c.bleed_tick_t = c.bleed_tick_t + 0.5
+            end
+            if c.alive and c.bleed_t <= 0.0 then c.bleed_dps, c.bleed_tick_t = nil, nil end
         end
         if c.alive and (c.burn_t or 0.0) > 0.0 then
             c.burn_t = c.burn_t - dt
@@ -3192,9 +3805,15 @@ function Duel:update_creeps(dt)
         end
         if c.alive and (c.poison_t or 0.0) > 0.0 then
             c.poison_t = c.poison_t - dt
-            self:hit_creep(c, (c.poison_dps or 0.0) * (c.poison_stacks or 1) * dt)
+            c.poison_tick_t = (c.poison_tick_t or 0.5) - dt
+            if c.poison_tick_t <= 0.0 then
+                local _, _, dealt = self:hit_creep(c, (c.poison_dps or 0.0) * (c.poison_stacks or 1) * 0.5)
+                self:spawn_damage_number(c.x, c.z, dealt, false,
+                    { color = STATUS_COLOR.poison, jx = 1.1, scale = 1.15 })
+                c.poison_tick_t = c.poison_tick_t + 0.5
+            end
             if c.alive and c.poison_t <= 0.0 then
-                c.poison_dps, c.poison_stacks = nil, nil
+                c.poison_dps, c.poison_stacks, c.poison_tick_t = nil, nil, nil
             end
         end
         if (c.hemorrhage_t or 0.0) > 0.0 then
@@ -3208,7 +3827,7 @@ function Duel:update_creeps(dt)
                 mage_status_fx_budget = mage_status_fx_budget - 1
                 c.ice_fx_t = 0.18
                 Art.burst("ath_chill_tick_" .. tostring(c.id), vec3(c.x, 0.48, c.z),
-                    { preset = "hero_take", count = 5, life_min = 0.08, life_max = 0.24,
+                    { preset = "hero_take", count = 4, life_min = 0.08, life_max = 0.24,
                       spawn_radius = 0.36, noise_strength = 1.0, size_min = 0.04, size_max = 0.11,
                       velocity = vec3(0.0, 0.7, 0.0),
                       color_start = vec4(0.92, 1.0, 1.0, 1.0),
@@ -3223,7 +3842,7 @@ function Duel:update_creeps(dt)
                 mage_status_fx_budget = mage_status_fx_budget - 1
                 c.geo_fx_t = 0.22
                 Art.burst("ath_geo_tick_" .. tostring(c.id), vec3(c.x, 0.20, c.z),
-                    { preset = "enemy_take", count = 6, life_min = 0.14, life_max = 0.32,
+                    { preset = "enemy_take", count = 4, life_min = 0.14, life_max = 0.32,
                       spawn_radius = 0.34, noise_strength = 1.2, size_min = 0.09, size_max = 0.18,
                       velocity = vec3(0.0, 1.5, 0.0), gravity = vec3(0.0, -6.0, 0.0),
                       color_start = vec4(0.82, 0.52, 0.18, 1.0),
@@ -3235,6 +3854,21 @@ function Duel:update_creeps(dt)
             c.poise_break_t = math.max(0.0, c.poise_break_t - dt)
             if c.poise_break_t <= 0.0 then c.poise_reduction = nil end
         end
+        if (c.curse_t or 0.0) > 0.0 then
+            c.curse_t = math.max(0.0, c.curse_t - dt)
+            c.curse_fx_t = (c.curse_fx_t or 0.0) - dt
+            if c.alive and c.curse_fx_t <= 0.0 and mage_status_fx_budget > 0 then
+                mage_status_fx_budget = mage_status_fx_budget - 1
+                c.curse_fx_t = 0.22
+                Art.burst("ath_curse_tick_" .. tostring(c.id), vec3(c.x, 0.66, c.z),
+                    { preset = "hero_take", count = 4, life_min = 0.10, life_max = 0.30,
+                      spawn_radius = 0.30, noise_strength = 1.4, size_min = 0.05, size_max = 0.12,
+                      velocity = vec3(0.0, 1.0, 0.0),
+                      color_start = vec4(0.72, 0.30, 0.95, 1.0),
+                      color_end = vec4(0.22, 0.04, 0.40, 0.0) })
+            end
+            if c.curse_t <= 0.0 then c.curse_amp = nil end
+        end
         if (c.storm_tint_t or 0.0) > 0.0 then
             c.storm_tint_t = math.max(0.0, c.storm_tint_t - dt)
             c.storm_fx_t = (c.storm_fx_t or 0.0) - dt
@@ -3242,7 +3876,7 @@ function Duel:update_creeps(dt)
                 mage_status_fx_budget = mage_status_fx_budget - 1
                 c.storm_fx_t = 0.10
                 Art.burst("ath_storm_crackle_" .. tostring(c.id), vec3(c.x, 0.70, c.z),
-                    { preset = "enemy_take", count = 5, life_min = 0.03, life_max = 0.10,
+                    { preset = "enemy_take", count = 4, life_min = 0.03, life_max = 0.10,
                       spawn_radius = 0.34, noise_strength = 16.0, size_min = 0.04, size_max = 0.10,
                       color_start = vec4(1.0, 1.0, 1.0, 1.0),
                       color_end = vec4(0.04, 0.30, 1.0, 0.0) })
@@ -3263,7 +3897,7 @@ function Duel:update_creeps(dt)
         self:clamp_creep_to_arena(c)
         if c.hit_flash then c.hit_flash = math.max(0.0, c.hit_flash - dt) end
         if c.armor_broken_t then c.armor_broken_t = math.max(0.0, c.armor_broken_t - dt) end
-        if c.bite_cd then c.bite_cd = math.max(0.0, c.bite_cd - dt) end
+        if c.bite_cd then c.bite_cd = math.max(0.0, c.bite_cd - dt * (c.attack_slow_mult or 1.0)) end
         -- Blast decal: the red area-of-impact ring rides the fusing bomb; park
         -- it the moment the creep pops or is defused (killed).
         if c._blast_ring then
@@ -3353,7 +3987,9 @@ function Duel:update_creeps(dt)
                     -- (i-frames): no damage, no shove, and the dash keeps going —
                     -- the hero passes clean through the red telegraph.
                     local cg = c.stats.charge or {}
-                    if self:apply_hero_damage((c.stats.dps or 1.0) * (cg.dmg_mult or 1.6),
+                    if not self:creep_attack_misses(c)
+                        and self:apply_hero_damage((c.stats.dps or 1.0) * (cg.dmg_mult or 1.6)
+                            * (c.damage_mult or 1.0),
                         { source = creep_name(c) .. " (charge)" }) then
                         c.charge_state = nil
                         c.charge_cd = (cg.cooldown or 3.0)
@@ -3372,12 +4008,13 @@ function Duel:update_creeps(dt)
                     -- so the average matches the old contact dps when every bite
                     -- connects; stepping out or dodging now actually avoids it.
                     if c.bite_windup then
-                        c.bite_windup = c.bite_windup - dt
+                        c.bite_windup = c.bite_windup - dt * (c.attack_slow_mult or 1.0)
                         if c.bite_windup <= 0.0 then
                             c.bite_windup = nil
                             c.bite_cd = BITE_COOLDOWN
-                            if d <= reach + BITE_GRACE
-                                and self:apply_hero_damage((c.stats.dps or 1.0) * (BITE_WINDUP + BITE_COOLDOWN),
+                            if d <= reach + BITE_GRACE and not self:creep_attack_misses(c)
+                                and self:apply_hero_damage((c.stats.dps or 1.0) * (BITE_WINDUP + BITE_COOLDOWN)
+                                    * (c.damage_mult or 1.0),
                                     { source = creep_name(c) }) then
                                 contact = true
                                 contacters[#contacters + 1] = c
@@ -3392,7 +4029,7 @@ function Duel:update_creeps(dt)
                         c.bite_windup = BITE_WINDUP
                     end
                 elseif d <= reach then
-                    incoming = incoming + (c.stats.dps or 1.0)
+                    incoming = incoming + (c.stats.dps or 1.0) * (c.damage_mult or 1.0)
                     contact = true
                     contacters[#contacters + 1] = c
                 end
@@ -3401,8 +4038,9 @@ function Duel:update_creeps(dt)
         if c.alive then
             survivors[#survivors + 1] = c
         else
-            self:spread_burn(c)
             if (c._mdmg or 0.0) > 0.5 then self:flush_melee_packet(c) end
+            self:trigger_on_hit_death(c)
+            self:spread_burn(c)
             local s = c.stats or {}
             local col = c._status_tint_color or s.color or { 0.9, 0.5, 0.3 }
             local big = (s.threat_cost or 1) >= TELEGRAPH_BIG_COST or c.elite or s.boss
@@ -3536,6 +4174,17 @@ function Duel:apply_hero_damage(amount, opts)
     if (hero.dodge_t or 0.0) > 0.0 then
         mitig = mitig * (1.0 - clampn(hero.dodge_guard or 0.0, 0.0, 0.9))
     end
+    -- Vanguard's post-slam guard window stacks multiplicatively with armor.
+    if (hero.skill_guard_t or 0.0) > 0.0 then
+        mitig = mitig * (1.0 - clampn(hero.skill_guard or 0.0, 0.0, 0.9))
+    end
+    local preservation_rank = self.hero_class == "warrior"
+        and ((hero.specialization_ranks or {}).preservation or 0) or 0
+    if preservation_rank > 0 then
+        local reduction, _, seconds = Balance.preservation_effect(preservation_rank)
+        hero.preservation_t = seconds
+        mitig = mitig * (1.0 - reduction)
+    end
     if (hero.flask_drink_t or 0.0) > 0.0
         and amount * mitig >= hero.hp_max * RULES.flask.interrupt_hp_fraction then
         hero.flask_drink_t, hero.flask_drink_kind = 0.0, nil
@@ -3546,21 +4195,33 @@ function Duel:apply_hero_damage(amount, opts)
         hero.retaliate_pending = true
         hero.retaliate_cd = 0.5
     end
-    hero.hp = hero.hp - amount * mitig
+    local taken = amount * mitig
+    hero.hp = hero.hp - taken
     hero.hit_flash = HIT_FLASH_T
+    -- Rage from damage RECEIVED, capped per wave so standing in the swarm is
+    -- never the optimal generator (the cap counter resets in begin_manual_wave).
+    if hero.resource_type == "rage" then
+        local gain = math.min(taken / math.max(1.0, hero.hp_max) * RAGE.received_rate,
+            RAGE.received_cap_per_wave - (hero.rage_hit_gain or 0.0))
+        if gain > 0.0 then
+            hero.rage_hit_gain = (hero.rage_hit_gain or 0.0) + gain
+            self:gain_rage(gain)
+        end
+    end
     -- Death recap: a 3-entry ring buffer of the last hits (newest last).
     if self.manual_hero then
         local log = self.dmg_log or {}
         self.dmg_log = log
-        log[#log + 1] = { src = opts.source or "the swarm", dmg = amount * mitig, t = self.realtime }
+        log[#log + 1] = { src = opts.source or "the swarm", dmg = taken, t = self.realtime }
         if #log > 3 then table.remove(log, 1) end
     end
     -- Hurt vignette pulse (drawn by update_hud) + a jolt on meaty single hits.
     self._hurt_t = 0.25
-    if amount * mitig >= 14.0 then Art.shake(0.10, 0.12) end
+    if taken >= 14.0 then Art.shake(0.10, 0.12) end
     if hero.hp <= 0.0 then
         hero.hp = 0.0
         hero.dead = true
+        self:park_all_minions()
         self.death_time = self.realtime
         self:haptic(45)
         self.state = "slain"
@@ -3705,7 +4366,6 @@ function Duel:enter_town(keep_store)
     self.state = "town"
     self._town_shop = false
     self._between_wave = false
-    self.run_cards = {}
     self.draft_offer = nil
     self:recompute_hero_stats()
     if self.hero and not keep_store then
@@ -3759,7 +4419,6 @@ function Duel:start_map()
     if map.waves then self.wave_cfg.count = map.waves end
     self:apply_map_floor()
     self._town_shop = false
-    self.run_cards = {}
     self.draft_offer = nil
     self._between_wave = false
     self:recompute_hero_stats()
@@ -3782,6 +4441,7 @@ function Duel:choose_class(index)
     -- fresh hero node exists. (warm_creep_pool is a no-op for the arena, which prewarms
     -- via the on_reset hook; both are called so this is correct for any manual mode.)
     Creep.clear_pool()
+    self:park_all_minions()
     -- Never delete an ADOPTED hero (authored scene node): create_hero re-finds and
     -- re-drives the same node; deleting it would remove it from the scene for good.
     if Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted) then
@@ -3845,12 +4505,18 @@ function Duel:begin_manual_wave(index)
     if hero then
         hero.skill_casts = 0
         hero.boss_hit_mana = 0.0
+        hero.rage_hit_gain = 0.0
+        hero.frenzy_t, hero.skill_guard_t = 0.0, 0.0
         hero.flask_drink_t, hero.flask_drink_kind, hero.flask_lock_t = 0.0, nil, 0.0
         hero.dodge_charges = hero.dodge_charges_max or 1
         hero.dodge_recharge_t = hero.dodge_recharge or DODGE_RECHARGE
         hero.dodge_t = 0.0
         hero.dodge_iframe_t = 0.0
     end
+    self:park_all_minions()
+    -- Necromancer pool is built here — a menu beat, never mid-combat (the same
+    -- frame-spike rule the creep prewarm follows).
+    if self.hero_class == "necromancer" then self:ensure_minion_pool() end
     -- PLAN step 2: every round opens with a 1-of-3 draft of run-scoped boons;
     -- combat starts when the player picks (see pick_draft_card).
     local catalog = self.config.draft_cards or DRAFT_CARDS
@@ -3875,37 +4541,14 @@ function Duel:begin_manual_wave(index)
 end
 
 -- ---------------------------------------------------------------------------
--- Wave-start draft — distinct weighted boons plus any class specialization cards.
--- Picked cards stack in D.run_cards for the rest of the run (cleared on reset)
--- and are applied by recompute_hero_stats on top of base + gear.
+-- Every wave offers exactly three class specializations plus the three shared
+-- upgrades. Picks persist across cleared maps and are applied over base + gear.
 -- ---------------------------------------------------------------------------
 function Duel:begin_draft(catalog, guaranteed)
     self:clear_damage_numbers()
-    local picks, used = {}, {}
-    for _, card in ipairs(guaranteed or {}) do
-        picks[#picks + 1] = card
-        used[card.id] = true
-    end
-    local target = #picks > 0 and #picks + 2 or 3
-    for _ = 1, 200 do
-        if #picks >= target then break end
-        local total = 0
-        for _, cd in ipairs(catalog) do
-            if not used[cd.id] then total = total + (DRAFT_WEIGHTS[cd.rarity or "common"] or 10) end
-        end
-        if total <= 0 then break end
-        local r = math.random() * total
-        for _, cd in ipairs(catalog) do
-            if not used[cd.id] then
-                r = r - (DRAFT_WEIGHTS[cd.rarity or "common"] or 10)
-                if r <= 0 then
-                    used[cd.id] = true
-                    picks[#picks + 1] = cd
-                    break
-                end
-            end
-        end
-    end
+    local picks = {}
+    for _, card in ipairs(guaranteed or {}) do picks[#picks + 1] = card end
+    for _, card in ipairs(catalog or {}) do picks[#picks + 1] = card end
     if #picks == 0 then
         self.state = "combat"
         self:set_flash("WAVE " .. tostring(self.wave_index))
@@ -3919,6 +4562,11 @@ end
 function Duel:pick_draft_card(i)
     local card = self.draft_offer and self.draft_offer[i]
     if not card then return end
+    if card.specialization
+        and ((self.hero.specialization_ranks or {})[card.specialization] or 0) >= (card.max_rank or 5) then
+        self:set_flash(tostring(card.name) .. " - MAX LEVEL")
+        return
+    end
     self.run_cards = self.run_cards or {}
     self.run_cards[#self.run_cards + 1] = card
     self:recompute_hero_stats()
@@ -4005,7 +4653,12 @@ local function apply_gear_effect(hero, effect)
     if effect.specialization_rank then
         hero.specialization_ranks = hero.specialization_ranks or {}
         local id = effect.specialization_rank
-        hero.specialization_ranks[id] = (hero.specialization_ranks[id] or 0) + 1
+        hero.specialization_ranks[id] = math.min(5, (hero.specialization_ranks[id] or 0) + 1)
+    end
+    if effect.upgrade_rank then
+        hero.upgrade_ranks = hero.upgrade_ranks or {}
+        local id = effect.upgrade_rank
+        hero.upgrade_ranks[id] = (hero.upgrade_ranks[id] or 0) + 1
     end
     -- Dodge gear: extra charges / faster recharge (Normal-dodge machinery).
     if effect.dodge_charge_add then hero.dodge_charges_max = (hero.dodge_charges_max or 1) + effect.dodge_charge_add end
@@ -4080,6 +4733,7 @@ function Duel:recompute_hero_stats()
     hero.bleed_on_crit, hero.dodge_blades, hero.retaliation_orbit = 0.0, 0.0, 0.0
     hero.flask_nova, hero.mana_burst = 0.0, 0.0
     hero.specialization_ranks = {}
+    hero.upgrade_ranks = {}
     hero.fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28
     -- Load establishes the dodge identity; gear and cards then modify it.
     apply_equip_load(hero, self.gear_equipped)
@@ -4104,12 +4758,12 @@ function Duel:recompute_hero_stats()
     end
 end
 
-function Duel:reset_manual_gear()
+function Duel:reset_manual_gear(keep_progression)
     self.gold = self.gold or 0
     self.inv_grid = self.inv_grid or {}
     self.gear_equipped = self.gear_equipped or { helmet = nil, body = nil, pants = nil, gloves = nil, weapon = nil, jewelry = nil }
     self.gear_drop_cursor = 0
-    self.run_cards = {}
+    if not keep_progression then self.run_cards = {} end
     self.draft_offer = nil
     self._inv_drag = nil
     self._inv_last_click = nil
@@ -4146,6 +4800,7 @@ function Duel:gear_preview_stats()
         bleed_on_crit = 0.0, dodge_blades = 0.0, retaliation_orbit = 0.0,
         flask_nova = 0.0, mana_burst = 0.0,
         specialization_ranks = {},
+        upgrade_ranks = {},
     }
     apply_equip_load(t, self.gear_equipped)
     for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
@@ -4278,6 +4933,7 @@ end
 function Duel:begin_pause()
     if self.manual_hero then
         self:vacuum_pickups() -- bank whatever's still on the floor before the pause
+        self:park_all_minions() -- assistants never idle through the gear screen
         self:restore_flask_charges(2)
         if self.hero and not self.hero.dead then
             Art.burst("ath_wave_clear", vec3(self.hero.x, 0.8, self.hero.z),
@@ -4343,12 +4999,16 @@ function Duel:toggle_inventory()
 end
 
 function Duel:reset_run(to_town)
+    -- A run spans maps: every drafted specialization and universal upgrade
+    -- belongs to this hero until death, regardless of town/map transitions.
+    local keep_progression = self.manual_hero and self.state ~= "slain"
     for _, c in ipairs(self.creeps) do
         self:park_blast_decal(c)
         Creep.destroy(c)
     end
     self.creeps = {}
     self:flush_dying()
+    self:park_all_minions()
     -- Drop parked rigs before the hero (their scene sibling under the actors
     -- group) is deleted+rebuilt: the swap-and-pop on that delete would stale
     -- their handles. New rigs are built only as the spawn queue drains.
@@ -4383,7 +5043,7 @@ function Duel:reset_run(to_town)
     if self.manual_hero then
         self.player_seat = nil
         self.ai_seat = nil
-        self:reset_manual_gear()
+        self:reset_manual_gear(keep_progression)
         self:ensure_hero_projectiles()
         self:reset_hero_projectiles()
         self:ensure_creep_projectiles()
@@ -4509,7 +5169,13 @@ function Duel:update_input(dt)
             self.autoplay_t = (self.autoplay_t or 0.4) - dt
             if self.autoplay_t <= 0.0 then
                 self.autoplay_t = 0.4
-                self:pick_draft_card(1)
+                local pick = 1
+                for i, card in ipairs(self.draft_offer or {}) do
+                    local rank = card.specialization
+                        and ((self.hero.specialization_ranks or {})[card.specialization] or 0) or 0
+                    if not card.max_rank or rank < card.max_rank then pick = i; break end
+                end
+                self:pick_draft_card(pick)
             end
         end
         return
@@ -4582,6 +5248,7 @@ function Duel:update_hud()
     local accent = self.theme.accent or { 0.62, 0.34, 0.86, 0.95 }
     -- Every HUD dimension/offset multiplies by S() so panels grow with the text.
     local function S(v) return v * Art.s("hud") end
+    local bottom_hud_y = sh - S(42.0)
 
     -- Hero HP bar (top center).
     local bw, bh = S(520.0), S(36.0)
@@ -4712,25 +5379,32 @@ function Duel:update_hud()
     -- Dodge readiness: a slim bar bottom-center — full/blue = ready, grey fill
     -- = recharge progress.
     if self.manual_hero and self.state == "combat" and hero and not hero.dead then
-        local skill = self:active_skill()
         local mana = hero.mana or 0
         local mana_max = hero.mana_max or MANA_MAX
-        local mana_ready = skill and mana >= skill.cost
+        local min_cost
+        for _, spec in ipairs((self:active_class() or {}).specializations or {}) do
+            if ((hero.specialization_ranks or {})[spec.id] or 0) > 0 and (spec.cost or 0) > 0 then
+                min_cost = math.min(min_cost or spec.cost, spec.cost)
+            end
+        end
+        local mana_ready = min_cost and mana >= min_cost
         local resource_name = string.upper(hero.resource_type or "mana")
         local resource_color = hero.resource_type == "energy" and { 0.68, 0.30, 0.78, 0.95 }
+            or hero.resource_type == "rage" and { 0.92, 0.26, 0.18, 0.95 }
             or { 0.38, 0.42, 0.95, 0.95 }
         local resource_dim = hero.resource_type == "energy" and { 0.42, 0.24, 0.48, 0.90 }
+            or hero.resource_type == "rage" and { 0.50, 0.20, 0.16, 0.90 }
             or { 0.38, 0.34, 0.58, 0.90 }
-        Art.bar(self.hud, "mana", S(176.0), sh - S(56.0), S(170.0), S(40.0),
+        Art.bar(self.hud, "mana", S(176.0), bottom_hud_y, S(170.0), S(36.0),
             clampn(mana / math.max(1.0, mana_max), 0.0, 1.0),
             mana_ready and resource_color or resource_dim,
-            { label = string.format("%s %d/%d [E:%d]", resource_name, math.floor(mana), mana_max,
-                skill and skill.cost or 0),
+            { label = string.format("%s %d/%d  ON HIT:%d", resource_name, math.floor(mana), mana_max,
+                min_cost or 0),
               border = mana_ready and { 0.60, 0.66, 1.0, 0.9 } or { 0.42, 0.40, 0.62, 0.8 } })
         local ready = (hero.dodge_charges or 0) >= 1
         local pct = ready and 1.0
             or clampn(1.0 - (hero.dodge_recharge_t or 0.0) / math.max(0.01, hero.dodge_recharge or 1.0), 0.0, 1.0)
-        Art.bar(self.hud, "dodge", sw * 0.5 - S(110.0), sh - S(56.0), S(220.0), S(40.0), pct,
+        Art.bar(self.hud, "dodge", sw * 0.5 - S(110.0), bottom_hud_y, S(220.0), S(36.0), pct,
             ready and { 0.40, 0.78, 0.95, 0.95 } or { 0.42, 0.46, 0.54, 0.90 },
             { label = ready and "DODGE READY [Space]" or "DODGE . . .",
               border = ready and { 0.55, 0.88, 1.0, 0.9 } or { 0.40, 0.44, 0.50, 0.8 } })
@@ -4741,29 +5415,79 @@ function Duel:update_hud()
         local flask_label = hero.resource_type == "mana"
             and string.format("H%d[Q] M%d[F]%s", hero.flask_health or 0, hero.flask_mana or 0, drink)
             or string.format("HEALTH x%d [Q]", hero.flask_health or 0)
-        Art.quad(self.hud, "flask", sw * 0.5 + S(120.0), sh - S(56.0), S(170.0), S(40.0),
+        Art.quad(self.hud, "flask", sw * 0.5 + S(120.0), bottom_hud_y, S(170.0), S(36.0),
             flasks > 0 and { 0.16, 0.42, 0.24, 0.95 } or { 0.28, 0.30, 0.32, 0.90 },
             { label = flask_label, no_input = true,
               border = flasks > 0 and { 0.42, 0.86, 0.52, 0.9 } or { 0.40, 0.42, 0.44, 0.8 } })
-        local class = self:active_class()
-        if class and class.progressive_specializations then
-            local ranks = hero.specialization_ranks or {}
-            local labels = { string.upper(class.id) }
-            for _, spec in ipairs(class.specializations or {}) do
-                labels[#labels + 1] = (spec.short or string.upper(string.sub(spec.id, 1, 1)))
-                    .. tostring(ranks[spec.id] or 0)
-            end
-            Art.quad(self.hud, "specializations", sw * 0.5 + S(300.0), sh - S(56.0), S(210.0), S(40.0),
-                { 0.13, 0.10, 0.24, 0.94 }, { no_input = true, font_scale = 0.78,
-                  border = class.accent or { 0.66, 0.48, 1.0, 0.90 }, label = table.concat(labels, "  ") })
-        else
-            Art.remove(self.hud, "specializations")
-        end
     else
         Art.remove_ids(self.hud, { "mana_bg", "mana_fg", "mana_label" })
         Art.remove_ids(self.hud, { "dodge_bg", "dodge_fg", "dodge_label" })
         Art.remove(self.hud, "flask")
-        Art.remove(self.hud, "specializations")
+    end
+
+    -- The current class's three specializations stay visible for the whole run.
+    local show_specs = self.manual_hero and hero and not hero.dead
+    if show_specs then
+        Art.remove_ids(self.hud, { "specializations", "buffs_title", "buff_1", "buff_2", "buff_3",
+            "buff_4", "buff_5", "buff_6", "buff_tip" })
+        local class = self:active_class()
+        local specs = class and class.specializations or {}
+        local icon_size, gap = S(30.0), S(5.0)
+        local row_w = #specs * icon_size + math.max(0, #specs - 1) * gap
+        local bx, by = sw - row_w - S(16.0), bottom_hud_y
+        local tip
+        for i, spec in ipairs(specs) do
+            local id = "spec_hud_" .. i
+            local x = bx + (i - 1) * (icon_size + gap)
+            Art.remove_ids(self.hud, { id .. "_icon", id .. "_text" })
+            local rank = (hero.specialization_ranks or {})[spec.id] or 0
+            local text = rank > 0 and Balance.specialization_upgrade_text(class.id, spec.id, rank - 1)
+                or Balance.specialization_upgrade_text(class.id, spec.id, 0)
+            text = rank > 0 and text:gsub("Next rank:", "Current:", 1) or "Not learned.\n" .. text
+            if spec.kind == "frenzy" and (hero.frenzy_t or 0.0) > 0.0 then
+                text = text .. string.format("\nActive: %d stacks, %.1fs left.",
+                    hero.frenzy_stacks or 0, hero.frenzy_t)
+            elseif spec.kind == "preservation" and (hero.preservation_t or 0.0) > 0.0 then
+                text = text .. string.format("\nActive: %.1fs left.", hero.preservation_t)
+            end
+            local color = rank > 0 and (spec.accent or class.accent) or { 0.30, 0.32, 0.38, 0.80 }
+            Art.quad(self.hud, id, x, by, icon_size, icon_size, { 0, 0, 0, 0 },
+                { image = spec.icon,
+                  image_tint = rank > 0 and { 1, 1, 1, 1 } or { 0.38, 0.40, 0.46, 0.72 } })
+            local badge_size = S(14.0)
+            local badge_x, badge_y = x + icon_size - badge_size, by + icon_size - badge_size
+            Art.quad(self.hud, id .. "_level", badge_x, badge_y, badge_size, badge_size,
+                { 0.025, 0.03, 0.045, 0.96 }, { no_input = true, border = color })
+            local badge_font_scale = 0.28
+            local badge_text_y = badge_y + badge_size * 0.5 - Art.s("text") * 21.0 * badge_font_scale
+            Art.quad(self.hud, id .. "_level_text", badge_x, badge_text_y, badge_size, badge_size,
+                { 0, 0, 0, 0 }, { no_input = true, align_h = "center", font_scale = badge_font_scale,
+                  text_color = { 1, 1, 1, 1 }, label = tostring(rank) })
+            local st = Art.widget_state(self.hud, id)
+            if st and st.hovered then tip = { spec = spec, rank = rank, text = text, x = x, color = color } end
+        end
+        for i = #specs + 1, 3 do
+            local id = "spec_hud_" .. i
+            Art.remove_ids(self.hud, { id, id .. "_icon", id .. "_text", id .. "_level", id .. "_level_text" })
+        end
+        if tip then
+            local tw, th = S(420.0), S(112.0)
+            local tx = clampn(tip.x + icon_size * 0.5 - tw * 0.5, S(8.0), sw - tw - S(8.0))
+            local ty = math.max(S(8.0), by - th - S(8.0))
+            Art.quad(self.hud, "spec_hud_tip", tx, ty, tw, th,
+                { 0.035, 0.04, 0.065, 0.98 }, { no_input = true, bring_to_front = true,
+                  border = tip.color, font_scale = 0.72,
+                  label = string.format("%s  LV %d\n%s", tip.spec.name, tip.rank, tip.text) })
+        else
+            Art.remove(self.hud, "spec_hud_tip")
+        end
+    else
+        Art.remove_ids(self.hud, { "buffs_title", "buff_1", "buff_2", "buff_3", "buff_4", "buff_5",
+            "buff_6", "buff_tip", "specializations", "spec_hud_tip" })
+        for i = 1, 3 do
+            local id = "spec_hud_" .. i
+            Art.remove_ids(self.hud, { id, id .. "_icon", id .. "_text", id .. "_level", id .. "_level_text" })
+        end
     end
 
     -- Town destination card: the left gutter stays clear of the authored inventory;
@@ -4908,7 +5632,7 @@ function Duel:update_hud()
     -- AFTER the world-map quads: the backend renders in creation order, so an
     -- older chip would vanish under the full-bleed parchment.
     if self.manual_hero and self.gold then
-        Art.quad(self.hud, "gold_chip", S(16.0), sh - S(56.0), S(150.0), S(40.0),
+        Art.quad(self.hud, "gold_chip", S(16.0), bottom_hud_y, S(150.0), S(36.0),
             { 0.07, 0.06, 0.03, 0.85 }, { border = { 0.85, 0.72, 0.30, 0.9 }, no_input = true,
               label = string.format("GOLD  %d", math.floor(self.gold or 0)),
               text_color = { 0.98, 0.86, 0.36, 1.0 }, font_scale = 0.9,
@@ -4951,15 +5675,24 @@ function Duel:update_hud()
             { 0.05, 0.05, 0.10, 0.94 }, { border = accent, no_input = true, bring_to_front = true,
               label = "WAVE " .. tostring(self.wave_index or 1) .. " - CHOOSE A CARD  ([1-" .. n .. "] or click)" })
         for i, cd in ipairs(offer) do
-            local rank = cd.specialization and ((hero.specialization_ranks or {})[cd.specialization] or 0)
-            local rank_line = rank and string.format("RANK %d -> %d\n", rank, rank + 1) or ""
+            local rank = cd.specialization
+                and ((hero.specialization_ranks or {})[cd.specialization] or 0)
+                or cd.rank_id and ((hero.upgrade_ranks or {})[cd.rank_id] or 0)
+            local capped = cd.max_rank and rank >= cd.max_rank
+            local rank_line = rank and (capped and string.format("RANK %d  MAX\n", rank)
+                or string.format("RANK %d -> %d\n", rank, rank + 1)) or ""
+            local desc = capped and "Maximum specialization level reached."
+                or cd.specialization
+                    and Balance.specialization_upgrade_text(cd.class_id or self.hero_class, cd.specialization, rank)
+                or cd.rank_id and Balance.universal_upgrade_text(cd, rank)
+                or cd.desc or ""
             Art.quad(self.hud, "draft_" .. i, sx0 + (i - 1) * (cw + gap), cyc, cw, ch,
-                { 0.09, 0.10, 0.15, 0.97 }, {
+                capped and { 0.07, 0.07, 0.09, 0.90 } or { 0.09, 0.10, 0.15, 0.97 }, {
                     border = cd.accent or RARITY_COLOR[cd.rarity or "common"] or accent,
                     title = cd.name, font_scale = 0.78, bring_to_front = true,
                     body = "[" .. i .. "]  " .. string.upper(cd.rarity or "common") .. "\n" .. rank_line
                         .. (#(cd.tags or {}) > 0 and ("\n" .. table.concat(cd.tags, " / ")) or "")
-                        .. "\n\n" .. (cd.desc or ""),
+                        .. "\n\n" .. desc,
                 })
         end
     else
@@ -5017,14 +5750,12 @@ function Duel:update_hud()
             { 0.05, 0.05, 0.10, 0.94 }, { border = accent, align_h = "center",
               label = string.format("CHOOSE SPECIALIZATION   [1-%d] or click", n), no_input = true })
         for i, spec in ipairs(specs) do
-            local skill = self:active_skill() or {}
             Art.quad(self.hud, "specpick_" .. i, sx0 + (i - 1) * (cw + gap), cyc, cw, ch,
                 { 0.09, 0.10, 0.15, 0.97 }, {
                     border = spec.accent or accent,
                     title = spec.name,
-                    subtitle = string.format("[%d]  %s", i, spec.spell or skill.name or "SPELL"),
-                    body = (spec.desc or "") .. string.format("\n\nMana %d   %s hit\nDamage x%.1f",
-                        skill.cost or 0, skill.hit == "aoe" and "AREA" or "LINE", skill.damage or 0.0),
+                    subtitle = string.format("[%d]  ON HIT", i),
+                    body = (spec.desc or "") .. string.format("\n\nResource cost per hit: %d", spec.cost or 0),
                 })
         end
     else
@@ -5165,6 +5896,7 @@ function Duel:update(dt)
         self:update_spawning(sim_dt)
         self:update_hero(sim_dt)
         self:update_creeps(sim_dt)
+        self:update_minions(sim_dt)
         self:update_telegraphs(sim_dt)
         self:update_creep_projectiles(sim_dt)
         self:update_pickups(sim_dt)
@@ -5293,6 +6025,7 @@ function Duel:stop()
     self.hproj = nil
     self.coins = nil
     self.beacons = nil
+    self.minions = nil
     self.dmgnums = nil
     self.boss_creep = nil
 end

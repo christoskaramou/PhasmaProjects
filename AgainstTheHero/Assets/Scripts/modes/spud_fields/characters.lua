@@ -84,11 +84,11 @@ Spud.hero_actor = {
     },
 }
 
--- ---- The cast — five flat-sprite garden horrors -----------------------------
+-- ---- The cast — upright humanoid garden horrors -----------------------------
 -- Common shape for a standing sprite: a thin body slab (depth ~0.05), the head
 -- sphere hidden (scale ~0), and body_pos raised so the sprite stands on the soil.
 Spud.archetypes = {
-    -- SPROUT — the swarm. A tiny angry potato-sprout that legs it at the hero.
+    -- SPROUT — the swarm. A tiny plant scout that legs it at the hero.
     sprout = {
         name = "Sprout", threat_cost = 1, hp = 6, dps = 2.2, range = 0.5, speed = 2.7,
         color = C.sprout, head = C.sprout,
@@ -117,13 +117,13 @@ Spud.archetypes = {
         body_pos = { 0.0, 0.78, 0.0 }, body_scale = { 1.04, 1.30, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
     },
-    -- PUMPKIN BRUTE — the brute. A huge round pumpkin that lumbers and crushes.
+    -- PUMPKIN BRUTE — the brute. A huge pumpkin-headed enforcer that crushes.
     pumpkin_brute = {
         name = "Pumpkin Brute", threat_cost = 6, hp = 74, dps = 9.0, range = 1.05, speed = 1.0,
         color = C.pumpkin, head = C.pumpkin,
         sprite = true, texture = Spud.tex.pumpkin,
         parts = 2, scale = 1.60,
-        body_pos = { 0.0, 0.74, 0.0 }, body_scale = { 1.30, 1.24, 0.05 },
+        body_pos = { 0.0, 0.74, 0.0 }, body_scale = { 1.10, 1.28, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
     },
     -- CROW — the flier. A black scarecrow-crow that ignores terrain and dives.
@@ -132,7 +132,7 @@ Spud.archetypes = {
         color = C.crow, head = C.crow,
         sprite = true, texture = Spud.tex.crow, flies = true,
         parts = 2, scale = 0.95,
-        body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 1.18, 0.86, 0.05 },
+        body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 0.90, 1.16, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
     },
     -- BEETLE — armored swarm tank. Slower, chunkier, shrugs off knockback. A
@@ -142,7 +142,7 @@ Spud.archetypes = {
         color = C.carrot, head = C.carrot,
         sprite = true, texture = Spud.tex.beetle,
         parts = 2, scale = 1.05,
-        body_pos = { 0.0, 0.66, 0.0 }, body_scale = { 1.05, 0.96, 0.05 },
+        body_pos = { 0.0, 0.66, 0.0 }, body_scale = { 0.96, 1.16, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
         knockback_resist = 0.4,
     },
@@ -171,7 +171,7 @@ Spud.archetypes = {
         color = C.sun, head = C.crow,
         sprite = true, texture = Spud.tex.wasp, flies = true,
         parts = 2, scale = 0.95,
-        body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 1.24, 0.85, 0.05 },
+        body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 0.96, 1.20, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
         hold_range = 5.0, anchor_hold = true, needs_los = true, los_reposition_seconds = 1.5,
         projectile = {

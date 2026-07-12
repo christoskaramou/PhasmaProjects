@@ -421,6 +421,7 @@ function Art.burst(name, position, opts)
         noise_strength = opts.noise_strength or 3.0,
         size_max = (opts.size_max or 0.16) * Art.s("fx"),
     }
+    b.cleanup_delay = opts.cleanup_delay or (b.life_max + 0.08)
     if opts.size_min then b.size_min = opts.size_min * Art.s("fx") end
     if opts.color_start then b.color_start = opts.color_start end
     if opts.color_end then b.color_end = opts.color_end end

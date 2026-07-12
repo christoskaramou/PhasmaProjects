@@ -39,6 +39,7 @@ Inv.RARITY = {
     epic      = { 0.78, 0.48, 0.96, 1.0 },
     legendary = { 0.96, 0.74, 0.30, 1.0 },
 }
+Inv.RARITIES = { "common", "uncommon", "rare", "epic", "legendary" }
 
 -- Pixel-art icon per paper-doll slot (Assets/Textures/ui/items). Shared with the
 -- duel's ground drops so an item looks the same on the floor and in the bag.
@@ -77,6 +78,10 @@ end
 -- ---------------------------------------------------------------------------
 function Inv.ensure(D)
     if not D.inv_grid then D.inv_grid = {} end
+    if not D.loot_filter then
+        D.loot_filter = {}
+        for _, rarity in ipairs(Inv.RARITIES) do D.loot_filter[rarity] = true end
+    end
     if not D.gear_equipped then
         D.gear_equipped = {}
         for _, k in ipairs(Inv.SLOTS) do D.gear_equipped[k] = nil end
@@ -354,6 +359,14 @@ function Inv.update(D)
     local slots = Inv.slots(D)
     if #slots == 0 then return end
 
+    for _, rarity in ipairs(Inv.RARITIES) do
+        local stt = runtime_ui.get_state(SCREEN, "inv_loot_" .. rarity)
+        if stt and stt.clicked then
+            D.loot_filter[rarity] = not D.loot_filter[rarity]
+            if D.haptic then D:haptic(6) end
+        end
+    end
+
     -- Pickups + hover. A press on a draggable slot becomes a DRAG (the engine
     -- swallows `clicked`); a clean tap is detected on release for double-tap equip.
     local hover, tap_slot, rclick_slot = nil, nil, nil
@@ -530,7 +543,7 @@ local OVERLAY_Z = 9000.0
 -- The destroy zone exists only while a drag is in flight: a red plate spanning
 -- the width of the bag grid, just under it (LIVE rects, so an editor re-layout
 -- still lines up). nil until the authored nodes resolve.
-function Inv.trash_rect(D)
+function Inv.bag_bounds(D)
     local b = Inv.bind(D)
     if not b then return nil end
     local x0, y0, x1, y1
@@ -545,8 +558,14 @@ function Inv.trash_rect(D)
         end
     end
     if not x0 then return nil end
+    return { x = x0, y = y0, w = x1 - x0, h = y1 - y0 }
+end
+
+function Inv.trash_rect(D)
+    local bounds = Inv.bag_bounds(D)
+    if not bounds then return nil end
     local hud = Art.s("hud")
-    return { x = x0, y = y1 + 10.0 * hud, w = x1 - x0, h = 52.0 * hud }
+    return { x = bounds.x, y = bounds.y + bounds.h + 10.0 * hud, w = bounds.w, h = 52.0 * hud }
 end
 
 function Inv.draw_overlay(D)
@@ -582,6 +601,43 @@ function Inv.draw_overlay(D)
         for _, s in ipairs(Inv.slots(D)) do runtime_ui.remove(SCREEN, "inv_ic_" .. s.id) end
     else
         for _, s in ipairs(Inv.store_slots(D)) do runtime_ui.remove(SCREEN, "inv_ic_" .. s.id) end
+    end
+
+    local bounds = not in_shop and Inv.bag_bounds(D) or nil
+    local px = bounds and bounds.x + bounds.w + 12.0 or 0.0
+    if bounds and rw - px >= 170.0 then
+        local pw = math.min(300.0, rw - px - 10.0)
+        local pad, title_h, row_h, gap = 12.0, 48.0, 48.0, 8.0
+        local py = math.max(10.0, bounds.y - 70.0)
+        local ph = pad * 2.0 + title_h + #Inv.RARITIES * row_h + (#Inv.RARITIES - 1) * gap
+        runtime_ui.set_quad(SCREEN, "inv_loot_panel", {
+            x = px, y = py, width = pw, height = ph, style = "text",
+            fill = { 0.035, 0.04, 0.065, 0.98 }, border = { 0.44, 0.46, 0.58, 0.95 },
+            body = "", no_input = true, bring_to_front = true, z = OVERLAY_Z - 700.0,
+        })
+        runtime_ui.set_quad(SCREEN, "inv_loot_title", {
+            x = px + pad, y = py + pad, width = pw - pad * 2.0, height = title_h, style = "text",
+            fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+            body = "LOOT", text_color = { 0.95, 0.92, 0.72, 1.0 }, font_scale = 1.25,
+            align_h = "left", align_v = "middle", no_input = true, bring_to_front = true,
+            z = OVERLAY_Z - 600.0,
+        })
+        for i, rarity in ipairs(Inv.RARITIES) do
+            local enabled = D.loot_filter[rarity] ~= false
+            runtime_ui.set_quad(SCREEN, "inv_loot_" .. rarity, {
+                x = px + pad, y = py + pad + title_h + (i - 1) * (row_h + gap),
+                width = pw - pad * 2.0, height = row_h, style = "text",
+                fill = enabled and { 0.10, 0.12, 0.16, 0.98 } or { 0.055, 0.06, 0.08, 0.96 },
+                border = Inv.RARITY[rarity], body = string.format("%-10s [%s]", string.upper(rarity), enabled and "X" or " "),
+                text_color = enabled and { 0.92, 0.94, 0.98, 1.0 } or { 0.48, 0.50, 0.56, 1.0 },
+                font_scale = 0.92, align_h = "left", align_v = "middle",
+                no_input = false, bring_to_front = true, z = OVERLAY_Z - 500.0,
+            })
+        end
+    else
+        runtime_ui.remove(SCREEN, "inv_loot_panel")
+        runtime_ui.remove(SCREEN, "inv_loot_title")
+        for _, rarity in ipairs(Inv.RARITIES) do runtime_ui.remove(SCREEN, "inv_loot_" .. rarity) end
     end
 
     local selected = D._inv_selected
@@ -713,6 +769,9 @@ function Inv.clear(D)
         runtime_ui.remove(SCREEN, "inv_selected_text")
         runtime_ui.remove(SCREEN, "inv_selected_good")
         runtime_ui.remove(SCREEN, "inv_selected_bad")
+        runtime_ui.remove(SCREEN, "inv_loot_panel")
+        runtime_ui.remove(SCREEN, "inv_loot_title")
+        for _, rarity in ipairs(Inv.RARITIES) do runtime_ui.remove(SCREEN, "inv_loot_" .. rarity) end
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
         for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
