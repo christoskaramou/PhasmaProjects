@@ -33,10 +33,11 @@ Inv.GRID_SIZE = Inv.GRID_COLS * Inv.GRID_ROWS
 
 -- Rarity tints the slot border (matches the authored slot palette).
 Inv.RARITY = {
-    common   = { 0.66, 0.70, 0.76, 1.0 },
-    uncommon = { 0.42, 0.84, 0.48, 1.0 },
-    rare     = { 0.38, 0.64, 0.97, 1.0 },
-    epic     = { 0.78, 0.48, 0.96, 1.0 },
+    common    = { 0.66, 0.70, 0.76, 1.0 },
+    uncommon  = { 0.42, 0.84, 0.48, 1.0 },
+    rare      = { 0.38, 0.64, 0.97, 1.0 },
+    epic      = { 0.78, 0.48, 0.96, 1.0 },
+    legendary = { 0.96, 0.74, 0.30, 1.0 },
 }
 
 -- Pixel-art icon per paper-doll slot (Assets/Textures/ui/items). Shared with the
@@ -56,6 +57,7 @@ local ITEM_BG = { 0.13, 0.15, 0.20, 0.98 }
 local ITEM_BG_DRAG = { 0.10, 0.11, 0.14, 0.45 }
 local SLOT_TEXT = { 0.85, 0.88, 0.92, 1.0 }
 local EMPTY_TEXT = { 0.6, 0.66, 0.7, 0.9 }
+local STATS_LABELS = "Health\nAttack Damage\nAttack Range\nAttacks/Hit\nAttack Rate\nMove Speed\nEquip Load\nDodge\nI-Frames/Guard\nPoise/Armor\nLife Steal\nRegen"
 
 local function valid(n)
     return n and n.is_valid and n:is_valid()
@@ -139,6 +141,22 @@ function Inv.try_unequip(D, slot)
     end
 end
 
+function Inv.sort(D)
+    local items, slot_order = {}, {}
+    for i, slot in ipairs(Inv.SLOTS) do slot_order[slot] = i end
+    for i = 1, Inv.GRID_SIZE do if D.inv_grid[i] then items[#items + 1] = D.inv_grid[i] end end
+    local rarity = { common = 1, uncommon = 2, rare = 3, epic = 4 }
+    table.sort(items, function(a, b)
+        local sa, sb = slot_order[a.slot] or 99, slot_order[b.slot] or 99
+        if sa ~= sb then return sa < sb end
+        local ra, rb = rarity[a.rarity or "common"] or 0, rarity[b.rarity or "common"] or 0
+        if ra ~= rb then return ra > rb end
+        return tostring(a.name or a.id) < tostring(b.name or b.id)
+    end)
+    for i = 1, Inv.GRID_SIZE do D.inv_grid[i] = items[i] end
+    changed(D)
+end
+
 -- ---------------------------------------------------------------------------
 -- Authored-node binding. Resolved once by name and cached on D; re-bound if the
 -- handles go stale (scene reload / play-stop).
@@ -152,6 +170,8 @@ function Inv.bind(D)
     if not valid(b.group) then D._inv_nodes = nil; return nil end
     b.title = scene.find_model("Pause Title")
     b.inventory = scene.find_model("Inventory")
+    b.stats_panel = scene.find_model("Inv Stats Panel")
+    b.stats_labels = scene.find_model("Inv Stats Labels")
     b.stats_values = scene.find_model("Inv Stats Values")
     b.next_wave = scene.find_model("Pause Next Wave")
     b.store = scene.find_model("Town Store")
@@ -177,6 +197,16 @@ function Inv.slots(D)
     end
     for i = 1, Inv.GRID_SIZE do
         list[#list + 1] = { kind = "grid", key = i, id = "inv_bag_" .. i, node = b.bag[i] }
+    end
+    return list
+end
+
+function Inv.store_slots(D)
+    local b = Inv.bind(D)
+    if not b then return {} end
+    local list = {}
+    for _, k in ipairs(Inv.SLOTS) do
+        list[#list + 1] = { kind = "store", key = k, id = "store_" .. k, node = b.store_items[k] }
     end
     return list
 end
@@ -207,15 +237,16 @@ local function tile_label(item)
     return wrap((item and (item.name or item.id)) or "", 9)
 end
 
--- The values column for the live stat panel (the labels column is authored
--- static; this fills "Inv Stats Values"). The leading newline aligns the first
--- value under the "Health" row (the labels start with a "TOTAL STATS" header).
+-- The values column for the live stat panel. Keep both columns to twelve rows: the
+-- engine's text widget clips longer bodies and trims leading blank lines.
 function Inv.stats_values_text(st)
     local function pct(v) return string.format("%d%%", math.floor((v or 0.0) * 100.0 + 0.5)) end
-    return string.format("\n%d\n%d\n%.1f\n%d\n%.2fs\n%.1f\n%d %s\n%s\n%.1f\n%.1f/s",
+    return string.format("%d\n%d\n%.1f\n%d\n%.2fs\n%.1f\n%d/%d %s\n%dx %.1fm / %.1fs\n%.2fs / %s\n%s / %s\n%.1f\n%.1f/s",
         math.floor((st.hp_max or 0) + 0.5), math.floor((st.dps or 0) + 0.5),
         st.attack_range or 0.0, math.floor((st.cleave or 0) + 0.5),
-        st.fire_interval or 0.0, st.speed or 0.0, st.equip_load or 0, st.equip_load_tier or "LIGHT",
+        st.fire_interval or 0.0, st.speed or 0.0, st.equip_load or 0, st.equip_load_max or 100,
+        st.equip_load_tier or "LIGHT", st.dodge_charges_max or 1, st.dodge_dist or 0.0,
+        st.dodge_recharge or 0.0, st.dodge_iframes or 0.0, pct(st.dodge_guard), pct(st.poise),
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
 
@@ -229,10 +260,20 @@ function Inv.refresh(D)
     -- use the set_quad `label`, which the default quad style draws.)
     if valid(b.title) then
         local title = D.state == "town" and D._town_shop
-            and "TOWN SHOP - BUY GEAR   (click the coins to return to inventory)"
+            and "TOWN SHOP - RIGHT-CLICK AN ITEM TO BUY   (click the coins to return to inventory)"
             or D.state == "town"
-            and "TOWN - GEAR UP   (click the coins to open the shop)"
-            or string.format("WAVE %d CLEARED - GEAR UP   (right-click to equip, drag below the bag to destroy)", D.wave_index or 1)
+            and "TOWN - GEAR UP   (click inspect, right-click equip, [T] sort)"
+            or string.format("WAVE %d CLEARED - GEAR UP   (click inspect, right-click equip, [T] sort, drag to destroy)", D.wave_index or 1)
+        if D.hero and not D._town_shop then
+            if D.hero.resource_type == "mana" then
+                title = title .. string.format("\nFLASK ALLOCATION  H%d / M%d   [Q] more health   [F] more mana   (%d filled)",
+                    D.hero.flask_health_alloc or 4, 6 - (D.hero.flask_health_alloc or 4),
+                    (D.hero.flask_health or 0) + (D.hero.flask_mana or 0))
+            else
+                title = title .. string.format("\nFLASKS  HEALTH x%d   [Q] drink in combat",
+                    D.hero.flask_health or 0)
+            end
+        end
         b.title:set_ui({ body = title })
     end
 
@@ -261,6 +302,7 @@ function Inv.refresh(D)
         end
     end
 
+    if valid(b.stats_labels) then b.stats_labels:set_ui({ body = STATS_LABELS }) end
     if valid(b.stats_values) then
         local st = (D.gear_preview_stats and D:gear_preview_stats()) or {}
         b.stats_values:set_ui({ body = Inv.stats_values_text(st) })
@@ -284,9 +326,8 @@ function Inv.refresh(D)
             local item = D.store_offers and D.store_offers[slot]
             if valid(node) and item then
                 local price = D.store_price and D:store_price(item) or 0
-                node:set_ui({ title = string.format("[%d] %s\n%s\n%d GOLD", i,
-                    item.name or item.id, item.desc or "", price), body = "",
-                    border = Inv.RARITY[item.rarity or "common"] })
+                node:set_ui({ title = "", body = string.format("%s\n[%d]  %d GOLD", tile_label(item), i, price),
+                    border = Inv.RARITY[item.rarity or "common"], align_h = "center", align_v = "bottom" })
             end
         end
     end
@@ -297,8 +338,19 @@ end
 -- ---------------------------------------------------------------------------
 function Inv.update(D)
     Inv.ensure(D)
-    if D.state == "town" and D._town_shop then Inv.clear(D); return end
     if not (runtime_ui and runtime_ui.get_state) then return end
+    if D.state == "town" and D._town_shop then
+        local hover
+        for _, s in ipairs(Inv.store_slots(D)) do
+            local item = D.store_offers and D.store_offers[s.key]
+            local stt = item and runtime_ui.get_state(SCREEN, s.id)
+            if stt and stt.hovered then hover = { item = item, slot = s, mx = stt.mouse_x, my = stt.mouse_y } end
+            if stt and stt.right_clicked and D.buy_store_offer then D:buy_store_offer(s.key) end
+        end
+        D._inv_drag, D._inv_selected, D._inv_hover = nil, nil, hover
+        Inv.draw_overlay(D)
+        return
+    end
     local slots = Inv.slots(D)
     if #slots == 0 then return end
 
@@ -330,6 +382,7 @@ function Inv.update(D)
         if rclick_slot.kind == "grid" then Inv.try_equip(D, rclick_slot.key) else Inv.try_unequip(D, rclick_slot.key) end
         D._inv_hover = nil -- the item just moved; drop the stale tooltip this frame
         D._inv_last_click = nil
+        D._inv_selected = nil
     end
 
     -- Drag in flight: follow the cursor; on release, hit-test the LIVE rects (so a
@@ -360,6 +413,7 @@ function Inv.update(D)
                     if D.haptic then D:haptic(12) end
                     changed(D)
                     D._inv_last_click = nil
+                    D._inv_selected = nil
                 elseif target and target.id ~= drag.from.id then
                     Inv.move(D, drag.from, target)
                     D._inv_last_click = nil
@@ -379,8 +433,10 @@ function Inv.update(D)
         if last and last.id == tap_slot.id and (now - last.t) <= 0.35 then
             if tap_slot.kind == "grid" then Inv.try_equip(D, tap_slot.key) else Inv.try_unequip(D, tap_slot.key) end
             D._inv_last_click = nil
+            D._inv_selected = nil
         else
             D._inv_last_click = { id = tap_slot.id, t = now }
+            D._inv_selected = { item = Inv.item_at(D, tap_slot), slot = tap_slot }
         end
     end
 
@@ -398,7 +454,7 @@ local COMPARE_STATS = {
     { key = "dps", label = "Damage", fmt = "%+.0f" },
     { key = "attack_range", label = "Range", fmt = "%+.1f" },
     { key = "cleave", label = "Shots", fmt = "%+.0f" },
-    { key = "fire_interval", label = "Fire time", fmt = "%+.2fs" },
+    { key = "fire_interval", label = "Fire time", fmt = "%+.2fs", lower = true },
     { key = "speed", label = "Move", fmt = "%+.1f" },
     { key = "equip_load", label = "Weight", fmt = "%+.0f" },
     { key = "armor", label = "Armor", fmt = "%+.0f%%", pct = true },
@@ -408,11 +464,23 @@ local COMPARE_STATS = {
     { key = "pickup_range", label = "Pickup", fmt = "%+.1f" },
     { key = "gold_find", label = "Gold", fmt = "%+.0f%%", pct = true },
     { key = "dodge_charges_max", label = "Dodges", fmt = "%+.0f" },
-    { key = "dodge_recharge", label = "Dodge CD", fmt = "%+.1fs" },
+    { key = "dodge_dist", label = "Dodge dist", fmt = "%+.1fm" },
+    { key = "dodge_recharge", label = "Dodge CD", fmt = "%+.1fs", lower = true },
+    { key = "dodge_iframes", label = "I-frames", fmt = "%+.2fs" },
+    { key = "dodge_guard", label = "Dash guard", fmt = "%+.0f%%", pct = true },
+    { key = "poise", label = "Poise", fmt = "%+.0f%%", pct = true },
+    { key = "thorns", label = "Retaliate", fmt = "%+.1f" },
+    { key = "whirl", label = "Orbit", fmt = "%+.0f" },
+    { key = "bleed_on_crit", label = "Bleed", fmt = "%+.1f/s" },
+    { key = "dodge_blades", label = "Dodge blade", fmt = "%+.2f" },
+    { key = "retaliation_orbit", label = "Retal orbit", fmt = "%+.2f" },
+    { key = "flask_nova", label = "Flask nova", fmt = "%+.2f" },
+    { key = "mana_burst", label = "Mana burst", fmt = "%+.2f" },
 }
 
-function Inv.compare_text(D, hv)
-    if not (hv.slot and hv.slot.kind == "grid" and hv.item.slot and D.gear_preview_stats) then return nil end
+function Inv.compare_text(D, hv, polarity)
+    if not (hv.slot and (hv.slot.kind == "grid" or hv.slot.kind == "store")
+        and hv.item.slot and D.gear_preview_stats) then return nil end
     local slot = hv.item.slot
     local equipped = D.gear_equipped and D.gear_equipped[slot]
     local before = D:gear_preview_stats()
@@ -420,17 +488,33 @@ function Inv.compare_text(D, hv)
     local after = D:gear_preview_stats()
     D.gear_equipped[slot] = equipped
     local lines = {}
+    if not polarity and after.equip_load_tier ~= before.equip_load_tier then
+        lines[#lines + 1] = string.format("%-10s %s -> %s", "Load tier", before.equip_load_tier, after.equip_load_tier)
+    end
     for _, st in ipairs(COMPARE_STATS) do
         local d = (after[st.key] or 0.0) - (before[st.key] or 0.0)
         if st.pct then d = d * 100.0 end
-        if math.abs(d) > 0.005 then
+        local good = st.lower and d < 0.0 or not st.lower and d > 0.0
+        if math.abs(d) > 0.005 and (not polarity or (polarity > 0) == good) then
             lines[#lines + 1] = string.format("%-10s " .. st.fmt, st.label, d)
         end
     end
     if #lines == 0 then return nil end
+    if polarity then return table.concat(lines, "\n") end
     local head = equipped and ("- vs " .. tostring(equipped.name or equipped.id) .. " -")
         or "- if equipped -"
     return head .. "\n" .. table.concat(lines, "\n")
+end
+
+function Inv.item_details(item)
+    local tags = item.tags or {}
+    local mana = "-"
+    for _, tag in ipairs(tags) do if tag == "Mana" then mana = "35" end end
+    return string.format("%s\n%s %s\nTags: %s\nClass: %s   Weight: %s   Skill mana: %s\n%s\n%s",
+        tostring(item.name or item.id), string.upper(item.rarity or "common"),
+        Inv.SLOT_LABEL[item.slot] or "?", #tags > 0 and table.concat(tags, " / ") or "General",
+        item.class or "Any", item.weight or 0, mana, item.desc or "No mechanics.",
+        item.lore or "Recovered field gear, built to survive another wave.")
 end
 
 -- ---------------------------------------------------------------------------
@@ -474,9 +558,12 @@ function Inv.draw_overlay(D)
 
     -- Per-item slot icons: text-style widgets can't render images, so each
     -- occupied tile gets a transient image quad floated over its upper half.
-    for _, s in ipairs(Inv.slots(D)) do
+    local in_shop = D.state == "town" and D._town_shop
+    local icon_slots = in_shop and Inv.store_slots(D) or Inv.slots(D)
+    for _, s in ipairs(icon_slots) do
         local id = "inv_ic_" .. s.id
-        local item = Inv.item_at(D, s)
+        local item = s.kind == "store" and (D.store_offers and D.store_offers[s.key]) or nil
+        if s.kind ~= "store" then item = Inv.item_at(D, s) end
         local icon = item and Inv.SLOT_ICON[item.slot]
         local r = icon and valid(s.node) and s.node.get_ui_rect and s.node:get_ui_rect() or nil
         if r and r.x and not (D._inv_drag and D._inv_drag.from.id == s.id) then
@@ -488,6 +575,53 @@ function Inv.draw_overlay(D)
                 no_input = true, bring_to_front = true, z = OVERLAY_Z - 1000.0,
             })
         else
+            runtime_ui.remove(SCREEN, id)
+        end
+    end
+    if in_shop then
+        for _, s in ipairs(Inv.slots(D)) do runtime_ui.remove(SCREEN, "inv_ic_" .. s.id) end
+    else
+        for _, s in ipairs(Inv.store_slots(D)) do runtime_ui.remove(SCREEN, "inv_ic_" .. s.id) end
+    end
+
+    local selected = D._inv_selected
+    local b = Inv.bind(D)
+    local sr = selected and selected.item and b and valid(b.stats_panel)
+        and b.stats_panel.get_ui_rect and b.stats_panel:get_ui_rect() or nil
+    if sr and sr.x and not D._inv_drag then
+        local item = selected.item
+        runtime_ui.set_quad(SCREEN, "inv_selected_panel", {
+            x = sr.x, y = sr.y, width = sr.w, height = sr.h, style = "text",
+            fill = { 0.035, 0.04, 0.065, 0.99 }, border = Inv.RARITY[item.rarity or "common"],
+            body = "", no_input = true, bring_to_front = true, z = OVERLAY_Z - 400.0,
+        })
+        runtime_ui.set_quad(SCREEN, "inv_selected_icon", {
+            x = sr.x + 14.0, y = sr.y + 14.0, width = 84.0, height = 84.0,
+            style = "image", image = Inv.SLOT_ICON[item.slot], fill = { 0.0, 0.0, 0.0, 0.0 },
+            border = { 0.0, 0.0, 0.0, 0.0 }, no_input = true, bring_to_front = true, z = OVERLAY_Z - 300.0,
+        })
+        runtime_ui.set_quad(SCREEN, "inv_selected_text", {
+            x = sr.x + 108.0, y = sr.y + 12.0, width = sr.w - 122.0, height = 148.0, style = "text",
+            fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 }, body = Inv.item_details(item),
+            text_color = { 0.92, 0.94, 0.98, 1.0 }, font_scale = 1.15,
+            align_h = "left", align_v = "top", no_input = true, bring_to_front = true, z = OVERLAY_Z - 200.0,
+        })
+        local good = Inv.compare_text(D, selected, 1)
+        local bad = Inv.compare_text(D, selected, -1)
+        runtime_ui.set_quad(SCREEN, "inv_selected_good", {
+            x = sr.x + 14.0, y = sr.y + 174.0, width = sr.w * 0.5 - 20.0, height = sr.h - 186.0, style = "text",
+            fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+            body = good and ("BETTER\n" .. good) or "", text_color = { 0.42, 0.95, 0.55, 1.0 }, font_scale = 1.0,
+            align_h = "left", align_v = "top", no_input = true, bring_to_front = true, z = OVERLAY_Z - 200.0,
+        })
+        runtime_ui.set_quad(SCREEN, "inv_selected_bad", {
+            x = sr.x + sr.w * 0.5, y = sr.y + 174.0, width = sr.w * 0.5 - 14.0, height = sr.h - 186.0, style = "text",
+            fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+            body = bad and ("WORSE\n" .. bad) or "", text_color = { 1.0, 0.38, 0.34, 1.0 }, font_scale = 1.0,
+            align_h = "left", align_v = "top", no_input = true, bring_to_front = true, z = OVERLAY_Z - 200.0,
+        })
+    else
+        for _, id in ipairs({ "inv_selected_panel", "inv_selected_icon", "inv_selected_text", "inv_selected_good", "inv_selected_bad" }) do
             runtime_ui.remove(SCREEN, id)
         end
     end
@@ -528,15 +662,16 @@ function Inv.draw_overlay(D)
 
     local hv = D._inv_hover
     if hv and hv.item and not D._inv_drag then
-        local tip = string.format("%s\n%s  -  %s\n%s%s",
-            hv.item.name or hv.item.id, Inv.SLOT_LABEL[hv.item.slot] or "?",
-            string.upper(hv.item.rarity or "common"), hv.item.desc or "",
-            hv.item.weight and ("\nWeight: " .. tostring(hv.item.weight)) or "")
+        local tip = Inv.item_details(hv.item)
+        if hv.slot and hv.slot.kind == "store" then
+            local equipped = D.gear_equipped and D.gear_equipped[hv.item.slot]
+            tip = tip .. "\nEquipped: " .. tostring(equipped and (equipped.name or equipped.id) or "Nothing")
+        end
         local cmp = Inv.compare_text(D, hv)
         if cmp then tip = tip .. "\n" .. cmp end
         -- The engine auto-fits the box to the text (fit=true); tw/th are generous
         -- upper bounds used only to keep the popup on-screen near the edges.
-        local tw, th = S(420.0), S(190.0)
+        local tw, th = S(420.0), S(340.0)
         local tx = (hv.mx or 0.0) + S(18.0)
         local ty = (hv.my or 0.0) + S(12.0)
         if tx + tw > rw then tx = rw - tw - S(8.0) end
@@ -573,7 +708,13 @@ function Inv.clear(D)
         runtime_ui.remove(SCREEN, "inv_ghost")
         runtime_ui.remove(SCREEN, "inv_tip")
         runtime_ui.remove(SCREEN, "inv_trash")
+        runtime_ui.remove(SCREEN, "inv_selected_panel")
+        runtime_ui.remove(SCREEN, "inv_selected_icon")
+        runtime_ui.remove(SCREEN, "inv_selected_text")
+        runtime_ui.remove(SCREEN, "inv_selected_good")
+        runtime_ui.remove(SCREEN, "inv_selected_bad")
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
+        for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
         for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
     end
     D._inv_drag = nil

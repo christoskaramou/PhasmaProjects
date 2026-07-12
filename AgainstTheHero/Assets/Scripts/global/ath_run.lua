@@ -6,6 +6,6 @@
 -- The menu buttons (shared/flow.lua) write the player's choices here; the game
 -- scene's launcher (shared/game_boot.lua) reads them to start the arena.
 _G.ATH_RUN = _G.ATH_RUN or {
-    hero_index = 1,        -- 1-based index into arena config.hero.classes (1=ranger, 2=brawler, 3=sower)
+    hero_index = 1,        -- 1-based index into arena config.hero.classes
     battlefield = "arena", -- modes/<battlefield>/mode.lua (only "arena" is manual-playable today)
 }

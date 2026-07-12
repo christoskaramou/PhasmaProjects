@@ -235,7 +235,7 @@
         {
             "name": "UI Ranger",
             "local_matrix": [
-                520.0,
+                440.0,
                 0.0,
                 0.0,
                 0.0,
@@ -247,7 +247,7 @@
                 0.0,
                 1.0,
                 0.0,
-                700.0,
+                256.0,
                 680.0,
                 0.0,
                 1.0
@@ -317,7 +317,7 @@
         {
             "name": "UI Brawler",
             "local_matrix": [
-                520.0,
+                440.0,
                 0.0,
                 0.0,
                 0.0,
@@ -329,7 +329,7 @@
                 0.0,
                 1.0,
                 0.0,
-                1280.0,
+                768.0,
                 680.0,
                 0.0,
                 1.0
@@ -399,7 +399,7 @@
         {
             "name": "UI Sower",
             "local_matrix": [
-                520.0,
+                440.0,
                 0.0,
                 0.0,
                 0.0,
@@ -411,7 +411,7 @@
                 0.0,
                 1.0,
                 0.0,
-                1860.0,
+                1280.0,
                 680.0,
                 0.0,
                 1.0
@@ -465,6 +465,171 @@
                     0.5
                 ],
                 "font_scale": 1.799999,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
+            },
+            "parent": 2
+        },
+
+        {
+            "name": "UI Mage",
+            "local_matrix": [
+                440.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                1792.0,
+                680.0,
+                0.0,
+                1.0
+            ],
+            "script": "Assets/Scripts/shared/flow.lua",
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hero_mage",
+                "title": "MAGE",
+                "body": "Command fire, ice, earth, or air with mana-powered spells.",
+                "action": "click",
+                "action_function": "on_pick_mage",
+                "fill": [
+                    0.1,
+                    0.109999,
+                    0.14,
+                    0.959999
+                ],
+                "border": [
+                    0.58,
+                    0.48,
+                    1.0,
+                    0.949999
+                ],
+                "accent": [
+                    0.58,
+                    0.48,
+                    1.0,
+                    1.0
+                ],
+                "text_color": [
+                    0.97,
+                    0.98,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 1.799999,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": false
+            },
+            "parent": 2
+        },
+        {
+            "name": "UI Rogue",
+            "local_matrix": [
+                440.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                320.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                2304.0,
+                680.0,
+                0.0,
+                1.0
+            ],
+            "script": "Assets/Scripts/shared/flow.lua",
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "hero_rogue",
+                "title": "ROGUE",
+                "body": "Regenerate energy for poison, hemorrhage, shadow, and execution skills.",
+                "action": "click",
+                "action_function": "on_pick_rogue",
+                "fill": [
+                    0.1,
+                    0.109999,
+                    0.14,
+                    0.959999
+                ],
+                "border": [
+                    0.62,
+                    0.24,
+                    0.72,
+                    0.949999
+                ],
+                "accent": [
+                    0.62,
+                    0.24,
+                    0.72,
+                    1.0
+                ],
+                "text_color": [
+                    0.97,
+                    0.98,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    0.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "font_scale": 1.6,
                 "text_align_h": 0,
                 "text_align_v": 0,
                 "text_offset": [

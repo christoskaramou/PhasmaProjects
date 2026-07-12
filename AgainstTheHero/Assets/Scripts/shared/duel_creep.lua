@@ -438,6 +438,9 @@ local function reset_rig(self)
     if valid(self.parts.body) then self.parts.body:set_position(v3(arch.body_pos, { 0.0, 0.32, 0.0 })) end
     if valid(self.parts.head) then self.parts.head:set_position(v3(arch.head_pos, { 0.0, 0.72, 0.0 })) end
     if valid(self.parts.weapon) then self.parts.weapon:set_rotation(vec3(0.0, 0.0, 0.0)) end
+    tint(self.parts.body, arch.color, 0.16)
+    tint(self.parts.head, arch.head or arch.color, 0.16)
+    tint(self.parts.weapon, arch.weapon or { 0.52, 0.52, 0.52 }, 0.12)
     self.visual_alive = valid(self.parts.body)
     return true
 end
@@ -483,6 +486,9 @@ function Creep.create(args)
         split_into = arch.split_into,
         tint = arch.tint,
         boss = arch.boss == true,
+        boss_arc = arch.boss_arc,
+        tactical_role = arch.tactical_role,
+        flask_hunter = arch.flask_hunter == true,
     }
     local self = {
         id = args.id,
@@ -573,7 +579,8 @@ function Creep.attack_projectile(self, target, damage)
 
     local duration = projectile_duration(self, target, spec)
     local max_flight_time = spec.max_flight_time or math.max(duration + (spec.flight_grace or 0.08), 0.08)
-    local cooldown = spec.cooldown or 0.65
+    local cooldown = (spec.cooldown or 0.65)
+        * (self.boss_phase2 and ((self.stats.phase2 or {}).cooldown_mult or 0.65) or 1.0)
     local jitter = (projectile_phase(self.id) - 0.5) * (spec.cooldown_jitter or 0.24)
     self.projectile_t = math.max(cooldown + jitter, 0.20)
     if spec.allow_overlap ~= true then
@@ -649,6 +656,7 @@ end
 function Creep.knock(self, kx, kz)
     if not self or not self.alive then return end
     local resist = (self.stats and self.stats.knockback_resist) or 0.0
+    if (self.poise_break_t or 0.0) > 0.0 then resist = resist - (self.poise_reduction or 0.0) end
     local keep = 1.0 - math.min(math.max(resist, 0.0), 1.0)
     self.knock_x = (self.knock_x or 0.0) + (kx or 0.0) * keep
     self.knock_z = (self.knock_z or 0.0) + (kz or 0.0) * keep
@@ -783,7 +791,9 @@ function Creep.update(self, dt, field, map, hero)
     local charge_mult = 1.0
     local cg = self.stats.charge
     if cg then
-        self.charge_cd = math.max(0.0, (self.charge_cd or cg.cooldown or 3.0) - dt)
+        local charge_cd = (cg.cooldown or 3.0)
+            * (self.boss_phase2 and ((self.stats.phase2 or {}).cooldown_mult or 0.65) or 1.0)
+        self.charge_cd = math.max(0.0, (self.charge_cd or charge_cd) - dt)
         if self.charge_state == "windup" then
             self.charge_t = (self.charge_t or 0.0) - dt
             vx, vz = 0.0, 0.0
@@ -797,7 +807,7 @@ function Creep.update(self, dt, field, map, hero)
             charge_mult = cg.mult or 3.0
             if self.charge_t <= 0.0 then
                 self.charge_state = nil
-                self.charge_cd = cg.cooldown or 3.0
+                self.charge_cd = charge_cd
             end
         elseif self.charge_cd <= 0.0 and hero_dist < (cg.trigger or 7.0) and hero_dist > 1.1 then
             self.charge_state = "windup"
@@ -846,7 +856,7 @@ function Creep.update(self, dt, field, map, hero)
         end
         speed_scale = Creep.SPEED_SCALE + (1.0 - Creep.SPEED_SCALE) * slow_t
     end
-    local speed = (self.stats.speed or 1.0) * speed_scale * charge_mult
+    local speed = (self.stats.speed or 1.0) * speed_scale * charge_mult * (self.spell_slow_mult or 1.0)
     -- Hit knockback: a short decaying impulse added on top of pursuit, so a hit
     -- visibly shoves the creep back (stagger) without permanently changing course.
     local kx = self.knock_x or 0.0
@@ -892,8 +902,10 @@ function Creep.update(self, dt, field, map, hero)
 
     if self.stats.summon_archetype then
         self.summon_t = (self.summon_t or 0.0) + dt
-        if self.summon_t >= (self.stats.summon_every or 3.0) then
-            self.summon_t = self.summon_t - (self.stats.summon_every or 3.0)
+        local summon_every = (self.stats.summon_every or 3.0)
+            * (self.boss_phase2 and ((self.stats.phase2 or {}).summon_mult or 0.70) or 1.0)
+        if self.summon_t >= summon_every then
+            self.summon_t = self.summon_t - summon_every
             event = event or {}
             event.summon = self.stats.summon_archetype
         end
