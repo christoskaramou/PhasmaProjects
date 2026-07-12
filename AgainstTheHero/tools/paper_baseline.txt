@@ -1,0 +1,42 @@
+1|none|ranger|bleed|CLEAR|77
+1|none|brawler|bleed|CLEAR|32
+1|none|sower|thorns|CLEAR|85
+1|none|mage|fire|CLEAR|103
+1|none|rogue|poison|CLEAR|63
+1|none|warrior|bleed|CLEAR|41
+1|none|necromancer|curse|CLEAR|100
+2|mid|ranger|bleed|CLEAR|65
+2|mid|brawler|bleed|CLEAR|40
+2|mid|sower|thorns|CLEAR|85
+2|mid|mage|fire|CLEAR|86
+2|mid|rogue|poison|CLEAR|54
+2|mid|warrior|bleed|CLEAR|50
+2|mid|necromancer|curse|CLEAR|84
+3|top|ranger|bleed|CLEAR|22
+3|top|brawler|bleed|CLEAR|23
+3|top|sower|thorns|CLEAR|34
+3|top|mage|fire|CLEAR|38
+3|top|rogue|poison|CLEAR|26
+3|top|warrior|bleed|CLEAR|28
+3|top|necromancer|curse|CLEAR|35
+5|top|ranger|bleed|CLEAR|68
+5|top|brawler|bleed|CLEAR|54
+5|top|sower|thorns|CLEAR|84
+5|top|mage|fire|DIED w6|-1
+5|top|rogue|poison|CLEAR|59
+5|top|warrior|bleed|CLEAR|65
+5|top|necromancer|curse|CLEAR|88
+8|top|ranger|bleed|CLEAR|119
+8|top|brawler|bleed|CLEAR|92
+8|top|sower|thorns|CLEAR|144
+8|top|mage|fire|DIED w1|-1
+8|top|rogue|poison|DIED w1|-1
+8|top|warrior|bleed|CLEAR|112
+8|top|necromancer|curse|DIED w1|-1
+11|top|ranger|bleed|DIED w1|-1
+11|top|brawler|bleed|CLEAR|68
+11|top|sower|thorns|DIED w1|-1
+11|top|mage|fire|DIED w1|-1
+11|top|rogue|poison|DIED w1|-1
+11|top|warrior|bleed|CLEAR|79
+11|top|necromancer|curse|DIED w1|-1
