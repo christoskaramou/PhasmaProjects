@@ -10,9 +10,11 @@ param(
     [int]$Wave = 1,
     [int]$Map = 0,
     [int]$Seconds = 30,
-    [ValidateSet("ranger", "brawler", "sower", "mage", "rogue")]
+    [ValidateSet("ranger", "brawler", "sower", "mage", "rogue", "warrior", "necromancer")]
     [string]$HeroClass = "ranger",
-    [ValidateSet("", "fire", "ice", "earth", "air", "poison", "hemorrhage", "shadow", "execute")]
+    [ValidateSet("", "poison", "bleed", "piercing", "frenzy", "shockwave", "explosion", "seed",
+        "thorns", "fire", "frost", "earth", "shadow", "daggers", "daze", "preservation", "curse",
+        "vampirism", "summoner")]
     [string]$HeroSpec = "",
     [ValidateSet("", "mid", "top")]
     [string]$GearSet = "",

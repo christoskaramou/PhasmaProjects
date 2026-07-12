@@ -36,6 +36,8 @@ function on_pick_brawler() run().hero_index = 2; log("hero = brawler"); go("map.
 function on_pick_sower()   run().hero_index = 3; log("hero = sower");   go("map.pescene") end
 function on_pick_mage()    run().hero_index = 4; log("hero = mage");    go("map.pescene") end
 function on_pick_rogue()   run().hero_index = 5; log("hero = rogue");   go("map.pescene") end
+function on_pick_warrior() run().hero_index = 6; log("hero = warrior"); go("map.pescene") end
+function on_pick_necromancer() run().hero_index = 7; log("hero = necromancer"); go("map.pescene") end
 
 -- map: battlefield = modes/<id>/mode.lua (only arena is manual-playable today)
 function on_map_arena() run().battlefield = "arena"; log("battlefield = arena"); go("game.pescene") end

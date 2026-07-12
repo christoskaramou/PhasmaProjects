@@ -3,6 +3,16 @@
         "right_handed": false,
         "reverse_depth": true,
         "frustum_culling": true,
+        "occlusion_culling": false,
+        "occlusion_culling_bias": 0.002,
+        "lod_enabled": true,
+        "lod_count": 4,
+        "lod_bias": 1.0,
+        "lod_distances": [
+            30.0,
+            90.0,
+            250.0
+        ],
         "shadows": true,
         "shadow_map_size": 2048,
         "num_cascades": 4,
@@ -12,8 +22,17 @@
         "shadow_fade_fraction": 0.15,
         "shadow_filter_radius": 0.75,
         "shadow_debug_mode": 0,
+        "fog": false,
+        "fog_density": 0.008,
+        "fog_start": 150.0,
         "render_scale": 0.75,
         "ssao": true,
+        "ssao_radius": 0.5,
+        "ssao_bias": 0.025,
+        "ssao_intensity": 0.5,
+        "ssao_power": 1.0,
+        "ssao_samples": 16,
+        "forward_plus": true,
         "fxaa": false,
         "taa": true,
         "cas_sharpening": true,
@@ -58,6 +77,14 @@
         "draw_aabbs": false,
         "draw_grid": true,
         "aabbs_depth_aware": true,
+        "selection_outline": true,
+        "selection_outline_color_r": 0.05,
+        "selection_outline_color_g": 0.62,
+        "selection_outline_color_b": 1.0,
+        "selection_outline_color_a": 0.949998,
+        "selection_outline_thickness": 3.0,
+        "selection_outline_inner_fade": 2.0,
+        "selection_outline_outer_fade": 6.0,
         "dynamic_rendering": true,
         "ray_tracing_support": true,
         "render_mode": 1,
@@ -71,6 +98,7 @@
     "nodes": [
         {
             "name": "Camera_0",
+            "parent": -1,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -95,18 +123,18 @@
                 "fovx": 1.518435,
                 "orthographic_size": 10.0,
                 "near_plane": 0.004999,
-                "far_plane": 3.4028234663852886e+38,
+                "far_plane": 3.4028234663852886e38,
                 "speed": 3.5,
                 "euler": [
                     -0.0,
                     0.0,
                     0.0
                 ]
-            },
-            "parent": -1
+            }
         },
         {
             "name": "UI",
+            "parent": -1,
             "local_matrix": [
                 1.0,
                 0.0,
@@ -124,11 +152,11 @@
                 0.0,
                 0.0,
                 1.0
-            ],
-            "parent": -1
+            ]
         },
         {
             "name": "UI Title",
+            "parent": 1,
             "local_matrix": [
                 1200.0,
                 0.0,
@@ -203,11 +231,11 @@
                 "draggable": false,
                 "no_input": true,
                 "bring_to_front": false
-            },
-            "parent": 1
+            }
         },
         {
             "name": "UI Play",
+            "parent": 1,
             "local_matrix": [
                 420.0,
                 0.0,
@@ -227,6 +255,7 @@
                 1.0
             ],
             "script": "Assets/Scripts/shared/flow.lua",
+            "scriptRunMode": 0,
             "component_flags": 528,
             "runtime_ui": {
                 "type": "button",
@@ -284,8 +313,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": false
-            },
-            "parent": 1
+            }
         }
     ],
     "lights": [],
@@ -306,7 +334,7 @@
             "projection": "orthographic",
             "orthographic_size": 10.0,
             "near_plane": 0.004999,
-            "far_plane": 3.4028234663852886e+38,
+            "far_plane": 3.4028234663852886e38,
             "speed": 3.5,
             "node_index": 0
         }
