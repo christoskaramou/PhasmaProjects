@@ -10,8 +10,10 @@ param(
     [int]$Wave = 1,
     [int]$Map = 0,
     [int]$Seconds = 30,
-    [ValidateSet("ranger", "brawler", "sower")]
+    [ValidateSet("ranger", "brawler", "sower", "mage", "rogue")]
     [string]$HeroClass = "ranger",
+    [ValidateSet("", "fire", "ice", "earth", "air", "poison", "hemorrhage", "shadow", "execute")]
+    [string]$HeroSpec = "",
     [ValidateSet("", "mid", "top")]
     [string]$GearSet = "",
     [switch]$KeepAlive
@@ -39,6 +41,7 @@ $log = Join-Path $exeDir "PhasmaEngine.log"
 $env:ATH_DUEL_AUTOPLAY = "1"
 $env:ATH_DUEL_WAVE = "$Wave"
 $env:ATH_HERO_CLASS = $HeroClass
+if ($HeroSpec) { $env:ATH_HERO_SPEC = $HeroSpec } else { Remove-Item Env:ATH_HERO_SPEC -ErrorAction SilentlyContinue }
 if ($Map -gt 0) { $env:ATH_DUEL_MAP = "$Map" } else { Remove-Item Env:ATH_DUEL_MAP -ErrorAction SilentlyContinue }
 if ($GearSet) { $env:ATH_DUEL_GEARSET = $GearSet } else { Remove-Item Env:ATH_DUEL_GEARSET -ErrorAction SilentlyContinue }
 

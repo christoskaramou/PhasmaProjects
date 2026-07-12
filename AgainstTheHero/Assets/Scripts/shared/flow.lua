@@ -30,10 +30,12 @@ end
 -- intro --------------------------------------------------------------------
 function on_play() go("hero_select.pescene") end
 
--- hero_select: index into arena config.hero.classes (1=ranger, 2=brawler, 3=sower)
+-- hero_select: index into arena config.hero.classes.
 function on_pick_ranger()  run().hero_index = 1; log("hero = ranger");  go("map.pescene") end
 function on_pick_brawler() run().hero_index = 2; log("hero = brawler"); go("map.pescene") end
 function on_pick_sower()   run().hero_index = 3; log("hero = sower");   go("map.pescene") end
+function on_pick_mage()    run().hero_index = 4; log("hero = mage");    go("map.pescene") end
+function on_pick_rogue()   run().hero_index = 5; log("hero = rogue");   go("map.pescene") end
 
 -- map: battlefield = modes/<id>/mode.lua (only arena is manual-playable today)
 function on_map_arena() run().battlefield = "arena"; log("battlefield = arena"); go("game.pescene") end

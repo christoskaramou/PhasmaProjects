@@ -317,7 +317,7 @@ def build_game(path):
 def main():
     build_simple(os.path.join(SCENES, "intro.pescene"), ["UI Title", "UI Play"])
     build_simple(os.path.join(SCENES, "hero_select.pescene"),
-                 ["UI Title", "UI Ranger", "UI Brawler", "UI Sower", "UI Back"])
+                 ["UI Title", "UI Ranger", "UI Brawler", "UI Sower", "UI Mage", "UI Rogue", "UI Back"])
     build_simple(os.path.join(SCENES, "map.pescene"),
                  ["UI Title", "UI Arena", "UI Locked Spud", "UI Locked Alien", "UI Back"])
     build_game(os.path.join(SCENES, "game.pescene"))

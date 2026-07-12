@@ -4578,7 +4578,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": true,
-                "action_function": "on_buy_helmet"
+                "action_function": ""
             },
             "script": "Assets/Scripts/shared/hud/town_store.lua",
             "parent": 59
@@ -4663,7 +4663,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": true,
-                "action_function": "on_buy_body"
+                "action_function": ""
             },
             "script": "Assets/Scripts/shared/hud/town_store.lua",
             "parent": 59
@@ -4748,7 +4748,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": true,
-                "action_function": "on_buy_pants"
+                "action_function": ""
             },
             "script": "Assets/Scripts/shared/hud/town_store.lua",
             "parent": 59
@@ -4833,7 +4833,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": true,
-                "action_function": "on_buy_gloves"
+                "action_function": ""
             },
             "script": "Assets/Scripts/shared/hud/town_store.lua",
             "parent": 59
@@ -4918,7 +4918,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": true,
-                "action_function": "on_buy_weapon"
+                "action_function": ""
             },
             "script": "Assets/Scripts/shared/hud/town_store.lua",
             "parent": 59
@@ -5003,7 +5003,7 @@
                 "draggable": false,
                 "no_input": false,
                 "bring_to_front": true,
-                "action_function": "on_buy_jewelry"
+                "action_function": ""
             },
             "script": "Assets/Scripts/shared/hud/town_store.lua",
             "parent": 59
@@ -5193,7 +5193,7 @@
                 1.0,
                 0.0,
                 0.0,
-                560.0,
+                450.0,
                 0.0,
                 1.0
             ],
