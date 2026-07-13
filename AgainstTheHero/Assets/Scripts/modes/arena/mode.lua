@@ -63,11 +63,9 @@ return {
             cam_offset = View.CAM_OFFSET,
         },
         topdown = {
-            -- 1.0 = the sizes as actually rendered (build-time char scale).
-            -- KNOWN LIMITATION: runtime sprite-scale multipliers don't reach
-            -- the renderer reliably (engine transform/flush issue — needs a
-            -- dedicated engine session with a minimal repro). Until then the
-            -- look is the baseline and the hitboxes are derived to MATCH it.
+            -- World-size multiplier on the hero body quad (hitbox tracks it).
+            -- Bumped after animated sheets: fit-to-cell left more transparent
+            -- padding, so 1.0 read tiny vs creeps. Tune with console O/P + R.
             hero_scale = 1.0,
             creep_scale = 1.0,
         },
@@ -83,7 +81,7 @@ return {
             -- body_radius is derived from the rendered sprite size in
             -- ath_topdown_view, not set here.
             speed = 8.5, kite_speed = 8.5,
-            sprite_texture = Spud.tex.hero,
+            sprite_texture = "Textures/modes/arena/hero_ranger.png",
             -- Selectable classes (chosen on a pick screen at run start). Each is an
             -- attack IDENTITY — ranged bolts, melee cleave, or seed-scatter — that
             -- gear/cards later bend. Stats here override the hero baseline above.
@@ -226,6 +224,10 @@ return {
             -- Per-frame HUD overlay hook (runs at the end of update_hud, every frame
             -- in all states: classpick/combat/pause/end).
             draw_hud = function(D)
+                -- Draft/town/classpick freeze combat_tick, but the adopted scene hero
+                -- still ships with Spud's chicken texture until View.tick skins it.
+                if D.state ~= "combat" then View.tick(D) end
+
                 -- Hide the attack-range disc. The Duel builds a Hero_Aura cylinder
                 -- sized to attack_range*2 (a big ring) and re-scales it every frame;
                 -- it renders on the OPAQUE deferred path (ignores base_color alpha),

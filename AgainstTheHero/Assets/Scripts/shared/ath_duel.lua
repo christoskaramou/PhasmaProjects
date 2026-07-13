@@ -1025,6 +1025,7 @@ function Duel:create_hero()
             -- off a root-handle change, but an adopted root is reused across class
             -- picks / R-resets, so clear it or a class swap keeps the old sprite.
             self._topdown_hero_root = nil
+            self._topdown_hero_sheet = nil
         end
     end
     if not hero.adopted then
@@ -1063,7 +1064,9 @@ function Duel:create_hero()
     -- World character scale — make the hero read clearly at the iso distance.
     local cs = Art.s("char")
     local base = (spec.actor and spec.actor.scale) or 1.0
-    hero.world_scale = base * cs
+    local hs = (self.config.topdown and self.config.topdown.hero_scale) or 1.0
+    hero.topdown_base_world_scale = base * cs
+    hero.world_scale = hero.topdown_base_world_scale * hs
     if Art.valid(hero.root) then
         hero.root:set_scale(vec3(hero.world_scale, hero.world_scale, hero.world_scale))
         hero.root:set_position(vec3(hero.x, 0.0, hero.z))
@@ -1132,7 +1135,7 @@ function Duel:try_dodge(dirx, dirz)
     hero.facing = math.atan(dirx, dirz)
     self:haptic(15)
     Art.burst("ath_dodge", vec3(hero.x, 0.2, hero.z),
-        { preset = "hero_take", count = 10, life_max = 0.25, spawn_radius = 0.3, size_max = 0.14,
+        { preset = "hero_take", count = 12, life_max = 0.28, spawn_radius = 0.34, size_max = 0.15,
           color_start = vec4(0.75, 0.85, 1.0, 0.9), gravity = vec3(0.0, 0.9, 0.0) })
     if (hero.dodge_blades or 0.0) > 0.0 then
         self:hero_burst(3.8, hero.dps * hero.dodge_blades, { 0.9, 0.25, 0.35 })
@@ -1513,7 +1516,7 @@ function Duel:hero_fire(hero, dt)
     end
     local mc = hero.bolt_color or { 1.0, 0.92, 0.5 }
     Art.burst("ath_hero_muzzle", vec3(hero.x, 0.7, hero.z),
-        { preset = "hero_take", count = 6, life_max = 0.16, spawn_radius = 0.18, size_max = 0.12,
+        { preset = "hero_take", count = 8, life_max = 0.20, spawn_radius = 0.22, size_max = 0.14,
           color_start = vec4(mc[1], mc[2], mc[3], 1.0) })
 end
 
@@ -1550,9 +1553,9 @@ function Duel:update_hero_projectiles(dt)
                 end
                 local ic = was_crit and { 1.0, 0.72, 0.2 } or (p.col or { 1.0, 0.92, 0.5 })
                 Art.burst("ath_hero_hit_" .. tostring(hit.id), vec3(p.x, 0.6, p.z),
-                    { preset = "enemy_take", count = was_crit and 18 or 10,
-                      life_max = was_crit and 0.26 or 0.18, spawn_radius = was_crit and 0.28 or 0.16,
-                      size_max = was_crit and 0.22 or 0.16,
+                    { preset = "enemy_take", count = was_crit and 22 or 12,
+                      life_max = was_crit and 0.30 or 0.20, spawn_radius = was_crit and 0.32 or 0.18,
+                      size_max = was_crit and 0.24 or 0.17,
                       color_start = vec4(ic[1], ic[2], ic[3], 1.0) })
                 if piercing then
                     p.hit_ids = p.hit_ids or {}

@@ -50,17 +50,19 @@ local function char_world_scale(D)
     return (Art.s and Art.s("char")) or 1.0
 end
 
--- Sprite sizes are baked at rig CREATION (post-creation scale writes don't
--- reliably reach the renderer), so the scale keys edit the CONFIG value:
--- the hero updates visually on the next R-reset, creeps on their next spawn.
--- The hero's hitbox derivation is kept in sync immediately.
+-- Scale keys edit config.topdown.hero_scale and push root scale immediately.
+-- Creeps still pick up creep_scale on their next spawn.
 local function apply_hero_scale(D)
     local hero = D.hero
     if not hero then return end
-    local base = hero.topdown_base_world_scale or hero.world_scale or char_world_scale(D)
+    local base = hero.topdown_base_world_scale or char_world_scale(D)
     local hs = (D.config.topdown and D.config.topdown.hero_scale) or 1.0
+    hero.topdown_base_world_scale = base
     hero.world_scale = base * hs
     hero.body_radius = 0.55 * hero.world_scale
+    if Art.valid(hero.root) then
+        hero.root:set_scale(vec3(hero.world_scale, hero.world_scale, hero.world_scale))
+    end
 end
 
 local function summon(D, role, n)
@@ -94,8 +96,8 @@ function Console.update(D)
 
     local td = D.config.topdown
     if td then
-        if D:is_key_down("O") then td.hero_scale = math.max(0.02, (td.hero_scale or 1.0) - SCALE_STEP); apply_hero_scale(D); c.msg = string.format("hero_scale %.2f (R to apply visual)", td.hero_scale) end
-        if D:is_key_down("P") then td.hero_scale = (td.hero_scale or 1.0) + SCALE_STEP; apply_hero_scale(D); c.msg = string.format("hero_scale %.2f (R to apply visual)", td.hero_scale) end
+        if D:is_key_down("O") then td.hero_scale = math.max(0.02, (td.hero_scale or 1.0) - SCALE_STEP); apply_hero_scale(D); c.msg = string.format("hero_scale %.2f", td.hero_scale) end
+        if D:is_key_down("P") then td.hero_scale = (td.hero_scale or 1.0) + SCALE_STEP; apply_hero_scale(D); c.msg = string.format("hero_scale %.2f", td.hero_scale) end
         if D:is_key_down("K") then td.creep_scale = math.max(0.02, (td.creep_scale or 1.0) - SCALE_STEP); c.msg = string.format("creep_scale %.2f (new spawns)", td.creep_scale) end
         if D:is_key_down("L") then td.creep_scale = (td.creep_scale or 1.0) + SCALE_STEP; c.msg = string.format("creep_scale %.2f (new spawns)", td.creep_scale) end
     end

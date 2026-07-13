@@ -25,7 +25,8 @@
 --   hooks.on_spawn       = function(D,c) View.on_spawn(D,c) end
 --   hooks.on_combat_tick = function(D,dt) View.tick(D); <mode mechanic> end
 
-local Art = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
+local Art  = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
+local Anim = ATH_COMMON.load_script("Scripts/shared/ath_sprite_anim.lua", "hero sprite anim", _ENV)
 
 local View = {}
 
@@ -185,25 +186,33 @@ end
 local function skin_hero(D)
     local hero = D.hero
     if not (hero and hero.parts and Art.valid(hero.root)) then return end
-    if D._topdown_hero_root == hero.root then return end
-    D._topdown_hero_root = hero.root
-    -- Dress with the SELECTED CLASS sprite (ranger/brawler/sower), mode default as
-    -- the fallback — must mirror create_hero's texture choice, or this re-dress (it
-    -- fires once per new hero root) reverts a picked class sprite to the mode default.
     local cls = D.active_class and D:active_class()
+    local sheet = (cls and cls.sprite_sheet) or (D.config.hero and D.config.hero.sprite_sheet) or false
+    if D._topdown_hero_root == hero.root and D._topdown_hero_sheet == sheet then
+        return
+    end
+    D._topdown_hero_root = hero.root
+    D._topdown_hero_sheet = sheet
     local tex = (cls and cls.sprite_texture) or (D.config.hero and D.config.hero.sprite_texture)
-    View.dress_sprite(hero.parts.body, tex)
+    -- Prefer Component_Sprite sheet when the engine exposes sprite.setup; otherwise
+    -- keep the single-texture dress path (older builds / missing sheets).
+    local sheet_ok = Anim.setup_hero(hero, cls or (D.config.hero and D.config.hero) or {})
+    if not sheet_ok then
+        View.dress_sprite(hero.parts.body, tex)
+        hero._sprite_anim = nil
+    end
     local cfg = topdown_config(D)
     local mult = number_or(D.config.hero and D.config.hero.sprite_scale,
         number_or(cfg.hero_scale, number_or(cfg.sprite_scale, 1.0)))
-    -- Size + hitbox both derive from base (creation-frame root scale, which is
-    -- what actually renders) x the topdown multiplier; the multiplier itself is
-    -- applied to the body part every tick in View.tick. The body quad is 1.6
-    -- units wide but the PNG has transparent padding around the figure, hence
-    -- the 0.55 (≈ visible half-width) rather than 0.8.
+    -- Size + hitbox = creation-frame base * topdown hero_scale. Root scale is
+    -- written here (and at create) so the multiplier actually shows on screen.
+    -- Body quad is 1.6 wide with PNG padding → 0.55 ≈ visible half-width.
     hero.topdown_base_world_scale = hero.topdown_base_world_scale or hero.world_scale or 1.0
     hero.world_scale = hero.topdown_base_world_scale * mult
     hero.body_radius = 0.55 * hero.world_scale
+    if Art.valid(hero.root) then
+        hero.root:set_scale(vec3(hero.world_scale, hero.world_scale, hero.world_scale))
+    end
     if DEV_HITBOXES and pe_log then
         pe_log(string.format("[TOPDOWN] hero base=%.2f mult=%.2f body_radius=%.2f",
             hero.topdown_base_world_scale, mult, hero.body_radius))
@@ -326,28 +335,38 @@ function View.tick(D)
             end
             local fx, fz = math.sin(hero.facing or 0.0), math.cos(hero.facing or 0.0)
             body:set_position(vec3(fx * pop, by, fz * pop))
-            -- Faint walk waddle while moving + a recoil tilt when struck.
             local sp = math.sqrt((hero.vel_x or 0.0) * (hero.vel_x or 0.0) + (hero.vel_z or 0.0) * (hero.vel_z or 0.0))
-            local wob = (sp > 0.1) and (math.sin(hero.phase or 0.0) * 1.8) or 0.0
             -- Footstep dust while running (cadence-timed off realtime).
             if sp > 3.0 and (D.realtime or 0.0) >= (D._hero_dust_next or 0.0) then
                 D._hero_dust_next = (D.realtime or 0.0) + 0.20
                 Art.burst("ath_hero_dust", vec3(hero.x - fx * 0.3, 0.12, hero.z - fz * 0.3),
-                    { preset = "hero_take", count = 2, life_max = 0.22, spawn_radius = 0.14,
-                      size_max = 0.10, noise_strength = 0.8,
-                      color_start = vec4(0.66, 0.58, 0.44, 0.8), gravity = vec3(0.0, 0.7, 0.0) })
+                    { preset = "hero_take", count = 3, life_max = 0.26, spawn_radius = 0.16,
+                      size_max = 0.12, noise_strength = 0.9,
+                      color_start = vec4(0.70, 0.60, 0.42, 0.85), gravity = vec3(0.0, 0.85, 0.0) })
             end
-            local t = hero.hit_flash or 0.0
-            if t > 0.0 then wob = wob + t * 70.0 end
-            body:set_rotation(vec3(View.FLAT_ROT[1], View.FLAT_ROT[2] + wob, View.FLAT_ROT[3]))
-            if t > 0.0 then
-                local k = 1.0 + 16.0 * t
-                material.set(body, "emissive", vec3(k, k, k))
-                hero._flashing = true
+            local sprite_driven = Anim.tick(hero, D.realtime or 0.0)
+            local flip = Anim.facing_roll(hero)
+            local wob = 0.0
+            if not sprite_driven then
+                -- Legacy juice when Component_Sprite sheets are unavailable.
+                wob = (sp > 0.1) and (math.sin(hero.phase or 0.0) * 1.8) or 0.0
+                local t = hero.hit_flash or 0.0
+                if t > 0.0 then wob = wob + t * 70.0 end
+                if t > 0.0 then
+                    local k = 1.0 + 16.0 * t
+                    material.set(body, "emissive", vec3(k, k, k))
+                    hero._flashing = true
+                elseif hero._flashing then
+                    material.set(body, "emissive", vec3(1.0, 1.0, 1.0))
+                    hero._flashing = false
+                end
             elseif hero._flashing then
                 material.set(body, "emissive", vec3(1.0, 1.0, 1.0))
                 hero._flashing = false
             end
+            -- Roll carries L/R mirror; yaw wobble stays on the middle axis only when
+            -- sprite clips aren't driving (legacy path).
+            body:set_rotation(vec3(View.FLAT_ROT[1], View.FLAT_ROT[2] + wob, View.FLAT_ROT[3] + flip))
         else
             flatten(body)
         end

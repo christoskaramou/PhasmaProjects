@@ -83,8 +83,9 @@ the store is town-only.
 ## Parked (do not build without the user)
 
 Gemma "Hero Brain" / dual-faced cards; PvP & horde-seat machinery (dormant, not deleted —
-player always hero seat); the sprite system (parallel track, OFF the critical path — combat fun
-is tested on current quads); randomized affix rolls.
+player always hero seat); creep frame animation (hero classes now use Component_Sprite
+sheets under `Assets/Textures/modes/arena/heroes/`);
+randomized affix rolls.
 
 ## Repo reality
 

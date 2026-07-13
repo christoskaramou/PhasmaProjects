@@ -100,6 +100,7 @@ Balance.classes = {
         accent = { 0.96, 0.84, 0.36, 0.95 }, hp_max = 115.0, dps = 25.0,
         cleave = 3, attack_range = 9.0, fire_interval = 0.26, speed = 8.5, kite_speed = 8.5,
         sprite_texture = "Textures/modes/arena/hero_ranger.png",
+        sprite_sheet = "Textures/modes/arena/heroes/ranger/ranger.sprite.json",
         bolt_color = { 1.0, 0.90, 0.42 }, bolt_scale = 0.34,
         progressive_specializations = true,
         specializations = {
@@ -127,6 +128,7 @@ Balance.classes = {
         cleave = 8, attack_range = 5.0, speed = 9.0, kite_speed = 9.0,
         armor = 0.15, lifesteal = 0.5, regen = 1.5, whirl = 1,
         sprite_texture = "Textures/modes/arena/hero_brawler.png",
+        sprite_sheet = "Textures/modes/arena/heroes/brawler/brawler.sprite.json",
         progressive_specializations = true,
         specializations = {
             { id = "bleed", name = "Bleed", short = "B", tags = { "Hemorrhage" },
@@ -152,6 +154,7 @@ Balance.classes = {
         accent = { 0.54, 0.82, 0.40, 0.95 }, hp_max = 110.0, dps = 22.0,
         cleave = 5, attack_range = 7.0, fire_interval = 0.30, speed = 8.3, kite_speed = 8.3,
         sprite_texture = "Textures/modes/arena/hero_sower.png",
+        sprite_sheet = "Textures/modes/arena/heroes/sower/sower.sprite.json",
         bolt_color = { 0.66, 0.92, 0.40 }, bolt_scale = 0.30,
         progressive_specializations = true,
         specializations = {
@@ -178,6 +181,7 @@ Balance.classes = {
         accent = { 0.58, 0.48, 1.0, 0.95 }, hp_max = 118.0, dps = 24.0,
         cleave = 2, attack_range = 8.0, fire_interval = 0.28, speed = 8.2, kite_speed = 8.2,
         sprite_texture = "Textures/modes/arena/hero_mage.png",
+        sprite_sheet = "Textures/modes/arena/heroes/mage/mage.sprite.json",
         bolt_color = { 0.68, 0.58, 1.0 }, bolt_scale = 0.34,
         progressive_specializations = true,
         specializations = {
@@ -206,6 +210,7 @@ Balance.classes = {
         accent = { 0.62, 0.24, 0.72, 0.95 }, hp_max = 102.0, dps = 27.0,
         cleave = 2, attack_range = 6.5, fire_interval = 0.22, speed = 9.5, kite_speed = 9.5,
         sprite_texture = "Textures/modes/arena/hero_rogue.png",
+        sprite_sheet = "Textures/modes/arena/heroes/rogue/rogue.sprite.json",
         bolt_color = { 0.72, 0.30, 0.82 }, bolt_scale = 0.27,
         progressive_specializations = true,
         specializations = {
@@ -233,6 +238,7 @@ Balance.classes = {
         cleave = 6, attack_range = 4.6, speed = 8.8, kite_speed = 8.8,
         armor = 0.18, regen = 1.0,
         sprite_texture = "Textures/modes/arena/hero_warrior.png",
+        sprite_sheet = "Textures/modes/arena/heroes/warrior/warrior.sprite.json",
         progressive_specializations = true,
         specializations = {
             { id = "bleed", name = "Lacerator", short = "L", tags = { "Bleed" },
@@ -258,6 +264,7 @@ Balance.classes = {
         accent = { 0.48, 0.85, 0.55, 0.95 }, hp_max = 112.0, dps = 24.0,
         cleave = 2, attack_range = 8.0, fire_interval = 0.30, speed = 8.2, kite_speed = 8.2,
         sprite_texture = "Textures/modes/arena/hero_necromancer.png",
+        sprite_sheet = "Textures/modes/arena/heroes/necromancer/necromancer.sprite.json",
         bolt_color = { 0.55, 0.95, 0.62 }, bolt_scale = 0.30,
         progressive_specializations = true,
         specializations = {
