@@ -710,82 +710,95 @@ function Balance.preservation_effect(rank)
 end
 
 function Balance.specialization_upgrade_text(class_id, id, current_rank)
+    local function T(key, ...)
+        local I18n = _G.ATH_I18N
+        if I18n and I18n.t then return I18n.t(key, ...) end
+        if select("#", ...) > 0 then return string.format(key, ...) end
+        return key
+    end
     local class = assert(class_by_id(class_id), "unknown balance class: " .. tostring(class_id))
     local spec = assert(Balance.specialization(class_id, id),
         "unknown specialization: " .. tostring(class_id) .. ":" .. tostring(id))
     local rank = math.max(1, math.floor(current_rank or 0) + 1)
-    local resource = string.upper(class.resource or "mana")
-    local cost = string.format("Cost %d %s/%s.", spec.cost or 1, resource,
-        spec.kind == "preservation" and "hit taken" or "hit")
+    local resource = T(string.upper(class.resource or "mana"))
+    local cost = T("Cost %d %s/%s.", spec.cost or 1, resource,
+        T(spec.kind == "preservation" and "hit taken" or "hit"))
     local function pct(value) return tostring(math.floor(value * 100.0 + 0.5)) .. "%" end
     local kind = spec.kind
+    local sname = T(spec.name)
     if kind == "dot" then
         local spread = spec.spread and Balance.on_hit.spread_damage_mult or 1.0
-        return string.format("Next rank: %s hit %s + %s per tick.\n%s  %s",
-            spec.name, pct((spec.initial_per_rank or 0.0) * rank * spread),
+        return T("Next rank: %s hit %s + %s per tick.\n%s  %s",
+            sname, pct((spec.initial_per_rank or 0.0) * rank * spread),
             pct((spec.tick_per_rank or 0.0) * rank * spread),
-            spec.spread and "Spreads on death at half strength." or "Does not spread.", cost)
+            T(spec.spread and "Spreads on death at half strength." or "Does not spread."), cost)
     elseif kind == "stack_dot" then
         local per_stack = (spec.stack_base or 0.20) + (rank - 1) * (spec.stack_rank_add or 0.10)
         local values = {}
         for stack = 1, spec.max_stacks or 5 do values[#values + 1] = pct(per_stack * stack) end
-        return "Next rank: " .. spec.name .. " deals " .. table.concat(values, "/")
-            .. " hit damage on hit + per tick at 1-5 stacks.\n" .. cost
+        return T("Next rank: %s deals %s hit damage on hit + per tick at 1-5 stacks.\n%s",
+            sname, table.concat(values, "/"), cost)
     elseif kind == "pierce" then
         local damage = (spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)
-        return string.format("Next rank: piercing hit deals %s hit damage.\nCarries all on-hit effects.  %s",
+        return T("Next rank: piercing hit deals %s hit damage.\nCarries all on-hit effects.  %s",
             pct(damage), cost)
     elseif kind == "frenzy" then
         local per_stack = (spec.stack_per_rank or 0.10) * rank
-        return string.format("Next rank: +%s damage, attack speed, and speed per stack; %s at 5 stacks for %.0fs.\n%s",
+        return T("Next rank: +%s damage, attack speed, and speed per stack; %s at 5 stacks for %.0fs.\n%s",
             pct(per_stack), pct(per_stack * (spec.max_stacks or 5)), spec.duration or 3.0, cost)
     elseif kind == "explosion" or kind == "shockwave" then
         local damage = (spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)
-        return string.format("Next rank: death %s deals %s hit damage in %.1f range.\n%s",
-            kind, pct(damage), spec.radius or 3.0, cost)
+        return T("Next rank: death %s deals %s hit damage in %.1f range.\n%s",
+            T(kind), pct(damage), spec.radius or 3.0, cost)
     elseif kind == "frost" then
-        return string.format("Next rank: %s Frost damage; -%s move and attack speed for %.0fs.\n%s",
+        return T("Next rank: %s Frost damage; -%s move and attack speed for %.0fs.\n%s",
             pct((spec.damage_per_rank or 0.0) * rank),
             pct(math.min(0.75, (spec.slow_per_rank or 0.0) * rank)), spec.duration or 3.0, cost)
     elseif kind == "shadow" then
-        return string.format("Next rank: %s pure damage; Smoke gives %s miss chance for %.0fs.\n%s",
+        return T("Next rank: %s pure damage; Smoke gives %s miss chance for %.0fs.\n%s",
             pct((spec.damage_per_rank or 0.0) * rank),
             pct(math.min(0.75, (spec.miss_per_rank or 0.0) * rank)), spec.duration or 3.0, cost)
     elseif kind == "daze" then
         local reduction = math.min(0.75, (spec.reduction_per_rank or 0.0) * rank)
-        return string.format("Next rank: -%s enemy damage, attack speed, and speed for %.0fs.\n%s",
+        return T("Next rank: -%s enemy damage, attack speed, and speed for %.0fs.\n%s",
             pct(reduction), spec.duration or 3.0, cost)
     elseif kind == "preservation" then
         local reduction, healing, seconds = Balance.preservation_effect(rank)
-        return string.format("Next rank: after taking damage, gain %s damage reduction and restore %s max health over %.0fs.\nCost: 0 Rage.",
+        return T("Next rank: after taking damage, gain %s damage reduction and restore %s max health over %.0fs.\nCost: 0 Rage.",
             pct(reduction), pct(healing), seconds)
     elseif kind == "vampirism" then
-        return string.format("Next rank: %s hit + %s per tick; heals %s from each.\n%s",
+        return T("Next rank: %s hit + %s per tick; heals %s from each.\n%s",
             pct((spec.initial_per_rank or 0.0) * rank),
             pct((spec.tick_per_rank or 0.0) * rank),
             pct((spec.tick_per_rank or 0.0) * rank * (spec.lifesteal_mult or 0.0)), cost)
     elseif kind == "summon" then
         local cap = math.min(Balance.minions.skeleton.cap_max,
             (spec.cap_base or 2) + (rank - 1) * (spec.cap_per_rank or 1))
-        return string.format("Next rank: skeleton-mage cap %d; each deals %s hit damage and inherits statuses.\n%s; free while capped.",
+        return T("Next rank: skeleton-mage cap %d; each deals %s hit damage and inherits statuses.\n%s; free while capped.",
             cap, pct(Balance.minions.skeleton.dps_mult), cost)
     end
-    return spec.desc .. "\n" .. cost
+    return T(spec.desc) .. "\n" .. cost
 end
 
 function Balance.universal_upgrade_text(card, current_rank)
+    local function T(key, ...)
+        local I18n = _G.ATH_I18N
+        if I18n and I18n.t then return I18n.t(key, ...) end
+        if select("#", ...) > 0 then return string.format(key, ...) end
+        return key
+    end
     local rank = math.max(0, math.floor(current_rank or 0)) + 1
     if card.rank_id == "offense" then
         local total = (card.effect.dps_mult or 1.0) ^ rank
-        return string.format("Next rank: +10%% damage and attack speed.\nTotal from cards: +%d%% each.",
+        return T("Next rank: +10%% damage and attack speed.\nTotal from cards: +%d%% each.",
             math.floor((total - 1.0) * 100.0 + 0.5))
     elseif card.rank_id == "defense" then
-        return string.format("Next rank: +20 max health and +3%% armor.\nTotal from cards: +%d health, +%d%% armor.",
+        return T("Next rank: +20 max health and +3%% armor.\nTotal from cards: +%d health, +%d%% armor.",
             20 * rank, 3 * rank)
     elseif card.rank_id == "projectiles" then
-        return string.format("Next rank: +1 projectile.\nTotal from cards: +%d projectiles.", rank)
+        return T("Next rank: +1 projectile.\nTotal from cards: +%d projectiles.", rank)
     end
-    return card.desc or ""
+    return T(card.desc or "")
 end
 
 function Balance.basic_metrics(class_id, targets)
@@ -958,6 +971,18 @@ function Balance.report()
 end
 
 function Balance.audit()
+    -- Upgrade-text checks look for English markers ("Next rank:", "Cost"). A saved
+    -- EL locale would translate those and false-fail boot — pin EN for the audit.
+    local I18n = _G.ATH_I18N
+    local prev_lang = I18n and I18n.lang
+    if I18n then I18n.lang = "en" end
+    local ok, err = pcall(Balance._audit_body)
+    if I18n then I18n.lang = prev_lang end
+    assert(ok, err)
+    return true
+end
+
+function Balance._audit_body()
     local item_ids = {}
     for _, class in ipairs(Balance.classes) do
         assert(class.id and class.hp_max > 0 and class.dps > 0 and class.hit, "invalid class balance row")
