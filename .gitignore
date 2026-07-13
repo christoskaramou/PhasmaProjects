@@ -16,6 +16,7 @@ __pycache__/
 # Local AI/agent runtime artifacts. Keep checked-in config, ignore session output.
 /AgainstTheHero/.ath_private_plan.md
 /AgainstTheHero/.superpowers/
+*/docs/
 */Assets/Agent/image_*.png
 */Assets/Agent/image_*.json
 */Assets/Agent/sessions/
