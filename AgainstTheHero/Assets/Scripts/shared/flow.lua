@@ -27,8 +27,40 @@ local function go(name)
     scene.load(name)
 end
 
+local function i18n()
+    return _G.ATH_I18N
+end
+
+local function apply_locale()
+    local I = i18n()
+    if not (I and scene and scene.find_model) then return end
+    if scene.find_model("UI Ranger") then
+        I.apply_menu_scene("hero_select")
+    elseif scene.find_model("UI Arena") then
+        I.apply_menu_scene("map")
+        I.apply_named_nodes({
+            { name = "UI Locked Spud", body = "SPUD FIELDS - coming soon" },
+            { name = "UI Locked Alien", body = "ALIEN HIVE - coming soon" },
+        })
+    elseif scene.find_model("UI Play") then
+        I.apply_menu_scene("intro")
+    end
+end
+
 -- intro --------------------------------------------------------------------
 function on_play() go("hero_select.pescene") end
+
+function on_lang_en()
+    local I = i18n()
+    if I then I.set_lang("en") end
+    apply_locale()
+end
+
+function on_lang_el()
+    local I = i18n()
+    if I then I.set_lang("el") end
+    apply_locale()
+end
 
 -- hero_select: index into arena config.hero.classes.
 function on_pick_ranger()  run().hero_index = 1; log("hero = ranger");  go("map.pescene") end
@@ -46,3 +78,9 @@ function on_locked()    log("battlefield locked (no manual config yet)") end
 -- back navigation ----------------------------------------------------------
 function on_back_intro() go("intro.pescene") end
 function on_back_hero()  go("hero_select.pescene") end
+
+hooks {
+    init = function()
+        apply_locale()
+    end,
+}

@@ -622,10 +622,17 @@ function Art.quad(screen, id, x, y, w, h, fill, opts)
     if not (runtime_ui and runtime_ui.set_quad) then return end
     opts = opts or {}
     local vp = Art._vp
+    -- Translate English source strings when a locale is active (ATH_I18N).
+    local I18n = _G.ATH_I18N
+    local function tx(s)
+        if not s or s == "" then return "" end
+        if I18n and I18n.t then s = I18n.t(s) end
+        return Art.ascii(s)
+    end
     runtime_ui.set_quad(screen, id, {
         x = x + vp.x, y = y + vp.y, width = w, height = h,
-        label = Art.ascii(opts.label or ""), title = Art.ascii(opts.title or ""), subtitle = Art.ascii(opts.subtitle or ""),
-        body = Art.ascii(opts.body or ""), footer = Art.ascii(opts.footer or ""),
+        label = tx(opts.label or ""), title = tx(opts.title or ""), subtitle = tx(opts.subtitle or ""),
+        body = tx(opts.body or ""), footer = tx(opts.footer or ""),
         fill = fill or { 0.0, 0.0, 0.0, 0.0 },
         border = opts.border or { 0.0, 0.0, 0.0, 0.0 },
         accent = opts.accent or { 0.0, 0.0, 0.0, 0.0 },

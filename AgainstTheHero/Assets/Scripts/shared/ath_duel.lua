@@ -28,6 +28,13 @@ local Flow = ATH_COMMON.load_script("Scripts/shared/duel_flow.lua", "duel flow",
 local Creep = ATH_COMMON.load_script("Scripts/shared/duel_creep.lua", "duel creep", _ENV)
 local Console = ATH_COMMON.load_script("Scripts/shared/ath_console.lua", "dev console", _ENV)
 local Inventory = ATH_COMMON.load_script("Scripts/shared/ath_inventory.lua", "inventory", _ENV)
+
+local function T(key, ...)
+    local I18n = _G.ATH_I18N
+    if I18n and I18n.t then return I18n.t(key, ...) end
+    if select("#", ...) > 0 then return string.format(key, ...) end
+    return key
+end
 local Profile = ATH_COMMON.load_script("Scripts/shared/ath_profile.lua", "persistent profile", _ENV)
 local Balance = ATH_COMMON.load_script("Scripts/shared/ath_balance.lua", "balance database", _ENV)
 
@@ -336,6 +343,12 @@ function Duel.new(config, ctx, shell)
     else
         D.map_index = 1
     end
+    -- Live locale refresh: rebuild pause/HUD strings when language changes mid-run.
+    if _G.ATH_I18N and _G.ATH_I18N.set_duel_refresh then
+        _G.ATH_I18N.set_duel_refresh(function()
+            if Inventory and Inventory.refresh then Inventory.refresh(D) end
+        end)
+    end
     return D
 end
 
@@ -425,7 +438,7 @@ function Duel:buy_store_offer(slot)
     if not item then return false end
     local price = self:store_price(item)
     if (self.gold or 0) < price then
-        self:set_flash("Need " .. tostring(price - (self.gold or 0)) .. " more gold")
+        self:set_flash("Need %s more gold", tostring(price - (self.gold or 0)))
         return false
     end
     if not Inventory.add_item(self, item) then
@@ -435,7 +448,7 @@ function Duel:buy_store_offer(slot)
     self.gold = self.gold - price
     self:save_profile()
     self:haptic(12)
-    self:set_flash("Bought " .. tostring(item.name or item.id))
+    self:set_flash("Bought %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(item.name or item.id))) or tostring(item.name or item.id))
     self:log(string.format("store buy item=%s price=%d gold=%d", tostring(item.id), price, self.gold))
     return true
 end
@@ -452,7 +465,13 @@ function Duel:is_key_down(name)
     return input and input.is_key_down and input.is_key_down(name) == true
 end
 
-function Duel:set_flash(text)
+function Duel:set_flash(text, ...)
+    local I18n = _G.ATH_I18N
+    if I18n and I18n.t and text then
+        text = I18n.t(text, ...)
+    elseif text and select("#", ...) > 0 then
+        text = string.format(text, ...)
+    end
     self.flash = text or ""
 end
 
@@ -1227,7 +1246,7 @@ function Duel:finish_flask()
         if gained > 0 and (hero.mana_burst or 0.0) > 0.0 then
             self:hero_burst(4.2, hero.dps * hero.mana_burst, { 0.45, 0.58, 1.0 })
         end
-        self:set_flash(gained > 0 and ("MANA FLASK +" .. tostring(gained)) or "MANA FULL")
+        self:set_flash(gained > 0 and "MANA FLASK +%s" or "MANA FULL", tostring(gained))
     else
         local before = hero.hp
         hero.hp = math.min(hero.hp_max, hero.hp + hero.hp_max * FLASK_HEAL)
@@ -1239,7 +1258,7 @@ function Duel:finish_flask()
                 self:hero_burst(4.0, gained * hero.flask_nova, { 0.35, 1.0, 0.55 })
             end
         end
-        self:set_flash(gained > 0 and string.format("HEALTH FLASK +%d", math.floor(gained + 0.5)) or "HEALTH FULL")
+        self:set_flash(gained > 0 and "HEALTH FLASK +%d" or "HEALTH FULL", math.floor(gained + 0.5))
     end
     hero.flask_charges = self:flask_total()
     hero.flask_drink_t, hero.flask_drink_kind = 0.0, nil
@@ -1800,7 +1819,7 @@ function Duel:hit_creep(c, amount, kx, kz, opts)
                 hero.flask_hit_charge = hero.flask_hit_charge - 1.0
                 self:restore_flask_charges(1)
                 self:spawn_damage_number(hero.x, hero.z, 0, false,
-                    { text = "+FLASK", color = { 0.42, 0.86, 0.52 } })
+                    { text = T("+FLASK"), color = { 0.42, 0.86, 0.52 } })
             else
                 hero.flask_hit_charge = 1.0
             end
@@ -1903,7 +1922,7 @@ function Duel:update_damage_numbers(dt)
                     -- fit=true lets the Text widget auto-size to the glyphs; a
                     -- fixed small box clips the (large-font) number to nothing.
                     local fs = (e.crit and 1.9 or 1.2) * e.scale
-                        * (1.0 + 0.25 * math.min(1.0, e.t * 8.0))
+                        * (1.0 + 0.25 * math.min(1.0, e.t * 8.0)) * (1.0 / 3.0)
                     local a = k < 0.65 and 1.0 or (1.0 - (k - 0.65) / 0.35)
                     runtime_ui.set_quad(self.hud, e.id, {
                         x = sx - 34.0, y = sy - 52.0 * k - 30.0, style = "text", fit = true,
@@ -2079,7 +2098,7 @@ function Duel:spawn_item_beacon(x, z, item)
     end
     if not slot then
         -- No free beacon: fall back to the old straight-to-bag path.
-        if Inventory.add_item(self, item) then self:set_flash("Found " .. tostring(item.name or item.id)) end
+        if Inventory.add_item(self, item) then self:set_flash("Found %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(item.name or item.id))) or tostring(item.name or item.id)) end
         return
     end
     slot.active = true
@@ -2181,9 +2200,9 @@ function Duel:update_pickups(dt)
             if not hero.dead and e.retry_t <= 0.0 and (dx * dx + dz * dz) <= br * br then
                 if Inventory.add_item(self, e.item) then
                     self:log("found " .. tostring(e.item.id))
-                    self:set_flash("Found " .. tostring(e.item.name or e.item.id))
+                    self:set_flash("Found %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(e.item.name or e.item.id))) or tostring(e.item.name or e.item.id))
                     self:spawn_damage_number(e.x, e.z, 0, false,
-                        { text = tostring(e.item.name or e.item.id),
+                        { text = T(tostring(e.item.name or e.item.id)),
                           color = RARITY_COLOR[e.item.rarity or "common"] or RARITY_COLOR.common })
                     self:haptic(10)
                     park_pickup(e)
@@ -2191,7 +2210,7 @@ function Duel:update_pickups(dt)
                     self:set_flash("Bag full!")
                     -- Also say it AT the item — the top flash is easy to miss.
                     self:spawn_damage_number(e.x, e.z, 0, false,
-                        { text = "BAG FULL", color = { 1.0, 0.38, 0.3 } })
+                        { text = T("BAG FULL"), color = { 1.0, 0.38, 0.3 } })
                     e.retry_t = 1.2
                 end
             end
@@ -2205,7 +2224,8 @@ function Duel:update_pickups(dt)
         local ty = math.max(vp.y, math.min(hovered.sy - 70.0, vp.y + vp.h - th))
         runtime_ui.set_quad(self.hud, "beacon_tip", {
             x = tx, y = ty, style = "text", fit = true,
-            body = tostring(hovered.item.name or hovered.item.id) .. "\n" .. tostring(hovered.item.desc or ""),
+            body = T(tostring(hovered.item.name or hovered.item.id)) .. "\n"
+                .. T(tostring(hovered.item.desc or "")),
             fill = { 0.025, 0.03, 0.045, 0.92 }, border = hovered.col,
             text_color = { 0.94, 0.96, 1.0, 1.0 },
             font_scale = 0.72 * Art.s("text") / (Art._ui_scale or 1.0),
@@ -2235,9 +2255,9 @@ function Duel:vacuum_pickups()
     for _, e in ipairs(self.beacons or {}) do
         if e.active then
             if Inventory.add_item(self, e.item) then
-                self:set_flash("Found " .. tostring(e.item.name or e.item.id))
+                self:set_flash("Found %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(e.item.name or e.item.id))) or tostring(e.item.name or e.item.id))
             else
-                self:set_flash("Bag full - " .. tostring(e.item.name or e.item.id) .. " lost")
+                self:set_flash("Bag full - %s lost", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(e.item.name or e.item.id))) or tostring(e.item.name or e.item.id))
             end
             park_pickup(e)
         end
@@ -2324,7 +2344,7 @@ end
 
 function Duel:creep_attack_misses(c)
     if (c.smoke_t or 0.0) <= 0.0 or math.random() >= (c.smoke_miss or 0.0) then return false end
-    self:spawn_damage_number(c.x, c.z, 0, false, { text = "MISS", color = STATUS_COLOR.shadow })
+    self:spawn_damage_number(c.x, c.z, 0, false, { text = T("MISS"), color = STATUS_COLOR.shadow })
     return true
 end
 
@@ -3602,8 +3622,11 @@ function Duel:update_creeps(dt)
                 local title = self:active_map().boss_title or self.config.boss_title
                 self._boss_mana_note = hero.resource_type == "mana"
                     and (mana_gained > 0 and ("MANA +" .. tostring(mana_gained)) or "MANA FULL") or nil
-                self:set_flash(((title and ("THE " .. title .. " FALLS")) or "CHAMPION DOWN")
-                    .. (self._boss_mana_note and (" - " .. self._boss_mana_note) or ""))
+                local I18n = _G.ATH_I18N
+                local tname = (I18n and title and I18n.t(title)) or title
+                local flash = (tname and ((I18n and I18n.t("THE %s FALLS", tname)) or ("THE " .. tname .. " FALLS"))) or "CHAMPION DOWN"
+                if self._boss_mana_note then flash = flash .. " - " .. self._boss_mana_note end
+                self:set_flash(flash)
                 self:log(string.format("boss down seconds=%.1f", self.combat_time - (self.boss_spawn_time or self.combat_time)))
             end
             self:begin_death_anim(c) -- defers Creep.destroy by a spin-out beat
@@ -4040,7 +4063,7 @@ function Duel:begin_manual_wave(index)
         self:begin_draft(catalog, guaranteed)
     else
         self.state = "combat"
-        self:set_flash("WAVE " .. tostring(self.wave_index))
+        self:set_flash("WAVE %d", self.wave_index)
     end
     self:log(string.format("wave start wave=%d budget=%.0f", self.wave_index, self.reserve_start))
 end
@@ -4056,12 +4079,12 @@ function Duel:begin_draft(catalog, guaranteed)
     for _, card in ipairs(catalog or {}) do picks[#picks + 1] = card end
     if #picks == 0 then
         self.state = "combat"
-        self:set_flash("WAVE " .. tostring(self.wave_index))
+        self:set_flash("WAVE %d", self.wave_index)
         return
     end
     self.draft_offer = picks
     self.state = "draft"
-    self:set_flash("WAVE " .. tostring(self.wave_index) .. " - CHOOSE A CARD")
+    self:set_flash("WAVE %d - CHOOSE A CARD", self.wave_index)
 end
 
 function Duel:pick_draft_card(i)
@@ -4069,7 +4092,7 @@ function Duel:pick_draft_card(i)
     if not card then return end
     if card.specialization
         and ((self.hero.specialization_ranks or {})[card.specialization] or 0) >= (card.max_rank or 5) then
-        self:set_flash(tostring(card.name) .. " - MAX LEVEL")
+        self:set_flash("%s - MAX LEVEL", T(tostring(card.name)))
         return
     end
     self.run_cards = self.run_cards or {}
@@ -4080,7 +4103,7 @@ function Duel:pick_draft_card(i)
     end
     self.draft_offer = nil
     self.state = "combat"
-    self:set_flash(tostring(card.name) .. " - WAVE " .. tostring(self.wave_index))
+    self:set_flash("%s - WAVE %d", T(tostring(card.name)), self.wave_index)
     self:haptic(12)
     self:log(string.format("draft pick wave=%d card=%s", self.wave_index or 1, tostring(card.id)))
 end
@@ -4448,7 +4471,7 @@ function Duel:begin_pause()
         self.state = "pause"
         self._between_wave = true -- a wave-flow pause: NEXT WAVE advances the run
         self:haptic(25)
-        self:set_flash("WAVE " .. tostring(self.wave_index or 1) .. " CLEARED")
+        self:set_flash("WAVE %d CLEARED", self.wave_index or 1)
         self:save_profile()
         if self.config.hooks and self.config.hooks.on_pause then self.config.hooks.on_pause(self) end
         local bag = 0; for _, it in pairs(self.inv_grid or {}) do if it then bag = bag + 1 end end
@@ -4461,7 +4484,7 @@ function Duel:begin_pause()
     Cards.start_pause(self.player_seat)
     Cards.start_pause(self.ai_seat)
     self:resolve_ai_seat(self.ai_seat) -- the AI side commits immediately
-    self:set_flash("ROUND " .. tostring(self.round) .. " — your move")
+    self:set_flash("ROUND %d — your move", self.round)
     if self.config.hooks and self.config.hooks.on_pause then self.config.hooks.on_pause(self) end
     self:log(string.format("pause round=%d reserve=%.0f swarm=%d", self.round, self.reserve, self:count_alive()))
 end
@@ -4609,7 +4632,7 @@ function Duel:update_input(dt)
         local max_map = math.min((self.maps_cleared or 0) + 1, #self.maps)
         local function travel()
             self:enter_town(self._wm_from_town)
-            self:set_flash("DESTINATION: " .. tostring(self:active_map().name))
+            self:set_flash("DESTINATION: %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(self:active_map().name))) or tostring(self:active_map().name))
         end
         local step = (self:key_pressed("Right") and 1 or 0) - (self:key_pressed("Left") and 1 or 0)
         if step ~= 0 then
@@ -4619,7 +4642,8 @@ function Duel:update_input(dt)
         for i = 1, #self.maps do
             if Art.consume_click(self.hud, "wm_node_" .. i) then
                 if i > max_map then
-                    self:set_flash("LOCKED - clear " .. tostring((self.maps[i - 1] and self.maps[i - 1].name) or "the previous map"))
+                    local prev = (self.maps[i - 1] and self.maps[i - 1].name) or "the previous map"
+                    self:set_flash("LOCKED - clear %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(prev))) or tostring(prev))
                 elseif i == self.map_index then
                     travel() -- second click on the selected badge = go
                     return
@@ -4763,7 +4787,8 @@ function Duel:update_hud()
     -- config.external_hud (set by the scene-driven game_boot) means an authored
     -- scene UI draws the HP + wave-budget bars instead, so skip the built-ins.
     if not self.config.external_hud then
-        Art.bar(self.hud, "hp", bx, by, bw, bh, pct, hp_color, { label = string.format("HERO  %d / %d", math.floor(hero.hp + 0.5), math.floor(hero.hp_max + 0.5)) })
+        Art.bar(self.hud, "hp", bx, by, bw, bh, pct, hp_color, {
+            label = T("HERO  %d / %d", math.floor(hero.hp + 0.5), math.floor(hero.hp_max + 0.5)) })
     end
 
     -- Top-left status — ONE compact multi-line label. Drawn from the top edge, so
@@ -4774,9 +4799,10 @@ function Duel:update_hud()
     local status_text
     if self.manual_hero then
         local map = self:active_map()
-        status_text = string.format("%s\nYOU: HERO  -  Wave %d/%d\nBudget %d / %d\nSwarm %d    Kills %d\nGold %d",
-            (map.name and (tostring(map.name) .. "  (Rank " .. tostring(map.rank or "?") .. ")"))
-                or self.theme.hud_title or (self.config.name or "DUEL"),
+        local map_line = (map.name and T("%s  (Rank %s)", T(tostring(map.name)), tostring(map.rank or "?")))
+            or T(self.theme.hud_title or (self.config.name or "DUEL"))
+        status_text = T("%s\nYOU: HERO  -  Wave %d/%d\nBudget %d / %d\nSwarm %d    Kills %d\nGold %d",
+            map_line,
             self.wave_index or 1, self.wave_cfg.count or 5,
             math.floor((self.reserve or 0.0) + 0.5), math.floor((self.reserve_start or 1.0) + 0.5),
             self:count_alive(), self.kills, self.gold or 0)
@@ -4870,9 +4896,9 @@ function Duel:update_hud()
     local boss = self.boss_creep
     if boss and boss.alive and self.state == "combat" then
         local bw2 = S(640.0)
-        local boss_title = self:active_map().boss_title or self.config.boss_title or "BOSS"
-        local armor_state = (boss.armor_broken_t or 0.0) > 0.0 and " - ARMOR BROKEN" or " - ARMORED"
-        if boss.boss_phase2 then armor_state = armor_state .. " - PHASE II" end
+        local boss_title = T(self:active_map().boss_title or self.config.boss_title or "BOSS")
+        local armor_state = (boss.armor_broken_t or 0.0) > 0.0 and T(" - ARMOR BROKEN") or T(" - ARMORED")
+        if boss.boss_phase2 then armor_state = armor_state .. T(" - PHASE II") end
         Art.bar(self.hud, "boss", sw * 0.5 - bw2 * 0.5, S(70.0), bw2, S(30.0),
             clampn((boss.hp or 0.0) / math.max(1.0, boss.hp_max or 1.0), 0.0, 1.0),
             { 0.78, 0.30, 0.86, 0.95 },
@@ -4903,7 +4929,7 @@ function Duel:update_hud()
         Art.bar(self.hud, "mana", S(176.0), bottom_hud_y, S(170.0), S(36.0),
             clampn(mana / math.max(1.0, mana_max), 0.0, 1.0),
             mana_ready and resource_color or resource_dim,
-            { label = string.format("%s %d/%d  ON HIT:%d", resource_name, math.floor(mana), mana_max,
+            { label = T("%s %d/%d  ON HIT:%d", T(resource_name), math.floor(mana), mana_max,
                 min_cost or 0),
               border = mana_ready and { 0.60, 0.66, 1.0, 0.9 } or { 0.42, 0.40, 0.62, 0.8 } })
         local ready = (hero.dodge_charges or 0) >= 1
@@ -4911,15 +4937,15 @@ function Duel:update_hud()
             or clampn(1.0 - (hero.dodge_recharge_t or 0.0) / math.max(0.01, hero.dodge_recharge or 1.0), 0.0, 1.0)
         Art.bar(self.hud, "dodge", sw * 0.5 - S(110.0), bottom_hud_y, S(220.0), S(36.0), pct,
             ready and { 0.40, 0.78, 0.95, 0.95 } or { 0.42, 0.46, 0.54, 0.90 },
-            { label = ready and "DODGE READY [Space]" or "DODGE . . .",
+            { label = ready and T("DODGE READY [Space]") or T("DODGE . . ."),
               border = ready and { 0.55, 0.88, 1.0, 0.9 } or { 0.40, 0.44, 0.50, 0.8 } })
         local flasks = self:flask_total()
         local drink = (hero.flask_drink_t or 0.0) > 0.0
             and string.format(" %s%.1fs", hero.flask_drink_kind == "mana" and "M" or "H", hero.flask_drink_t)
             or ""
         local flask_label = hero.resource_type == "mana"
-            and string.format("H%d[Q] M%d[F]%s", hero.flask_health or 0, hero.flask_mana or 0, drink)
-            or string.format("HEALTH x%d [Q]", hero.flask_health or 0)
+            and T("H%d[Q] M%d[F]%s", hero.flask_health or 0, hero.flask_mana or 0, drink)
+            or T("HEALTH x%d [Q]", hero.flask_health or 0)
         Art.quad(self.hud, "flask", sw * 0.5 + S(120.0), bottom_hud_y, S(170.0), S(36.0),
             flasks > 0 and { 0.16, 0.42, 0.24, 0.95 } or { 0.28, 0.30, 0.32, 0.90 },
             { label = flask_label, no_input = true,
@@ -4948,12 +4974,16 @@ function Duel:update_hud()
             local rank = (hero.specialization_ranks or {})[spec.id] or 0
             local text = rank > 0 and Balance.specialization_upgrade_text(class.id, spec.id, rank - 1)
                 or Balance.specialization_upgrade_text(class.id, spec.id, 0)
-            text = rank > 0 and text:gsub("Next rank:", "Current:", 1) or "Not learned.\n" .. text
+            if rank > 0 then
+                text = text:gsub(T("Next rank:"), T("Current:"), 1)
+            else
+                text = T("Not learned.\n") .. text
+            end
             if spec.kind == "frenzy" and (hero.frenzy_t or 0.0) > 0.0 then
-                text = text .. string.format("\nActive: %d stacks, %.1fs left.",
+                text = text .. "\n" .. T("Active: %d stacks, %.1fs left.",
                     hero.frenzy_stacks or 0, hero.frenzy_t)
             elseif spec.kind == "preservation" and (hero.preservation_t or 0.0) > 0.0 then
-                text = text .. string.format("\nActive: %.1fs left.", hero.preservation_t)
+                text = text .. "\n" .. T("Active: %.1fs left.", hero.preservation_t)
             end
             local color = rank > 0 and (spec.accent or class.accent) or { 0.30, 0.32, 0.38, 0.80 }
             Art.quad(self.hud, id, x, by, icon_size, icon_size, { 0, 0, 0, 0 },
@@ -4982,7 +5012,7 @@ function Duel:update_hud()
             Art.quad(self.hud, "spec_hud_tip", tx, ty, tw, th,
                 { 0.035, 0.04, 0.065, 0.98 }, { no_input = true, bring_to_front = true,
                   border = tip.color, font_scale = 0.72,
-                  label = string.format("%s  LV %d\n%s", tip.spec.name, tip.rank, tip.text) })
+                  label = T("%s  LV %d\n%s", T(tip.spec.name), tip.rank, tip.text) })
         else
             Art.remove(self.hud, "spec_hud_tip")
         end
@@ -5001,8 +5031,8 @@ function Duel:update_hud()
         local m = self:active_map()
         Art.quad(self.hud, "town_dest", S(16.0), S(92.0), S(180.0), S(64.0),
             { 0.07, 0.09, 0.12, 0.92 }, { border = { 0.75, 0.62, 0.35, 0.9 }, align_h = "center",
-              label = string.format("DESTINATION\n%s  (Rank %s)\nclick / [Left/Right]",
-                  tostring(m.name), tostring(m.rank or "?")) })
+              label = T("DESTINATION\n%s  (Rank %s)\nclick / [Left/Right]",
+                  T(tostring(m.name)), tostring(m.rank or "?")) })
     else
         Art.remove(self.hud, "town_dest")
     end
@@ -5021,7 +5051,7 @@ function Duel:update_hud()
             { style = "image", image = self.config.worldmap_image, no_input = true })
         Art.quad(self.hud, "wm_title", sw * 0.5 - S(240.0), S(16.0), S(480.0), S(50.0),
             { 0.08, 0.05, 0.02, 0.78 }, { border = { 0.85, 0.70, 0.40, 0.9 }, no_input = true,
-              align_h = "center", label = "WORLD MAP - choose where to hunt" })
+              align_h = "center", label = T("WORLD MAP - choose where to hunt") })
         -- Locations are buildings PAINTED on the map, so pos is a fraction of
         -- the ARTWORK (raw surface), not the letterboxed viewport — compensated
         -- coords cancel the vp offset exactly like the full-bleed bg above.
@@ -5079,7 +5109,7 @@ function Duel:update_hud()
                 { border = { 0.25, 0.15, 0.05, 0.9 }, no_input = true })
             -- Bare small text (no plate box — a dozen stations would clutter
             -- the painting); width tracks the label so centring stays true.
-            local nm = tostring(m.name) .. (locked and " - LOCKED" or "")
+            local nm = locked and T("%s - LOCKED", T(tostring(m.name))) or T(tostring(m.name))
             local nw = S(12.0) + #nm * S(6.5)
             Art.quad(self.hud, "wm_nm_" .. i, px - nw * 0.5, py + hh + S(2.0), nw, S(22.0),
                 { 0.0, 0.0, 0.0, 0.0 }, { no_input = true, align_h = "center",
@@ -5091,16 +5121,17 @@ function Duel:update_hud()
         -- Hover tooltip: full details for the pointed-at location, clamped on-screen.
         if tip then
             local md = tip.m
+            local prev = (self.maps[tip.i - 1] and self.maps[tip.i - 1].name) or "the previous map"
             local lines = {
-                string.format("%s  [Rank %s]%s", tostring(md.name), tostring(md.rank or "?"),
-                    tip.i <= (self.maps_cleared or 0) and "   (cleared)" or ""),
-                tostring(md.blurb or ""),
-                string.format("%d waves   Boss: %s", md.waves or 5, tostring(md.boss_title or "?")),
-                string.format("Foes x%.2g HP  x%.2g DMG   Gold x%.2g",
+                T("%s  [Rank %s]%s", T(tostring(md.name)), tostring(md.rank or "?"),
+                    tip.i <= (self.maps_cleared or 0) and T("   (cleared)") or ""),
+                T(tostring(md.blurb or "")),
+                T("%d waves   Boss: %s", md.waves or 5, T(tostring(md.boss_title or "?"))),
+                T("Foes x%.2g HP  x%.2g DMG   Gold x%.2g",
                     md.hp_mult or 1.0, md.dps_mult or 1.0, md.gold_mult or 1.0),
                 tip.locked
-                    and ("LOCKED - clear " .. tostring((self.maps[tip.i - 1] and self.maps[tip.i - 1].name) or "the previous map"))
-                    or "click to select, click again to TRAVEL",
+                    and T("LOCKED - clear %s", T(tostring(prev)))
+                    or T("click to select, click again to TRAVEL"),
             }
             local tw, th = S(430.0), S(128.0)
             local tx = clampn(tip.px - tw * 0.5, S(8.0), sw - tw - S(8.0))
@@ -5117,8 +5148,8 @@ function Duel:update_hud()
         Art.quad(self.hud, "wm_travel", sw * 0.5 - S(280.0), sh - S(64.0), S(560.0), S(48.0),
             { 0.08, 0.05, 0.02, 0.90 }, { border = { 0.4, 0.9, 0.5, 0.95 }, align_h = "center",
               font_scale = 0.9,
-              label = string.format("Destination: %s [Rank %s]   -   [Enter]/click to TRAVEL",
-                  tostring(m.name), tostring(m.rank or "?")) })
+              label = T("Destination: %s [Rank %s]   -   [Enter]/click to TRAVEL",
+                  T(tostring(m.name)), tostring(m.rank or "?")) })
     elseif self._wm_drawn then
         -- One-shot teardown on leaving the map (not a per-frame remove storm).
         self._wm_drawn = nil
@@ -5139,7 +5170,7 @@ function Duel:update_hud()
     if self.manual_hero and self.gold then
         Art.quad(self.hud, "gold_chip", S(16.0), bottom_hud_y, S(150.0), S(36.0),
             { 0.07, 0.06, 0.03, 0.85 }, { border = { 0.85, 0.72, 0.30, 0.9 }, no_input = true,
-              label = string.format("GOLD  %d", math.floor(self.gold or 0)),
+              label = T("GOLD  %d", math.floor(self.gold or 0)),
               text_color = { 0.98, 0.86, 0.36, 1.0 }, font_scale = 0.9,
               bring_to_front = (self.state == "worldmap") or nil })
     else
@@ -5170,7 +5201,7 @@ function Duel:update_hud()
         local n = math.max(1, #offer)
         local gap = S(12.0)
         local cw = math.min(S(210.0), (sw - S(32.0) - (n - 1) * gap) / n)
-        local ch = S(270.0)
+        local ch = S(320.0)
         local row_w = n * (cw + gap) - gap
         local sx0 = sw * 0.5 - row_w * 0.5
         local cyc = sh * 0.5 - ch * 0.5 + S(10.0)
@@ -5178,25 +5209,28 @@ function Duel:update_hud()
         -- art band and vanish on short panels — the shell learned this too).
         Art.quad(self.hud, "draft_title", sw * 0.5 - S(280.0), cyc - S(72.0), S(560.0), S(54.0),
             { 0.05, 0.05, 0.10, 0.94 }, { border = accent, no_input = true, bring_to_front = true,
-              label = "WAVE " .. tostring(self.wave_index or 1) .. " - CHOOSE A CARD  ([1-" .. n .. "] or click)" })
+              label = T("WAVE %d - CHOOSE A CARD  ([1-%d] or click)", self.wave_index or 1, n) })
         for i, cd in ipairs(offer) do
             local rank = cd.specialization
                 and ((hero.specialization_ranks or {})[cd.specialization] or 0)
                 or cd.rank_id and ((hero.upgrade_ranks or {})[cd.rank_id] or 0)
             local capped = cd.max_rank and rank >= cd.max_rank
-            local rank_line = rank and (capped and string.format("RANK %d  MAX\n", rank)
-                or string.format("RANK %d -> %d\n", rank, rank + 1)) or ""
-            local desc = capped and "Maximum specialization level reached."
+            local rank_line = rank and (capped and T("RANK %d  MAX\n", rank)
+                or T("RANK %d -> %d\n", rank, rank + 1)) or ""
+            local desc = capped and T("Maximum specialization level reached.")
                 or cd.specialization
                     and Balance.specialization_upgrade_text(cd.class_id or self.hero_class, cd.specialization, rank)
                 or cd.rank_id and Balance.universal_upgrade_text(cd, rank)
                 or cd.desc or ""
+            local tags = {}
+            for _, tag in ipairs(cd.tags or {}) do tags[#tags + 1] = T(tag) end
             Art.quad(self.hud, "draft_" .. i, sx0 + (i - 1) * (cw + gap), cyc, cw, ch,
                 capped and { 0.07, 0.07, 0.09, 0.90 } or { 0.09, 0.10, 0.15, 0.97 }, {
+                    style = "panel",
                     border = cd.accent or RARITY_COLOR[cd.rarity or "common"] or accent,
-                    title = cd.name, font_scale = 0.78, bring_to_front = true,
-                    body = "[" .. i .. "]  " .. string.upper(cd.rarity or "common") .. "\n" .. rank_line
-                        .. (#(cd.tags or {}) > 0 and ("\n" .. table.concat(cd.tags, " / ")) or "")
+                    title = T(cd.name or cd.id), font_scale = 0.70, bring_to_front = true,
+                    body = "[" .. i .. "]  " .. T(string.upper(cd.rarity or "common")) .. "\n" .. rank_line
+                        .. (#tags > 0 and ("\n" .. table.concat(tags, " / ")) or "")
                         .. "\n\n" .. desc,
                 })
         end
@@ -5216,22 +5250,25 @@ function Duel:update_hud()
         local cyc = sh * 0.5 - ch * 0.5 + S(20.0)
         Art.quad(self.hud, "classpick_title", sw * 0.5 - S(280.0), cyc - S(78.0), S(560.0), S(58.0),
             { 0.05, 0.05, 0.10, 0.94 }, { border = accent, align_h = "center",
-              label = string.format("CHOOSE YOUR CLASS   [1-%d] or click", n), no_input = true })
+              label = (_G.ATH_I18N and _G.ATH_I18N.t("CHOOSE YOUR CLASS   [1-%d] or click", n))
+                  or string.format("CHOOSE YOUR CLASS   [1-%d] or click", n), no_input = true })
         for i, c in ipairs(list) do
             local x = sx0 + (i - 1) * (cw + gap)
             local stat
             if c.attack == "melee" then
-                stat = string.format("HP %d    DMG %d\nReach %.1f   Cleave %d\nMove %.1f",
+                stat = T("HP %d    DMG %d\nReach %.1f   Cleave %d\nMove %.1f",
                     c.hp_max or 0, c.dps or 0, c.attack_range or 0, c.cleave or 0, c.speed or 0)
             else
-                stat = string.format("HP %d    DMG %d/shot\nRange %.0f   Shots %d\nFire %.2fs",
+                stat = T("HP %d    DMG %d/shot\nRange %.0f   Shots %d\nFire %.2fs",
                     c.hp_max or 0, c.dps or 0, c.attack_range or 0, c.cleave or 0, c.fire_interval or 0.28)
             end
+            local cname = T(c.name or c.id)
+            local blurb = T(c.blurb or "")
             Art.quad(self.hud, "classpick_" .. i, x, cyc, cw, ch, { 0.09, 0.10, 0.15, 0.97 }, {
                 border = c.accent or accent,
-                title = c.name or c.id,
-                subtitle = string.format("[%d]  %s", i, string.upper(c.attack or "ranged")),
-                body = (c.blurb or "") .. "\n\n" .. stat,
+                title = cname,
+                subtitle = T("[%d]  %s", i, T(string.upper(c.attack or "ranged"))),
+                body = blurb .. "\n\n" .. stat,
             })
         end
     else
@@ -5253,14 +5290,15 @@ function Duel:update_hud()
         local cyc = sh * 0.5 - ch * 0.5 + S(20.0)
         Art.quad(self.hud, "specpick_title", sw * 0.5 - S(280.0), cyc - S(78.0), S(560.0), S(58.0),
             { 0.05, 0.05, 0.10, 0.94 }, { border = accent, align_h = "center",
-              label = string.format("CHOOSE SPECIALIZATION   [1-%d] or click", n), no_input = true })
+              label = (_G.ATH_I18N and _G.ATH_I18N.t("CHOOSE SPECIALIZATION   [1-%d] or click", n))
+                  or string.format("CHOOSE SPECIALIZATION   [1-%d] or click", n), no_input = true })
         for i, spec in ipairs(specs) do
             Art.quad(self.hud, "specpick_" .. i, sx0 + (i - 1) * (cw + gap), cyc, cw, ch,
                 { 0.09, 0.10, 0.15, 0.97 }, {
                     border = spec.accent or accent,
-                    title = spec.name,
-                    subtitle = string.format("[%d]  ON HIT", i),
-                    body = (spec.desc or "") .. string.format("\n\nResource cost per hit: %d", spec.cost or 0),
+                    title = T(spec.name),
+                    subtitle = T("[%d]  ON HIT", i),
+                    body = T(spec.desc or "") .. T("\n\nResource cost per hit: %d", spec.cost or 0),
                 })
         end
     else
@@ -5272,22 +5310,23 @@ function Duel:update_hud()
     if self.state == "slain" or self.state == "hero_win" then
         local title, body
         if self.state == "slain" then
-            title = (player_won and "VICTORY — the hero falls" or "DEFEAT — the hero falls")
-            body = self.theme.lose_text or "The hero is slain.\nPress R to run it back  •  M for menu"
-            if self.side == "horde" then body = self.theme.win_text or body end
+            title = T(player_won and "VICTORY — the hero falls" or "DEFEAT — the hero falls")
+            body = T(self.theme.lose_text or "The hero is slain.\nPress R to run it back  •  M for menu")
+            if self.side == "horde" then body = T(self.theme.win_text or body) end
             if self.manual_hero then
                 -- Death recap: name the killer + the last three hits (newest first)
                 -- straight from the apply_hero_damage ring buffer.
-                title = "DEFEAT - the swarm takes you"
+                title = T("DEFEAT - the swarm takes you")
                 local log = self.dmg_log or {}
-                local lines = { "Killed by " .. ((#log > 0) and log[#log].src or "the swarm"), "" }
+                local killer = (#log > 0) and log[#log].src or "the swarm"
+                local lines = { T("Killed by %s", T(killer)), "" }
                 for i = #log, 1, -1 do
                     local e = log[i]
-                    lines[#lines + 1] = string.format("%s   -%.0f HP   %.1fs before death",
-                        e.src, e.dmg, math.max(0.0, (self.death_time or e.t) - e.t))
+                    lines[#lines + 1] = T("%s   -%.0f HP   %.1fs before death",
+                        T(e.src), e.dmg, math.max(0.0, (self.death_time or e.t) - e.t))
                 end
                 lines[#lines + 1] = ""
-                lines[#lines + 1] = "You fell before wave " .. tostring(self.wave_index or 1) .. ".  Press R to return to town"
+                lines[#lines + 1] = T("You fell before wave %d.  Press R to return to town", self.wave_index or 1)
                 body = table.concat(lines, "\n")
             end
         else
@@ -5306,7 +5345,8 @@ function Duel:update_hud()
         -- HUD scale 2.775 and would clip the recap lines.
         local eh = (self.manual_hero and self.state == "slain") and S(230.0) or S(120.0)
         local ey = self.manual_hero and math.max(S(40.0), sh * 0.5 - eh * 0.5) or S(380.0)
-        Art.quad(self.hud, "end", sw * 0.5 - S(300.0), ey, S(600.0), eh, col, { border = bord, title = title, body = body, no_input = true })
+        Art.quad(self.hud, "end", sw * 0.5 - S(300.0), ey, S(600.0), eh, col, {
+            border = bord, title = T(title), body = body, no_input = true })
     else
         Art.remove(self.hud, "end")
     end
@@ -5416,7 +5456,13 @@ function Duel:update(dt)
                     self.boss_spawned = true
                     self:vacuum_pickups()
                     local title = map.boss_title or self.config.boss_title
-                    self:set_flash(title and ("THE " .. title .. " RISES") or "A CHAMPION RISES")
+                    local I18n = _G.ATH_I18N
+                    if title then
+                        local tname = (I18n and I18n.t(title)) or title
+                        self:set_flash("THE %s RISES", tname)
+                    else
+                        self:set_flash("A CHAMPION RISES")
+                    end
                     Art.shake(0.5, 0.5)
                     self:add_telegraph(self:pick_spawn_point(), boss_arch, true)
                     self:log("boss telegraphed arch=" .. tostring(boss_arch))
@@ -5430,7 +5476,7 @@ function Duel:update(dt)
                         unlocked = self.maps[self.map_index + 1]
                     end
                     self:save_profile()
-                    local clear = unlocked and (tostring(unlocked.name) .. " UNLOCKED") or "RUN CLEARED"
+                    local clear = unlocked and T("%s UNLOCKED", T(tostring(unlocked.name))) or T("RUN CLEARED")
                     if self._boss_mana_note then clear = clear .. " - " .. self._boss_mana_note end
                     self._boss_mana_note = nil
                     self:set_flash(clear)

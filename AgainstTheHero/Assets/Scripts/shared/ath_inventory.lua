@@ -18,6 +18,13 @@
 
 local Art = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
 
+local function T(key, ...)
+    local I18n = _G.ATH_I18N
+    if I18n and I18n.t then return I18n.t(key, ...) end
+    if select("#", ...) > 0 then return string.format(key, ...) end
+    return key
+end
+
 local Inv = {}
 
 local SCREEN = "__scene_ui" -- the authored UI screen the Pause Menu nodes live on
@@ -239,7 +246,8 @@ local function wrap(text, maxlen)
 end
 
 local function tile_label(item)
-    return wrap((item and (item.name or item.id)) or "", 9)
+    local name = (item and (item.name or item.id)) or ""
+    return wrap(T(tostring(name)), 9)
 end
 
 -- The values column for the live stat panel. Keep both columns to twelve rows: the
@@ -250,7 +258,7 @@ function Inv.stats_values_text(st)
         math.floor((st.hp_max or 0) + 0.5), math.floor((st.dps or 0) + 0.5),
         st.attack_range or 0.0, math.floor((st.cleave or 0) + 0.5),
         st.fire_interval or 0.0, st.speed or 0.0, st.equip_load or 0, st.equip_load_max or 100,
-        st.equip_load_tier or "LIGHT", st.dodge_charges_max or 1, st.dodge_dist or 0.0,
+        T(st.equip_load_tier or "LIGHT"), st.dodge_charges_max or 1, st.dodge_dist or 0.0,
         st.dodge_recharge or 0.0, st.dodge_iframes or 0.0, pct(st.dodge_guard), pct(st.poise),
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
@@ -265,17 +273,17 @@ function Inv.refresh(D)
     -- use the set_quad `label`, which the default quad style draws.)
     if valid(b.title) then
         local title = D.state == "town" and D._town_shop
-            and "TOWN SHOP - RIGHT-CLICK AN ITEM TO BUY   (click the coins to return to inventory)"
+            and T("TOWN SHOP - RIGHT-CLICK AN ITEM TO BUY   (click the coins to return to inventory)")
             or D.state == "town"
-            and "TOWN - GEAR UP   (click inspect, right-click equip, [T] sort)"
-            or string.format("WAVE %d CLEARED - GEAR UP   (click inspect, right-click equip, [T] sort, drag to destroy)", D.wave_index or 1)
+            and T("TOWN - GEAR UP   (click inspect, right-click equip, [T] sort)")
+            or T("WAVE %d CLEARED - GEAR UP   (click inspect, right-click equip, [T] sort, drag to destroy)", D.wave_index or 1)
         if D.hero and not D._town_shop then
             if D.hero.resource_type == "mana" then
-                title = title .. string.format("\nFLASK ALLOCATION  H%d / M%d   [Q] more health   [F] more mana   (%d filled)",
+                title = title .. "\n" .. T("FLASK ALLOCATION  H%d / M%d   [Q] more health   [F] more mana   (%d filled)",
                     D.hero.flask_health_alloc or 4, 6 - (D.hero.flask_health_alloc or 4),
                     (D.hero.flask_health or 0) + (D.hero.flask_mana or 0))
             else
-                title = title .. string.format("\nFLASKS  HEALTH x%d   [Q] drink in combat",
+                title = title .. "\n" .. T("FLASKS  HEALTH x%d   [Q] drink in combat",
                     D.hero.flask_health or 0)
             end
         end
@@ -297,7 +305,7 @@ function Inv.refresh(D)
                     align_h = "center", align_v = "bottom",
                 })
             elseif s.kind == "equip" then
-                node:set_ui({ body = Inv.SLOT_LABEL[s.key], text_color = EMPTY_TEXT,
+                node:set_ui({ body = T(Inv.SLOT_LABEL[s.key]), text_color = EMPTY_TEXT,
                     fill = EQUIP_BG, border = EQUIP_BORDER,
                     align_h = "default", align_v = "default" })
             else
@@ -307,16 +315,34 @@ function Inv.refresh(D)
         end
     end
 
-    if valid(b.stats_labels) then b.stats_labels:set_ui({ body = STATS_LABELS }) end
+    if valid(b.stats_labels) then b.stats_labels:set_ui({ body = T(STATS_LABELS) }) end
     if valid(b.stats_values) then
         local st = (D.gear_preview_stats and D:gear_preview_stats()) or {}
         b.stats_values:set_ui({ body = Inv.stats_values_text(st) })
+    end
+
+    -- Static authored headers (translated each refresh for live language switch).
+    if scene and scene.find_model then
+        for _, h in ipairs({
+            { "Inv Equipped Header", "EQUIPPED" },
+            { "Inv Backpack Header", "BACKPACK" },
+            { "Store Header", "GEAR FOR SALE" },
+        }) do
+            local n = scene.find_model(h[1])
+            if valid(n) then n:set_ui({ body = T(h[2]) }) end
+        end
     end
 
     -- NEXT WAVE only resumes the run on a real between-wave pause; a mid-fight
     -- inventory peek (gear button) hides it.
     if valid(b.next_wave) and b.next_wave.set_enabled then
         b.next_wave:set_enabled(D.state == "pause" and D._between_wave == true)
+    end
+    if valid(b.next_wave) then
+        b.next_wave:set_ui({ title = T("NEXT WAVE   [Enter]") })
+    end
+    if valid(b.enter_map) then
+        b.enter_map:set_ui({ title = T("ENTER MAP  [Enter]") })
     end
     local in_town = D.state == "town"
     local in_shop = in_town and D._town_shop == true
@@ -325,13 +351,13 @@ function Inv.refresh(D)
     if valid(b.store_toggle) and b.store_toggle.set_enabled then b.store_toggle:set_enabled(in_town) end
     if valid(b.enter_map) and b.enter_map.set_enabled then b.enter_map:set_enabled(in_town) end
     if in_shop then
-        if valid(b.store_gold) then b.store_gold:set_ui({ body = "GOLD  " .. tostring(D.gold or 0) }) end
+        if valid(b.store_gold) then b.store_gold:set_ui({ body = T("GOLD  %s", tostring(D.gold or 0)) }) end
         for i, slot in ipairs(Inv.SLOTS) do
             local node = b.store_items and b.store_items[slot]
             local item = D.store_offers and D.store_offers[slot]
             if valid(node) and item then
                 local price = D.store_price and D:store_price(item) or 0
-                node:set_ui({ title = "", body = string.format("%s\n[%d]  %d GOLD", tile_label(item), i, price),
+                node:set_ui({ title = "", body = string.format("%s\n[%d]  %d %s", tile_label(item), i, price, T("Gold")),
                     border = Inv.RARITY[item.rarity or "common"], align_h = "center", align_v = "bottom" })
             end
         end
@@ -422,7 +448,9 @@ function Inv.update(D)
                     local gone = Inv.item_at(D, drag.from)
                     Inv.set_raw(D, drag.from, nil)
                     if D.recompute_hero_stats then D:recompute_hero_stats() end
-                    if gone and D.set_flash then D:set_flash("Destroyed " .. tostring(gone.name or gone.id)) end
+                    if gone and D.set_flash then
+                        D:set_flash("Destroyed %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(gone.name or gone.id))) or tostring(gone.name or gone.id))
+                    end
                     if D.haptic then D:haptic(12) end
                     changed(D)
                     D._inv_last_click = nil
@@ -502,20 +530,20 @@ function Inv.compare_text(D, hv, polarity)
     D.gear_equipped[slot] = equipped
     local lines = {}
     if not polarity and after.equip_load_tier ~= before.equip_load_tier then
-        lines[#lines + 1] = string.format("%-10s %s -> %s", "Load tier", before.equip_load_tier, after.equip_load_tier)
+        lines[#lines + 1] = string.format("%-10s %s -> %s", T("Load tier"), T(before.equip_load_tier), T(after.equip_load_tier))
     end
     for _, st in ipairs(COMPARE_STATS) do
         local d = (after[st.key] or 0.0) - (before[st.key] or 0.0)
         if st.pct then d = d * 100.0 end
         local good = st.lower and d < 0.0 or not st.lower and d > 0.0
         if math.abs(d) > 0.005 and (not polarity or (polarity > 0) == good) then
-            lines[#lines + 1] = string.format("%-10s " .. st.fmt, st.label, d)
+            lines[#lines + 1] = string.format("%-10s " .. st.fmt, T(st.label), d)
         end
     end
     if #lines == 0 then return nil end
     if polarity then return table.concat(lines, "\n") end
-    local head = equipped and ("- vs " .. tostring(equipped.name or equipped.id) .. " -")
-        or "- if equipped -"
+    local head = equipped and T("- vs %s -", T(tostring(equipped.name or equipped.id)))
+        or T("- if equipped -")
     return head .. "\n" .. table.concat(lines, "\n")
 end
 
@@ -523,11 +551,14 @@ function Inv.item_details(item)
     local tags = item.tags or {}
     local mana = "-"
     for _, tag in ipairs(tags) do if tag == "Mana" then mana = "35" end end
-    return string.format("%s\n%s %s\nTags: %s\nClass: %s   Weight: %s   Skill mana: %s\n%s\n%s",
-        tostring(item.name or item.id), string.upper(item.rarity or "common"),
-        Inv.SLOT_LABEL[item.slot] or "?", #tags > 0 and table.concat(tags, " / ") or "General",
-        item.class or "Any", item.weight or 0, mana, item.desc or "No mechanics.",
-        item.lore or "Recovered field gear, built to survive another wave.")
+    local rarity = T(item.rarity or "common")
+    local tag_line = {}
+    for _, tag in ipairs(tags) do tag_line[#tag_line + 1] = T(tag) end
+    return T("%s\n%s %s\nTags: %s\nClass: %s   Weight: %s   Skill mana: %s\n%s\n%s",
+        T(tostring(item.name or item.id)), rarity,
+        T(Inv.SLOT_LABEL[item.slot] or "?"), #tag_line > 0 and table.concat(tag_line, " / ") or T("General"),
+        T(item.class or "Any"), tostring(item.weight or 0), mana, T(item.desc or "No mechanics."),
+        T(item.lore or "Recovered field gear, built to survive another wave."))
 end
 
 -- ---------------------------------------------------------------------------
@@ -618,7 +649,7 @@ function Inv.draw_overlay(D)
         runtime_ui.set_quad(SCREEN, "inv_loot_title", {
             x = px + pad, y = py + pad, width = pw - pad * 2.0, height = title_h, style = "text",
             fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
-            body = "LOOT", text_color = { 0.95, 0.92, 0.72, 1.0 }, font_scale = 1.25,
+            body = T("LOOT"), text_color = { 0.95, 0.92, 0.72, 1.0 }, font_scale = 1.25,
             align_h = "left", align_v = "middle", no_input = true, bring_to_front = true,
             z = OVERLAY_Z - 600.0,
         })
@@ -628,7 +659,7 @@ function Inv.draw_overlay(D)
                 x = px + pad, y = py + pad + title_h + (i - 1) * (row_h + gap),
                 width = pw - pad * 2.0, height = row_h, style = "text",
                 fill = enabled and { 0.10, 0.12, 0.16, 0.98 } or { 0.055, 0.06, 0.08, 0.96 },
-                border = Inv.RARITY[rarity], body = string.format("%-10s [%s]", string.upper(rarity), enabled and "X" or " "),
+                border = Inv.RARITY[rarity], body = string.format("%-10s [%s]", T(rarity), enabled and "X" or " "),
                 text_color = enabled and { 0.92, 0.94, 0.98, 1.0 } or { 0.48, 0.50, 0.56, 1.0 },
                 font_scale = 0.92, align_h = "left", align_v = "middle",
                 no_input = false, bring_to_front = true, z = OVERLAY_Z - 500.0,
@@ -667,13 +698,13 @@ function Inv.draw_overlay(D)
         runtime_ui.set_quad(SCREEN, "inv_selected_good", {
             x = sr.x + 14.0, y = sr.y + 174.0, width = sr.w * 0.5 - 20.0, height = sr.h - 186.0, style = "text",
             fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
-            body = good and ("BETTER\n" .. good) or "", text_color = { 0.42, 0.95, 0.55, 1.0 }, font_scale = 1.0,
+            body = good and (T("BETTER") .. "\n" .. good) or "", text_color = { 0.42, 0.95, 0.55, 1.0 }, font_scale = 1.0,
             align_h = "left", align_v = "top", no_input = true, bring_to_front = true, z = OVERLAY_Z - 200.0,
         })
         runtime_ui.set_quad(SCREEN, "inv_selected_bad", {
             x = sr.x + sr.w * 0.5, y = sr.y + 174.0, width = sr.w * 0.5 - 14.0, height = sr.h - 186.0, style = "text",
             fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
-            body = bad and ("WORSE\n" .. bad) or "", text_color = { 1.0, 0.38, 0.34, 1.0 }, font_scale = 1.0,
+            body = bad and (T("WORSE") .. "\n" .. bad) or "", text_color = { 1.0, 0.38, 0.34, 1.0 }, font_scale = 1.0,
             align_h = "left", align_v = "top", no_input = true, bring_to_front = true, z = OVERLAY_Z - 200.0,
         })
     else
@@ -706,7 +737,7 @@ function Inv.draw_overlay(D)
                 x = tr.x, y = tr.y, width = tr.w, height = tr.h, style = "text",
                 fill = over and { 0.45, 0.09, 0.08, 0.97 } or { 0.16, 0.05, 0.05, 0.92 },
                 border = { 0.95, 0.32, 0.26, 0.95 },
-                body = "DROP HERE TO DESTROY", text_color = { 1.0, 0.6, 0.55, 1.0 },
+                body = T("DROP HERE TO DESTROY"), text_color = { 1.0, 0.6, 0.55, 1.0 },
                 font_scale = 1.4, align_h = "center", align_v = "middle",
                 no_input = true, bring_to_front = true, z = OVERLAY_Z - 500.0,
             })
@@ -721,7 +752,7 @@ function Inv.draw_overlay(D)
         local tip = Inv.item_details(hv.item)
         if hv.slot and hv.slot.kind == "store" then
             local equipped = D.gear_equipped and D.gear_equipped[hv.item.slot]
-            tip = tip .. "\nEquipped: " .. tostring(equipped and (equipped.name or equipped.id) or "Nothing")
+            tip = tip .. "\n" .. T("Equipped: %s", tostring(equipped and T(equipped.name or equipped.id) or T("Nothing")))
         end
         local cmp = Inv.compare_text(D, hv)
         if cmp then tip = tip .. "\n" .. cmp end
@@ -741,6 +772,38 @@ function Inv.draw_overlay(D)
         })
     else
         runtime_ui.remove(SCREEN, "inv_tip")
+    end
+
+    -- Language toggle (pause / town): top-right EN | ΕΛ
+    if D.state == "pause" or D.state == "town" then
+        local I18n = _G.ATH_I18N
+        local lang = (I18n and I18n.lang) or "en"
+        local bw, bh = S(72.0), S(44.0)
+        local bx = rw - S(20.0) - bw * 2.0 - S(8.0)
+        local by = S(16.0)
+        runtime_ui.set_quad(SCREEN, "inv_lang_en", {
+            x = bx, y = by, width = bw, height = bh, style = "button",
+            fill = lang == "en" and { 0.18, 0.16, 0.10, 0.96 } or { 0.08, 0.09, 0.12, 0.92 },
+            border = { 0.96, 0.74, 0.22, lang == "en" and 0.95 or 0.55 },
+            label = "EN", text_color = { 0.97, 0.98, 1.0, 1.0 }, font_scale = 1.1,
+            no_input = false, bring_to_front = true, z = OVERLAY_Z + 50.0,
+        })
+        runtime_ui.set_quad(SCREEN, "inv_lang_el", {
+            x = bx + bw + S(8.0), y = by, width = bw, height = bh, style = "button",
+            fill = lang == "el" and { 0.18, 0.16, 0.10, 0.96 } or { 0.08, 0.09, 0.12, 0.92 },
+            border = { 0.96, 0.74, 0.22, lang == "el" and 0.95 or 0.55 },
+            label = "ΕΛ", text_color = { 0.97, 0.98, 1.0, 1.0 }, font_scale = 1.1,
+            no_input = false, bring_to_front = true, z = OVERLAY_Z + 50.0,
+        })
+        local st_en = runtime_ui.get_state and runtime_ui.get_state(SCREEN, "inv_lang_en")
+        local st_el = runtime_ui.get_state and runtime_ui.get_state(SCREEN, "inv_lang_el")
+        if I18n and st_en and st_en.clicked then I18n.set_lang("en"); Inv.refresh(D) end
+        if I18n and st_el and st_el.clicked then I18n.set_lang("el"); Inv.refresh(D) end
+    else
+        if runtime_ui and runtime_ui.remove then
+            runtime_ui.remove(SCREEN, "inv_lang_en")
+            runtime_ui.remove(SCREEN, "inv_lang_el")
+        end
     end
 end
 
