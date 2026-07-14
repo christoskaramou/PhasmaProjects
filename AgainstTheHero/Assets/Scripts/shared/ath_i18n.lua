@@ -3,6 +3,7 @@
 
 local I18n = {
     lang = "en",
+    damage_text = true,
     _el = nil,
     _refreshers = {},
 }
@@ -24,14 +25,14 @@ local function load_settings()
     local src = fs and fs.read and fs.read(SETTINGS_PATH) or nil
     if not src then return end
     local ok, data = pcall(function() return load(src, "@" .. SETTINGS_PATH, "t", {})() end)
-    if ok and type(data) == "table" and (data.lang == "en" or data.lang == "el") then
-        I18n.lang = data.lang
-    end
+    if not (ok and type(data) == "table") then return end
+    if data.lang == "en" or data.lang == "el" then I18n.lang = data.lang end
+    if type(data.damage_text) == "boolean" then I18n.damage_text = data.damage_text end
 end
 
 local function save_settings()
     if not (fs and fs.write) then return end
-    pcall(fs.write, SETTINGS_PATH, "return " .. serialize({ lang = I18n.lang }))
+    pcall(fs.write, SETTINGS_PATH, "return " .. serialize({ lang = I18n.lang, damage_text = I18n.damage_text }))
 end
 
 local function load_el()
@@ -109,6 +110,11 @@ end
 
 function I18n.toggle()
     return I18n.set_lang(I18n.lang == "el" and "en" or "el")
+end
+
+function I18n.toggle_damage_text()
+    I18n.damage_text = not I18n.damage_text
+    save_settings()
 end
 
 function I18n.apply_named_nodes(specs)

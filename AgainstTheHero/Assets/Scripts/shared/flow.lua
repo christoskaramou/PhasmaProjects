@@ -44,6 +44,9 @@ local function apply_locale()
         })
     elseif scene.find_model("UI Play") then
         I.apply_menu_scene("intro")
+        I.apply_named_nodes({
+            { name = "UI Damage Text", title = I.damage_text and "DAMAGE TEXT: ON" or "DAMAGE TEXT: OFF" },
+        })
     end
 end
 
@@ -59,6 +62,12 @@ end
 function on_lang_el()
     local I = i18n()
     if I then I.set_lang("el") end
+    apply_locale()
+end
+
+function on_damage_text()
+    local I = i18n()
+    if I then I.toggle_damage_text() end
     apply_locale()
 end
 
