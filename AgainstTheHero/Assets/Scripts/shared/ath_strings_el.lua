@@ -131,6 +131,8 @@ return {
   ["Curseweaver"] = "Υφάντης Κατάρας",
   ["Daggers"] = "Μαχαίρια",
   ["Damage"] = "Ζημιά",
+  ["DAMAGE TEXT: OFF"] = "ΚΕΙΜΕΝΟ ΖΗΜΙΑΣ: ΑΝΕΝΕΡΓΟ",
+  ["DAMAGE TEXT: ON"] = "ΚΕΙΜΕΝΟ ΖΗΜΙΑΣ: ΕΝΕΡΓΟ",
   ["Dancer's Garb"] = "Ένδυμα Χορεύτριας",
   ["Dash guard"] = "Φύλαξη dash",
   ["Daze"] = "Ζάλη",

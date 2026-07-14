@@ -774,37 +774,6 @@ function Inv.draw_overlay(D)
         runtime_ui.remove(SCREEN, "inv_tip")
     end
 
-    -- Language toggle (pause / town): top-right EN | ΕΛ
-    if D.state == "pause" or D.state == "town" then
-        local I18n = _G.ATH_I18N
-        local lang = (I18n and I18n.lang) or "en"
-        local bw, bh = S(72.0), S(44.0)
-        local bx = rw - S(20.0) - bw * 2.0 - S(8.0)
-        local by = S(16.0)
-        runtime_ui.set_quad(SCREEN, "inv_lang_en", {
-            x = bx, y = by, width = bw, height = bh, style = "button",
-            fill = lang == "en" and { 0.18, 0.16, 0.10, 0.96 } or { 0.08, 0.09, 0.12, 0.92 },
-            border = { 0.96, 0.74, 0.22, lang == "en" and 0.95 or 0.55 },
-            label = "EN", text_color = { 0.97, 0.98, 1.0, 1.0 }, font_scale = 1.1,
-            no_input = false, bring_to_front = true, z = OVERLAY_Z + 50.0,
-        })
-        runtime_ui.set_quad(SCREEN, "inv_lang_el", {
-            x = bx + bw + S(8.0), y = by, width = bw, height = bh, style = "button",
-            fill = lang == "el" and { 0.18, 0.16, 0.10, 0.96 } or { 0.08, 0.09, 0.12, 0.92 },
-            border = { 0.96, 0.74, 0.22, lang == "el" and 0.95 or 0.55 },
-            label = "ΕΛ", text_color = { 0.97, 0.98, 1.0, 1.0 }, font_scale = 1.1,
-            no_input = false, bring_to_front = true, z = OVERLAY_Z + 50.0,
-        })
-        local st_en = runtime_ui.get_state and runtime_ui.get_state(SCREEN, "inv_lang_en")
-        local st_el = runtime_ui.get_state and runtime_ui.get_state(SCREEN, "inv_lang_el")
-        if I18n and st_en and st_en.clicked then I18n.set_lang("en"); Inv.refresh(D) end
-        if I18n and st_el and st_el.clicked then I18n.set_lang("el"); Inv.refresh(D) end
-    else
-        if runtime_ui and runtime_ui.remove then
-            runtime_ui.remove(SCREEN, "inv_lang_en")
-            runtime_ui.remove(SCREEN, "inv_lang_el")
-        end
-    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -826,6 +795,8 @@ function Inv.clear(D)
     if runtime_ui and runtime_ui.remove then
         runtime_ui.remove(SCREEN, "inv_ghost")
         runtime_ui.remove(SCREEN, "inv_tip")
+        runtime_ui.remove(SCREEN, "inv_lang_en")
+        runtime_ui.remove(SCREEN, "inv_lang_el")
         runtime_ui.remove(SCREEN, "inv_trash")
         runtime_ui.remove(SCREEN, "inv_selected_panel")
         runtime_ui.remove(SCREEN, "inv_selected_icon")
