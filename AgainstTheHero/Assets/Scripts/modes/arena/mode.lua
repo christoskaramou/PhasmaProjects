@@ -182,14 +182,13 @@ return {
         kill_fx_budget_per_frame = 6,
         warm_pool_count = 0,
         prewarm_order = { "sprout", "husk_knight", "crow", "pumpkin_brute", "seed_spitter", "beetle", "corn_mortar", "wasp", "ram_beetle", "blast_bud", "thorn_guard", "spore_witch", "brood_pod", "stinger_drone", "hive_matron", "bomber_beetle", "royal_guard", "corn_arbalest", "gourd_sapper", "flask_hunter", "briar_hound", "mill_wraith", "harvest_reaper", "carrion_flock", "root_horror", "royal_sentinel", "gourd_king", "wasp_queen", "corn_colossus" },
-        -- Pre-build + PARK this many rigs per type at run start (warm_archetype
-        -- now populates the pool). Kept ABOVE each type's realistic peak-alive at
-        -- cap_max=85 so the pool never empties -> combat spawns reuse parked rigs
-        -- and never build a rig mid-frame (the spawn spike). Also avoids the
-        -- mid-combat alpha-cut geometry-add RT hazard.
-        prewarm = { sprout = 56, husk_knight = 32, pumpkin_brute = 16, crow = 22, seed_spitter = 14, beetle = 26, corn_mortar = 10, wasp = 18, ram_beetle = 10, blast_bud = 12, thorn_guard = 10, spore_witch = 8, brood_pod = 6,
-            stinger_drone = 22, hive_matron = 5, bomber_beetle = 10, royal_guard = 10, corn_arbalest = 8, gourd_sapper = 8, flask_hunter = 8,
-            briar_hound = 14, mill_wraith = 8, harvest_reaper = 10, carrion_flock = 8, root_horror = 6, royal_sentinel = 8,
+        -- One bounded visual pool budget: sprite variants sharing an atlas share
+        -- their identical quad rigs. Keep enough interchangeable quads for the
+        -- live cap plus one spawn batch and the short deferred-death overlap.
+        prewarm_total = Balance.rules.arena.spawn.cap_max + Balance.rules.arena.spawn.batch_max + 5,
+        prewarm = { sprout = 18, husk_knight = 6, pumpkin_brute = 2, crow = 4, seed_spitter = 4, beetle = 8, corn_mortar = 2, wasp = 5, ram_beetle = 2, blast_bud = 2, thorn_guard = 2, spore_witch = 2, brood_pod = 1,
+            stinger_drone = 3, hive_matron = 1, bomber_beetle = 2, royal_guard = 2, corn_arbalest = 2, gourd_sapper = 2, flask_hunter = 2,
+            briar_hound = 2, mill_wraith = 2, harvest_reaper = 2, carrion_flock = 2, root_horror = 1, royal_sentinel = 1,
             gourd_king = 1, wasp_queen = 1, corn_colossus = 1 },
 
         gear = {
@@ -209,8 +208,7 @@ return {
         hooks = {
             on_reset = function(D)
                 if D.hero then D.hero.move_mult = 1.0 end
-                D._topdown_dressed = nil
-                View.prewarm(D)
+                if D.mode_started then View.prewarm(D) end
             end,
             on_prewarm_spawn = function(D, creep)
                 View.on_spawn(D, creep)

@@ -231,6 +231,17 @@ local function cube(name, pos, scale, color, parent, emissive)
     return node
 end
 
+local function quad(name, pos, scale, color, parent, emissive)
+    local node = primitives.quad(1.0, 1.0)
+    if not valid(node) then return nil end
+    node:set_name(name)
+    attach(node, parent)
+    node:set_position(pos)
+    node:set_scale(scale)
+    tint(node, color, emissive or 0.12)
+    return node
+end
+
 local function sphere(name, pos, scale, color, parent, emissive)
     local node = primitives.sphere(0.5)
     if not valid(node) then
@@ -367,28 +378,27 @@ end
 local function make_rig(self, parent)
     local arch = self.stats
     self.root = make_group("Horde_Creep_" .. tostring(self.id) .. "_" .. self.archetype, parent)
-    -- Sprite creeps are flat cards laid on the ground (View flattens the body).
-    -- The body is a CUBE; its authored ~0.05 thickness shows its RIM as a thin
-    -- line under the slightly tilted top-down camera. Flatten the slab to
-    -- sub-pixel so only the textured top face reads. Non-sprite (3D) creeps keep
-    -- their authored thickness.
-    local bs = arch.body_scale or { 0.42, 0.48, 0.34 }
-    local body_scale = arch.sprite
-        and vec3(bs[1] or 0.42, bs[2] or 0.48, 0.004)
-        or v3(arch.body_scale, { 0.42, 0.48, 0.34 })
-    self.parts = {
-        body = cube("Body", v3(arch.body_pos, { 0.0, 0.32, 0.0 }), body_scale, arch.color, self.root, 0.16),
-        head = sphere("Head", v3(arch.head_pos, { 0.0, 0.72, 0.0 }), v3(arch.head_scale, { 0.30, 0.28, 0.30 }), arch.head or arch.color, self.root, 0.16),
-    }
+    if arch.sprite then
+        local bs = arch.body_scale or { 0.42, 0.48, 0.34 }
+        self.parts = {
+            body = quad("Body", v3(arch.body_pos, { 0.0, 0.32, 0.0 }),
+                vec3(bs[1] or 0.42, bs[2] or 0.48, 1.0), arch.color, self.root, 0.16),
+        }
+    else
+        self.parts = {
+            body = cube("Body", v3(arch.body_pos, { 0.0, 0.32, 0.0 }), v3(arch.body_scale, { 0.42, 0.48, 0.34 }), arch.color, self.root, 0.16),
+            head = sphere("Head", v3(arch.head_pos, { 0.0, 0.72, 0.0 }), v3(arch.head_scale, { 0.30, 0.28, 0.30 }), arch.head or arch.color, self.root, 0.16),
+        }
 
-    if (arch.parts or 2) >= 3 then
-        self.parts.weapon = cube("Weapon", v3(arch.weapon_pos, { 0.30, 0.42, 0.08 }), v3(arch.weapon_scale, { 0.08, 0.48, 0.08 }), arch.weapon or { 0.52, 0.52, 0.52 }, self.root, 0.12)
-        if self.archetype == "archer" then
-            self.parts.bow = cylinder("Bow", vec3(0.36, 0.52, 0.0), vec3(0.08, 0.62, 0.08), arch.weapon or { 0.48, 0.30, 0.16 }, self.root, 0.12)
-            if valid(self.parts.bow) then self.parts.bow:set_rotation(vec3(0.0, 0.0, 82.0)) end
+        if (arch.parts or 2) >= 3 then
+            self.parts.weapon = cube("Weapon", v3(arch.weapon_pos, { 0.30, 0.42, 0.08 }), v3(arch.weapon_scale, { 0.08, 0.48, 0.08 }), arch.weapon or { 0.52, 0.52, 0.52 }, self.root, 0.12)
+            if self.archetype == "archer" then
+                self.parts.bow = cylinder("Bow", vec3(0.36, 0.52, 0.0), vec3(0.08, 0.62, 0.08), arch.weapon or { 0.48, 0.30, 0.16 }, self.root, 0.12)
+                if valid(self.parts.bow) then self.parts.bow:set_rotation(vec3(0.0, 0.0, 82.0)) end
+            end
         end
+        add_silhouette(self, arch)
     end
-    add_silhouette(self, arch)
 
     set_world(self, self.x, self.z)
     if valid(self.root) then
@@ -403,17 +413,42 @@ local function hit_fx_prefix(self)
     return "ath_hit_creep_" .. tostring(self.id) .. "_"
 end
 
--- Pop a still-valid parked rig for this archetype, discarding any whose handles
--- went stale while parked (a sibling delete can swap-and-pop them). Returns the
--- { root, parts } entry, or nil when the pool is empty / all stale.
-local function pop_pooled(archetype)
-    local list = Creep.pool[archetype]
+local function pool_key(archetype)
+    local id, arch = archetype_def(archetype)
+    if arch and arch.sprite then
+        return "sprite:" .. tostring(arch.sprite_sheet or arch.texture or id)
+    end
+    return id
+end
+
+Creep.pool_key = pool_key
+
+-- Pop a still-valid parked rig, discarding any whose handles went stale while
+-- parked (a sibling delete can swap-and-pop them).
+local function pop_valid(list)
     if not list then return nil end
     while #list > 0 do
         local entry = list[#list]
         list[#list] = nil
         if entry and valid(entry.root) and entry.parts and valid(entry.parts.body) then
             return entry
+        end
+    end
+    return nil
+end
+
+local function pop_pooled(archetype)
+    local key = pool_key(archetype)
+    local entry = pop_valid(Creep.pool[key])
+    if entry or key:sub(1, 7) ~= "sprite:" then return entry end
+
+    -- Every sprite creep is the same single quad. Borrow another atlas's idle
+    -- rig when this atlas is empty; View.on_spawn rebinds the already-cached
+    -- sheet without adding geometry or rebuilding BLAS/TLAS.
+    for other_key, list in pairs(Creep.pool) do
+        if other_key ~= key and other_key:sub(1, 7) == "sprite:" then
+            entry = pop_valid(list)
+            if entry then return entry end
         end
     end
     return nil
@@ -435,7 +470,15 @@ local function reset_rig(self)
     root:set_scale(vec3(scale, scale, scale))
     root:set_rotation(vec3(0.0, 0.0, 0.0))
     set_world(self, self.x, self.z)
-    if valid(self.parts.body) then self.parts.body:set_position(v3(arch.body_pos, { 0.0, 0.32, 0.0 })) end
+    if valid(self.parts.body) then
+        self.parts.body:set_position(v3(arch.body_pos, { 0.0, 0.32, 0.0 }))
+        if arch.sprite then
+            local bs = arch.body_scale or { 0.42, 0.48, 0.34 }
+            self.parts.body:set_scale(vec3(bs[1] or 0.42, bs[2] or 0.48, 1.0))
+        else
+            self.parts.body:set_scale(v3(arch.body_scale, { 0.42, 0.48, 0.34 }))
+        end
+    end
     if valid(self.parts.head) then self.parts.head:set_position(v3(arch.head_pos, { 0.0, 0.72, 0.0 })) end
     if valid(self.parts.weapon) then self.parts.weapon:set_rotation(vec3(0.0, 0.0, 0.0)) end
     tint(self.parts.body, arch.color, 0.16)
@@ -522,8 +565,8 @@ function Creep.create(args)
         summoned = args.summoned == true,
         source_id = args.source_id,
     }
-    -- Reuse a parked rig for this archetype when one is available; otherwise
-    -- build a fresh one. `fresh_rig` tells ath_duel whether the archetype's
+    -- Reuse a parked compatible rig when one is available; otherwise build a
+    -- fresh one. `fresh_rig` tells ath_duel whether the archetype's
     -- node-adding decoration still needs applying (it survives parking).
     -- `no_pool` forces a fresh build for callers that explicitly need a new rig
     -- instead of recycling a parked one.
@@ -704,12 +747,16 @@ function Creep.destroy(self)
         return
     end
     if valid(handle) and self.parts and valid(self.parts.body) then
-        local list = Creep.pool[self.archetype]
+        local key = pool_key(self.archetype)
+        local list = Creep.pool[key]
         if not list then
             list = {}
-            Creep.pool[self.archetype] = list
+            Creep.pool[key] = list
         end
         if #list < Creep.pool_cap then
+            -- Freeze any playing sprite clip: parked rigs are invisible but a
+            -- playing clip keeps paying engine sprite-tick UV updates forever.
+            if type(sprite) == "table" and sprite.stop then sprite.stop(self.parts.body) end
             handle:set_position(vec3(PARK_X, PARK_Y, PARK_Z))
             handle:set_scale(vec3(0.001, 0.001, 0.001))
             list[#list + 1] = { root = handle, parts = self.parts }

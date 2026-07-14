@@ -26,7 +26,7 @@
 --   hooks.on_combat_tick = function(D,dt) View.tick(D); <mode mechanic> end
 
 local Art  = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
-local Anim = ATH_COMMON.load_script("Scripts/shared/ath_sprite_anim.lua", "hero sprite anim", _ENV)
+local Anim = ATH_COMMON.load_script("Scripts/shared/ath_sprite_anim.lua", "sprite anim", _ENV)
 
 local View = {}
 
@@ -154,9 +154,25 @@ function View.on_spawn(D, creep)
     end
     local dressed = D._topdown_dressed
     if not dressed then dressed = {}; D._topdown_dressed = dressed end
-    if dressed[body] then return end
-    dressed[body] = true
-    View.dress_sprite(body, adef.texture)
+    -- Bind Component_Sprite during prewarm AND combat. Sprite atlases are
+    -- ResourceManager-cached after the first load; deferring binds to combat
+    -- left GeometryDirty/texture work on the spawn hot path (frame spikes).
+    local sheet = adef.sprite_sheet or false
+    local prev = dressed[body]
+    -- Pooled rig reuse with unchanged art: creep tables are FRESH each spawn (the
+    -- pool keeps only {root, parts}), so rebuild the Lua anim state without
+    -- repeating cached metadata/material setup. Cross-atlas borrowed rigs take
+    -- the setup path below, which rebinds their cached sheet without new geometry.
+    if prev ~= nil and prev == sheet then
+        if sheet then Anim.rebind(creep, sheet, "creep") end
+        return
+    end
+    local sheet_ok = (sheet and Anim.setup(creep, adef, "creep")) or false
+    dressed[body] = sheet_ok and sheet or false
+    if not sheet_ok then
+        View.dress_sprite(body, adef.texture)
+        creep._sprite_anim = nil
+    end
     flatten(body)
 end
 
@@ -172,10 +188,13 @@ function View.prewarm(D)
         for _, arch in ipairs(order) do
             D:warm_archetype(arch, counts[arch] or 0)
         end
-        return
+    else
+        for arch, n in pairs(counts) do
+            D:warm_archetype(arch, n)
+        end
     end
-    for arch, n in pairs(counts) do
-        D:warm_archetype(arch, n)
+    if D.warm_sprite_pool and D.config.prewarm_total then
+        D:warm_sprite_pool(D.config.prewarm_total, order or { next(counts) })
     end
 end
 
@@ -240,70 +259,76 @@ function View.animate_creeps(D)
     local pitch, base_yaw, roll = View.FLAT_ROT[1], View.FLAT_ROT[2], View.FLAT_ROT[3]
     local now = D.realtime or 0.0
     local hero = D.hero
-    for _, c in ipairs(D.creeps or {}) do
-        if c.alive and c.stats and c.stats.sprite then
-            local body = c.parts and c.parts.body
-            if Art.valid(body) then
-                local t = c.hit_flash or 0.0
-                local tint = base_tint(c)
-                local wob = math.sin(c.phase or 0.0) * 7.0
-                -- Spawn spin-in: a fast decelerating twirl on the first beat.
-                if c._spawn_spin_until then
-                    local left = c._spawn_spin_until - now
-                    if left > 0.0 then
-                        local k = left / 0.18
-                        wob = wob + k * k * 260.0 * ((c.id % 2 == 0) and 1.0 or -1.0)
-                    else
-                        c._spawn_spin_until = nil
-                    end
-                end
-                -- Bite shiver when snapping at the hero point-blank.
-                if hero and not hero.dead then
-                    local dx, dz = (hero.x or 0.0) - c.x, (hero.z or 0.0) - c.z
-                    if dx * dx + dz * dz < 2.6 then
-                        wob = wob + math.sin(now * 18.0 + (c.id or 0)) * 6.0
-                    end
-                end
-                if t > 0.0 then
-                    local k = 1.0 + 16.0 * t
-                    material.set(body, "emissive", vec3(k, k, k))
-                    c._flashing = true
-                elseif c.fuse_t then
-                    -- Fuse strobe: RED flicker (must-dodge grammar) that speeds up
-                    -- as the pop nears; the ground decal marks the blast radius.
-                    local rate = 10.0 + 26.0 * (1.0 - math.min(1.0, c.fuse_t / ((c.stats.explode and c.stats.explode.fuse) or 0.8)))
-                    local p = 0.55 + 0.45 * math.sin(now * rate)
-                    material.set(body, "emissive", vec3(1.2 + 2.2 * p, 0.40, 0.30))
-                    c._flashing = true
-                elseif c.charge_state == "windup" then
-                    -- Windup pulse: red throb + an exaggerated shiver (must-dodge).
-                    local p = 0.5 + 0.5 * math.sin(now * 26.0)
-                    material.set(body, "emissive", vec3(1.2 + 1.6 * p, 0.45, 0.4))
-                    wob = wob + math.sin(now * 47.0) * 9.0
-                    c._flashing = true
-                elseif c.charge_state == "dash" then
-                    -- The dash stays red-hot: THE attack to dodge through.
-                    material.set(body, "emissive", vec3(2.4, 0.35, 0.30))
-                    c._flashing = true
-                elseif c.bite_windup or c.shoot_windup then
-                    -- Attack windup (telegraph grammar): a white flash that RAMPS UP
-                    -- over 0.4s — brightest right before the bite/shot lands. Distinct
-                    -- from the hit flash, which starts bright and fades.
-                    local w = c.bite_windup or c.shoot_windup
-                    local k = 1.0 + 7.0 * (1.0 - math.min(1.0, w / 0.4))
-                    material.set(body, "emissive", vec3(k, k, k))
-                    c._flashing = true
-                elseif c._flashing or (tint and not c._tinted) then
-                    local b = tint or { 1.0, 1.0, 1.0 }
-                    material.set(body, "emissive", vec3(b[1], b[2], b[3]))
-                    c._flashing = false
-                    c._tinted = tint ~= nil
-                end
-                if t > 0.0 then wob = wob + t * 90.0 end -- recoil snap
-                if c.charge_state == "dash" then wob = wob * 0.2 end
-                body:set_rotation(vec3(pitch, base_yaw + wob, roll))
+
+    local function anim_one(c, force)
+        if not (c and c.stats and c.stats.sprite) then return end
+        if not force and not c.alive then return end
+        local body = c.parts and c.parts.body
+        if not Art.valid(body) then return end
+
+        local t = c.hit_flash or 0.0
+        local tint = base_tint(c)
+        local wob = math.sin(c.phase or 0.0) * 7.0
+        if c._spawn_spin_until then
+            local left = c._spawn_spin_until - now
+            if left > 0.0 then
+                local k = left / 0.18
+                wob = wob + k * k * 260.0 * ((c.id % 2 == 0) and 1.0 or -1.0)
+            else
+                c._spawn_spin_until = nil
             end
         end
+        if hero and not hero.dead then
+            local dx, dz = (hero.x or 0.0) - (c.x or 0.0), (hero.z or 0.0) - (c.z or 0.0)
+            if dx * dx + dz * dz < 2.6 then
+                wob = wob + math.sin(now * 18.0 + (c.id or 0)) * 6.0
+            end
+            c._face_x, c._face_z = dx, dz
+        end
+        if t > 0.0 then
+            local k = 1.0 + 16.0 * t
+            material.set(body, "emissive", vec3(k, k, k))
+            c._flashing = true
+        elseif c.fuse_t then
+            local rate = 10.0 + 26.0 * (1.0 - math.min(1.0, c.fuse_t / ((c.stats.explode and c.stats.explode.fuse) or 0.8)))
+            local p = 0.55 + 0.45 * math.sin(now * rate)
+            material.set(body, "emissive", vec3(1.2 + 2.2 * p, 0.40, 0.30))
+            c._flashing = true
+        elseif c.charge_state == "windup" then
+            local p = 0.5 + 0.5 * math.sin(now * 26.0)
+            material.set(body, "emissive", vec3(1.2 + 1.6 * p, 0.45, 0.4))
+            wob = wob + math.sin(now * 47.0) * 9.0
+            c._flashing = true
+        elseif c.charge_state == "dash" then
+            material.set(body, "emissive", vec3(2.4, 0.35, 0.30))
+            c._flashing = true
+        elseif c.bite_windup or c.shoot_windup then
+            local w = c.bite_windup or c.shoot_windup
+            local k = 1.0 + 7.0 * (1.0 - math.min(1.0, w / 0.4))
+            material.set(body, "emissive", vec3(k, k, k))
+            c._flashing = true
+        elseif c._flashing or (tint and not c._tinted) then
+            local b = tint or { 1.0, 1.0, 1.0 }
+            material.set(body, "emissive", vec3(b[1], b[2], b[3]))
+            c._flashing = false
+            c._tinted = tint ~= nil
+        end
+        if t > 0.0 then wob = wob + t * 90.0 end
+        if c.charge_state == "dash" then wob = wob * 0.2 end
+
+        local sprite_driven = Anim.tick(c, now)
+        if sprite_driven then
+            body:set_rotation(vec3(pitch, base_yaw, roll + Anim.facing_roll(c)))
+        else
+            body:set_rotation(vec3(pitch, base_yaw + wob, roll))
+        end
+    end
+
+    for _, c in ipairs(D.creeps or {}) do
+        if c.alive then anim_one(c, false) end
+    end
+    for _, d in ipairs(D.dying or {}) do
+        if d.c and d.c._sprite_anim then anim_one(d.c, true) end
     end
 end
 

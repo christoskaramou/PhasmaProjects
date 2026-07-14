@@ -295,12 +295,14 @@ Balance.minions = {
         speed = 7.2, attack_interval = 0.8, duration = 30.0, cap_max = 6,
         color = { 0.86, 0.92, 0.78 }, scale = 1.0,
         bolt_color = { 0.62, 0.95, 0.72 }, bolt_scale = 0.22,
-        texture = "Textures/modes/arena/minion_skeleton.png" },
+        texture = "Textures/modes/arena/minion_skeleton.png",
+        sprite_sheet = "Textures/modes/arena/creeps/skeleton/skeleton.sprite.json" },
     imp = { kind = "ranged", hp_mult = 0.28, dps_mult = 0.35, range = 6.0,
         speed = 7.6, attack_interval = 0.9, duration = 15.0, cap_max = 3,
         color = { 0.95, 0.45, 0.22 }, scale = 0.85,
         bolt_color = { 1.0, 0.55, 0.25 }, bolt_scale = 0.22,
-        texture = "Textures/modes/arena/minion_imp.png" },
+        texture = "Textures/modes/arena/minion_imp.png",
+        sprite_sheet = "Textures/modes/arena/creeps/imp/imp.sprite.json" },
 }
 
 -- Every class offers its three on-hit specializations beside the three shared
@@ -364,6 +366,7 @@ Balance.monsters = {
     -- for low-dps classes — effectively HARDER than the geared map II/III bosses.
     gourd_king = { base = "pumpkin_brute", name = "Gourd King", threat_cost = 20, hp = 3000, dps = 26.0,
         range = 1.1, speed = 2.7, scale = 2.2, knockback_resist = 1.0, boss = true, tint = { 1.35, 1.1, 0.55 },
+        sprite_sheet = "Textures/modes/arena/creeps/gourd_king/gourd_king.sprite.json",
         charge = { trigger = 11.0, windup = 0.8, mult = 3.0, duration = 1.1, cooldown = 4.5, dmg_mult = 2.0 },
         summon_archetype = "sprout", summon_every = 4.5,
         boss_arc = { windup = 0.8, radius = 5.5, range = 7.5, damage = 32.0, cooldown = 5.0, rest = 1.25 },
@@ -389,6 +392,7 @@ Balance.monsters = {
         explode = { trigger = 2.4, fuse = 0.8, radius = 2.8, damage = 30.0, fuse_speed_mult = 1.3 } },
     wasp_queen = { base = "wasp", name = "Wasp Queen", threat_cost = 20, hp = 2840, dps = 24.0,
         range = 1.2, speed = 3.4, scale = 2.3, knockback_resist = 1.0, boss = true, tint = { 1.30, 0.85, 1.35 },
+        sprite_sheet = "Textures/modes/arena/creeps/wasp_queen/wasp_queen.sprite.json",
         charge = { trigger = 12.0, windup = 0.7, mult = 3.6, duration = 1.0, cooldown = 3.8, dmg_mult = 1.9 },
         summon_archetype = "stinger_drone", summon_every = 4.0,
         boss_arc = { windup = 0.8, radius = 5.5, range = 8.0, damage = 30.0, cooldown = 4.8, rest = 1.2 },
@@ -407,6 +411,7 @@ Balance.monsters = {
         split_into = { archetype = "sprout", count = 3 } },
     corn_colossus = { base = "corn_mortar", name = "Corn Colossus", threat_cost = 20, hp = 1835, dps = 30.0,
         range = 1.3, speed = 2.2, scale = 2.6, knockback_resist = 1.0, boss = true, tint = { 1.40, 1.15, 0.50 },
+        sprite_sheet = "Textures/modes/arena/creeps/corn_colossus/corn_colossus.sprite.json",
         hold_range = 8.0, anchor_hold = true, needs_los = true, los_reposition_seconds = 1.5,
         projectile = { kind = "boulder_cob", speed = 11.0, cooldown = 1.3, start_y = 1.4, target_y = 0.55,
             scale = { 0.42, 0.42, 0.42 }, particle_size = 0.38, color = { 1.0, 0.78, 0.30 },
