@@ -37,6 +37,7 @@ local function T(key, ...)
 end
 local Profile = ATH_COMMON.load_script("Scripts/shared/ath_profile.lua", "persistent profile", _ENV)
 local Balance = ATH_COMMON.load_script("Scripts/shared/ath_balance.lua", "balance database", _ENV)
+local Anim = ATH_COMMON.load_script("Scripts/shared/ath_sprite_anim.lua", "sprite anim", _ENV)
 
 -- Dev-only diagnostic logging ([DMG]/[CAMDIAG]); silent unless ATH_DEV=1 at launch.
 local ATH_DEV = ATH_COMMON.env_enabled and ATH_COMMON.env_enabled("ATH_DEV", false) or false
@@ -1626,7 +1627,14 @@ function Duel:ensure_minion_pool()
                 color = { 1.0, 1.0, 1.0 }, emissive = 1.0, emissive_texture = true,
                 texture = spec.texture,
             }, self.groups.actors)
-            self.minions[#self.minions + 1] = { node = node, kind = kind, active = false }
+            local slot = {
+                node = node, kind = kind, active = false,
+                parts = { body = node }, x = -1000.0, z = -1000.0, alive = true,
+            }
+            if spec.sprite_sheet then
+                Anim.setup(slot, spec, "minion")
+            end
+            self.minions[#self.minions + 1] = slot
         end
     end
 end
@@ -1673,6 +1681,13 @@ function Duel:try_summon_minion(kind, cap, x, z)
     slot.dps = spec.dps_mult * ((hero and hero.dps) or 10.0)
     slot.life = spec.duration
     slot.attack_t = 0.0
+    slot.alive = true
+    if slot._sprite_anim then
+        slot._sprite_anim.oneshot_until = 0.0
+        slot._sprite_anim.clip = nil
+        if Anim.available() and Art.valid(slot.node) then sprite.play(slot.node, "idle", true) end
+        slot._sprite_anim.clip = "idle"
+    end
     if Art.valid(slot.node) then slot.node:set_position(vec3(slot.x, 0.9, slot.z)) end
     Art.burst("ath_summon_" .. kind, vec3(slot.x, 0.4, slot.z),
         { preset = "hero_take", count = 12, life_max = 0.35, spawn_radius = 0.4,
@@ -1716,7 +1731,13 @@ function Duel:update_minions(dt)
                     end
                 end
                 m.attack_t = math.max(0.0, (m.attack_t or 0.0) - dt)
+                if m._attack_flash then
+                    m._attack_flash = math.max(0.0, m._attack_flash - dt)
+                end
                 if target then
+                    m._face_x = target.x - m.x
+                    m._face_z = target.z - m.z
+                    m.facing = math.atan(m._face_x, m._face_z)
                     local d = math.sqrt(best_d)
                     if d > spec.range then
                         local A = self.arena
@@ -1726,6 +1747,7 @@ function Duel:update_minions(dt)
                         m.z = clampn(m.z + (target.z - m.z) * step, minz, maxz)
                     elseif m.attack_t <= 0.0 then
                         m.attack_t = spec.attack_interval
+                        m._attack_flash = 0.20
                         if spec.kind == "ranged" then
                             local shot = self:spawn_hero_bolt(
                                 { x = m.x, z = m.z, dps = m.dps,
@@ -1746,12 +1768,22 @@ function Duel:update_minions(dt)
                     -- No foes: drift back to heel so the pack reads as the hero's.
                     local dx, dz = hero.x - m.x, hero.z - m.z
                     local d = math.sqrt(dx * dx + dz * dz)
+                    m._face_x, m._face_z = dx, dz
+                    if d > 0.001 then m.facing = math.atan(dx, dz) end
                     if d > 3.0 then
                         m.x = m.x + dx / d * spec.speed * 0.6 * dt
                         m.z = m.z + dz / d * spec.speed * 0.6 * dt
                     end
                 end
-                if Art.valid(m.node) then m.node:set_position(vec3(m.x, 0.9, m.z)) end
+                if m._sprite_anim then
+                    Anim.tick(m, self.realtime or 0.0)
+                    if Art.valid(m.node) then
+                        m.node:set_rotation(vec3(-90.0, 0.0, Anim.facing_roll(m)))
+                        m.node:set_position(vec3(m.x, 0.9, m.z))
+                    end
+                elseif Art.valid(m.node) then
+                    m.node:set_position(vec3(m.x, 0.9, m.z))
+                end
             end
         end
     end
@@ -1873,6 +1905,7 @@ end
 -- Crits pop bigger, gold pickups reuse the same pool tinted gold.
 -- ---------------------------------------------------------------------------
 function Duel:spawn_damage_number(x, z, amount, crit, opts)
+    if _G.ATH_I18N and _G.ATH_I18N.damage_text == false and not (opts and opts.text) then return end
     if not (runtime_ui and runtime_ui.set_quad) then return end
     self.dmgnums = self.dmgnums or {}
     local n = math.floor((tonumber(amount) or 0.0) + 0.5)
@@ -1899,6 +1932,8 @@ function Duel:spawn_damage_number(x, z, amount, crit, opts)
     slot.crit = crit == true
     slot.color = (opts and opts.color) or { 0.97, 0.97, 1.0 }
     slot.jx = (opts and opts.jx) or (math.random() - 0.5) * 0.8
+    slot.ox = (math.random() - 0.5) * 96.0
+    slot.oy = (math.random() - 0.5) * 64.0
     slot.scale = (opts and opts.scale) or 1.0
 end
 
@@ -1925,7 +1960,7 @@ function Duel:update_damage_numbers(dt)
                         * (1.0 + 0.25 * math.min(1.0, e.t * 8.0)) * (1.0 / 3.0)
                     local a = k < 0.65 and 1.0 or (1.0 - (k - 0.65) / 0.35)
                     runtime_ui.set_quad(self.hud, e.id, {
-                        x = sx - 34.0, y = sy - 52.0 * k - 30.0, style = "text", fit = true,
+                        x = sx - 34.0 + e.ox, y = sy - 52.0 * k - 30.0 + e.oy, style = "text", fit = true,
                         body = e.text,
                         fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
                         text_color = { e.color[1], e.color[2], e.color[3], a },
@@ -1974,6 +2009,7 @@ function Duel:begin_death_anim(c)
     end
     self.dying = self.dying or {}
     local dur = (c.stats and c.stats.boss) and 0.30 or 0.16
+    if c._sprite_anim then dur = 0.55 end -- match Anim death oneshot
     self.dying[#self.dying + 1] = { c = c, t = dur, dur = dur, dir = (c.id % 2 == 0) and 1.0 or -1.0 }
 end
 
@@ -1987,13 +2023,24 @@ function Duel:update_dying(dt)
         if d.t <= 0.0 or not Art.valid(c.root) then
             Creep.destroy(c)
         else
-            local k = d.t / d.dur
-            c.root:set_rotation(vec3(0.0, (1.0 - k) * 640.0 * d.dir, 0.0))
-            local body = c.parts and c.parts.body
-            if Art.valid(body) then
-                local e = 7.0 * k
-                local col = c._status_tint_color or { 1.0, 1.0, 1.0 }
-                material.set(body, "emissive", vec3(col[1] * e, col[2] * e, col[3] * e))
+            if c._sprite_anim then
+                if Art.valid(c.root) then c.root:set_rotation(vec3(0.0, 0.0, 0.0)) end
+                local body = c.parts and c.parts.body
+                if Art.valid(body) then
+                    local k = d.t / d.dur
+                    local e = 1.0 + 3.0 * k
+                    local col = c._status_tint_color or { 1.0, 1.0, 1.0 }
+                    material.set(body, "emissive", vec3(col[1] * e, col[2] * e, col[3] * e))
+                end
+            else
+                local k = d.t / d.dur
+                c.root:set_rotation(vec3(0.0, (1.0 - k) * 640.0 * d.dir, 0.0))
+                local body = c.parts and c.parts.body
+                if Art.valid(body) then
+                    local e = 7.0 * k
+                    local col = c._status_tint_color or { 1.0, 1.0, 1.0 }
+                    material.set(body, "emissive", vec3(col[1] * e, col[2] * e, col[3] * e))
+                end
             end
             keep[#keep + 1] = d
         end
@@ -3116,7 +3163,9 @@ end
 
 function Duel:warm_archetype(arch, count)
     if not arch then return end
-    local n = math.max(0, math.floor(tonumber(count) or 0))
+    local target = math.max(0, math.floor(tonumber(count) or 0))
+    local key = Creep.pool_key and Creep.pool_key(arch) or arch
+    local n = math.max(0, target - #(Creep.pool[key] or {}))
     for _ = 1, n do
         self.next_id = self.next_id + 1
         -- no_pool = true forces a FRESH rig build (so Creep.create doesn't pop the
@@ -3136,6 +3185,27 @@ function Duel:warm_archetype(arch, count)
         end
         creep.no_pool = false
         Creep.destroy(creep)
+    end
+end
+
+function Duel:warm_sprite_pool(target, order)
+    target = math.max(0, math.floor(tonumber(target) or 0))
+    if target <= 0 or type(order) ~= "table" or #order == 0 then return end
+
+    local total = 0
+    for key, list in pairs(Creep.pool) do
+        if type(key) == "string" and key:sub(1, 7) == "sprite:" then total = total + #list end
+    end
+    local i = 1
+    while total < target do
+        local arch = order[i]
+        local key = Creep.pool_key(arch)
+        local before = #(Creep.pool[key] or {})
+        self:warm_archetype(arch, before + 1)
+        local added = #(Creep.pool[key] or {}) - before
+        if added <= 0 then return end
+        total = total + added
+        i = i % #order + 1
     end
 end
 
@@ -3961,18 +4031,13 @@ function Duel:choose_class(index)
     local list = self.config.hero and self.config.hero.classes
     if not (list and list[index]) then return end
     self.hero_class = list[index].id
-    -- Rebuild the hero with the picked class's sprite + stats. scene.delete_node is
-    -- swap-and-pop: deleting the hero while the creep pool is already prewarmed would
-    -- stale a parked rig's draw handle (the exact hazard reset_run guards against with
-    -- clear_pool). Mirror reset_run's safe order — empty the pool, rebuild the hero on
-    -- an empty pool, then re-fire on_reset/warm so the pool is re-parked AFTER the
-    -- fresh hero node exists. (warm_creep_pool is a no-op for the arena, which prewarms
-    -- via the on_reset hook; both are called so this is correct for any manual mode.)
-    Creep.clear_pool()
+    -- Rebuild the hero with the picked class's sprite + stats. Parked creep NodeIds
+    -- survive the scene's swap-and-pop relocation, so keep the warm pool intact.
+    local rebuild_hero = Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted)
     self:park_all_minions()
     -- Never delete an ADOPTED hero (authored scene node): create_hero re-finds and
     -- re-drives the same node; deleting it would remove it from the scene for good.
-    if Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted) then
+    if rebuild_hero then
         scene.delete_node(self.hero.root)
     end
     self:create_hero()
@@ -4537,12 +4602,11 @@ function Duel:reset_run(to_town)
     self.creeps = {}
     self:flush_dying()
     self:park_all_minions()
-    -- Drop parked rigs before the hero (their scene sibling under the actors
-    -- group) is deleted+rebuilt: the swap-and-pop on that delete would stale
-    -- their handles. New rigs are built only as the spawn queue drains.
-    Creep.clear_pool()
+    -- Parked creep NodeIds survive sibling relocation, so a run reset keeps the
+    -- warm pool instead of deleting and rebuilding every rig.
+    local rebuild_hero = Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted)
     -- Adopted heroes (authored scene node) are re-found by create_hero, never deleted.
-    if Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted) then
+    if rebuild_hero then
         scene.delete_node(self.hero.root)
     end
     self:create_hero()

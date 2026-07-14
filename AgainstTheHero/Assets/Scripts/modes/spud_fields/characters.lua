@@ -37,6 +37,10 @@ local C = {
 Spud.palette = C
 
 local TEX = "Textures/modes/spud_fields/"
+local CREEP = "Textures/modes/arena/creeps/"
+local function creep_sheet(id)
+    return CREEP .. id .. "/" .. id .. ".sprite.json"
+end
 Spud.tex = {
     floor     = TEX .. "floor.png",
     hero      = TEX .. "hero_spud.png",
@@ -92,7 +96,7 @@ Spud.archetypes = {
     sprout = {
         name = "Sprout", threat_cost = 1, hp = 6, dps = 2.2, range = 0.5, speed = 2.7,
         color = C.sprout, head = C.sprout,
-        sprite = true, texture = Spud.tex.sprout,
+        sprite = true, texture = Spud.tex.sprout, sprite_sheet = creep_sheet("sprout"),
         parts = 2, scale = 0.85,
         body_pos = { 0.0, 0.60, 0.0 }, body_scale = { 0.92, 1.06, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -102,7 +106,7 @@ Spud.archetypes = {
     seed_spitter = {
         name = "Seed Spitter", threat_cost = 3, hp = 13, dps = 2.6, range = 6.0, speed = 1.1,
         color = C.sun, head = C.sun,
-        sprite = true, texture = Spud.tex.spitter,
+        sprite = true, texture = Spud.tex.spitter, sprite_sheet = creep_sheet("seed_spitter"),
         parts = 2, scale = 1.05,
         body_pos = { 0.0, 0.70, 0.0 }, body_scale = { 1.00, 1.22, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -112,7 +116,7 @@ Spud.archetypes = {
     husk_knight = {
         name = "Husk Knight", threat_cost = 4, hp = 34, dps = 6.5, range = 0.95, speed = 1.5,
         color = C.husk, head = C.husk,
-        sprite = true, texture = Spud.tex.husk,
+        sprite = true, texture = Spud.tex.husk, sprite_sheet = creep_sheet("husk_knight"),
         parts = 2, scale = 1.20,
         body_pos = { 0.0, 0.78, 0.0 }, body_scale = { 1.04, 1.30, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -121,7 +125,7 @@ Spud.archetypes = {
     pumpkin_brute = {
         name = "Pumpkin Brute", threat_cost = 6, hp = 74, dps = 9.0, range = 1.05, speed = 1.0,
         color = C.pumpkin, head = C.pumpkin,
-        sprite = true, texture = Spud.tex.pumpkin,
+        sprite = true, texture = Spud.tex.pumpkin, sprite_sheet = creep_sheet("pumpkin_brute"),
         parts = 2, scale = 1.60,
         body_pos = { 0.0, 0.74, 0.0 }, body_scale = { 1.10, 1.28, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -130,7 +134,7 @@ Spud.archetypes = {
     crow = {
         name = "Crow", threat_cost = 2, hp = 8, dps = 3.0, range = 0.55, speed = 3.3,
         color = C.crow, head = C.crow,
-        sprite = true, texture = Spud.tex.crow, flies = true,
+        sprite = true, texture = Spud.tex.crow, sprite_sheet = creep_sheet("crow"), flies = true,
         parts = 2, scale = 0.95,
         body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 0.90, 1.16, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -140,7 +144,7 @@ Spud.archetypes = {
     beetle = {
         name = "Spud Beetle", threat_cost = 2, hp = 20, dps = 3.2, range = 0.6, speed = 2.1,
         color = C.carrot, head = C.carrot,
-        sprite = true, texture = Spud.tex.beetle,
+        sprite = true, texture = Spud.tex.beetle, sprite_sheet = creep_sheet("beetle"),
         parts = 2, scale = 1.05,
         body_pos = { 0.0, 0.66, 0.0 }, body_scale = { 0.96, 1.16, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -151,7 +155,7 @@ Spud.archetypes = {
     corn_mortar = {
         name = "Corn Mortar", threat_cost = 3, hp = 12, dps = 3.0, range = 7.5, speed = 1.0,
         color = C.sun, head = C.sun,
-        sprite = true, texture = Spud.tex.corn,
+        sprite = true, texture = Spud.tex.corn, sprite_sheet = creep_sheet("corn_mortar"),
         parts = 2, scale = 1.1,
         body_pos = { 0.0, 0.80, 0.0 }, body_scale = { 0.86, 1.29, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },
@@ -169,7 +173,7 @@ Spud.archetypes = {
     wasp = {
         name = "Garden Wasp", threat_cost = 2, hp = 7, dps = 2.4, range = 5.0, speed = 4.2,
         color = C.sun, head = C.crow,
-        sprite = true, texture = Spud.tex.wasp, flies = true,
+        sprite = true, texture = Spud.tex.wasp, sprite_sheet = creep_sheet("wasp"), flies = true,
         parts = 2, scale = 0.95,
         body_pos = { 0.0, 1.05, 0.0 }, body_scale = { 0.96, 1.20, 0.05 },
         head_scale = { 0.001, 0.001, 0.001 },

@@ -479,8 +479,10 @@ end
 -- Camera shake — a short decaying jolt applied on top of the iso rig each
 -- frame (pure translation, so the ortho framing never tilts). Trigger with
 -- Art.shake(amplitude); big hits stack by keeping the larger amplitude.
+Art.SHAKE_ENABLED = false
 Art._shake = { amp = 0.0, t = 0.0 }
 function Art.shake(amp, dur)
+    if not Art.SHAKE_ENABLED then return end
     local s = Art._shake
     s.amp = math.max(s.amp * (s.t > 0.0 and 1.0 or 0.0), amp or 0.3)
     s.t = math.max(s.t, dur or 0.28)
@@ -497,7 +499,7 @@ function Art.tick_iso_camera(dt)
     if not cam then return end
     local sx, sz = 0.0, 0.0
     local s = Art._shake
-    if s.t > 0.0 then
+    if Art.SHAKE_ENABLED and s.t > 0.0 then
         s.t = math.max(0.0, s.t - (dt or 1.0 / 60.0))
         local k = s.amp * (s.t / math.max(s.dur or 0.28, 0.01))
         local ph = s.t * 61.0
