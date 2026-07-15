@@ -10,6 +10,7 @@ end
 function on_tab_inventory() tab("inventory") end
 function on_tab_settings() tab("settings") end
 function on_tab_store() tab("store") end
-function on_tab_cards() tab("cards") end
+function on_tab_skills() tab("skills") end
+function on_tab_cards() tab("skills") end -- legacy alias
 function on_tab_map() tab("map") end
 function on_tab_system() tab("system") end

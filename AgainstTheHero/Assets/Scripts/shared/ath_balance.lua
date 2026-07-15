@@ -783,9 +783,10 @@ function Balance.universal_upgrade_text(card, current_rank)
     end
     local rank = math.max(0, math.floor(current_rank or 0)) + 1
     if card.rank_id == "offense" then
-        local total = (card.effect.dps_mult or 1.0) ^ rank
+        -- Additive from base: N ranks of +10% => +10N%, not 1.10^N.
+        local per = (card.effect.dps_mult or 1.0) - 1.0
         return T("Next rank: +10%% damage and attack speed.\nTotal from cards: +%d%% each.",
-            math.floor((total - 1.0) * 100.0 + 0.5))
+            math.floor(per * rank * 100.0 + 0.5))
     elseif card.rank_id == "defense" then
         return T("Next rank: +20 max health and +3%% armor.\nTotal from cards: +%d health, +%d%% armor.",
             20 * rank, 3 * rank)

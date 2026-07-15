@@ -70,6 +70,8 @@ class Builder:
         self.specs = []  # list of (name, parent_name|None, dict)
 
     def keep(self, name, parent=None):
+        if name not in self.src:
+            return
         node = dict(self.src[name])  # copy preserves matrix/mesh/runtime_ui/etc.
         node.pop("parent", None)
         self.specs.append((name, parent, node))
@@ -261,10 +263,12 @@ STATS_LABELS = ("TOTAL STATS\nHealth\nAttack Damage\nAttack Range\n"
 STORE_SCRIPT = "Assets/Scripts/shared/hud/town_store.lua"
 HUB_TABS_SCRIPT = "Assets/Scripts/shared/hud/hub_tabs.lua"
 SYSTEM_SCRIPT = "Assets/Scripts/shared/hud/hub_system.lua"
+SKILLS_SCRIPT = "Assets/Scripts/shared/hud/hub_skills.lua"
 TAB_DEFS = [
     ("map", "MAP", "on_tab_map"),
     ("inventory", "INVENTORY", "on_tab_inventory"),
     ("store", "STORE", "on_tab_store"),
+    ("skills", "SKILLS", "on_tab_skills"),
     ("settings", "SETTINGS", "on_tab_settings"),
     ("system", "SYSTEM", "on_tab_system"),
 ]
@@ -371,25 +375,28 @@ def add_hub_settings(b):
               font_scale=0.85, text_align_h=2, text_align_v=2, bring_to_front=True)
 
 
-def add_hub_cards(b):
-    b.group("Cards", "Pause Menu", enabled=False)
-    # Header above the grid (more-negative Y = higher on screen).
-    b.ui_node("Cards Header", "Cards", "text", "cards_header",
-              600.0, 50.0, 0.0, -340.0, fill=HDR_FILL, border=ACCENT,
-              body="DECK", text_color=HDR_TEXT, font_scale=1.5,
+def add_hub_skills(b):
+    """Basic specialization tree: 3 branches × 5 ranks going downward."""
+    b.group("Skills", "Pause Menu", enabled=False)
+    b.ui_node("Skills Header", "Skills", "text", "skills_header",
+              900.0, 50.0, 0.0, -340.0, fill=HDR_FILL, border=ACCENT,
+              body="SKILLS", text_color=HDR_TEXT, font_scale=1.5,
               text_align_h=2, text_align_v=2, no_input=True)
-    cols, card_w, card_h = 5, 180.0, 120.0
-    pitch_x, pitch_y = 190.0, 130.0
+    cols, ranks = 3, 5
+    card_w, card_h = 280.0, 88.0
+    pitch_x, pitch_y = 300.0, 98.0
     grid_left = -((cols - 1) * pitch_x) * 0.5
     top_y = -250.0
-    for i in range(1, 21):
+    for i in range(1, cols * ranks + 1):
         col, row = (i - 1) % cols, (i - 1) // cols
         cx = grid_left + col * pitch_x
         cy = top_y + row * pitch_y
-        b.ui_node("Card Slot " + str(i), "Cards", "text", "hub_card_" + str(i),
-                  card_w, card_h, cx, cy, fill=CARD_FILL, border=CARD_BORDER,
-                  body="", text_color=[0.9, 0.92, 0.96, 1.0], font_scale=1.0,
-                  text_align_h=2, text_align_v=2, no_input=True)
+        b.ui_node("Skill Node " + str(i), "Skills", "button", "hub_skill_" + str(i),
+                  card_w, card_h, cx, cy, flags=528, script=SKILLS_SCRIPT,
+                  action_function="on_skill_" + str(i), title="", body="",
+                  fill=CARD_FILL, border=CARD_BORDER, accent=ACCENT,
+                  text_color=[0.9, 0.92, 0.96, 1.0], font_scale=0.85,
+                  text_align_h=2, text_align_v=2, bring_to_front=True)
 
 
 def add_pause_menu(b):
@@ -409,8 +416,8 @@ def add_pause_menu(b):
               bring_to_front=True)
 
     tab_y = -420.0
-    tab_w, tab_h = 200.0, 52.0
-    tab_pitch = 210.0
+    tab_w, tab_h = 168.0, 52.0
+    tab_pitch = 176.0
     tab_left = -((len(TAB_DEFS) - 1) * tab_pitch) * 0.5
     for i, (key, label, action) in enumerate(TAB_DEFS):
         cx = tab_left + i * tab_pitch
@@ -490,7 +497,7 @@ def add_pause_menu(b):
               text_align_h=2, text_align_v=2, no_input=True)
 
     add_hub_settings(b)
-    # Cards tab deferred — keep add_hub_cards() for when deck UI returns.
+    add_hub_skills(b)
 
     b.group("Map", "Pause Menu", enabled=False)
     # +Y is down: info → ENTER → EXIT TO MAP. Same width, stacked with gaps.

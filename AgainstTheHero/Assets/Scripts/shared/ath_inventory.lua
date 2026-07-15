@@ -32,12 +32,6 @@ end
 
 local Inv = {}
 
-local function ensure_cards()
-    if Inv._cards_mod then return Inv._cards_mod end
-    Inv._cards_mod = ATH_COMMON.load_script("Scripts/shared/ath_cards.lua", "shared cards", _ENV)
-    return Inv._cards_mod
-end
-
 local SCREEN = "__scene_ui" -- the authored UI screen the Pause Menu nodes live on
 
 Inv.SLOTS = { "helmet", "body", "pants", "gloves", "weapon", "jewelry" }
@@ -59,14 +53,14 @@ Inv.RARITY = {
 }
 Inv.RARITIES = { "common", "uncommon", "rare", "epic", "legendary" }
 
-Inv.TABS = { "map", "inventory", "store", "settings", "system" }
+Inv.TABS = { "map", "inventory", "store", "skills", "settings", "system" }
 local TAB_NODE = {
     map = "Hub Tab Map", inventory = "Hub Tab Inventory",
-    store = "Hub Tab Store", settings = "Hub Tab Settings",
-    system = "Hub Tab System",
+    store = "Hub Tab Store", skills = "Hub Tab Skills",
+    settings = "Hub Tab Settings", system = "Hub Tab System",
 }
 local TAB_TITLE = {
-    map = "MAP", inventory = "INVENTORY", store = "STORE",
+    map = "MAP", inventory = "INVENTORY", store = "STORE", skills = "SKILLS",
     settings = "SETTINGS", system = "SYSTEM",
 }
 -- Selected = colored fill; idle = no-color (transparent fill, outline only).
@@ -213,7 +207,7 @@ function Inv.bind(D)
         inventory = scene.find_model("Inventory"),
         settings = scene.find_model("Settings"),
         store = scene.find_model("Town Store"),
-        cards = scene.find_model("Cards"),
+        skills = scene.find_model("Skills"),
         map = scene.find_model("Map"),
         system = scene.find_model("System"),
     }
@@ -279,8 +273,8 @@ function Inv.set_tab(D, name)
         if _G.ATH_HUB_SETTINGS and _G.ATH_HUB_SETTINGS.refresh then
             _G.ATH_HUB_SETTINGS.refresh(D)
         end
-    elseif name == "cards" then
-        Inv.refresh_cards(D)
+    elseif name == "skills" then
+        Inv.refresh_skills(D)
     end
     return true
 end
@@ -350,30 +344,95 @@ function Inv.stats_values_text(st)
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
 
-function Inv.refresh_cards(D)
-    local Cards = ensure_cards()
-    local ids, has_source = {}, false
-    if D.player_seat and D.player_seat.deck then
-        has_source = true
-        for _, id in ipairs(D.player_seat.deck) do ids[#ids + 1] = id end
-        for _, id in ipairs(D.player_seat.hand or {}) do ids[#ids + 1] = id end
-        for _, id in ipairs(D.player_seat.discard or {}) do ids[#ids + 1] = id end
-    elseif D.ctx and D.ctx.deck then
-        has_source = true
-        for _, id in ipairs(D.ctx.deck) do ids[#ids + 1] = id end
-    end
-    local header = scene.find_model("Cards Header")
+function Inv.refresh_skills(D)
+    local header = scene.find_model("Skills Header")
+    local pts = math.max(0, math.floor(D.skill_points or 0))
     if valid(header) then
-        header:set_ui({ body = T(has_source and "DECK" or "No deck") })
+        header:set_ui({ body = T("SKILLS — %d pts", pts) })
     end
-    for i = 1, 20 do
-        local n = scene.find_model("Card Slot " .. i)
-        if valid(n) then
-            local id = ids[i]
-            local def = id and Cards and Cards.card and Cards.card(id)
-            n:set_ui({ body = def and T(def.name or id) or (id and tostring(id) or "") })
+    local Balance = _G.ATH_BALANCE
+    local class_id = D.hero_class
+    local class
+    if Balance and Balance.classes then
+        for _, row in ipairs(Balance.classes) do
+            if row.id == class_id then class = row; break end
         end
     end
+    local specs = (class and class.specializations) or {}
+    local ranks = (D.hero and D.hero.specialization_ranks) or {}
+    local cols, max_rank = 3, 5
+    -- Slot i: branch = (i-1)%3 + 1, rank = floor((i-1)/3) + 1 (downward tree).
+    for i = 1, cols * max_rank do
+        local n = scene.find_model("Skill Node " .. i)
+        if valid(n) then
+            local branch = ((i - 1) % cols) + 1
+            local rank = math.floor((i - 1) / cols) + 1
+            local spec = specs[branch]
+            if not spec then
+                n:set_ui({ title = "", body = "", fill = { 0.05, 0.05, 0.07, 0.5 },
+                    border = { 0.2, 0.22, 0.28, 0.6 }, text_color = { 0.5, 0.52, 0.56, 0.7 } })
+            else
+                local have = ranks[spec.id] or 0
+                local filled = have >= rank
+                local next_ok = have == rank - 1
+                local card = { specialization = spec.id, max_rank = max_rank }
+                local allowed = D.spec_card_allowed and D:spec_card_allowed(card)
+                local can_buy = pts > 0 and next_ok and allowed
+                local title = (rank == 1) and T(tostring(spec.name or spec.id)) or T("Rank %d", rank)
+                local body
+                if filled then
+                    body = T("OWNED")
+                elseif can_buy then
+                    body = T("CLICK — 1 pt")
+                elseif not allowed and have == 0 then
+                    body = T("LOCKED")
+                else
+                    body = T("—")
+                end
+                local accent = spec.accent or { 0.62, 0.34, 0.86, 1.0 }
+                local fill = filled and { accent[1] * 0.35, accent[2] * 0.35, accent[3] * 0.35, 0.95 }
+                    or (can_buy and { 0.12, 0.16, 0.22, 0.95 } or { 0.06, 0.07, 0.09, 0.85 })
+                local border = filled and accent
+                    or (can_buy and { 0.96, 0.82, 0.30, 1.0 } or { 0.30, 0.34, 0.40, 0.8 })
+                n:set_ui({
+                    title = title, body = body, fill = fill, border = border,
+                    text_color = filled and { 0.96, 0.94, 0.98, 1.0 } or { 0.82, 0.84, 0.88, 1.0 },
+                })
+            end
+        end
+    end
+end
+
+-- Skills tree slot index → spend into that branch's next rank.
+function Inv.try_allocate_skill(D, slot)
+    local Balance = _G.ATH_BALANCE
+    local class_id = D.hero_class
+    local class
+    if Balance and Balance.classes then
+        for _, row in ipairs(Balance.classes) do
+            if row.id == class_id then class = row; break end
+        end
+    end
+    local specs = (class and class.specializations) or {}
+    local cols = 3
+    local branch = ((math.floor(slot or 1) - 1) % cols) + 1
+    local want_rank = math.floor((math.floor(slot or 1) - 1) / cols) + 1
+    local spec = specs[branch]
+    if not spec then return false end
+    local have = ((D.hero and D.hero.specialization_ranks) or {})[spec.id] or 0
+    if have ~= want_rank - 1 then
+        Inv.hub_hint(D, have >= want_rank and "ALREADY OWNED" or "UNLOCK PRIOR RANK")
+        return false
+    end
+    local ok, msg = D:allocate_skill(spec.id)
+    if not ok then
+        Inv.hub_hint(D, tostring(msg or "LOCKED"))
+        return false
+    end
+    Inv.hub_hint(D, T("%s → rank %d", T(tostring(spec.name)), have + 1))
+    Inv.refresh_skills(D)
+    Inv.refresh(D)
+    return true
 end
 
 function Inv.refresh(D)
