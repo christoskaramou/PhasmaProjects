@@ -334,6 +334,7 @@ function Duel.new(config, ctx, shell)
     D.maps = config.maps or {}
     D.maps_cleared = 0
     D.map_next_wave = {}
+    D.skill_points = 0
     Profile.load(D)
     if #D.maps > 0 then
         D.map_index = math.min((D.maps_cleared or 0) + 1, #D.maps)
@@ -373,6 +374,13 @@ function Duel:boss_drop_weights()
     end
     return up
 end
+
+-- Clone a catalog item with numeric effect stats scaled (boss drops = +10%).
+-- Delegates to Profile.scale_item so bag save/load stays in sync.
+function Duel.scale_item_stats(item, scale)
+    return Profile.scale_item(item, scale)
+end
+
 function Duel:roll_drop_item(items, min_rarity, weights)
     weights = weights or self:active_map().drop_weights
         or { common = 60, uncommon = 30, rare = 9, epic = 1 }
@@ -3672,12 +3680,17 @@ function Duel:update_creeps(dt)
             if self.boss_creep == c then
                 self.boss_creep = nil
                 self:park_boss_arc()
+                -- Spec points (3) land on boss kill — spent in the Skills hub tree.
+                self.skill_points = (self.skill_points or 0) + 3
                 local title = self:active_map().boss_title or self.config.boss_title
                 local I18n = _G.ATH_I18N
                 local tname = (I18n and title and I18n.t(title)) or title
                 local flash = (tname and ((I18n and I18n.t("THE %s FALLS", tname)) or ("THE " .. tname .. " FALLS"))) or "CHAMPION DOWN"
-                self:set_flash(flash)
-                self:log(string.format("boss down seconds=%.1f", self.combat_time - (self.boss_spawn_time or self.combat_time)))
+                local bonus = (I18n and I18n.t("(+3 SKILL)")) or "(+3 SKILL)"
+                self:set_flash(flash .. "  " .. bonus)
+                self:save_profile()
+                self:log(string.format("boss down seconds=%.1f skill_points=%d",
+                    self.combat_time - (self.boss_spawn_time or self.combat_time), self.skill_points))
             end
             self:begin_death_anim(c) -- defers Creep.destroy by a spin-out beat
             self.kills = self.kills + 1
@@ -4108,39 +4121,28 @@ function Duel:begin_manual_wave(index)
     -- Necromancer pool is built here — a menu beat, never mid-combat (the same
     -- frame-spike rule the creep prewarm follows).
     if self.hero_class == "necromancer" then self:ensure_minion_pool() end
-    -- PLAN step 2: every round opens with a 1-of-3 draft of run-scoped boons;
-    -- combat starts when the player picks (see pick_draft_card).
-    local catalog = self.config.draft_cards or DRAFT_CARDS
-    if self.manual_hero and #catalog > 0 then
-        local guaranteed = Balance.specialization_cards[self.hero_class]
-        if guaranteed and self.specialization_preference then
-            local ordered = {}
-            for _, card in ipairs(guaranteed) do
-                if card.specialization == self.specialization_preference then ordered[#ordered + 1] = card end
-            end
-            for _, card in ipairs(guaranteed) do
-                if card.specialization ~= self.specialization_preference then ordered[#ordered + 1] = card end
-            end
-            guaranteed = ordered
+    -- Round draft is gone: strip non-skill cards each wave (round rewards TBD).
+    -- Spec ranks live in the Skills hub and persist via specialization run_cards.
+    if self.manual_hero then
+        local kept = {}
+        for _, card in ipairs(self.run_cards or {}) do
+            if card and card.specialization then kept[#kept + 1] = card end
         end
-        self:begin_draft(catalog, guaranteed)
-    else
-        self.state = "combat"
-        self:set_flash("WAVE %d", self.wave_index)
+        self.run_cards = kept
+        self.draft_offer = nil
+        self:recompute_hero_stats()
     end
+    self.state = "combat"
+    self:set_flash("WAVE %d", self.wave_index)
     self:log(string.format("wave start wave=%d budget=%.0f", self.wave_index, self.reserve_start))
 end
 
 -- ---------------------------------------------------------------------------
--- Every wave offers the class specializations still open to this run plus the
--- three shared upgrades. Picks persist across cleared maps and are applied
--- over base + gear.
--- ---------------------------------------------------------------------------
-
+-- Legacy wave draft helpers (unused in manual arena — Skills hub owns specs).
 -- Spec breadth cap: a run invests in at most TWO of the three class
--- specializations — the player picks which, freely, at any draft. Riders cost
--- nothing per attack anymore (the old mana tax); giving up the third spec IS
+-- specializations. Riders cost nothing per attack; giving up the third spec IS
 -- the cost. The third locks out once two hold ranks.
+-- ---------------------------------------------------------------------------
 function Duel:spec_card_allowed(card)
     if not card.specialization then return true end
     local ranks = (self.hero and self.hero.specialization_ranks) or {}
@@ -4187,6 +4189,29 @@ function Duel:pick_draft_card(i)
     self:log(string.format("draft pick wave=%d card=%s", self.wave_index or 1, tostring(card.id)))
 end
 
+-- Spend one skill point into a class specialization branch (Skills hub tree).
+-- Rank caps and the two-branch breadth lock reuse spec_card_allowed.
+function Duel:allocate_skill(spec_id)
+    if not self.manual_hero or not spec_id then return false, "No skill." end
+    if (self.skill_points or 0) < 1 then return false, "No skill points." end
+    local cards = Balance.specialization_cards[self.hero_class] or {}
+    local card
+    for _, c in ipairs(cards) do
+        if c.specialization == spec_id then card = c; break end
+    end
+    if not card then return false, "Unknown skill." end
+    if not self:spec_card_allowed(card) then return false, "Locked." end
+    self.skill_points = (self.skill_points or 0) - 1
+    self.run_cards = self.run_cards or {}
+    self.run_cards[#self.run_cards + 1] = card
+    self:recompute_hero_stats()
+    self:save_profile()
+    self:haptic(12)
+    self:log(string.format("skill allocate spec=%s points_left=%d",
+        tostring(spec_id), self.skill_points or 0))
+    return true, card.name
+end
+
 function Duel:manual_wave_done()
     return (self.reserve or 0.0) < self:minimum_spawn_cost()
         and (not self.spawn_queue or #self.spawn_queue == 0)
@@ -4218,8 +4243,10 @@ function Duel:maybe_drop_manual_gear(c)
     -- Drops roll rarity-weighted by the active map (deeper = shinier).
     if s.boss then
         local up = self:boss_drop_weights()
-        self:spawn_item_beacon(x - 0.9, z, self:roll_drop_item(items, nil, up))
-        self:spawn_item_beacon(x + 0.9, z, self:roll_drop_item(items, nil, up))
+        local a = Duel.scale_item_stats(self:roll_drop_item(items, nil, up), 1.10)
+        local b = Duel.scale_item_stats(self:roll_drop_item(items, nil, up), 1.10)
+        self:spawn_item_beacon(x - 0.9, z, a)
+        self:spawn_item_beacon(x + 0.9, z, b)
         return
     end
     if c and c.elite then
@@ -4231,14 +4258,24 @@ function Duel:maybe_drop_manual_gear(c)
     self:spawn_item_beacon(x, z, self:roll_drop_item(items))
 end
 
-local function apply_gear_effect(hero, effect)
+-- Percentage (+X%) bonuses are additive from BASE, never compounded on current:
+-- +10% then +5% then +10% => base * 1.25 (not 1.10*1.05*1.10).
+-- `ref` holds the naked/class baselines (and post-load dodge_recharge).
+local function apply_gear_effect(hero, effect, ref)
     if not effect then return end
-    if effect.dps_mult then hero.dps = hero.dps * effect.dps_mult end
+    ref = ref or hero
+    if effect.dps_mult then
+        hero.dps = hero.dps + (ref.dps or 0.0) * (effect.dps_mult - 1.0)
+    end
     if effect.dps_add then hero.dps = hero.dps + effect.dps_add end
     if effect.cleave_add then hero.cleave = hero.cleave + effect.cleave_add end
     if effect.attack_range_add then hero.attack_range = hero.attack_range + effect.attack_range_add end
-    if effect.speed_mult then hero.speed = hero.speed * effect.speed_mult end
-    if effect.kite_speed_mult then hero.kite_speed = hero.kite_speed * effect.kite_speed_mult end
+    if effect.speed_mult then
+        hero.speed = hero.speed + (ref.speed or 0.0) * (effect.speed_mult - 1.0)
+    end
+    if effect.kite_speed_mult then
+        hero.kite_speed = hero.kite_speed + (ref.kite_speed or ref.speed or 0.0) * (effect.kite_speed_mult - 1.0)
+    end
     if effect.hp_max_add then hero.hp_max = hero.hp_max + effect.hp_max_add end
     if effect.armor_add then hero.armor = clampn((hero.armor or 0.0) + effect.armor_add, -0.5, 0.85) end
     if effect.lifesteal_add then hero.lifesteal = (hero.lifesteal or 0.0) + effect.lifesteal_add end
@@ -4249,8 +4286,10 @@ local function apply_gear_effect(hero, effect)
     if effect.whirl_add then hero.whirl = (hero.whirl or 0) + effect.whirl_add end
     if effect.thorns_add then hero.thorns = (hero.thorns or 0.0) + effect.thorns_add end
     if effect.dash_add then hero.dash = (hero.dash or 0) + effect.dash_add end
-    -- Attack-speed gear (ranged): lowers fire_interval.
-    if effect.fire_interval_mult then hero.fire_interval = (hero.fire_interval or 0.28) * effect.fire_interval_mult end
+    -- Attack speed: sum (1/mult - 1) as AS%, resolved against base interval in finalize.
+    if effect.fire_interval_mult then
+        hero._as_pct = (hero._as_pct or 0.0) + (1.0 / effect.fire_interval_mult - 1.0)
+    end
     -- Crit is ROLLED per hit now (see hit_creep), not folded into average dps.
     if effect.crit_add then hero.crit_chance = (hero.crit_chance or 0.0) + effect.crit_add end
     if effect.pickup_range_add then hero.pickup_range = (hero.pickup_range or PICKUP_RANGE_BASE) + effect.pickup_range_add end
@@ -4273,19 +4312,32 @@ local function apply_gear_effect(hero, effect)
     end
     -- Dodge gear: extra charges / faster recharge (Normal-dodge machinery).
     if effect.dodge_charge_add then hero.dodge_charges_max = (hero.dodge_charges_max or 1) + effect.dodge_charge_add end
-    if effect.dodge_recharge_mult then hero.dodge_recharge = (hero.dodge_recharge or DODGE_RECHARGE) * effect.dodge_recharge_mult end
+    if effect.dodge_recharge_mult then
+        local b = ref.dodge_recharge or hero.dodge_recharge or DODGE_RECHARGE
+        hero.dodge_recharge = hero.dodge_recharge + b * (effect.dodge_recharge_mult - 1.0)
+    end
 end
 
-local function apply_specialization_passives(hero, class_id)
+local function finalize_attack_speed(hero, ref)
+    local as = hero._as_pct
+    hero._as_pct = nil
+    if not as or as == 0.0 then return end
+    local bfi = (ref and ref.fire_interval) or hero.base_fire_interval or hero.fire_interval or 0.28
+    hero.fire_interval = bfi / math.max(0.05, 1.0 + as)
+end
+
+local function apply_specialization_passives(hero, class_id, ref)
     local ranks = hero.specialization_ranks or {}
     local class
     for _, row in ipairs(Balance.classes) do if row.id == class_id then class = row; break end end
+    ref = ref or hero
     for _, spec in ipairs(class and class.specializations or {}) do
         local rank = ranks[spec.id] or 0
         if rank > 0 and spec.move_speed_per_rank then
-            local mult = 1.0 + spec.move_speed_per_rank * rank
-            hero.speed = hero.speed * mult
-            hero.kite_speed = hero.kite_speed * mult
+            -- Additive from base: rank*per_rank is already a summed %, not compounded.
+            local pct = spec.move_speed_per_rank * rank
+            hero.speed = hero.speed + (ref.speed or 0.0) * pct
+            hero.kite_speed = hero.kite_speed + (ref.kite_speed or ref.speed or 0.0) * pct
         end
     end
 end
@@ -4349,16 +4401,26 @@ function Duel:recompute_hero_stats()
     hero.fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28
     -- Load establishes the dodge identity; gear and cards then modify it.
     apply_equip_load(hero, self.gear_equipped)
+    -- pct bonuses reference naked base_stats (and post-load dodge recharge).
+    local ref = {
+        dps = base.dps or hero.dps,
+        speed = base.speed or hero.speed,
+        kite_speed = base.kite_speed or hero.kite_speed,
+        fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28,
+        dodge_recharge = hero.dodge_recharge,
+    }
+    hero._as_pct = 0.0
 
     for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
         local item = self.gear_equipped and self.gear_equipped[slot]
-        if item then apply_gear_effect(hero, item.effect) end
+        if item then apply_gear_effect(hero, item.effect, ref) end
     end
     -- Run-scoped drafted boons stack on top of base + gear.
     for _, card in ipairs(self.run_cards or {}) do
-        apply_gear_effect(hero, card.effect)
+        apply_gear_effect(hero, card.effect, ref)
     end
-    apply_specialization_passives(hero, self.hero_class)
+    apply_specialization_passives(hero, self.hero_class, ref)
+    finalize_attack_speed(hero, ref)
     hero.dodge_charges = math.min(hero.dodge_charges or 1, hero.dodge_charges_max)
     hero.dodge_recharge_t = math.min(hero.dodge_recharge_t or hero.dodge_recharge, hero.dodge_recharge)
 
@@ -4391,7 +4453,8 @@ function Duel:apply_saved_run_cards()
     for _, id in ipairs(ids) do
         if id == "universal_projectiles" then id = "universal_sustain" end
         local card = catalog[id]
-        if card then self.run_cards[#self.run_cards + 1] = card end
+        -- Only specialization ranks persist; universal draft cards are retired.
+        if card and card.specialization then self.run_cards[#self.run_cards + 1] = card end
     end
 end
 
@@ -4400,7 +4463,10 @@ function Duel:reset_manual_gear(keep_progression)
     self.inv_grid = self.inv_grid or {}
     self.gear_equipped = self.gear_equipped or { helmet = nil, body = nil, pants = nil, gloves = nil, weapon = nil, jewelry = nil }
     self.gear_drop_cursor = 0
-    if not keep_progression then self.run_cards = {} end
+    if not keep_progression then
+        self.run_cards = {}
+        self.skill_points = 0
+    end
     -- Re-apply pending profile picks (ids cleared after choose_class).
     if self._saved_run_card_ids then self:apply_saved_run_cards() end
     self.draft_offer = nil
@@ -4443,14 +4509,23 @@ function Duel:gear_preview_stats()
         upgrade_ranks = {},
     }
     apply_equip_load(t, self.gear_equipped)
+    local ref = {
+        dps = base.dps or t.dps,
+        speed = base.speed or t.speed,
+        kite_speed = base.kite_speed or t.kite_speed,
+        fire_interval = hero.base_fire_interval or t.fire_interval or 0.28,
+        dodge_recharge = t.dodge_recharge,
+    }
+    t._as_pct = 0.0
     for _, slot in ipairs({ "helmet", "body", "pants", "gloves", "weapon", "jewelry" }) do
         local item = self.gear_equipped and self.gear_equipped[slot]
-        if item then apply_gear_effect(t, item.effect) end
+        if item then apply_gear_effect(t, item.effect, ref) end
     end
     for _, card in ipairs(self.run_cards or {}) do
-        apply_gear_effect(t, card.effect)
+        apply_gear_effect(t, card.effect, ref)
     end
-    apply_specialization_passives(t, self.hero_class)
+    apply_specialization_passives(t, self.hero_class, ref)
+    finalize_attack_speed(t, ref)
     return t
 end
 

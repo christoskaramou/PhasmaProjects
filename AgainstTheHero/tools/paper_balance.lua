@@ -70,16 +70,27 @@ local COMBAT = { dps_mult = 1, dps_add = 1, cleave_add = 1, attack_range_add = 1
     regen_add = 1, whirl_add = 1, thorns_add = 1, fire_interval_mult = 1, crit_add = 1,
     gold_find_add = 1 }
 
+-- Mirrors Duel apply_gear_effect: *_mult is additive from the hero's starting
+-- (base) values captured once in build_hero, not compounded on current.
 local function apply_effect(hero, effect)
     for k in pairs(effect) do
         if not NONCOMBAT[k] and not COMBAT[k] then
             error("paper harness out of date: unknown effect key '" .. k .. "'")
         end
     end
-    if effect.dps_mult then hero.dps = hero.dps * effect.dps_mult end
+    local ref = hero._ref or hero
+    if effect.dps_mult then
+        hero.dps = hero.dps + (ref.dps or 0.0) * (effect.dps_mult - 1.0)
+    end
     if effect.dps_add then hero.dps = hero.dps + effect.dps_add end
     if effect.cleave_add then hero.cleave = hero.cleave + effect.cleave_add end
     if effect.attack_range_add then hero.attack_range = hero.attack_range + effect.attack_range_add end
+    if effect.speed_mult then
+        hero.speed = hero.speed + (ref.speed or 0.0) * (effect.speed_mult - 1.0)
+    end
+    if effect.kite_speed_mult then
+        hero.kite_speed = hero.kite_speed + (ref.kite_speed or ref.speed or 0.0) * (effect.kite_speed_mult - 1.0)
+    end
     if effect.hp_max_add then hero.hp_max = hero.hp_max + effect.hp_max_add end
     if effect.armor_add then hero.armor = clampn((hero.armor or 0.0) + effect.armor_add, -0.5, 0.85) end
     if effect.lifesteal_add then hero.lifesteal = (hero.lifesteal or 0.0) + effect.lifesteal_add end
@@ -87,7 +98,9 @@ local function apply_effect(hero, effect)
     if effect.whirl_add then hero.whirl = (hero.whirl or 0) + effect.whirl_add end
     if effect.thorns_add then hero.thorns = (hero.thorns or 0.0) + effect.thorns_add end
     if effect.fire_interval_mult and hero.fire_interval then
-        hero.fire_interval = hero.fire_interval * effect.fire_interval_mult
+        hero._as_pct = (hero._as_pct or 0.0) + (1.0 / effect.fire_interval_mult - 1.0)
+        local bfi = ref.fire_interval or hero.fire_interval
+        hero.fire_interval = bfi / math.max(0.05, 1.0 + hero._as_pct)
     end
     if effect.crit_add then hero.crit_chance = (hero.crit_chance or 0.0) + effect.crit_add end
     if effect.gold_find_add then hero.gold_find = (hero.gold_find or 1.0) + effect.gold_find_add end
@@ -110,6 +123,8 @@ local function build_hero(class_id, gear_ids)
         speed = c.speed, kite_speed = c.kite_speed, armor = c.armor or 0.0,
         lifesteal = c.lifesteal or 0.0, regen = c.regen or 0.0, whirl = c.whirl or 0,
         thorns = 0.0, crit_chance = R.crit.base_chance, gold_find = 1.0, spec_rank = 0 }
+    hero._ref = { dps = hero.dps, speed = hero.speed, kite_speed = hero.kite_speed,
+        fire_interval = hero.fire_interval }
     for _, id in ipairs(gear_ids or {}) do apply_effect(hero, item_by_id(id).effect) end
     return hero
 end

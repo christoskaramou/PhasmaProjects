@@ -1447,29 +1447,6 @@
             "parent": 13
         },
         {
-            "name": "Scene Settings",
-            "local_matrix": [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "component_flags": 16384,
-            "parent": -1
-        },
-        {
             "name": "Menu Quit",
             "local_matrix": [
                 280.0,
@@ -1553,6 +1530,29 @@
             },
             "script": "Assets/Scripts/shared/hud/hub_settings.lua",
             "parent": 13
+        },
+        {
+            "name": "Scene Settings",
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 16384,
+            "parent": -1
         }
     ],
     "lights": [],

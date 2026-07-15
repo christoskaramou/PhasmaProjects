@@ -143,6 +143,68 @@ local function item_index(D)
     return out
 end
 
+-- Clone a catalog item with numeric effect stats scaled (boss drops = +10%).
+-- `*_mult` buffs scale the bonus over 1.0; interval/recharge mults scale the
+-- "faster" portion so +12% AS becomes +13.2% AS at scale 1.1.
+function Profile.scale_item(item, scale)
+    if not item then return nil end
+    scale = scale or 1.0
+    if scale == 1.0 then return item end
+    local out = {}
+    for k, v in pairs(item) do
+        if k ~= "effect" then out[k] = v end
+    end
+    out.stat_scale = scale
+    out.boss_drop = true
+    local src = item.effect
+    if type(src) == "table" then
+        local effect = {}
+        for k, v in pairs(src) do
+            if type(v) == "number" then
+                if type(k) == "string" and k:sub(-5) == "_mult" then
+                    if k == "fire_interval_mult" or k == "dodge_recharge_mult" then
+                        if v > 0.0 then
+                            local as = (1.0 / v) - 1.0
+                            effect[k] = 1.0 / math.max(0.05, 1.0 + as * scale)
+                        else
+                            effect[k] = v
+                        end
+                    else
+                        effect[k] = 1.0 + (v - 1.0) * scale
+                    end
+                else
+                    effect[k] = v * scale
+                end
+            else
+                effect[k] = v
+            end
+        end
+        out.effect = effect
+    end
+    if item.desc then
+        out.desc = tostring(item.desc) .. "\n(+10% boss)"
+    end
+    return out
+end
+
+-- Bag/equip entries may be a bare id string or { id=, s=stat_scale }.
+local function decode_item(catalog, entry)
+    if type(entry) == "string" then return catalog[entry] end
+    if type(entry) ~= "table" or type(entry.id) ~= "string" then return nil end
+    local base = catalog[entry.id]
+    if not base then return nil end
+    local scale = tonumber(entry.s) or 1.0
+    if scale == 1.0 then return base end
+    return Profile.scale_item(base, scale)
+end
+
+local function encode_item(item)
+    if not (item and item.id) then return nil end
+    local scale = tonumber(item.stat_scale) or 1.0
+    if scale ~= 1.0 then return { id = item.id, s = scale } end
+    return item.id
+end
+
 function Profile.load(D)
     D.gold = 0
     D.inv_grid = {}
@@ -155,6 +217,7 @@ function Profile.load(D)
         D.save_slot = Profile.active_slot()
         D._saved_run_card_ids = nil
         D.run_cards = {}
+        D.skill_points = 0
         return false
     end
 
@@ -188,12 +251,13 @@ function Profile.load(D)
     end
     if type(data.bag) == "table" then
         for i = 1, GRID_SIZE do
-            if type(data.bag[i]) == "string" then D.inv_grid[i] = items[data.bag[i]] end
+            local item = decode_item(items, data.bag[i])
+            if item then D.inv_grid[i] = item end
         end
     end
     if type(data.equipped) == "table" then
         for _, slot_name in ipairs(SLOTS) do
-            local item = items[data.equipped[slot_name]]
+            local item = decode_item(items, data.equipped[slot_name])
             if item and item.slot == slot_name then D.gear_equipped[slot_name] = item end
         end
     end
@@ -205,7 +269,7 @@ function Profile.load(D)
             if v ~= nil then D.loot_filter[rarity] = v ~= false end
         end
     end
-    -- Draft picks: ids only; Duel rebuilds run_cards after create_hero.
+    -- Draft/skill picks: ids only; Duel rebuilds run_cards after create_hero.
     D._saved_run_card_ids = nil
     if type(data.run_cards) == "table" then
         local ids = {}
@@ -213,6 +277,9 @@ function Profile.load(D)
             if type(id) == "string" and id ~= "" then ids[#ids + 1] = id end
         end
         if #ids > 0 then D._saved_run_card_ids = ids end
+    end
+    if type(data.skill_points) == "number" and data.skill_points >= 0 and data.skill_points < 1000 then
+        D.skill_points = math.floor(data.skill_points)
     end
     return true
 end
@@ -228,14 +295,16 @@ function Profile.save(D)
     local data = { v = 1, gold = math.max(0, math.floor(D.gold or 0)), bag = {}, equipped = {},
         maps_cleared = math.max(0, math.floor(D.maps_cleared or 0)),
         hero_index = math.max(1, math.floor(hi)),
-        map_next_wave = {}, run_cards = {} }
+        map_next_wave = {}, run_cards = {},
+        skill_points = math.max(0, math.floor(D.skill_points or 0)) }
     for i = 1, GRID_SIZE do
         local item = D.inv_grid and D.inv_grid[i]
-        if item and item.id then data.bag[i] = item.id end
+        local enc = encode_item(item)
+        if enc then data.bag[i] = enc end
     end
     for _, slot_name in ipairs(SLOTS) do
-        local item = D.gear_equipped and D.gear_equipped[slot_name]
-        if item and item.id then data.equipped[slot_name] = item.id end
+        local enc = encode_item(D.gear_equipped and D.gear_equipped[slot_name])
+        if enc then data.equipped[slot_name] = enc end
     end
     for i, w in pairs(D.map_next_wave or {}) do
         if type(i) == "number" and type(w) == "number" and i >= 1 and w >= 1 then
