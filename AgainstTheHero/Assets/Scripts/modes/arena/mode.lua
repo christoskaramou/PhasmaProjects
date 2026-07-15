@@ -101,7 +101,7 @@ return {
         -- MAPS — the run ladder. Each map is the same authored stage with its own
         -- wave count, boss, enemy mix (auto_mix reads D.map_index), difficulty
         -- multipliers and loot weights. Clearing a map unlocks the next
-        -- (persisted in Save/profile.lua). Gold scales steeply with rank so
+        -- (persisted in Save/slot_N.lua). Gold scales steeply with rank so
         -- deeper maps are the real income (suicide-farming map I stays poor).
         -- pos = {x, y} fraction of the painted world-map ARTWORK (raw surface,
         -- full-bleed) — each map anchors to a building painted on it.
@@ -138,7 +138,9 @@ return {
         -- curves so every knob stays visible. Maps 1-3 keep the smoke-validated
         -- numbers exactly; the rest extend the same curves. Bosses cycle the
         -- three arches with escalating titles; floors live in
-        -- Textures/modes/arena/floors/<id>.png (map 1 keeps the authored floor).
+        -- Textures/modes/arena/floors/<id>.png. Map 1 uses the Spud floor path
+        -- explicitly: game.pescene ships a LOADING placeholder floor (not grass),
+        -- so apply_map_floor must always have a real texture to swap in.
         maps = (function()
             local defs = {
                 { id = "spud_fields", name = "Spud Fields", boss = "gourd_king", boss_title = "GOURD KING",
@@ -170,7 +172,11 @@ return {
             }
             Balance.apply_map_progression(defs)
             for i, map in ipairs(defs) do
-                if i > 1 then map.floor = "Textures/modes/arena/floors/" .. map.id .. ".png" end
+                if i == 1 then
+                    map.floor = Spud.theme.floor_texture
+                else
+                    map.floor = "Textures/modes/arena/floors/" .. map.id .. ".png"
+                end
             end
             return defs
         end)(),

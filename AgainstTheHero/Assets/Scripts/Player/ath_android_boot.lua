@@ -39,9 +39,9 @@ local function init()
         if pe_error then pe_error("ATH android boot: failed to load arena mode") end
         return
     end
-    -- Android: skip IBL (its equirect->cubemap build shader isn't in the prebaked
-    -- SPIR-V cache; ATH is emissive-lit so IBL adds ~nothing). Threaded through the
-    -- config so Duel:start's setup_stage sets IBL off BEFORE the engine builds it.
+    -- Android: author IBL off on the game scene (equirect->cubemap isn't in the
+    -- prebaked SPIR-V cache; ATH is emissive-lit so IBL adds ~nothing). Kept on
+    -- config for any mode that still reads it — scripts no longer settings.set IBL.
     arena.config.no_ibl = true
     -- Direct-boot (no menu shell): tell the arena to draw the FPS clock itself,
     -- since the shell (which owns it on the desktop menu path) never runs here.
@@ -71,7 +71,7 @@ local function update(dt)
     -- FIFO vsync, deferred to the first frame: doing it in init() races the
     -- swapchain surface (getSurfacePresentModesKHR -> ErrorSurfaceLostKHR). pcall'd
     -- so any transient surface state never aborts the frame loop. render_scale stays
-    -- LOW (scene's 0.75) for Mali perf; IBL/FXAA/CAS come from Art.setup_stage.
+    -- LOW (scene's 0.75) for Mali perf; IBL/FXAA/CAS come from scene settings.
     if not present_set then
         present_set = true
         if rhi and rhi.change_present_mode then pcall(rhi.change_present_mode, "fifo") end

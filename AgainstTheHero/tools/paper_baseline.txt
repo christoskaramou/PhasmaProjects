@@ -1,42 +1,42 @@
-1|none|ranger|bleed|CLEAR|77
-1|none|brawler|bleed|CLEAR|32
-1|none|sower|thorns|CLEAR|85
-1|none|mage|fire|CLEAR|103
-1|none|rogue|poison|CLEAR|63
-1|none|warrior|bleed|CLEAR|41
-1|none|necromancer|curse|CLEAR|100
-2|mid|ranger|bleed|CLEAR|65
-2|mid|brawler|bleed|CLEAR|40
-2|mid|sower|thorns|CLEAR|85
-2|mid|mage|fire|CLEAR|86
-2|mid|rogue|poison|CLEAR|54
-2|mid|warrior|bleed|CLEAR|50
-2|mid|necromancer|curse|CLEAR|84
-3|top|ranger|bleed|CLEAR|22
+1|none|ranger|bleed|CLEAR|28
+1|none|brawler|bleed|CLEAR|30
+1|none|sower|thorns|CLEAR|36
+1|none|mage|fire|CLEAR|55
+1|none|rogue|poison|CLEAR|44
+1|none|warrior|bleed|CLEAR|38
+1|none|necromancer|curse|CLEAR|39
+2|mid|ranger|bleed|CLEAR|30
+2|mid|brawler|bleed|CLEAR|35
+2|mid|sower|thorns|CLEAR|37
+2|mid|mage|fire|CLEAR|61
+2|mid|rogue|poison|CLEAR|50
+2|mid|warrior|bleed|CLEAR|44
+2|mid|necromancer|curse|CLEAR|41
+3|top|ranger|bleed|CLEAR|14
 3|top|brawler|bleed|CLEAR|23
-3|top|sower|thorns|CLEAR|34
-3|top|mage|fire|CLEAR|38
+3|top|sower|thorns|CLEAR|19
+3|top|mage|fire|CLEAR|30
 3|top|rogue|poison|CLEAR|26
 3|top|warrior|bleed|CLEAR|28
-3|top|necromancer|curse|CLEAR|35
-5|top|ranger|bleed|CLEAR|68
+3|top|necromancer|curse|CLEAR|21
+5|top|ranger|bleed|CLEAR|34
 5|top|brawler|bleed|CLEAR|54
-5|top|sower|thorns|CLEAR|84
-5|top|mage|fire|DIED w6|-1
+5|top|sower|thorns|CLEAR|41
+5|top|mage|fire|CLEAR|70
 5|top|rogue|poison|CLEAR|59
 5|top|warrior|bleed|CLEAR|65
-5|top|necromancer|curse|CLEAR|88
-8|top|ranger|bleed|CLEAR|119
-8|top|brawler|bleed|CLEAR|92
-8|top|sower|thorns|CLEAR|144
-8|top|mage|fire|DIED w1|-1
-8|top|rogue|poison|DIED w1|-1
-8|top|warrior|bleed|CLEAR|112
-8|top|necromancer|curse|DIED w1|-1
-11|top|ranger|bleed|DIED w1|-1
-11|top|brawler|bleed|CLEAR|68
-11|top|sower|thorns|DIED w1|-1
+5|top|necromancer|curse|CLEAR|47
+8|top|ranger|bleed|CLEAR|47
+8|top|brawler|bleed|CLEAR|83
+8|top|sower|thorns|CLEAR|57
+8|top|mage|fire|DIED w2|-1
+8|top|rogue|poison|CLEAR|88
+8|top|warrior|bleed|CLEAR|99
+8|top|necromancer|curse|DIED w4|-1
+11|top|ranger|bleed|CLEAR|25
+11|top|brawler|bleed|CLEAR|62
+11|top|sower|thorns|CLEAR|30
 11|top|mage|fire|DIED w1|-1
 11|top|rogue|poison|DIED w1|-1
-11|top|warrior|bleed|CLEAR|79
+11|top|warrior|bleed|CLEAR|72
 11|top|necromancer|curse|DIED w1|-1

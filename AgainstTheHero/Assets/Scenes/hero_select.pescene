@@ -3,7 +3,17 @@
         "right_handed": false,
         "reverse_depth": true,
         "frustum_culling": true,
-        "shadows": true,
+        "occlusion_culling": false,
+        "occlusion_culling_bias": 0.002,
+        "lod_enabled": false,
+        "lod_count": 4,
+        "lod_bias": 1.0,
+        "lod_distances": [
+            30.0,
+            90.0,
+            250.0
+        ],
+        "shadows": false,
         "shadow_map_size": 2048,
         "num_cascades": 4,
         "shadow_distance": 250.0,
@@ -12,11 +22,20 @@
         "shadow_fade_fraction": 0.15,
         "shadow_filter_radius": 0.75,
         "shadow_debug_mode": 0,
+        "fog": false,
+        "fog_density": 0.008,
+        "fog_start": 150.0,
         "render_scale": 0.75,
-        "ssao": true,
+        "ssao": false,
+        "ssao_radius": 0.5,
+        "ssao_bias": 0.025,
+        "ssao_intensity": 0.5,
+        "ssao_power": 1.0,
+        "ssao_samples": 16,
+        "forward_plus": true,
         "fxaa": false,
-        "taa": true,
-        "cas_sharpening": true,
+        "taa": false,
+        "cas_sharpening": false,
         "cas_sharpness": 0.5,
         "ssr": false,
         "tonemapping": false,
@@ -39,10 +58,10 @@
         "bloom": false,
         "bloom_strength": 1.0,
         "bloom_range": 1.0,
-        "motion_blur": true,
+        "motion_blur": false,
         "motion_blur_strength": 1.0,
         "motion_blur_samples": 16,
-        "IBL": true,
+        "IBL": false,
         "IBL_intensity": 1.0,
         "lights_intensity": 1.0,
         "randomize_lights": false,
@@ -50,7 +69,7 @@
         "depth_bias": [
             0.0,
             0.0,
-            -6.199997
+            -6.199995
         ],
         "time_scale": 1.0,
         "model_list": [],
@@ -58,9 +77,17 @@
         "draw_aabbs": false,
         "draw_grid": true,
         "aabbs_depth_aware": true,
+        "selection_outline": false,
+        "selection_outline_color_r": 0.05,
+        "selection_outline_color_g": 0.62,
+        "selection_outline_color_b": 1.0,
+        "selection_outline_color_a": 0.949998,
+        "selection_outline_thickness": 3.0,
+        "selection_outline_inner_fade": 2.0,
+        "selection_outline_outer_fade": 6.0,
         "dynamic_rendering": true,
         "ray_tracing_support": true,
-        "render_mode": 1,
+        "render_mode": 0,
         "use_Disney_PBR": true,
         "physical_point_falloff": false,
         "present_mode": 2,
@@ -247,8 +274,8 @@
                 0.0,
                 1.0,
                 0.0,
-                188.0,
-                680.0,
+                725.0,
+                620.0,
                 0.0,
                 1.0
             ],
@@ -329,8 +356,8 @@
                 0.0,
                 1.0,
                 0.0,
-                552.0,
-                680.0,
+                1095.0,
+                620.0,
                 0.0,
                 1.0
             ],
@@ -411,8 +438,8 @@
                 0.0,
                 1.0,
                 0.0,
-                916.0,
-                680.0,
+                1465.0,
+                620.0,
                 0.0,
                 1.0
             ],
@@ -478,7 +505,6 @@
             },
             "parent": 2
         },
-
         {
             "name": "UI Mage",
             "local_matrix": [
@@ -494,8 +520,8 @@
                 0.0,
                 1.0,
                 0.0,
-                1280.0,
-                680.0,
+                1835.0,
+                620.0,
                 0.0,
                 1.0
             ],
@@ -576,8 +602,8 @@
                 0.0,
                 1.0,
                 0.0,
-                1644.0,
-                680.0,
+                910.0,
+                980.0,
                 0.0,
                 1.0
             ],
@@ -658,8 +684,8 @@
                 0.0,
                 1.0,
                 0.0,
-                2008.0,
-                680.0,
+                1280.0,
+                980.0,
                 0.0,
                 1.0
             ],
@@ -740,8 +766,8 @@
                 0.0,
                 1.0,
                 0.0,
-                2372.0,
-                680.0,
+                1650.0,
+                980.0,
                 0.0,
                 1.0
             ],
@@ -823,7 +849,7 @@
                 1.0,
                 0.0,
                 1280.0,
-                1175.0,
+                1280.0,
                 0.0,
                 1.0
             ],
@@ -887,6 +913,646 @@
                 "bring_to_front": false
             },
             "parent": 2
+        },
+        {
+            "name": "UI Gear",
+            "local_matrix": [
+                96.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                96.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -48.0,
+                48.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "image",
+                "screen": "__scene_ui",
+                "id": "ui_gear",
+                "label": "",
+                "title": "",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "border": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.92,
+                    0.94,
+                    0.98,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    1.0,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true,
+                "action_function": "on_toggle_gear",
+                "image": "../Textures/gear.png"
+            },
+            "script": "Assets/Scripts/shared/hud/menu_gear.lua",
+            "parent": 2
+        },
+        {
+            "name": "Menu Settings",
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "enabled": false,
+            "parent": 2
+        },
+        {
+            "name": "Menu Settings Panel",
+            "local_matrix": [
+                420.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                360.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -240.0,
+                180.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 512,
+            "runtime_ui": {
+                "type": "panel",
+                "screen": "__scene_ui",
+                "id": "menu_set_panel",
+                "label": "",
+                "title": "",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.05,
+                    0.06,
+                    0.09,
+                    0.95
+                ],
+                "border": [
+                    0.62,
+                    0.34,
+                    0.86,
+                    0.95
+                ],
+                "accent": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "text_color": [
+                    0.92,
+                    0.94,
+                    0.98,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "font_scale": 1.0,
+                "text_align_h": 0,
+                "text_align_v": 0,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": true,
+                "bring_to_front": false
+            },
+            "parent": 13
+        },
+        {
+            "name": "Menu Lang EN",
+            "local_matrix": [
+                100.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                48.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -340.0,
+                220.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "menu_lang_en",
+                "label": "",
+                "title": "EN",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.06,
+                    0.06,
+                    0.1,
+                    0.8
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.58,
+                    0.9
+                ],
+                "accent": [
+                    0.62,
+                    0.34,
+                    0.86,
+                    0.95
+                ],
+                "text_color": [
+                    0.9,
+                    0.92,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "font_scale": 0.95,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true,
+                "action_function": "on_lang_en"
+            },
+            "script": "Assets/Scripts/shared/hud/hub_settings.lua",
+            "parent": 13
+        },
+        {
+            "name": "Menu Lang EL",
+            "local_matrix": [
+                100.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                48.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -200.0,
+                220.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "menu_lang_el",
+                "label": "",
+                "title": "EL",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.06,
+                    0.06,
+                    0.1,
+                    0.8
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.58,
+                    0.9
+                ],
+                "accent": [
+                    0.62,
+                    0.34,
+                    0.86,
+                    0.95
+                ],
+                "text_color": [
+                    0.9,
+                    0.92,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "font_scale": 0.95,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true,
+                "action_function": "on_lang_el"
+            },
+            "script": "Assets/Scripts/shared/hud/hub_settings.lua",
+            "parent": 13
+        },
+        {
+            "name": "Menu Damage Text",
+            "local_matrix": [
+                280.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                48.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -270.0,
+                290.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "menu_damage_text",
+                "label": "",
+                "title": "DAMAGE TEXT",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.06,
+                    0.06,
+                    0.1,
+                    0.8
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.58,
+                    0.9
+                ],
+                "accent": [
+                    0.62,
+                    0.34,
+                    0.86,
+                    0.95
+                ],
+                "text_color": [
+                    0.9,
+                    0.92,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "font_scale": 0.95,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true,
+                "action_function": "on_damage_text"
+            },
+            "script": "Assets/Scripts/shared/hud/hub_settings.lua",
+            "parent": 13
+        },
+        {
+            "name": "Menu Shake",
+            "local_matrix": [
+                280.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                48.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -270.0,
+                360.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "menu_shake",
+                "label": "",
+                "title": "SCREEN SHAKE",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.06,
+                    0.06,
+                    0.1,
+                    0.8
+                ],
+                "border": [
+                    0.4,
+                    0.62,
+                    0.58,
+                    0.9
+                ],
+                "accent": [
+                    0.62,
+                    0.34,
+                    0.86,
+                    0.95
+                ],
+                "text_color": [
+                    0.9,
+                    0.92,
+                    1.0,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "font_scale": 0.95,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true,
+                "action_function": "on_shake"
+            },
+            "script": "Assets/Scripts/shared/hud/hub_settings.lua",
+            "parent": 13
+        },
+        {
+            "name": "Scene Settings",
+            "local_matrix": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 16384,
+            "parent": -1
+        },
+        {
+            "name": "Menu Quit",
+            "local_matrix": [
+                280.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                48.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                -270.0,
+                430.0,
+                0.0,
+                1.0
+            ],
+            "component_flags": 528,
+            "runtime_ui": {
+                "type": "button",
+                "screen": "__scene_ui",
+                "id": "menu_quit",
+                "label": "",
+                "title": "QUIT",
+                "subtitle": "",
+                "body": "",
+                "footer": "",
+                "action": "click",
+                "fill": [
+                    0.2,
+                    0.08,
+                    0.08,
+                    0.95
+                ],
+                "border": [
+                    0.9,
+                    0.3,
+                    0.3,
+                    0.95
+                ],
+                "accent": [
+                    0.9,
+                    0.3,
+                    0.3,
+                    0.95
+                ],
+                "text_color": [
+                    1.0,
+                    0.85,
+                    0.85,
+                    1.0
+                ],
+                "image_tint": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "anchor": [
+                    1.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "font_scale": 0.95,
+                "text_align_h": 2,
+                "text_align_v": 2,
+                "text_offset": [
+                    0.0,
+                    0.0
+                ],
+                "visible": true,
+                "draggable": false,
+                "no_input": false,
+                "bring_to_front": true,
+                "action_function": "on_quit_app"
+            },
+            "script": "Assets/Scripts/shared/hud/hub_settings.lua",
+            "parent": 13
         }
     ],
     "lights": [],
