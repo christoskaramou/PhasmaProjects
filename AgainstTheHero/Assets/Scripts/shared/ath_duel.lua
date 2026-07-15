@@ -38,6 +38,7 @@ end
 local Profile = ATH_COMMON.load_script("Scripts/shared/ath_profile.lua", "persistent profile", _ENV)
 local Balance = ATH_COMMON.load_script("Scripts/shared/ath_balance.lua", "balance database", _ENV)
 local Anim = ATH_COMMON.load_script("Scripts/shared/ath_sprite_anim.lua", "sprite anim", _ENV)
+local BossSkills = ATH_COMMON.load_script("Scripts/shared/ath_boss_skills.lua", "boss skills", _ENV)
 
 -- Dev-only diagnostic logging ([DMG]/[CAMDIAG]); silent unless ATH_DEV=1 at launch.
 local ATH_DEV = ATH_COMMON.env_enabled and ATH_COMMON.env_enabled("ATH_DEV", false) or false
@@ -636,6 +637,7 @@ function Duel:mark_status(c, status, duration)
     c.on_hit_statuses[status] = math.max(c.on_hit_statuses[status] or 0.0,
         duration or Balance.on_hit.duration)
     self:flash_creep_status(c, status)
+    BossSkills.on_status(self, c, status)
 end
 
 function Duel:apply_on_hit_dot(c, status, initial, tick, spread, lifesteal_mult)
@@ -1037,6 +1039,8 @@ function Duel:create_hero()
         -- on_combat_tick to slow/shrink the hero WITHOUT corrupting card-stacked
         -- stats (ice slow, mud, sandstorm). Mode-owned: set every tick, 1.0 = off.
         move_mult = 1.0, range_mult = 1.0,
+        boss_move_mult = 1.0, boss_damage_mult = 1.0,
+        boss_dodge_recharge_mult = 1.0, boss_armor_bonus = 0.0,
         thought = "",
     }
     hero.base_stats = {
@@ -1179,7 +1183,7 @@ end
 function Duel:move_hero(hero, dirx, dirz, speed, dt)
     local A = self.arena
     local minx, maxx, minz, maxz = arena_actor_bounds(A, 0.8)
-    speed = speed * (hero.move_mult or 1.0)
+    speed = speed * (hero.move_mult or 1.0) * (hero.boss_move_mult or 1.0)
         * ((hero.flask_drink_t or 0.0) > 0.0 and RULES.flask.move_mult or 1.0)
     hero.x = clampn(hero.x + dirx * speed * dt, minx, maxx)
     hero.z = clampn(hero.z + dirz * speed * dt, minz, maxz)
@@ -1210,6 +1214,7 @@ function Duel:try_dodge(dirx, dirz)
     hero.dodge_charges = hero.dodge_charges - 1
     hero.dodge_t = DODGE_DUR
     hero.dodge_speed = (hero.dodge_dist or DODGE_DIST) / DODGE_DUR
+        * BossSkills.dodge_speed_mult(self, dirx, dirz)
     hero.dodge_iframe_t = math.max(hero.dodge_iframe_t or 0.0, hero.dodge_iframes or DODGE_IFRAMES)
     hero.dodge_dx, hero.dodge_dz = dirx, dirz
     hero.facing = math.atan(dirx, dirz)
@@ -1220,6 +1225,7 @@ function Duel:try_dodge(dirx, dirz)
     if (hero.dodge_blades or 0.0) > 0.0 then
         self:hero_burst(3.8, hero.dps * hero.dodge_blades, { 0.9, 0.25, 0.35 })
     end
+    BossSkills.on_dodge(self, hero)
     return true
 end
 
@@ -1806,6 +1812,7 @@ end
 function Duel:hit_creep(c, amount, kx, kz, opts)
     if not c or not c.alive then return false end
     opts = opts or {}
+    amount = amount * ((self.hero and self.hero.boss_damage_mult) or 1.0)
     if self.manual_hero and c.stats and c.stats.boss and not opts.armor_applied then
         if opts.skill then
             if (c.armor_broken_t or 0.0) <= 0.0 then self:set_flash("ARMOR BROKEN") end
@@ -1820,6 +1827,7 @@ function Duel:hit_creep(c, amount, kx, kz, opts)
     if (c.curse_t or 0.0) > 0.0 then
         amount = amount * (1.0 + (c.curse_amp or 0.0))
     end
+    if (c._tribute_armor_t or 0.0) > 0.0 then amount = amount * 0.65 end
     if self.hero and (self.hero.frenzy_t or 0.0) > 0.0 then
         amount = amount * (1.0 + (self.hero.frenzy_mult or 0.0))
     end
@@ -2317,6 +2325,7 @@ end
 -- ---------------------------------------------------------------------------
 function Duel:cproj_hide(p)
     p.active = false
+    p.source_archetype = nil
     if Art.valid(p.node) then
         p.node:set_position(vec3(-1000.0, -1000.0, -1000.0))
         p.node:set_scale(vec3(0.0001, 0.0001, 0.0001))
@@ -2352,6 +2361,7 @@ function Duel:spawn_creep_proj(desc)
     slot.life = desc.max_flight_time or 1.4
     slot.damage = desc.damage or 0.0
     slot.source = desc.source
+    slot.source_archetype = desc.source_archetype
     slot.hit_r = desc.hit_radius or 0.6
     local col = desc.color or { 1.0, 0.5, 0.3, 1.0 }
     slot.col = col
@@ -2463,8 +2473,10 @@ function Duel:update_creep_projectiles(dt)
                 Art.burst("ath_cproj_hit", vec3(p.x, p.y or 0.7, p.z),
                     { preset = "hero_take", count = 10, life_max = 0.20, spawn_radius = 0.16,
                       color_start = vec4(p.col[1], p.col[2], p.col[3], 1.0) })
+                BossSkills.on_projectile_end(self, p)
                 self:cproj_hide(p)
             elseif p.life <= 0.0 or off then
+                BossSkills.on_projectile_end(self, p)
                 self:cproj_hide(p)
             elseif Art.valid(p.node) then
                 p.node:set_position(vec3(p.x, p.y or 0.7, p.z))
@@ -2513,6 +2525,24 @@ function Duel:ensure_telegraph_pool()
         if Art.valid(node) and material and material.set_render_type then material.set_render_type(node, "alpha_blend") end
         self.boss_arc_nodes[i] = node
     end
+    self.furrow_pool = {}
+    self.furrows = {}
+    for i = 1, 24 do
+        local node = Art.cube("RoyalFurrow_" .. i, vec3(-1000.0, 0.025, -1000.0),
+            vec3(0.46, 0.025, 1.0), { 0.20, 0.08, 0.025, 0.72 }, self.groups.world, 0.18)
+        if Art.valid(node) and material and material.set_render_type then material.set_render_type(node, "alpha_blend") end
+        self.furrow_pool[i] = node
+    end
+    self.furrow_bomb_pool = {}
+    self.furrow_bombs = {}
+    for i = 1, 10 do
+        local ring = Art.cylinder("RoyalFurrowBombRing_" .. i, vec3(-1000.0, 0.055, -1000.0),
+            vec3(4.4, 0.025, 4.4), { 1.0, 0.18, 0.06, 0.42 }, self.groups.world, 1.8)
+        local core = Art.sphere("RoyalFurrowBomb_" .. i, vec3(-1000.0, 0.42, -1000.0),
+            vec3(0.85, 0.70, 0.85), { 1.0, 0.38, 0.04 }, self.groups.world, 2.0)
+        if Art.valid(ring) and material and material.set_render_type then material.set_render_type(ring, "alpha_blend") end
+        self.furrow_bomb_pool[i] = { ring = ring, core = core }
+    end
     self.seed_mine_pool = {}
     for i = 1, 8 do
         local ring = Art.cylinder("SeedMineRing_" .. i, vec3(-1000.0, 0.055, -1000.0),
@@ -2528,6 +2558,24 @@ function Duel:park_boss_arc()
     for _, node in ipairs(self.boss_arc_nodes or {}) do
         if Art.valid(node) then node:set_position(vec3(-1000.0, 0.045, -1000.0)) end
     end
+end
+
+function Duel:clear_boss_hazards()
+    BossSkills.clear(self)
+    for _, furrow in ipairs(self.furrows or {}) do
+        if Art.valid(furrow.node) then furrow.node:set_position(vec3(-1000.0, 0.025, -1000.0)) end
+        if furrow.node and self.furrow_pool then self.furrow_pool[#self.furrow_pool + 1] = furrow.node end
+    end
+    self.furrows = {}
+    for _, bomb in ipairs(self.furrow_bombs or {}) do
+        local nodes = bomb.nodes
+        if nodes then
+            if Art.valid(nodes.ring) then nodes.ring:set_position(vec3(-1000.0, 0.055, -1000.0)) end
+            if Art.valid(nodes.core) then nodes.core:set_position(vec3(-1000.0, 0.42, -1000.0)) end
+            if self.furrow_bomb_pool then self.furrow_bomb_pool[#self.furrow_bomb_pool + 1] = nodes end
+        end
+    end
+    self.furrow_bombs = {}
 end
 
 function Duel:add_telegraph(spawn, arch, free)
@@ -2596,6 +2644,7 @@ function Duel:clear_telegraphs()
     end
     self.telegraphs = {}
     self:park_boss_arc()
+    self:clear_boss_hazards()
 end
 
 -- Blast decal — telegraph grammar's "ground decal before an area impact": a red
@@ -2764,7 +2813,8 @@ function Duel:update_hero(dt)
         -- This is the shared manual-movement choke point, so every manual-hero
         -- mode gets the same dodge; charges recharge one at a time.
         if hero.dodge_charges < (hero.dodge_charges_max or 1) then
-            hero.dodge_recharge_t = hero.dodge_recharge_t - dt
+            hero.dodge_recharge_t = hero.dodge_recharge_t
+                - dt / math.max(1.0, hero.boss_dodge_recharge_mult or 1.0)
             if hero.dodge_recharge_t <= 0.0 then
                 hero.dodge_charges = hero.dodge_charges + 1
                 hero.dodge_recharge_t = hero.dodge_recharge
@@ -3243,12 +3293,162 @@ end
 -- Creeps + combat
 -- ---------------------------------------------------------------------------
 
+local function segment_cross(a, b)
+    local adx, adz = a.x2 - a.x1, a.z2 - a.z1
+    local bdx, bdz = b.x2 - b.x1, b.z2 - b.z1
+    local den = adx * bdz - adz * bdx
+    if math.abs(den) < 0.001 then return nil end
+    local ox, oz = b.x1 - a.x1, b.z1 - a.z1
+    local at = (ox * bdz - oz * bdx) / den
+    local bt = (ox * adz - oz * adx) / den
+    if at <= 0.08 or at >= 0.92 or bt <= 0.08 or bt >= 0.92 then return nil end
+    return a.x1 + adx * at, a.z1 + adz * at
+end
+
+function Duel:spawn_royal_furrow_bomb(c, x, z, spec)
+    self:ensure_telegraph_pool()
+    for _, bomb in ipairs(self.furrow_bombs or {}) do
+        local dx, dz = bomb.x - x, bomb.z - z
+        if dx * dx + dz * dz < 1.0 then return end
+    end
+    local nodes = self.furrow_bomb_pool and table.remove(self.furrow_bomb_pool) or nil
+    if not nodes and self.furrow_bombs and #self.furrow_bombs > 0 then
+        nodes = table.remove(self.furrow_bombs, 1).nodes
+    end
+    if not nodes then return end
+    local radius = spec.radius or 2.2
+    if Art.valid(nodes.ring) then
+        nodes.ring:set_scale(vec3(radius * 2.0, 0.025, radius * 2.0))
+        nodes.ring:set_position(vec3(x, 0.055, z))
+    end
+    if Art.valid(nodes.core) then
+        nodes.core:set_position(vec3(x, 0.42, z))
+        nodes.core:set_scale(vec3(0.85, 0.70, 0.85))
+        material.set(nodes.core, "base_color", vec4(1.0, 0.32, 0.03, 1.0))
+        material.set(nodes.core, "emissive", vec3(3.2, 0.5, 0.04))
+    end
+    local fuse = spec.fuse or 1.35
+    self.furrow_bombs[#self.furrow_bombs + 1] = {
+        x = x, z = z, t = fuse, dur = fuse, radius = radius,
+        damage = spec.damage or 28.0, owner = c, nodes = nodes,
+    }
+    Art.burst("ath_royal_furrow_sprout", vec3(x, 0.25, z),
+        { preset = "enemy_give", count = 12, life_max = 0.35, spawn_radius = 0.25, size_max = 0.16,
+          color_start = vec4(1.0, 0.42, 0.05, 1.0), gravity = vec3(0.0, 1.4, 0.0) })
+end
+
+function Duel:add_royal_furrow(c, x1, z1, x2, z2, spec)
+    local dx, dz = x2 - x1, z2 - z1
+    local length = math.sqrt(dx * dx + dz * dz)
+    if length < 1.0 then return end
+    self:ensure_telegraph_pool()
+    local node = self.furrow_pool and table.remove(self.furrow_pool) or nil
+    if not node and self.furrows and #self.furrows > 0 then
+        node = table.remove(self.furrows, 1).node
+    end
+    if not node then return end
+    local furrow = { x1 = x1, z1 = z1, x2 = x2, z2 = z2, node = node }
+    local crossings = 0
+    for _, old in ipairs(self.furrows or {}) do
+        local x, z = segment_cross(furrow, old)
+        if x then
+            self:spawn_royal_furrow_bomb(c, x, z, spec)
+            crossings = crossings + 1
+            if crossings >= 3 then break end
+        end
+    end
+    node:set_position(vec3((x1 + x2) * 0.5, 0.025, (z1 + z2) * 0.5))
+    node:set_scale(vec3(0.46, 0.025, length))
+    node:set_rotation(vec3(0.0, math.deg(math.atan(dx, dz)), 0.0))
+    material.set(node, "base_color", vec4(0.42, 0.13, 0.025, 0.88))
+    material.set(node, "emissive", vec3(0.75, 0.16, 0.025))
+    local nx, nz = -dz / length, dx / length
+    for i = 1, 8 do
+        local t = (i - 0.5) / 8.0
+        local side = i % 2 == 0 and 1.0 or -1.0
+        Art.burst("ath_royal_furrow_dirt_" .. i, vec3(x1 + dx * t, 0.14, z1 + dz * t),
+            { preset = "enemy_give", count = 2, life_min = 0.20, life_max = 0.46,
+              spawn_radius = 0.08, noise_strength = 0.8, size_min = 0.05, size_max = 0.12,
+              velocity = vec3(nx * side * 2.2, 1.5, nz * side * 2.2), gravity = vec3(0.0, -4.0, 0.0),
+              color_start = vec4(0.72, 0.24, 0.035, 0.95), color_end = vec4(0.16, 0.035, 0.01, 0.0) })
+    end
+    self.furrows[#self.furrows + 1] = furrow
+end
+
+function Duel:update_royal_furrow_bombs(dt, hero)
+    if not self.furrow_bombs or #self.furrow_bombs == 0 then return end
+    local keep = {}
+    for _, bomb in ipairs(self.furrow_bombs) do
+        bomb.t = bomb.t - dt
+        local pulse = 0.45 + 0.55 * math.abs(math.sin(self.realtime * (12.0 + 20.0 * (1.0 - bomb.t / bomb.dur))))
+        if Art.valid(bomb.nodes.ring) then
+            material.set(bomb.nodes.ring, "base_color", vec4(1.0, 0.12, 0.04, 0.22 + 0.40 * pulse))
+            material.set(bomb.nodes.ring, "emissive", vec3(1.8 * pulse, 0.16, 0.05))
+        end
+        if Art.valid(bomb.nodes.core) then
+            material.set(bomb.nodes.core, "emissive", vec3(1.8 + 2.5 * pulse, 0.35, 0.04))
+        end
+        if bomb.t <= 0.0 then
+            local dx, dz = hero.x - bomb.x, hero.z - bomb.z
+            if dx * dx + dz * dz <= bomb.radius * bomb.radius then
+                self:apply_hero_damage(bomb.damage, { source = creep_name(bomb.owner) .. " (royal furrow)" })
+            end
+            Art.burst("ath_royal_furrow_blast", vec3(bomb.x, 0.45, bomb.z),
+                { preset = "enemy_give", count = 28, life_max = 0.42, spawn_radius = bomb.radius * 0.45,
+                  size_max = 0.28, color_start = vec4(1.0, 0.34, 0.05, 1.0) })
+            if Art.valid(bomb.nodes.ring) then bomb.nodes.ring:set_position(vec3(-1000.0, 0.055, -1000.0)) end
+            if Art.valid(bomb.nodes.core) then bomb.nodes.core:set_position(vec3(-1000.0, 0.42, -1000.0)) end
+            self.furrow_bomb_pool[#self.furrow_bomb_pool + 1] = bomb.nodes
+            Art.shake(0.35, 0.25)
+        else
+            keep[#keep + 1] = bomb
+        end
+    end
+    self.furrow_bombs = keep
+end
+
+function Duel:update_boss_skill(c, dt, hero, ev)
+    local spec = c.stats and c.stats.boss_skill
+    if not spec then return end
+    if spec.id ~= "royal_furrows" then
+        BossSkills.update(self, c, dt, hero, ev)
+        return
+    end
+    self:update_royal_furrow_bombs(dt, hero)
+    if ev and ev.windup then
+        c._furrow_start_x, c._furrow_start_z = c.x, c.z
+        Anim.play_oneshot(c, "royal_furrows", self.realtime, 0.55)
+        Art.burst("ath_royal_furrows_core", vec3(c.x, 0.72, c.z),
+            { preset = "enemy_take", count = 12, life_min = 0.08, life_max = 0.26,
+              spawn_radius = 0.14, noise_strength = 9.0, size_min = 0.05, size_max = 0.15,
+              color_start = vec4(1.0, 1.0, 1.0, 1.0), color_end = vec4(1.0, 0.22, 0.02, 0.0) })
+        for i = 1, 8 do
+            local a = i / 8.0 * math.pi * 2.0 + self.realtime * 0.7
+            local rx, rz = math.sin(a), math.cos(a)
+            Art.burst("ath_royal_furrows_ray_" .. i, vec3(c.x + rx * 0.65, 0.55, c.z + rz * 0.65),
+                { preset = "enemy_give", count = 2, life_min = 0.20, life_max = 0.42,
+                  spawn_radius = 0.04, noise_strength = 0.6, size_min = 0.035, size_max = 0.09,
+                  velocity = vec3(rx * 4.2, 1.3, rz * 4.2), drag = 1.2, orientation = "velocity",
+                  color_start = vec4(1.0, 0.28, 0.03, 0.95), color_end = vec4(0.3, 0.04, 0.01, 0.0) })
+        end
+    end
+    if c.charge_state == "dash" then
+        c._furrow_dashing = true
+        c._furrow_start_x = c._furrow_start_x or c.x
+        c._furrow_start_z = c._furrow_start_z or c.z
+    elseif c._furrow_dashing then
+        self:add_royal_furrow(c, c._furrow_start_x, c._furrow_start_z, c.x, c.z, spec)
+        c._furrow_dashing, c._furrow_start_x, c._furrow_start_z = nil, nil, nil
+    end
+end
+
 function Duel:update_boss_v2(c, dt, hero)
     local spec = c.stats and c.stats.boss_arc
     if not spec then return false end
     if not c.boss_phase2 and c.hp <= c.hp_max * RULES.boss.phase2.hp_fraction then
         c.boss_phase2 = true
         c.stats.speed = c.stats.speed * 1.25
+        Anim.play_oneshot(c, "phase2", self.realtime, 0.55)
         self:set_flash("BOSS PHASE II")
         Art.shake(0.45, 0.35)
     end
@@ -3490,6 +3690,7 @@ function Duel:update_creeps(dt)
         local ev = nil
         local boss_busy = not frozen and c.alive and self:update_boss_v2(c, dt, hero)
         if c.alive and not frozen and not boss_busy then ev = Creep.update(c, dt, self.field, self.map, hero) end
+        if c.alive then self:update_boss_skill(c, dt, hero, ev) end
         self:clamp_creep_to_arena(c)
         if c.hit_flash then c.hit_flash = math.max(0.0, c.hit_flash - dt) end
         if c.armor_broken_t then c.armor_broken_t = math.max(0.0, c.armor_broken_t - dt) end
@@ -3682,6 +3883,7 @@ function Duel:update_creeps(dt)
             if self.boss_creep == c then
                 self.boss_creep = nil
                 self:park_boss_arc()
+                self:clear_boss_hazards()
                 -- Spec points (3) land on boss kill — spent in the Skills hub tree.
                 self.skill_points = (self.skill_points or 0) + 3
                 local title = self:active_map().boss_title or self.config.boss_title
@@ -3767,7 +3969,8 @@ function Duel:apply_hero_damage(amount, opts)
     -- Dodge i-frames: every damage source funnels through here, so immunity
     -- lives here and never on individual enemies.
     if (hero.dodge_iframe_t or 0.0) > 0.0 then return false end
-    local mitig = opts.ignore_armor and 1.0 or (1.0 - clampn(hero.armor or 0.0, -0.5, 0.85))
+    local mitig = opts.ignore_armor and 1.0
+        or (1.0 - clampn((hero.armor or 0.0) + (hero.boss_armor_bonus or 0.0), -0.5, 0.85))
     if (hero.dodge_t or 0.0) > 0.0 then
         mitig = mitig * (1.0 - clampn(hero.dodge_guard or 0.0, 0.0, 0.9))
     end
@@ -3795,6 +3998,7 @@ function Duel:apply_hero_damage(amount, opts)
     local taken = amount * mitig
     hero.hp = hero.hp - taken
     hero.hit_flash = HIT_FLASH_T
+    BossSkills.on_hero_damage(self, taken)
     -- Death recap: a 3-entry ring buffer of the last hits (newest last).
     if self.manual_hero then
         local log = self.dmg_log or {}

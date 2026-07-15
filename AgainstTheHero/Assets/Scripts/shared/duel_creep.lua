@@ -530,6 +530,7 @@ function Creep.create(args)
         tint = arch.tint,
         boss = arch.boss == true,
         boss_arc = arch.boss_arc,
+        boss_skill = arch.boss_skill,
         tactical_role = arch.tactical_role,
         flask_hunter = arch.flask_hunter == true,
     }
