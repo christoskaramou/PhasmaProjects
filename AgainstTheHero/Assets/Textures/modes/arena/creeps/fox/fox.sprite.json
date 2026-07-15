@@ -1,9 +1,9 @@
 {
   "schema": "phasma.sprite.v1",
-  "image": "gourd_king_sheet.png",
+  "image": "fox_sheet.png",
   "image_size": {
     "width": 1640,
-    "height": 3328
+    "height": 3744
   },
   "frames": [
     {
@@ -455,7 +455,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_0",
+      "name": "vanish_0",
       "rect": [
         656,
         2496,
@@ -469,7 +469,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_1",
+      "name": "vanish_1",
       "rect": [
         984,
         2496,
@@ -483,7 +483,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_2",
+      "name": "vanish_2",
       "rect": [
         1312,
         2496,
@@ -497,7 +497,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_3",
+      "name": "vanish_3",
       "rect": [
         0,
         2912,
@@ -511,7 +511,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_4",
+      "name": "vanish_4",
       "rect": [
         328,
         2912,
@@ -525,10 +525,94 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_5",
+      "name": "vanish_5",
       "rect": [
         656,
         2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "pounce_0",
+      "rect": [
+        984,
+        2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "pounce_1",
+      "rect": [
+        1312,
+        2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "pounce_2",
+      "rect": [
+        0,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "pounce_3",
+      "rect": [
+        328,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "pounce_4",
+      "rect": [
+        656,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "pounce_5",
+      "rect": [
+        984,
+        3328,
         328,
         416
       ],
@@ -583,9 +667,16 @@
       "loop": false
     },
     {
-      "name": "royal_furrows",
+      "name": "vanish",
       "start": 32,
       "end": 37,
+      "fps": 12.0,
+      "loop": false
+    },
+    {
+      "name": "pounce",
+      "start": 38,
+      "end": 43,
       "fps": 12.0,
       "loop": false
     }

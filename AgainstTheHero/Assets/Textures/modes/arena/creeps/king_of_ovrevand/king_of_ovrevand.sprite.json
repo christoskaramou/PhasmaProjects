@@ -1,9 +1,9 @@
 {
   "schema": "phasma.sprite.v1",
-  "image": "gourd_king_sheet.png",
+  "image": "king_of_ovrevand_sheet.png",
   "image_size": {
     "width": 1640,
-    "height": 3328
+    "height": 4160
   },
   "frames": [
     {
@@ -455,7 +455,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_0",
+      "name": "tribute_medicine_0",
       "rect": [
         656,
         2496,
@@ -469,7 +469,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_1",
+      "name": "tribute_medicine_1",
       "rect": [
         984,
         2496,
@@ -483,7 +483,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_2",
+      "name": "tribute_medicine_2",
       "rect": [
         1312,
         2496,
@@ -497,7 +497,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_3",
+      "name": "tribute_medicine_3",
       "rect": [
         0,
         2912,
@@ -511,7 +511,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_4",
+      "name": "tribute_medicine_4",
       "rect": [
         328,
         2912,
@@ -525,10 +525,178 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_5",
+      "name": "tribute_medicine_5",
       "rect": [
         656,
         2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_haste_0",
+      "rect": [
+        984,
+        2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_haste_1",
+      "rect": [
+        1312,
+        2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_haste_2",
+      "rect": [
+        0,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_haste_3",
+      "rect": [
+        328,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_haste_4",
+      "rect": [
+        656,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_haste_5",
+      "rect": [
+        984,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_armor_0",
+      "rect": [
+        1312,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_armor_1",
+      "rect": [
+        0,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_armor_2",
+      "rect": [
+        328,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_armor_3",
+      "rect": [
+        656,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_armor_4",
+      "rect": [
+        984,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "tribute_armor_5",
+      "rect": [
+        1312,
+        3744,
         328,
         416
       ],
@@ -583,9 +751,23 @@
       "loop": false
     },
     {
-      "name": "royal_furrows",
+      "name": "tribute_medicine",
       "start": 32,
       "end": 37,
+      "fps": 12.0,
+      "loop": false
+    },
+    {
+      "name": "tribute_haste",
+      "start": 38,
+      "end": 43,
+      "fps": 12.0,
+      "loop": false
+    },
+    {
+      "name": "tribute_armor",
+      "start": 44,
+      "end": 49,
       "fps": 12.0,
       "loop": false
     }

@@ -1,9 +1,9 @@
 {
   "schema": "phasma.sprite.v1",
-  "image": "gourd_king_sheet.png",
+  "image": "wyrmroot_ascetic_sheet.png",
   "image_size": {
     "width": 1640,
-    "height": 3328
+    "height": 4160
   },
   "frames": [
     {
@@ -455,7 +455,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_0",
+      "name": "rosary_gather_0",
       "rect": [
         656,
         2496,
@@ -469,7 +469,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_1",
+      "name": "rosary_gather_1",
       "rect": [
         984,
         2496,
@@ -483,7 +483,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_2",
+      "name": "rosary_gather_2",
       "rect": [
         1312,
         2496,
@@ -497,7 +497,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_3",
+      "name": "rosary_gather_3",
       "rect": [
         0,
         2912,
@@ -511,7 +511,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_4",
+      "name": "rosary_gather_4",
       "rect": [
         328,
         2912,
@@ -525,10 +525,178 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_5",
+      "name": "rosary_gather_5",
       "rect": [
         656,
         2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_volley_0",
+      "rect": [
+        984,
+        2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_volley_1",
+      "rect": [
+        1312,
+        2912,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_volley_2",
+      "rect": [
+        0,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_volley_3",
+      "rect": [
+        328,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_volley_4",
+      "rect": [
+        656,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_volley_5",
+      "rect": [
+        984,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_break_0",
+      "rect": [
+        1312,
+        3328,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_break_1",
+      "rect": [
+        0,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_break_2",
+      "rect": [
+        328,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_break_3",
+      "rect": [
+        656,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_break_4",
+      "rect": [
+        984,
+        3744,
+        328,
+        416
+      ],
+      "pivot": [
+        0.5,
+        0.85
+      ],
+      "duration": 0.08333333333333333
+    },
+    {
+      "name": "rosary_break_5",
+      "rect": [
+        1312,
+        3744,
         328,
         416
       ],
@@ -583,9 +751,23 @@
       "loop": false
     },
     {
-      "name": "royal_furrows",
+      "name": "rosary_gather",
       "start": 32,
       "end": 37,
+      "fps": 12.0,
+      "loop": false
+    },
+    {
+      "name": "rosary_volley",
+      "start": 38,
+      "end": 43,
+      "fps": 12.0,
+      "loop": false
+    },
+    {
+      "name": "rosary_break",
+      "start": 44,
+      "end": 49,
       "fps": 12.0,
       "loop": false
     }

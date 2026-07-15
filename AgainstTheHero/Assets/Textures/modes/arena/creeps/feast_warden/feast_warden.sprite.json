@@ -1,6 +1,6 @@
 {
   "schema": "phasma.sprite.v1",
-  "image": "gourd_king_sheet.png",
+  "image": "feast_warden_sheet.png",
   "image_size": {
     "width": 1640,
     "height": 3328
@@ -455,7 +455,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_0",
+      "name": "dinner_bell_0",
       "rect": [
         656,
         2496,
@@ -469,7 +469,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_1",
+      "name": "dinner_bell_1",
       "rect": [
         984,
         2496,
@@ -483,7 +483,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_2",
+      "name": "dinner_bell_2",
       "rect": [
         1312,
         2496,
@@ -497,7 +497,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_3",
+      "name": "dinner_bell_3",
       "rect": [
         0,
         2912,
@@ -511,7 +511,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_4",
+      "name": "dinner_bell_4",
       "rect": [
         328,
         2912,
@@ -525,7 +525,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_5",
+      "name": "dinner_bell_5",
       "rect": [
         656,
         2912,
@@ -583,7 +583,7 @@
       "loop": false
     },
     {
-      "name": "royal_furrows",
+      "name": "dinner_bell",
       "start": 32,
       "end": 37,
       "fps": 12.0,

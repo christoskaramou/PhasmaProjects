@@ -251,6 +251,8 @@ function Duel.new(config, ctx, shell)
     D.realtime = 0.0
     D.fallback_dt = 1.0 / 120.0
     D.autoplay = ATH_COMMON.env_enabled("ATH_DUEL_AUTOPLAY", false)
+    D.boss_tour = ATH_COMMON.env_enabled("ATH_DUEL_BOSS_TOUR", false)
+    D.invulnerable = ATH_COMMON.env_enabled("ATH_DUEL_INVULNERABLE", false)
     D.flash = ""
     D.flash_t = 0.0
 
@@ -3760,6 +3762,7 @@ end
 function Duel:apply_hero_damage(amount, opts)
     local hero = self.hero
     if not hero or hero.dead or (amount or 0.0) <= 0.0 then return false end
+    if self.invulnerable then return false end
     opts = opts or {}
     -- Dodge i-frames: every damage source funnels through here, so immunity
     -- lives here and never on individual enemies.
@@ -4015,7 +4018,10 @@ function Duel:start_map()
     if self.state ~= "town" then return end
     -- ATH_DUEL_MAP pins the map for smokes/tuning (bypasses the unlock gate).
     local env_map = ATH_COMMON.getenv_number("ATH_DUEL_MAP", nil)
-    if env_map and #self.maps > 0 then
+    if self.boss_tour and not self.boss_tour_started and #self.maps > 0 then
+        self.map_index = clampn(math.floor(env_map or 1), 1, #self.maps)
+        self.boss_tour_started = true
+    elseif env_map and not self.boss_tour and #self.maps > 0 then
         self.map_index = clampn(math.floor(env_map), 1, #self.maps)
     end
     local map = self:active_map()
@@ -4029,8 +4035,10 @@ function Duel:start_map()
         self:log(string.format("map start map=%d id=%s waves=%d", self.map_index, tostring(map.id), self.wave_cfg.count or 5))
     end
     local env_wave = ATH_COMMON.getenv_number("ATH_DUEL_WAVE", nil)
-    local start_wave = env_wave or self:next_wave_for_map(self.map_index)
+    local start_wave = self.boss_tour and self:total_rounds()
+        or env_wave or self:next_wave_for_map(self.map_index)
     start_wave = math.max(1, math.min(math.floor(start_wave), self:total_rounds()))
+    if self.boss_tour and map.boss then self:warm_archetype(map.boss, 1) end
     self:begin_manual_wave(start_wave)
 end
 
@@ -5655,21 +5663,38 @@ function Duel:update(dt)
                     self:log("boss telegraphed arch=" .. tostring(boss_arch))
                 else
                     self:vacuum_pickups()
-                    self.state = "hero_win"
-                    -- Clearing a map unlocks the next rank (persisted below).
-                    local unlocked
-                    if #self.maps > 0 and self.map_index > (self.maps_cleared or 0) then
-                        self.maps_cleared = self.map_index
-                        unlocked = self.maps[self.map_index + 1]
+                    if self.boss_tour then
+                        self:log(string.format("boss tour clear map=%d boss=%s",
+                            self.map_index or 1, tostring(boss_arch)))
+                        if self.map_index < #self.maps then
+                            self.map_index = self.map_index + 1
+                            self.boss_spawned = false
+                            self.boss_creep = nil
+                            self.boss_spawn_time = nil
+                            if self.hero then self.hero.hp = self.hero.hp_max end
+                            self.state = "town"
+                            self:start_map()
+                        else
+                            self.state = "hero_win"
+                            self:set_flash("BOSS TOUR COMPLETE")
+                        end
+                    else
+                        self.state = "hero_win"
+                        -- Clearing a map unlocks the next rank (persisted below).
+                        local unlocked
+                        if #self.maps > 0 and self.map_index > (self.maps_cleared or 0) then
+                            self.maps_cleared = self.map_index
+                            unlocked = self.maps[self.map_index + 1]
+                        end
+                        -- Cleared maps restart at wave 1 on the next visit.
+                        self.map_next_wave = self.map_next_wave or {}
+                        self.map_next_wave[math.floor(self.map_index or 1)] = 1
+                        self:save_profile()
+                        local clear = unlocked and T("%s UNLOCKED", T(tostring(unlocked.name))) or T("RUN CLEARED")
+                        self:set_flash(clear)
+                        self:log(string.format("RUN CLEARED map=%d waves=%d kills=%d gold=%d",
+                            self.map_index or 1, self.wave_index or 1, self.kills, self.gold or 0))
                     end
-                    -- Cleared maps restart at wave 1 on the next visit.
-                    self.map_next_wave = self.map_next_wave or {}
-                    self.map_next_wave[math.floor(self.map_index or 1)] = 1
-                    self:save_profile()
-                    local clear = unlocked and T("%s UNLOCKED", T(tostring(unlocked.name))) or T("RUN CLEARED")
-                    self:set_flash(clear)
-                    self:log(string.format("RUN CLEARED map=%d waves=%d kills=%d gold=%d",
-                        self.map_index or 1, self.wave_index or 1, self.kills, self.gold or 0))
                 end
             else
                 self:begin_pause()

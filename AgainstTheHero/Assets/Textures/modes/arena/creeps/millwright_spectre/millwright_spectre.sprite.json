@@ -1,6 +1,6 @@
 {
   "schema": "phasma.sprite.v1",
-  "image": "gourd_king_sheet.png",
+  "image": "millwright_spectre_sheet.png",
   "image_size": {
     "width": 1640,
     "height": 3328
@@ -455,7 +455,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_0",
+      "name": "grind_schedule_0",
       "rect": [
         656,
         2496,
@@ -469,7 +469,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_1",
+      "name": "grind_schedule_1",
       "rect": [
         984,
         2496,
@@ -483,7 +483,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_2",
+      "name": "grind_schedule_2",
       "rect": [
         1312,
         2496,
@@ -497,7 +497,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_3",
+      "name": "grind_schedule_3",
       "rect": [
         0,
         2912,
@@ -511,7 +511,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_4",
+      "name": "grind_schedule_4",
       "rect": [
         328,
         2912,
@@ -525,7 +525,7 @@
       "duration": 0.08333333333333333
     },
     {
-      "name": "royal_furrows_5",
+      "name": "grind_schedule_5",
       "rect": [
         656,
         2912,
@@ -583,7 +583,7 @@
       "loop": false
     },
     {
-      "name": "royal_furrows",
+      "name": "grind_schedule",
       "start": 32,
       "end": 37,
       "fps": 12.0,
