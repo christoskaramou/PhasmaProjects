@@ -68,6 +68,18 @@ function Anim.rebind(actor, sheet, kind)
     return true
 end
 
+-- Play a named sheet clip without letting the regular idle/walk/attack picker
+-- replace it before the spell pose has finished.
+function Anim.play_oneshot(actor, clip, now, duration)
+    local st = actor and actor._sprite_anim
+    local body = actor and actor.parts and actor.parts.body
+    if not (st and body and clip and has_sprite_api()) then return false end
+    if not sprite.play(body, clip, true) then return false end
+    st.clip = clip
+    st.oneshot_until = (now or 0.0) + (duration or 0.5)
+    return true
+end
+
 local function moving_from_delta(actor, st, now)
     local x, z = actor.x or 0.0, actor.z or 0.0
     local lx, lz = st.last_x, st.last_z
