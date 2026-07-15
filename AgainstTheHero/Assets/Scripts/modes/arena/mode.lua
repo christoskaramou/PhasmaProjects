@@ -136,8 +136,8 @@ return {
         },
         -- THE LADDER — all 13 painted stations are maps, built from parallel
         -- curves so every knob stays visible. Maps 1-3 keep the smoke-validated
-        -- numbers exactly; the rest extend the same curves. Bosses cycle the
-        -- three arches with escalating titles; floors live in
+        -- numbers exactly; the rest extend the same curves. Each station owns
+        -- one boss; floors live in
         -- Textures/modes/arena/floors/<id>.png. Map 1 uses the Spud floor path
         -- explicitly: game.pescene ships a LOADING placeholder floor (not grass),
         -- so apply_map_floor must always have a real texture to swap in.
@@ -149,25 +149,25 @@ return {
                   pos = { 0.372, 0.635 }, blurb = "A droning windmill - the air itself stings." },
                 { id = "sprout_hamlet", name = "Sprout Hamlet", boss = "corn_colossus", boss_title = "CORN COLOSSUS",
                   pos = { 0.478, 0.548 }, blurb = "A sleepy hamlet gone to seed." },
-                { id = "bramble_cottages", name = "Bramble Cottages", boss = "gourd_king", boss_title = "ELDER GOURD KING",
+                { id = "bramble_cottages", name = "Bramble Cottages", boss = "briar_matriarch", boss_title = "BRIAR MATRIARCH",
                   pos = { 0.628, 0.510 }, blurb = "Briars swallowed these cottages years ago." },
-                { id = "mossy_croft", name = "Mossy Croft", boss = "wasp_queen", boss_title = "ELDER WASP QUEEN",
+                { id = "mossy_croft", name = "Mossy Croft", boss = "bog_cantor", boss_title = "BOG CANTOR",
                   pos = { 0.705, 0.440 }, blurb = "Moss-choked crofts where the ground squelches." },
-                { id = "old_mill", name = "The Old Mill", boss = "corn_colossus", boss_title = "ELDER CORN COLOSSUS",
+                { id = "old_mill", name = "The Old Mill", boss = "millwright_spectre", boss_title = "MILLWRIGHT SPECTRE",
                   pos = { 0.812, 0.422 }, blurb = "The millstone still turns, though no miller lives." },
-                { id = "harvest_row", name = "Harvest Row", boss = "gourd_king", boss_title = "DREAD GOURD KING",
+                { id = "harvest_row", name = "Harvest Row", boss = "fox", boss_title = "THE FOX",
                   pos = { 0.645, 0.380 }, blurb = "Market stalls picked clean by crow and creep." },
-                { id = "gourdhall", name = "Gourdhall", boss = "wasp_queen", boss_title = "DREAD WASP QUEEN",
+                { id = "gourdhall", name = "Gourdhall", boss = "feast_warden", boss_title = "FEAST WARDEN",
                   pos = { 0.530, 0.425 }, blurb = "The harvest lords feasted here. Something still does." },
-                { id = "withervane_farm", name = "Withervane Farm", boss = "corn_colossus", boss_title = "DREAD CORN COLOSSUS",
+                { id = "withervane_farm", name = "Withervane Farm", boss = "weathervane_horror", boss_title = "WEATHERVANE HORROR",
                   pos = { 0.585, 0.320 }, blurb = "The weathervane spins with no wind." },
-                { id = "crowfield_grange", name = "Crowfield Grange", boss = "gourd_king", boss_title = "ETERNAL GOURD KING",
+                { id = "crowfield_grange", name = "Crowfield Grange", boss = "pale_scarecrow", boss_title = "PALE SCARECROW",
                   pos = { 0.475, 0.295 }, blurb = "Crows watch the pale fields. They are not crows." },
-                { id = "wyrmroot_hermitage", name = "Wyrmroot Hermitage", boss = "wasp_queen", boss_title = "ETERNAL WASP QUEEN",
+                { id = "wyrmroot_hermitage", name = "Wyrmroot Hermitage", boss = "wyrmroot_ascetic", boss_title = "WYRMROOT ASCETIC",
                   pos = { 0.150, 0.360 }, blurb = "A hermit's hollow twisted by old roots." },
-                { id = "royal_garden", name = "Royal Garden", boss = "corn_colossus", boss_title = "ETERNAL CORN COLOSSUS",
+                { id = "royal_garden", name = "Royal Garden", boss = "corn_court_herald", boss_title = "CORN COURT HERALD",
                   pos = { 0.295, 0.295 }, blurb = "The overgrown palace grounds of the Corn Court." },
-                { id = "castle_ovrevand", name = "Castle Ovrevand", boss = "gourd_king", boss_title = "KING OF OVREVAND",
+                { id = "castle_ovrevand", name = "Castle Ovrevand", boss = "king_of_ovrevand", boss_title = "KING OF OVREVAND",
                   pos = { 0.805, 0.185 }, blurb = "The throne of Ovrevand. The King is home." },
             }
             Balance.apply_map_progression(defs)
