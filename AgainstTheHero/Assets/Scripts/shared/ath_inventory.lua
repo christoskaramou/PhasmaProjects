@@ -18,6 +18,11 @@
 
 local Art = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
 
+local function ensure_hub_settings()
+    if _G.ATH_HUB_SETTINGS then return end
+    ATH_COMMON.load_script("Scripts/shared/hud/hub_settings.lua", "hub settings", _ENV)
+end
+
 local function T(key, ...)
     local I18n = _G.ATH_I18N
     if I18n and I18n.t then return I18n.t(key, ...) end
@@ -26,6 +31,12 @@ local function T(key, ...)
 end
 
 local Inv = {}
+
+local function ensure_cards()
+    if Inv._cards_mod then return Inv._cards_mod end
+    Inv._cards_mod = ATH_COMMON.load_script("Scripts/shared/ath_cards.lua", "shared cards", _ENV)
+    return Inv._cards_mod
+end
 
 local SCREEN = "__scene_ui" -- the authored UI screen the Pause Menu nodes live on
 
@@ -47,6 +58,21 @@ Inv.RARITY = {
     legendary = { 0.96, 0.74, 0.30, 1.0 },
 }
 Inv.RARITIES = { "common", "uncommon", "rare", "epic", "legendary" }
+
+Inv.TABS = { "map", "inventory", "store", "settings", "system" }
+local TAB_NODE = {
+    map = "Hub Tab Map", inventory = "Hub Tab Inventory",
+    store = "Hub Tab Store", settings = "Hub Tab Settings",
+    system = "Hub Tab System",
+}
+local TAB_TITLE = {
+    map = "MAP", inventory = "INVENTORY", store = "STORE",
+    settings = "SETTINGS", system = "SYSTEM",
+}
+-- Selected = colored fill; idle = no-color (transparent fill, outline only).
+local TAB_ACTIVE_FILL = { 0.62, 0.34, 0.86, 0.95 }
+local TAB_IDLE_FILL = { 0.0, 0.0, 0.0, 0.0 }
+local TAB_IDLE_BORDER = { 0.40, 0.62, 0.58, 0.9 }
 
 -- Pixel-art icon per paper-doll slot (Assets/Textures/ui/items). Shared with the
 -- duel's ground drops so an item looks the same on the floor and in the bag.
@@ -181,21 +207,82 @@ function Inv.bind(D)
     b.group = scene.find_model("Pause Menu")
     if not valid(b.group) then D._inv_nodes = nil; return nil end
     b.title = scene.find_model("Pause Title")
-    b.inventory = scene.find_model("Inventory")
+    b.tabs = {}
+    for _, key in ipairs(Inv.TABS) do b.tabs[key] = scene.find_model(TAB_NODE[key]) end
+    b.panels = {
+        inventory = scene.find_model("Inventory"),
+        settings = scene.find_model("Settings"),
+        store = scene.find_model("Town Store"),
+        cards = scene.find_model("Cards"),
+        map = scene.find_model("Map"),
+        system = scene.find_model("System"),
+    }
+    b.inventory = b.panels.inventory
+    b.store = b.panels.store
     b.stats_panel = scene.find_model("Inv Stats Panel")
     b.stats_labels = scene.find_model("Inv Stats Labels")
     b.stats_values = scene.find_model("Inv Stats Values")
-    b.next_wave = scene.find_model("Pause Next Wave")
-    b.store = scene.find_model("Town Store")
+    b.next_wave = scene.find_model("Sys Next Wave")
+    b.sys_resume = scene.find_model("Sys Resume")
     b.store_gold = scene.find_model("Store Gold")
-    b.store_toggle = scene.find_model("Town Shop Toggle")
-    b.enter_map = scene.find_model("Store Enter Map")
+    b.enter_map = scene.find_model("Map Enter")
+    b.map_dest = scene.find_model("Map Dest")
+    b.map_exit = scene.find_model("Map Exit") or scene.find_model("Map Abandon")
     b.store_items = {}
     for _, slot in ipairs(Inv.SLOTS) do b.store_items[slot] = scene.find_model("Store " .. cap(slot)) end
     for _, k in ipairs(Inv.SLOTS) do b.eq[k] = scene.find_model("Inv Equip " .. cap(k)) end
     for i = 1, Inv.GRID_SIZE do b.bag[i] = scene.find_model("Inv Bag " .. i) end
     D._inv_nodes = b
     return b
+end
+
+function Inv.hub_hint(D, msg)
+    D._hub_hint = msg
+    local b = Inv.bind(D)
+    if b and valid(b.title) and b.title.set_ui then
+        b.title:set_ui({ body = T(msg) })
+    end
+end
+
+function Inv.set_tab(D, name)
+    Inv.ensure(D)
+    D._abandon_armed = nil
+    if name == "store" and D.state ~= "town" then
+        Inv.hub_hint(D, "TOWN ONLY")
+        return false
+    end
+    D._hub_tab = name
+    local b = Inv.bind(D)
+    if not b then return false end
+    for key, panel in pairs(b.panels) do
+        if valid(panel) and panel.set_enabled then
+            panel:set_enabled(key == name)
+        end
+    end
+    for key, tab in pairs(b.tabs) do
+        if valid(tab) and tab.set_ui then
+            tab:set_ui({
+                fill = (key == name) and TAB_ACTIVE_FILL or TAB_IDLE_FILL,
+                border = (key == name) and TAB_ACTIVE_FILL or TAB_IDLE_BORDER,
+            })
+        end
+    end
+    if valid(b.tabs.store) and b.tabs.store.set_ui and D.state ~= "town" then
+        b.tabs.store:set_ui({
+            fill = { 0.05, 0.05, 0.07, 0.7 },
+            text_color = { 0.5, 0.52, 0.56, 0.85 },
+        })
+    end
+    Inv.refresh(D)
+    if name == "settings" then
+        ensure_hub_settings()
+        if _G.ATH_HUB_SETTINGS and _G.ATH_HUB_SETTINGS.refresh then
+            _G.ATH_HUB_SETTINGS.refresh(D)
+        end
+    elseif name == "cards" then
+        Inv.refresh_cards(D)
+    end
+    return true
 end
 
 -- A flat list of slot descriptors {kind, key, id, node}. `id` is the authored
@@ -263,6 +350,32 @@ function Inv.stats_values_text(st)
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
 
+function Inv.refresh_cards(D)
+    local Cards = ensure_cards()
+    local ids, has_source = {}, false
+    if D.player_seat and D.player_seat.deck then
+        has_source = true
+        for _, id in ipairs(D.player_seat.deck) do ids[#ids + 1] = id end
+        for _, id in ipairs(D.player_seat.hand or {}) do ids[#ids + 1] = id end
+        for _, id in ipairs(D.player_seat.discard or {}) do ids[#ids + 1] = id end
+    elseif D.ctx and D.ctx.deck then
+        has_source = true
+        for _, id in ipairs(D.ctx.deck) do ids[#ids + 1] = id end
+    end
+    local header = scene.find_model("Cards Header")
+    if valid(header) then
+        header:set_ui({ body = T(has_source and "DECK" or "No deck") })
+    end
+    for i = 1, 20 do
+        local n = scene.find_model("Card Slot " .. i)
+        if valid(n) then
+            local id = ids[i]
+            local def = id and Cards and Cards.card and Cards.card(id)
+            n:set_ui({ body = def and T(def.name or id) or (id and tostring(id) or "") })
+        end
+    end
+end
+
 function Inv.refresh(D)
     Inv.ensure(D)
     local b = Inv.bind(D)
@@ -272,22 +385,27 @@ function Inv.refresh(D)
     -- backend's Text-widget path. (The transient cursor ghost/tooltip below still
     -- use the set_quad `label`, which the default quad style draws.)
     if valid(b.title) then
-        local title = D.state == "town" and D._town_shop
-            and T("TOWN SHOP - RIGHT-CLICK AN ITEM TO BUY   (click the coins to return to inventory)")
-            or D.state == "town"
-            and T("TOWN - GEAR UP   (click inspect, right-click equip, [T] sort)")
-            or T("WAVE %d CLEARED - GEAR UP   (click inspect, right-click equip, [T] sort, drag to destroy)", D.wave_index or 1)
-        if D.hero and not D._town_shop then
-            if D.hero.resource_type == "mana" then
-                title = title .. "\n" .. T("FLASK ALLOCATION  H%d / M%d   [Q] more health   [F] more mana   (%d filled)",
-                    D.hero.flask_health_alloc or 4, 6 - (D.hero.flask_health_alloc or 4),
-                    (D.hero.flask_health or 0) + (D.hero.flask_mana or 0))
-            else
-                title = title .. "\n" .. T("FLASKS  HEALTH x%d   [Q] drink in combat",
-                    D.hero.flask_health or 0)
-            end
+        b.title:set_ui({ body = T(D._hub_hint or "GEAR HUB") })
+        D._hub_hint = nil
+    end
+
+    for key, tab in pairs(b.tabs) do
+        if valid(tab) and tab.set_ui and TAB_TITLE[key] then
+            tab:set_ui({ title = T(TAB_TITLE[key]) })
         end
-        b.title:set_ui({ body = title })
+    end
+    if scene and scene.find_model then
+        for _, pair in ipairs({
+            { "Sys Resume", "RESUME" },
+            { "Sys Quit", "QUIT TO MENU" },
+            { "Sys Quit App", "QUIT" },
+            { "Map Exit", "EXIT TO MAP" },
+            { "Map Abandon", "EXIT TO MAP" },
+            { "Menu Quit", "QUIT" },
+        }) do
+            local n = scene.find_model(pair[1])
+            if valid(n) then n:set_ui({ title = T(pair[2]) }) end
+        end
     end
 
     for _, s in ipairs(Inv.slots(D)) do
@@ -333,24 +451,44 @@ function Inv.refresh(D)
         end
     end
 
-    -- NEXT WAVE only resumes the run on a real between-wave pause; a mid-fight
-    -- inventory peek (gear button) hides it.
+    -- NEXT WAVE only on between-wave pause; RESUME only on mid-fight inventory peek.
     if valid(b.next_wave) and b.next_wave.set_enabled then
         b.next_wave:set_enabled(D.state == "pause" and D._between_wave == true)
+    end
+    if valid(b.sys_resume) and b.sys_resume.set_enabled then
+        b.sys_resume:set_enabled(D.state == "pause" and not D._between_wave)
     end
     if valid(b.next_wave) then
         b.next_wave:set_ui({ title = T("NEXT WAVE   [Enter]") })
     end
-    if valid(b.enter_map) then
-        b.enter_map:set_ui({ title = T("ENTER MAP  [Enter]") })
-    end
+    -- ENTER: start map from town, or push the next round between waves.
     local in_town = D.state == "town"
-    local in_shop = in_town and D._town_shop == true
-    if valid(b.inventory) and b.inventory.set_enabled then b.inventory:set_enabled(not in_shop) end
-    if valid(b.store) and b.store.set_enabled then b.store:set_enabled(in_shop) end
-    if valid(b.store_toggle) and b.store_toggle.set_enabled then b.store_toggle:set_enabled(in_town) end
-    if valid(b.enter_map) and b.enter_map.set_enabled then b.enter_map:set_enabled(in_town) end
-    if in_shop then
+    local can_enter = in_town or (D.state == "pause" and D._between_wave == true)
+    if valid(b.enter_map) and b.enter_map.set_enabled then
+        b.enter_map:set_enabled(can_enter)
+    end
+    if valid(b.enter_map) then
+        b.enter_map:set_ui({ title = T("ENTER") })
+    end
+    if valid(b.map_exit) then
+        b.map_exit:set_ui({ title = T("EXIT TO MAP") })
+    end
+    if valid(b.map_dest) then
+        local m = D.active_map and D:active_map() or nil
+        local name = m and (m.name or m.id) or "?"
+        local round
+        if in_town or D.state == "worldmap" then
+            round = (D.next_wave_for_map and D:next_wave_for_map(D.map_index)) or 1
+        elseif D.state == "pause" and D._between_wave then
+            round = (D.wave_index or 1) + 1
+        else
+            round = D.wave_index or D.round or 1
+        end
+        b.map_dest:set_ui({
+            body = T("%s\nROUND %d", T(tostring(name)), round),
+        })
+    end
+    if D._hub_tab == "store" and D.state == "town" then
         if valid(b.store_gold) then b.store_gold:set_ui({ body = T("GOLD  %s", tostring(D.gold or 0)) }) end
         for i, slot in ipairs(Inv.SLOTS) do
             local node = b.store_items and b.store_items[slot]
@@ -370,7 +508,8 @@ end
 function Inv.update(D)
     Inv.ensure(D)
     if not (runtime_ui and runtime_ui.get_state) then return end
-    if D.state == "town" and D._town_shop then
+    local tab = D._hub_tab or "map"
+    if tab == "store" and D.state == "town" then
         local hover
         for _, s in ipairs(Inv.store_slots(D)) do
             local item = D.store_offers and D.store_offers[s.key]
@@ -382,16 +521,13 @@ function Inv.update(D)
         Inv.draw_overlay(D)
         return
     end
+    if tab ~= "inventory" then
+        D._inv_drag, D._inv_selected, D._inv_hover = nil, nil, nil
+        Inv.draw_overlay(D)
+        return
+    end
     local slots = Inv.slots(D)
     if #slots == 0 then return end
-
-    for _, rarity in ipairs(Inv.RARITIES) do
-        local stt = runtime_ui.get_state(SCREEN, "inv_loot_" .. rarity)
-        if stt and stt.clicked then
-            D.loot_filter[rarity] = not D.loot_filter[rarity]
-            if D.haptic then D:haptic(6) end
-        end
-    end
 
     -- Pickups + hover. A press on a draggable slot becomes a DRAG (the engine
     -- swallows `clicked`); a clean tap is detected on release for double-tap equip.
@@ -516,7 +652,7 @@ local COMPARE_STATS = {
     { key = "dodge_blades", label = "Dodge blade", fmt = "%+.2f" },
     { key = "retaliation_orbit", label = "Retal orbit", fmt = "%+.2f" },
     { key = "flask_nova", label = "Flask nova", fmt = "%+.2f" },
-    { key = "mana_burst", label = "Mana burst", fmt = "%+.2f" },
+    { key = "flask_burst", label = "Flask burst", fmt = "%+.2f" },
 }
 
 function Inv.compare_text(D, hv, polarity)
@@ -549,15 +685,13 @@ end
 
 function Inv.item_details(item)
     local tags = item.tags or {}
-    local mana = "-"
-    for _, tag in ipairs(tags) do if tag == "Mana" then mana = "35" end end
     local rarity = T(item.rarity or "common")
     local tag_line = {}
     for _, tag in ipairs(tags) do tag_line[#tag_line + 1] = T(tag) end
-    return T("%s\n%s %s\nTags: %s\nClass: %s   Weight: %s   Skill mana: %s\n%s\n%s",
+    return T("%s\n%s %s\nTags: %s\nClass: %s   Weight: %s\n%s\n%s",
         T(tostring(item.name or item.id)), rarity,
         T(Inv.SLOT_LABEL[item.slot] or "?"), #tag_line > 0 and table.concat(tag_line, " / ") or T("General"),
-        T(item.class or "Any"), tostring(item.weight or 0), mana, T(item.desc or "No mechanics."),
+        T(item.class or "Any"), tostring(item.weight or 0), T(item.desc or "No mechanics."),
         T(item.lore or "Recovered field gear, built to survive another wave."))
 end
 
@@ -601,6 +735,18 @@ end
 
 function Inv.draw_overlay(D)
     if not (runtime_ui and runtime_ui.set_quad) then return end
+    local tab = D._hub_tab or "map"
+    local in_store = tab == "store" and D.state == "town"
+    if tab ~= "inventory" and not in_store then
+        for _, id in ipairs({ "inv_ghost", "inv_tip", "inv_trash", "inv_selected_panel", "inv_selected_icon",
+            "inv_selected_text", "inv_selected_good", "inv_selected_bad" }) do
+            runtime_ui.remove(SCREEN, id)
+        end
+        for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
+        for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
+        for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
+        return
+    end
     Art.surface_size()
     local vp = Art._vp
     local rw, rh = vp.rw or 2400.0, vp.rh or 1080.0
@@ -608,8 +754,7 @@ function Inv.draw_overlay(D)
 
     -- Per-item slot icons: text-style widgets can't render images, so each
     -- occupied tile gets a transient image quad floated over its upper half.
-    local in_shop = D.state == "town" and D._town_shop
-    local icon_slots = in_shop and Inv.store_slots(D) or Inv.slots(D)
+    local icon_slots = in_store and Inv.store_slots(D) or Inv.slots(D)
     for _, s in ipairs(icon_slots) do
         local id = "inv_ic_" .. s.id
         local item = s.kind == "store" and (D.store_offers and D.store_offers[s.key]) or nil
@@ -628,47 +773,10 @@ function Inv.draw_overlay(D)
             runtime_ui.remove(SCREEN, id)
         end
     end
-    if in_shop then
+    if in_store then
         for _, s in ipairs(Inv.slots(D)) do runtime_ui.remove(SCREEN, "inv_ic_" .. s.id) end
     else
         for _, s in ipairs(Inv.store_slots(D)) do runtime_ui.remove(SCREEN, "inv_ic_" .. s.id) end
-    end
-
-    local bounds = not in_shop and Inv.bag_bounds(D) or nil
-    local px = bounds and bounds.x + bounds.w + 12.0 or 0.0
-    if bounds and rw - px >= 170.0 then
-        local pw = math.min(300.0, rw - px - 10.0)
-        local pad, title_h, row_h, gap = 12.0, 48.0, 48.0, 8.0
-        local py = math.max(10.0, bounds.y - 70.0)
-        local ph = pad * 2.0 + title_h + #Inv.RARITIES * row_h + (#Inv.RARITIES - 1) * gap
-        runtime_ui.set_quad(SCREEN, "inv_loot_panel", {
-            x = px, y = py, width = pw, height = ph, style = "text",
-            fill = { 0.035, 0.04, 0.065, 0.98 }, border = { 0.44, 0.46, 0.58, 0.95 },
-            body = "", no_input = true, bring_to_front = true, z = OVERLAY_Z - 700.0,
-        })
-        runtime_ui.set_quad(SCREEN, "inv_loot_title", {
-            x = px + pad, y = py + pad, width = pw - pad * 2.0, height = title_h, style = "text",
-            fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
-            body = T("LOOT"), text_color = { 0.95, 0.92, 0.72, 1.0 }, font_scale = 1.25,
-            align_h = "left", align_v = "middle", no_input = true, bring_to_front = true,
-            z = OVERLAY_Z - 600.0,
-        })
-        for i, rarity in ipairs(Inv.RARITIES) do
-            local enabled = D.loot_filter[rarity] ~= false
-            runtime_ui.set_quad(SCREEN, "inv_loot_" .. rarity, {
-                x = px + pad, y = py + pad + title_h + (i - 1) * (row_h + gap),
-                width = pw - pad * 2.0, height = row_h, style = "text",
-                fill = enabled and { 0.10, 0.12, 0.16, 0.98 } or { 0.055, 0.06, 0.08, 0.96 },
-                border = Inv.RARITY[rarity], body = string.format("%-10s [%s]", T(rarity), enabled and "X" or " "),
-                text_color = enabled and { 0.92, 0.94, 0.98, 1.0 } or { 0.48, 0.50, 0.56, 1.0 },
-                font_scale = 0.92, align_h = "left", align_v = "middle",
-                no_input = false, bring_to_front = true, z = OVERLAY_Z - 500.0,
-            })
-        end
-    else
-        runtime_ui.remove(SCREEN, "inv_loot_panel")
-        runtime_ui.remove(SCREEN, "inv_loot_title")
-        for _, rarity in ipairs(Inv.RARITIES) do runtime_ui.remove(SCREEN, "inv_loot_" .. rarity) end
     end
 
     local selected = D._inv_selected
@@ -781,12 +889,18 @@ end
 -- ---------------------------------------------------------------------------
 function Inv.show(D)
     local b = Inv.bind(D)
-    if b and valid(b.group) and b.group.set_enabled then b.group:set_enabled(true) end
+    if not (b and valid(b.group) and b.group.set_enabled) then return end
+    local opening = not D._inv_open
+    b.group:set_enabled(true)
+    D._inv_open = true
+    if opening then Inv.set_tab(D, "map") end
 end
 
 function Inv.hide(D)
     local b = D._inv_nodes
     if b and valid(b.group) and b.group.set_enabled then b.group:set_enabled(false) end
+    D._inv_open = false
+    D._abandon_armed = nil
     Inv.clear(D)
 end
 
@@ -814,4 +928,5 @@ function Inv.clear(D)
     D._inv_hover = nil
 end
 
+_G.ATH_INVENTORY = Inv
 return Inv

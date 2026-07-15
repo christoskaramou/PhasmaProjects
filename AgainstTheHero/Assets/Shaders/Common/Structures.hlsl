@@ -18,6 +18,7 @@ struct PushConstants_MotionBlur
     float strength;
     float2 projJitter;
     int samples;
+    float blend; // volume blend factor (0..1): lerp the blurred result back toward the sharp input
 };
 
 struct PushConstants_Shadows
@@ -39,6 +40,15 @@ struct PushConstants_Grid
     float2 padding;
 };
 
+struct PushConstants_SelectionOutline
+{
+    float4 color;
+    // x/y = mask texel size, z = solid thickness px, w = inner fade px.
+    float4 params0;
+    // x = outer fade px, y/z/w unused.
+    float4 params1;
+};
+
 struct PushConstants_Bloom
 {
     float range;
@@ -48,6 +58,18 @@ struct PushConstants_Bloom
 struct PushConstants_Bloom_Combine
 {
     float strength;
+    float blend; // volume blend factor (0..1): scales the bloom contribution added to the scene
+};
+
+struct PushConstants_ColorGrading
+{
+    float4 lift;
+    float4 gamma;
+    float4 gain;
+    float saturation;
+    float contrast;
+    float intensity;
+    float blend; // volume blend factor (0..1): lerp the graded result back toward the input
 };
 
 #ifdef SHADOWMAP_CASCADES
@@ -71,7 +93,7 @@ struct PushConstants_Lighting
 struct PushConstants_GBuffer
 {
     uint jointsCount;
-    float pad0;
+    float terrainTexScale; // metres per triplanar tile for the terrain pass (0 elsewhere, unused)
     float2 projJitter;
     float2 prevProjJitter;
     uint passType;
@@ -103,6 +125,13 @@ struct Mesh_Constants
     float aabbMaxX;
     float aabbMaxY;
     float aabbMaxZ;
+    // Discrete LOD index ranges (byte-identical to the CPU Mesh_Constants in MeshConstants.h).
+    uint lodCount;
+    uint lodIndexOffset[4];
+    uint lodIndexCount[4];
+    uint lodShift;       // per-mesh additive LOD level offset (see Mesh::lodShift)
+    uint lodMeshEnabled; // 0 = this mesh ignores LOD (always full detail)
+    float lodMeshBias;   // per-mesh camera-distance multiplier (see Mesh::lodBias)
 };
 
 struct MaterialGpuData

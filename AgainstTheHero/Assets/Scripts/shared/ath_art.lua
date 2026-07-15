@@ -482,6 +482,8 @@ end
 Art.SHAKE_ENABLED = false
 Art._shake = { amp = 0.0, t = 0.0 }
 function Art.shake(amp, dur)
+    local I = _G.ATH_I18N
+    if I and I.screen_shake == false then return end
     if not Art.SHAKE_ENABLED then return end
     local s = Art._shake
     s.amp = math.max(s.amp * (s.t > 0.0 and 1.0 or 0.0), amp or 0.3)
@@ -534,41 +536,14 @@ function Art.world_to_screen(cam, x, y, z)
     return sx, sy
 end
 
--- Configure the render stage the way the duel modes expect (mirrors horde): grid
--- and debug overlays off, day/IBL lighting on, no TAA/bloom motion-blur, plus one
--- directional light so non-emissive geometry still reads. Safe no-ops if the
--- settings/lights bridges are unavailable.
+-- Stage bootstrap after duel start. Scene Settings (AA, shadows, IBL, post, grid,
+-- …) are authored in the editor /.pescene — do not settings.set here or we race
+-- those values. Only ensure a directional light exists if the scene has none.
 function Art.setup_stage(opts)
     opts = opts or {}
-    if settings and settings.set then
-        settings.set("draw_grid", false)
-        settings.set("draw_aabbs", false)
-        settings.set("shadows", opts.shadows == true)
-        settings.set("ssao", false)
-        settings.set("day", true)
-        -- IBL defaults on (desktop), but a mode can disable it (opts.ibl_enabled =
-        -- false) — Android does, because the equirect->cubemap build shader isn't in
-        -- the prebaked SPIR-V cache and ATH is emissive-lit (IBL adds ~nothing).
-        local ibl_on = opts.ibl_enabled ~= false
-        settings.set("IBL", ibl_on)
-        settings.set("IBL_intensity", ibl_on and (opts.ibl or 0.6) or 0.0)
-        settings.set("lights_intensity", opts.lights or 2.4)
-        settings.set("tonemapping", false)
-        settings.set("motion_blur", false)
-        settings.set("bloom", false)
-        settings.set("taa", false)
-        settings.set("fxaa", true)
-        -- CAS sharpening counters the soft look of a low mobile render_scale (the
-        -- upscaled 3D otherwise reads blurry) — the desktop demo scenes use it too.
-        settings.set("cas_sharpening", true)
-        settings.set("cas_sharpness", 0.5)
-    end
     if lights and lights.get_counts and lights.add_directional then
         local counts = lights.get_counts()
         if not counts or (counts.directional or 0) == 0 then lights.add_directional() end
-    end
-    if lights and lights.set_directional_light then
-        lights.set_directional_light(0, vec3(-1.5, 7.0, -1.0), vec3(0.92, 0.90, 0.84), 2.6)
     end
 end
 

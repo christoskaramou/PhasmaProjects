@@ -8,10 +8,10 @@
 --
 -- Modeled: waves/budgets/auto_mix spawn stream, elites (expected value),
 -- splits, summoners, walking bombs, boss + arcs + phase2 + adds, gear, draft
--- cards, specialization on-hit riders (EV, resource-gated), in-run item drops
+-- cards, specialization on-hit riders (EV, always armed), in-run item drops
 -- (rarity-averaged), flasks, armor/lifesteal/regen/thorns, gold economy.
 -- NOT modeled (v1): charge-hit spikes beyond sustained dps, knockback, dodge
--- charges, mana flasks, spread-on-death bonus targets, retaliation/nova gear.
+-- charges, spread-on-death bonus targets, retaliation/nova gear.
 
 local ROOT = PAPER_ROOT or "."
 local ARGS = PAPER_ARGS or {}
@@ -45,7 +45,6 @@ local ASSUME = {
     stack_tick_fraction = 0.5,      -- stacks ramp, so ticks average half strength
     splash_ev = 0.6,                -- death explosions/shockwaves that hit a neighbour
     elite_drop_chance = 0.20,       -- guaranteed-roll chance on elite kills (duel value)
-    kill_rate_tau = 3.0,            -- seconds, kill-rate EMA for mana income
 }
 
 -- ---------------------------------------------------------------------------
@@ -64,7 +63,7 @@ Balance.apply_map_progression(MAPS)
 local function clampn(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
 local NONCOMBAT = { dash_add = 1, pickup_range_add = 1, slow_aura = 1, dodge_blades = 1,
-    retaliation_orbit = 1, flask_nova = 1, mana_burst = 1, bleed_on_crit = 1,
+    retaliation_orbit = 1, flask_nova = 1, flask_burst = 1, bleed_on_crit = 1,
     dodge_charge_add = 1, dodge_recharge_mult = 1, upgrade_rank = 1, specialization_rank = 1, heal = 1 }
 local COMBAT = { dps_mult = 1, dps_add = 1, cleave_add = 1, attack_range_add = 1,
     speed_mult = 1, kite_speed_mult = 1, hp_max_add = 1, armor_add = 1, lifesteal_add = 1,
@@ -301,7 +300,6 @@ end
 
 local function on_kill(state, c)
     state.kills = state.kills + 1
-    state.kills_tick = state.kills_tick + 1
     local coins = c.boss and 7 or (c.elite and 4 or (c.threat >= ASSUME.big_cost and 2 or 1))
     local base_gold = math.max(1, math.floor(R.economy.gold_per_kill * state.map.gold_mult + 0.5))
     state.gold = state.gold + coins * base_gold * (c.threat >= ASSUME.big_cost and 2 or 1)
@@ -343,9 +341,9 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
         or best_spec(class)
     local hero = build_hero(class_id, gear_ids)
     local state = { hero = hero, map = map, t = 0.0, hp = hero.hp_max, creeps = {},
-        kills = 0, kills_tick = 0, kill_rate = 0.0, gold = 0.0, spawn_counter = 0,
+        kills = 0, gold = 0.0, spawn_counter = 0,
         elite_acc = 0.0, elite_drop_acc = 0.0, drops = 0, pending_hit = 0.0,
-        wave = 1, flasks = R.flask.health_allocation, flask_lock = 0.0, invuln_until = 0.0 }
+        wave = 1, flasks = R.flask.charges, flask_lock = 0.0, invuln_until = 0.0 }
     local result = { class_id = class_id, map = map_index, spec = spec.id, waves = {},
         min_hp_frac = 1.0, flasks_used = 0, cleared = false, gold = 0, kills = 0, drops = 0 }
     local exposure_contact = hero.attack == "ranged" and ASSUME.contact_exposure_ranged
@@ -353,22 +351,6 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
     local exposure_proj = hero.attack == "ranged" and ASSUME.projectile_exposure_ranged
         or ASSUME.projectile_exposure_melee
     local drink_time = R.flask.drink_time * (hero.attack == "melee" and R.flask.melee_drink_mult or 1.0)
-    local resource = class.resource or "mana"
-
-    local function rider_uptime(ev, hit_rate, out_ratio)
-        if hero.spec_rank <= 0 then return 0.0 end
-        if (spec.cost or 0) <= 0 then return 1.0 end
-        local income
-        if resource == "energy" then
-            income = R.energy.regen_per_second
-        elseif resource == "rage" then
-            income = R.rage.dealt_rate * out_ratio
-                + R.rage.received_cap_per_wave / Balance.benchmarks.wave_seconds
-        else
-            income = state.kill_rate * R.mana.normal_kill
-        end
-        return clampn(income / math.max(0.001, hit_rate * spec.cost), 0.0, 1.0)
-    end
 
     local function step_combat(dt, spawning)
         -- Hero output: adds first, boss last (players clear adds), front-first
@@ -386,13 +368,12 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
             or ASSUME.melee_hits_per_second * engaged_hits
         local hit_dmg = hero.attack == "ranged" and hero.dps * R.basic_attack.ranged_damage_mult
             or hero.dps / ASSUME.melee_hits_per_second
-        local uptime = rider_uptime(ev, hit_rate, engaged_hits)
         -- Rider dps: immediate part per landed hit + refreshed DoT on the
         -- targets being cycled (dots outlive the cycle, hence the x2 cap).
         local dotted = math.min(#in_range, engaged_hits * 2)
-        local rider_dps = uptime * hit_dmg * ((ev.initial or 0) * hit_rate + (ev.dot or 0) * dotted)
+        local rider_dps = hit_dmg * ((ev.initial or 0) * hit_rate + (ev.dot or 0) * dotted)
         if ev.extra_target and #in_range > engaged_hits then
-            rider_dps = rider_dps + uptime * hit_dmg * hit_rate / math.max(1, engaged_hits)
+            rider_dps = rider_dps + hit_dmg * hit_rate / math.max(1, engaged_hits)
                 * ev.extra_target
         end
         local out_dps, hits = hero_output(hero, #in_range, rider_dps, ev)
@@ -413,7 +394,7 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
                 -- Death splashes (explosion/shockwave) and dot spread cascade
                 -- into the pool.
                 local cascade = (ev.on_kill or 0) + (ev.spread_kill or 0)
-                if cascade > 0 then pool = pool + hit_dmg * cascade * uptime end
+                if cascade > 0 then pool = pool + hit_dmg * cascade end
             end
         end
         -- Sustain: lifesteal per landed hit, vampirism rider heal, preservation
@@ -425,8 +406,8 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
             if ev.heal_mult and rider_dps > 0 then
                 state.hp = math.min(hero.hp_max, state.hp + rider_dps * ev.heal_mult * dt)
             end
-            if hero.attack == "melee" and state.flasks < R.flask.health_allocation then
-                state.flasks = math.min(R.flask.health_allocation,
+            if hero.attack == "melee" and state.flasks < R.flask.charges then
+                state.flasks = math.min(R.flask.charges,
                     state.flasks + R.flask.melee_refill_rate * (out_dps / hero.dps) * dt)
             end
         end
@@ -463,8 +444,7 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
         end
         -- Debuff riders (daze/frost/shadow/preservation) blunt the incoming.
         if ev.avoid then
-            incoming = incoming * (1.0 - ev.avoid * ASSUME.rider_coverage
-                * (spec.cost and spec.cost > 0 and math.max(uptime, 0.3) or 1.0))
+            incoming = incoming * (1.0 - ev.avoid * ASSUME.rider_coverage)
         end
         if ev.tank then incoming = incoming * (1.0 - ev.tank) end -- minions soak aggro
         incoming = incoming + state.pending_hit / dt -- one-shot bomb hits this tick
@@ -482,10 +462,6 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
             state.invuln_until = state.t + R.flask.invulnerability
             state.flask_lock = state.t + drink_time + R.flask.lock_time
         end
-        -- Kill-rate EMA drives mana income for rider uptime.
-        local a = clampn(dt / ASSUME.kill_rate_tau, 0.0, 1.0)
-        state.kill_rate = state.kill_rate * (1.0 - a) + (state.kills_tick / dt) * a
-        state.kills_tick = 0
         state.t = state.t + dt
         if spawning then state.combat_time = (state.combat_time or 0.0) + dt end
         return state.hp > 0
@@ -501,12 +477,10 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
     -- curve), then cycle universal cards.
     for wave = 1, map.waves do
         state.wave = wave
-        -- Human draft: alternate spec ranks with universals (low-cleave ranged
-        -- classes fill with +1 projectile, everyone else offense/defense).
+        -- Human draft: alternate spec ranks with universals (offense/defense
+        -- cycle; the projectiles card left with the spells era).
         if policy == "spec" and hero.spec_rank < 5 and wave % 2 == 1 then
             hero.spec_rank = hero.spec_rank + 1
-        elseif hero.attack == "ranged" and hero.cleave < 5 then
-            apply_effect(hero, draft_card("projectiles").effect)
         else
             local cycle = { "offense", "defense", "offense" }
             apply_effect(hero, draft_card(cycle[(wave - 1) % #cycle + 1]).effect)
@@ -567,7 +541,17 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
         state.creeps = {}
     end
 
-    -- Boss.
+    -- Boss round: its own round in-game, so it opens like any wave — one more
+    -- draft pick and the between-round downtime regen before the rise.
+    local bwave = map.waves + 1
+    state.wave = bwave
+    if policy == "spec" and hero.spec_rank < 5 and bwave % 2 == 1 then
+        hero.spec_rank = hero.spec_rank + 1
+    else
+        local cycle = { "offense", "defense", "offense" }
+        apply_effect(hero, draft_card(cycle[(bwave - 1) % #cycle + 1]).effect)
+    end
+    state.hp = math.min(hero.hp_max, state.hp + hero.regen * ASSUME.between_wave_downtime)
     local boss = make_creep(state, map.boss, false, false)
     boss.max_hp = boss.hp
     state.creeps = { boss }

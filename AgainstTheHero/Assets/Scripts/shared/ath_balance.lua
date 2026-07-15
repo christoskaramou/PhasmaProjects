@@ -17,20 +17,11 @@ Balance.rules = {
     knockback = { creep_melee = 2.2, creep_projectile = 3.4,
         hero_contact = 1.4, hero_projectile = 2.6 },
     crit = { base_chance = 0.03, damage_mult = 2.0, bleed_seconds = 3.0 },
-    mana = { max = 100, normal_kill = 3, elite_kill = 15, boss_hit_cap = 35 },
-    energy = { max = 100, start = 100, regen_per_second = 20 },
-    -- Rage: no passive generation. dealt_rate = rage per second of full-DPS
-    -- output (normalised by hero.dps so gear scaling doesn't inflate casts);
-    -- received_rate = rage per 100% max-HP taken, hard-capped per wave so
-    -- face-tanking is never the optimal generator.
-    rage = { max = 100, start = 0, dealt_rate = 9.0, received_rate = 40.0,
-        received_cap_per_wave = 30 },
-    flask = { charges = 6, health_allocation = 4, heal_fraction = 0.40,
-        invulnerability = 2.0, mana = 40, drink_time = 0.70, lock_time = 2.0,
+    flask = { charges = 6, heal_fraction = 0.40,
+        invulnerability = 2.0, drink_time = 0.70, lock_time = 2.0,
         move_mult = 0.45, interrupt_hp_fraction = 0.10,
         -- Melee sustain identity: landing blows refills flask charges (fraction
-        -- of a charge per dps-second dealt, same normalisation as rage) and the
-        -- committed drink is half as long.
+        -- of a charge per dps-second dealt) and the committed drink is half as long.
         melee_refill_rate = 0.02, melee_drink_mult = 0.5 },
     load = {
         max = 100, dash_duration = 0.20,
@@ -62,10 +53,9 @@ Balance.rules = {
 }
 
 Balance.benchmarks = { single_targets = 1, pack_targets = 5, horde_targets = 10,
-    -- Resource-throughput assumptions: seconds of real fighting per wave, the
-    -- melee hero's damage uptime, and the average threat cost of a wave-budget
-    -- kill (feeds mana-per-kill income).
-    wave_seconds = 40.0, melee_uptime = 0.65, avg_threat_cost = 2.0 }
+    -- Pacing assumptions: seconds of real fighting per wave and the melee
+    -- hero's damage uptime (paper_balance exposure model).
+    wave_seconds = 40.0, melee_uptime = 0.65 }
 
 Balance.gearsets = {
     mid = { "iron_helm", "husk_plate", "sprint_greaves", "gauntlets", "cleaver", "moss_locket" },
@@ -81,15 +71,17 @@ Balance.draft_cards = {
       rarity = "universal", tags = { "Health", "Armor" },
       desc = "+20 max health and +3% armor per rank.",
       effect = { upgrade_rank = "defense", hp_max_add = 20.0, armor_add = 0.03 } },
-    { id = "universal_projectiles", rank_id = "projectiles", name = "Extra Projectile",
-      rarity = "universal", tags = { "Projectiles" }, desc = "+1 projectile per rank.",
-      effect = { upgrade_rank = "projectiles", cleave_add = 1 } },
+    { id = "universal_sustain", rank_id = "sustain", name = "Vital Conduit",
+      rarity = "universal", tags = { "Health", "Regen" },
+      desc = "+1% max health/s per rank.",
+      effect = { upgrade_rank = "sustain", hp_regen_pct_add = 0.01 } },
 }
 
--- Spells are gone. Ranked specialization riders spend the class resource only
--- when a basic hit lands. Spread riders use half the damage coefficient of the
--- equivalent local rider by design.
-Balance.skills = {}
+-- Spells are gone. Ranked specialization riders ride every basic attack for
+-- free; breadth is the cost instead — the player invests in any TWO of the
+-- three class specs, their pick at any draft; the third locks out once two
+-- hold ranks (see Duel:spec_card_allowed). Spread riders use half the damage
+-- coefficient of the equivalent local rider by design.
 Balance.on_hit = { tick = 0.5, duration = 4.0, spread_radius = 4.0,
     spread_damage_mult = 0.5 }
 
@@ -107,22 +99,22 @@ Balance.classes = {
             { id = "poison", name = "Poison Arrows", short = "P", tags = { "Poison", "Spread" },
               icon = "Textures/modes/arena/specs/poison.png",
               desc = "Hits poison immediately and over time; spreads on death at 50% damage.",
-              accent = { 0.42, 0.92, 0.28, 0.95 }, kind = "dot", status = "poison", cost = 2,
+              accent = { 0.42, 0.92, 0.28, 0.95 }, kind = "dot", status = "poison",
               initial_per_rank = 0.10, tick_per_rank = 0.10, spread = true },
             { id = "bleed", name = "Bleed Arrows", short = "B", tags = { "Hemorrhage" },
               icon = "Textures/modes/arena/specs/bleed.png",
               desc = "Hits stack Hemorrhage five times: 20/40/60/80/100% hit damage at rank 1.",
-              accent = { 0.95, 0.14, 0.20, 0.95 }, kind = "stack_dot", status = "bleed", cost = 2,
+              accent = { 0.95, 0.14, 0.20, 0.95 }, kind = "stack_dot", status = "bleed",
               stack_base = 0.20, stack_rank_add = 0.10, max_stacks = 5 },
             { id = "piercing", name = "Piercing Arrows", short = "I", tags = { "Pierce" },
               icon = "Textures/modes/arena/specs/ranger_piercing.png",
               desc = "Arrows pierce for 60% hit damage and carry every on-hit effect.",
-              accent = { 0.96, 0.84, 0.36, 0.95 }, kind = "pierce", status = "pierce", cost = 1,
+              accent = { 0.96, 0.84, 0.36, 0.95 }, kind = "pierce", status = "pierce",
               damage = 0.60, damage_per_rank = 0.10 },
         },
     },
     {
-        id = "brawler", name = "Brawler", attack = "melee", hit = "aoe_cleave", resource = "rage",
+        id = "brawler", name = "Brawler", attack = "melee", hit = "aoe_cleave",
         blurb = "Wide cleave plus an orbiting spin. Armored for close combat.",
         accent = { 0.92, 0.42, 0.34, 0.95 }, hp_max = 190.0, dps = 60.0,
         cleave = 8, attack_range = 5.0, speed = 9.0, kite_speed = 9.0,
@@ -134,17 +126,17 @@ Balance.classes = {
             { id = "bleed", name = "Bleed", short = "B", tags = { "Hemorrhage" },
               icon = "Textures/modes/arena/specs/bleed.png",
               desc = "Hits stack Hemorrhage five times: 20/40/60/80/100% hit damage per tick.",
-              accent = { 0.95, 0.14, 0.20, 0.95 }, kind = "stack_dot", status = "bleed", cost = 2,
+              accent = { 0.95, 0.14, 0.20, 0.95 }, kind = "stack_dot", status = "bleed",
               stack_base = 0.20, stack_rank_add = 0.10, max_stacks = 5 },
             { id = "frenzy", name = "Frenzy", short = "F", tags = { "Frenzy" },
               icon = "Textures/modes/arena/specs/brawler_frenzy.png",
               desc = "Hits stack short damage, attack-speed, and movement-speed buffs up to five.",
-              accent = { 0.96, 0.55, 0.20, 0.95 }, kind = "frenzy", status = "frenzy", cost = 2,
+              accent = { 0.96, 0.55, 0.20, 0.95 }, kind = "frenzy", status = "frenzy",
               stack_per_rank = 0.10, max_stacks = 5, duration = 3.0 },
             { id = "shockwave", name = "Shockwave", short = "S", tags = { "Impact" },
               icon = "Textures/modes/arena/specs/brawler_shockwave.png",
               desc = "A killing hit launches a corpse shockwave into enemies behind it.",
-              accent = { 0.92, 0.42, 0.34, 0.95 }, kind = "shockwave", status = "shockwave", cost = 2,
+              accent = { 0.92, 0.42, 0.34, 0.95 }, kind = "shockwave", status = "shockwave",
               damage = 0.50, damage_per_rank = 0.10, radius = 3.0 },
         },
     },
@@ -161,17 +153,17 @@ Balance.classes = {
             { id = "explosion", name = "Explosion", short = "X", tags = { "Explosion" },
               icon = "Textures/modes/arena/specs/sower_explosion.png",
               desc = "Hits prime enemies to explode on death. Does not spread.",
-              accent = { 0.96, 0.58, 0.18, 0.95 }, kind = "explosion", status = "explosion", cost = 2,
+              accent = { 0.96, 0.58, 0.18, 0.95 }, kind = "explosion", status = "explosion",
               damage = 0.20, damage_per_rank = 0.10, radius = 3.0 },
             { id = "seed", name = "Seed", short = "S", tags = { "Seed", "Spread" },
               icon = "Textures/modes/arena/specs/sower_seed.png",
               desc = "Hits seed immediate and periodic damage; spreads on death at 50% damage.",
-              accent = { 0.54, 0.82, 0.40, 0.95 }, kind = "dot", status = "seed", cost = 2,
+              accent = { 0.54, 0.82, 0.40, 0.95 }, kind = "dot", status = "seed",
               initial_per_rank = 0.10, tick_per_rank = 0.10, spread = true },
             { id = "thorns", name = "Thorns", short = "T", tags = { "Thorns" },
               icon = "Textures/modes/arena/specs/sower_thorns.png",
               desc = "Hits stack Thorns five times: 20/40/60/80/100% hit damage at rank 1.",
-              accent = { 0.30, 0.72, 0.32, 0.95 }, kind = "stack_dot", status = "thorns", cost = 2,
+              accent = { 0.30, 0.72, 0.32, 0.95 }, kind = "stack_dot", status = "thorns",
               stack_base = 0.20, stack_rank_add = 0.10, max_stacks = 5 },
         },
     },
@@ -190,23 +182,23 @@ Balance.classes = {
               desc = "Hits burn immediately and over time; spreads on death at 50% damage.",
               -- 0.14/rank (vs the 0.10 poison/seed baseline): the elemental
               -- class runs the lowest base dps, so its signature burn carries.
-              accent = { 1.0, 0.30, 0.10, 0.95 }, kind = "dot", status = "fire", cost = 2,
+              accent = { 1.0, 0.30, 0.10, 0.95 }, kind = "dot", status = "fire",
               initial_per_rank = 0.14, tick_per_rank = 0.14, spread = true },
             { id = "frost", name = "Cryomancer", short = "F", tags = { "Frost", "Slow" },
               icon = "Textures/modes/arena/specs/mage_frost.png",
               desc = "Hits deal Frost damage and slow enemy movement and attack speed.",
-              accent = { 0.35, 0.78, 1.0, 0.95 }, kind = "frost", status = "frost", cost = 2,
+              accent = { 0.35, 0.78, 1.0, 0.95 }, kind = "frost", status = "frost",
               damage_per_rank = 0.20, slow_per_rank = 0.12, duration = 3.0 },
             { id = "earth", name = "Geomancer", short = "G", tags = { "Armor", "Poise" },
               icon = "Textures/modes/arena/specs/mage_earth.png",
               desc = "Projectiles pierce in a small cone and carry every on-hit effect.",
-              accent = { 0.72, 0.46, 0.20, 0.95 }, kind = "pierce", status = "earth", cost = 1,
+              accent = { 0.72, 0.46, 0.20, 0.95 }, kind = "pierce", status = "earth",
               damage = 0.55, damage_per_rank = 0.10 },
         },
     },
     {
-        id = "rogue", name = "Rogue", attack = "ranged", hit = "single_projectile", resource = "energy",
-        blurb = "Fast short-range daggers. Energy regenerates constantly.",
+        id = "rogue", name = "Rogue", attack = "ranged", hit = "single_projectile",
+        blurb = "Fast short-range daggers with deadly on-hit riders.",
         accent = { 0.62, 0.24, 0.72, 0.95 }, hp_max = 102.0, dps = 27.0,
         cleave = 2, attack_range = 6.5, fire_interval = 0.22, speed = 9.5, kite_speed = 9.5,
         sprite_texture = "Textures/modes/arena/hero_rogue.png",
@@ -217,23 +209,23 @@ Balance.classes = {
             { id = "shadow", name = "Shadowdancer", short = "S", tags = { "Dodge", "Energy" },
               icon = "Textures/modes/arena/specs/rogue_shadow.png",
               desc = "Hits deal pure damage and apply Smoke, giving enemies a miss chance.",
-              accent = { 0.48, 0.38, 0.88, 0.95 }, kind = "shadow", status = "shadow", cost = 2,
+              accent = { 0.48, 0.38, 0.88, 0.95 }, kind = "shadow", status = "shadow",
               damage_per_rank = 0.15, miss_per_rank = 0.08, duration = 3.0 },
             { id = "poison", name = "Poison", short = "P", tags = { "Poison", "Spread" },
               icon = "Textures/modes/arena/specs/poison.png",
               desc = "Hits poison immediately and over time; spreads on death at 50% damage.",
-              accent = { 0.42, 0.92, 0.28, 0.95 }, kind = "dot", status = "poison", cost = 2,
+              accent = { 0.42, 0.92, 0.28, 0.95 }, kind = "dot", status = "poison",
               initial_per_rank = 0.10, tick_per_rank = 0.10, spread = true },
             { id = "daggers", name = "Daggers", short = "D", tags = { "Pierce" },
               icon = "Textures/modes/arena/specs/rogue_daggers.png",
               desc = "Thrown daggers pierce for 60% hit damage and carry on-hit effects.",
-              accent = { 0.72, 0.30, 0.82, 0.95 }, kind = "pierce", status = "daggers", cost = 1,
+              accent = { 0.72, 0.30, 0.82, 0.95 }, kind = "pierce", status = "daggers",
               damage = 0.60, damage_per_rank = 0.10 },
         },
     },
     {
-        id = "warrior", name = "Warrior", attack = "melee", hit = "aoe_cleave", resource = "rage",
-        blurb = "Iron line-holder. Rage fuels punishing on-hit effects and guard.",
+        id = "warrior", name = "Warrior", attack = "melee", hit = "aoe_cleave",
+        blurb = "Iron line-holder with punishing on-hit effects and guard.",
         accent = { 0.85, 0.32, 0.22, 0.95 }, hp_max = 175.0, dps = 54.0,
         cleave = 6, attack_range = 4.6, speed = 8.8, kite_speed = 8.8,
         armor = 0.18, regen = 1.0,
@@ -244,17 +236,17 @@ Balance.classes = {
             { id = "bleed", name = "Lacerator", short = "L", tags = { "Bleed" },
               icon = "Textures/modes/arena/specs/bleed.png",
               desc = "Hits stack Hemorrhage five times: 20/40/60/80/100% hit damage per tick.",
-              accent = { 0.95, 0.20, 0.22, 0.95 }, kind = "stack_dot", status = "bleed", cost = 2,
+              accent = { 0.95, 0.20, 0.22, 0.95 }, kind = "stack_dot", status = "bleed",
               stack_base = 0.20, stack_rank_add = 0.10, max_stacks = 5 },
             { id = "daze", name = "Daze", short = "D", tags = { "Daze" },
               icon = "Textures/modes/arena/specs/warrior_daze.png",
               desc = "Hits reduce enemy damage, attack speed, and movement speed.",
-              accent = { 0.92, 0.78, 0.30, 0.95 }, kind = "daze", status = "daze", cost = 2,
+              accent = { 0.92, 0.78, 0.30, 0.95 }, kind = "daze", status = "daze",
               reduction_per_rank = 0.10, duration = 3.0 },
             { id = "preservation", name = "Preservation", short = "P", tags = { "Guard", "Regen" },
               icon = "Textures/modes/arena/specs/preservation.png",
               desc = "Taking damage briefly reduces damage and regenerates a share of maximum health.",
-              accent = { 0.55, 0.70, 0.95, 0.95 }, kind = "preservation", status = "preservation", cost = 0,
+              accent = { 0.55, 0.70, 0.95, 0.95 }, kind = "preservation", status = "preservation",
               damage_reduction_per_rank = 0.10, heal_fraction_per_rank = 0.05, heal_seconds = 5.0 },
         },
     },
@@ -271,17 +263,17 @@ Balance.classes = {
             { id = "curse", name = "Curseweaver", short = "C", tags = { "Curse" },
               icon = "Textures/modes/arena/specs/necromancer_curse.png",
               desc = "Hits curse for damage; spreads on death at 50% damage.",
-              accent = { 0.72, 0.30, 0.95, 0.95 }, kind = "dot", status = "curse", cost = 2,
+              accent = { 0.72, 0.30, 0.95, 0.95 }, kind = "dot", status = "curse",
               initial_per_rank = 0.40, tick_per_rank = 0.40, spread = true },
             { id = "vampirism", name = "Vampirism", short = "V", tags = { "Lifesteal" },
               icon = "Textures/modes/arena/specs/necromancer_vampirism.png",
               desc = "Hits deal immediate and periodic damage and heal for half that damage.",
-              accent = { 0.88, 0.18, 0.42, 0.95 }, kind = "vampirism", status = "vampirism", cost = 2,
+              accent = { 0.88, 0.18, 0.42, 0.95 }, kind = "vampirism", status = "vampirism",
               initial_per_rank = 0.20, tick_per_rank = 0.20, lifesteal_mult = 0.50 },
             { id = "summoner", name = "Summoner", short = "S", tags = { "Summon" },
               icon = "Textures/modes/arena/specs/necromancer_summoner.png",
               desc = "Marked kills raise skeleton mages; starts at two, +1 maximum per rank.",
-              accent = { 0.88, 0.90, 0.78, 0.95 }, kind = "summon", status = "revive", cost = 2,
+              accent = { 0.88, 0.90, 0.78, 0.95 }, kind = "summon", status = "revive",
               cap_base = 2, cap_per_rank = 1 },
         },
     },
@@ -453,7 +445,7 @@ Balance.items = {
       desc = "+12 HP, +5% move", effect = { hp_max_add = 12.0, speed_mult = 1.05, kite_speed_mult = 1.05 } },
     { id = "thorn_hood", slot = "helmet", rarity = "uncommon", name = "Thorn Hood", weight = 10,
       desc = "+20 HP, +4 thorns", effect = { hp_max_add = 20.0, thorns_add = 4.0 } },
-    { id = "spore_mask", slot = "helmet", rarity = "rare", name = "Spore Mask", weight = 8, tags = { "Mana", "Guard" },
+    { id = "spore_mask", slot = "helmet", rarity = "rare", name = "Spore Mask", weight = 8, tags = { "Regen", "Guard" },
       desc = "+12% armor, +1.5 regen", effect = { armor_add = 0.12, regen_add = 1.5 } },
     { id = "gourd_visor", slot = "helmet", rarity = "epic", name = "Gourd Visor", weight = 20,
       desc = "+60 HP, +18% armor", effect = { hp_max_add = 60.0, armor_add = 0.18 } },
@@ -481,7 +473,7 @@ Balance.items = {
       desc = "+22% move", effect = { speed_mult = 1.22, kite_speed_mult = 1.22 } },
     { id = "plated_greaves", slot = "pants", rarity = "rare", name = "Plated Greaves", weight = 25, tags = { "Guard", "Stagger" },
       desc = "+35 HP, +10% armor, +5% move", effect = { hp_max_add = 35.0, armor_add = 0.10, speed_mult = 1.05, kite_speed_mult = 1.05 } },
-    { id = "phase_steps", slot = "pants", rarity = "epic", name = "Phase Steps", weight = 5, tags = { "Dodge", "Mana" },
+    { id = "phase_steps", slot = "pants", rarity = "epic", name = "Phase Steps", weight = 5, tags = { "Dodge" },
       desc = "+20 HP, +30% move", effect = { hp_max_add = 20.0, speed_mult = 1.30, kite_speed_mult = 1.30 } },
     -- gloves
     { id = "garden_gloves", slot = "gloves", rarity = "common", name = "Garden Gloves", weight = 3,
@@ -526,8 +518,8 @@ Balance.items = {
       desc = "+15 HP, +1 regen", effect = { hp_max_add = 15.0, regen_add = 1.0 } },
     { id = "vampire_tooth", slot = "jewelry", rarity = "rare", name = "Vampire Tooth",
       desc = "+2 lifesteal, +12% damage", effect = { lifesteal_add = 2.0, dps_mult = 1.12 } },
-    { id = "storm_loop", slot = "jewelry", rarity = "epic", name = "Storm Loop", tags = { "Mana", "Orbit" },
-      desc = "+20% crit, +15% attack/move, mana burst", effect = { crit_add = 0.20, fire_interval_mult = 0.85, speed_mult = 1.15, kite_speed_mult = 1.15, whirl_add = 1, mana_burst = 0.65 } },
+    { id = "storm_loop", slot = "jewelry", rarity = "epic", name = "Storm Loop", tags = { "Flask", "Orbit" },
+      desc = "+20% crit, +15% attack/move, flask burst", effect = { crit_add = 0.20, fire_interval_mult = 0.85, speed_mult = 1.15, kite_speed_mult = 1.15, whirl_add = 1, flask_burst = 0.65 } },
     -- boss-tier (rare pool feeds the Gourd King's shower)
     { id = "kings_crown", slot = "helmet", rarity = "rare", name = "King's Crown", weight = 16,
       desc = "+40 HP, +10% damage, +20% gold", effect = { hp_max_add = 40.0, dps_mult = 1.10, gold_find_add = 0.2 } },
@@ -535,7 +527,7 @@ Balance.items = {
     -- synergy pieces, and boss-flavoured epics for the new maps.
     { id = "sentry_visor", slot = "helmet", rarity = "rare", name = "Sentry Visor", weight = 14,
       desc = "+25 HP, +1 cleave", effect = { hp_max_add = 25.0, cleave_add = 1 } },
-    { id = "queens_diadem", slot = "helmet", rarity = "epic", name = "Queen's Diadem", weight = 8, tags = { "Mana" },
+    { id = "queens_diadem", slot = "helmet", rarity = "epic", name = "Queen's Diadem", weight = 8, tags = { "Dodge" },
       desc = "+45 HP, +15% attack speed, +8% move", effect = { hp_max_add = 45.0, fire_interval_mult = 0.85, speed_mult = 1.08, kite_speed_mult = 1.08 } },
     { id = "beetle_shell", slot = "body", rarity = "rare", name = "Beetle Shell", weight = 30,
       desc = "+40 HP, +15% armor", effect = { hp_max_add = 40.0, armor_add = 0.15 } },
@@ -561,15 +553,15 @@ Balance.items = {
       desc = "+10% gold, +6 HP", effect = { gold_find_add = 0.10, hp_max_add = 6.0 } },
     { id = "dodge_band", slot = "jewelry", rarity = "uncommon", name = "Dodge Band", weight = 0,
       desc = "Dodge recharges 20% faster", effect = { dodge_recharge_mult = 0.80 } },
-    { id = "hive_locket", slot = "jewelry", rarity = "rare", name = "Hive Locket", weight = 0, tags = { "Mana", "Flask" },
-      desc = "+15 HP, +2 regen, mana burst", effect = { hp_max_add = 15.0, regen_add = 2.0, gold_find_add = 0.10, mana_burst = 0.4 } },
+    { id = "hive_locket", slot = "jewelry", rarity = "rare", name = "Hive Locket", weight = 0, tags = { "Regen", "Flask" },
+      desc = "+15 HP, +2 regen, flask burst", effect = { hp_max_add = 15.0, regen_add = 2.0, gold_find_add = 0.10, flask_burst = 0.4 } },
     { id = "phase_charm", slot = "jewelry", rarity = "epic", name = "Phase Charm", weight = 0, tags = { "Dodge" },
       desc = "+1 dodge charge", effect = { dodge_charge_add = 1 } },
     { id = "kings_signet", slot = "jewelry", rarity = "epic", name = "King's Signet", weight = 0, tags = { "Flask", "Retaliation" },
       desc = "+25% gold, +12% damage, health nova", effect = { gold_find_add = 0.25, dps_mult = 1.12, flask_nova = 0.6 } },
     -- LEGENDARY (orange) — endgame drops, maps IX+. One per slot,
     -- ~1.6x epic power with a signature effect each.
-    { id = "crown_of_ovrevand", slot = "helmet", rarity = "legendary", name = "Crown of Ovrevand", weight = 0, tags = { "Guard", "Mana" },
+    { id = "crown_of_ovrevand", slot = "helmet", rarity = "legendary", name = "Crown of Ovrevand", weight = 0, tags = { "Guard" },
       desc = "+100 HP, +20% armor, +15% attack speed", effect = { hp_max_add = 100.0, armor_add = 0.20, fire_interval_mult = 0.85 } },
     { id = "kingsguard_plate", slot = "body", rarity = "legendary", name = "Kingsguard Plate", weight = 0, tags = { "Guard", "Retaliation" },
       desc = "+140 HP, +25% armor, +2 regen, +12 thorns", effect = { hp_max_add = 140.0, armor_add = 0.25, regen_add = 2.0, thorns_add = 12.0 } },
@@ -579,8 +571,8 @@ Balance.items = {
       desc = "+24 damage, +35% attack speed, +15% crit", effect = { dps_add = 24.0, fire_interval_mult = 0.65, crit_add = 0.15 } },
     { id = "kingmaker", slot = "weapon", rarity = "legendary", name = "Kingmaker", weight = 0, tags = { "Cleave", "Orbit" },
       desc = "+45% damage, +3 cleave, +2 spin, crit bleed", effect = { dps_mult = 1.45, cleave_add = 3, whirl_add = 2, bleed_on_crit = 10.0 } },
-    { id = "heart_of_the_hive", slot = "jewelry", rarity = "legendary", name = "Heart of the Hive", weight = 0, tags = { "Mana", "Bleed" },
-      desc = "+3 lifesteal, +20% damage, +25% crit, mana burst", effect = { lifesteal_add = 3.0, dps_mult = 1.20, crit_add = 0.25, mana_burst = 0.85 } },
+    { id = "heart_of_the_hive", slot = "jewelry", rarity = "legendary", name = "Heart of the Hive", weight = 0, tags = { "Flask", "Bleed" },
+      desc = "+3 lifesteal, +20% damage, +25% crit, flask burst", effect = { lifesteal_add = 3.0, dps_mult = 1.20, crit_add = 0.25, flask_burst = 0.85 } },
 }
 
 function Balance.auto_mix(D)
@@ -725,64 +717,61 @@ function Balance.specialization_upgrade_text(class_id, id, current_rank)
     local spec = assert(Balance.specialization(class_id, id),
         "unknown specialization: " .. tostring(class_id) .. ":" .. tostring(id))
     local rank = math.max(1, math.floor(current_rank or 0) + 1)
-    local resource = T(string.upper(class.resource or "mana"))
-    local cost = T("Cost %d %s/%s.", spec.cost or 1, resource,
-        T(spec.kind == "preservation" and "hit taken" or "hit"))
     local function pct(value) return tostring(math.floor(value * 100.0 + 0.5)) .. "%" end
     local kind = spec.kind
     local sname = T(spec.name)
     if kind == "dot" then
         local spread = spec.spread and Balance.on_hit.spread_damage_mult or 1.0
-        return T("Next rank: %s hit %s + %s per tick.\n%s  %s",
+        return T("Next rank: %s hit %s + %s per tick.\n%s",
             sname, pct((spec.initial_per_rank or 0.0) * rank * spread),
             pct((spec.tick_per_rank or 0.0) * rank * spread),
-            T(spec.spread and "Spreads on death at half strength." or "Does not spread."), cost)
+            T(spec.spread and "Spreads on death at half strength." or "Does not spread."))
     elseif kind == "stack_dot" then
         local per_stack = (spec.stack_base or 0.20) + (rank - 1) * (spec.stack_rank_add or 0.10)
         local values = {}
         for stack = 1, spec.max_stacks or 5 do values[#values + 1] = pct(per_stack * stack) end
-        return T("Next rank: %s deals %s hit damage on hit + per tick at 1-5 stacks.\n%s",
-            sname, table.concat(values, "/"), cost)
+        return T("Next rank: %s deals %s hit damage on hit + per tick at 1-5 stacks.",
+            sname, table.concat(values, "/"))
     elseif kind == "pierce" then
         local damage = (spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)
-        return T("Next rank: piercing hit deals %s hit damage.\nCarries all on-hit effects.  %s",
-            pct(damage), cost)
+        return T("Next rank: piercing hit deals %s hit damage.\nCarries all on-hit effects.",
+            pct(damage))
     elseif kind == "frenzy" then
         local per_stack = (spec.stack_per_rank or 0.10) * rank
-        return T("Next rank: +%s damage, attack speed, and speed per stack; %s at 5 stacks for %.0fs.\n%s",
-            pct(per_stack), pct(per_stack * (spec.max_stacks or 5)), spec.duration or 3.0, cost)
+        return T("Next rank: +%s damage, attack speed, and speed per stack; %s at 5 stacks for %.0fs.",
+            pct(per_stack), pct(per_stack * (spec.max_stacks or 5)), spec.duration or 3.0)
     elseif kind == "explosion" or kind == "shockwave" then
         local damage = (spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)
-        return T("Next rank: death %s deals %s hit damage in %.1f range.\n%s",
-            T(kind), pct(damage), spec.radius or 3.0, cost)
+        return T("Next rank: death %s deals %s hit damage in %.1f range.",
+            T(kind), pct(damage), spec.radius or 3.0)
     elseif kind == "frost" then
-        return T("Next rank: %s Frost damage; -%s move and attack speed for %.0fs.\n%s",
+        return T("Next rank: %s Frost damage; -%s move and attack speed for %.0fs.",
             pct((spec.damage_per_rank or 0.0) * rank),
-            pct(math.min(0.75, (spec.slow_per_rank or 0.0) * rank)), spec.duration or 3.0, cost)
+            pct(math.min(0.75, (spec.slow_per_rank or 0.0) * rank)), spec.duration or 3.0)
     elseif kind == "shadow" then
-        return T("Next rank: %s pure damage; Smoke gives %s miss chance for %.0fs.\n%s",
+        return T("Next rank: %s pure damage; Smoke gives %s miss chance for %.0fs.",
             pct((spec.damage_per_rank or 0.0) * rank),
-            pct(math.min(0.75, (spec.miss_per_rank or 0.0) * rank)), spec.duration or 3.0, cost)
+            pct(math.min(0.75, (spec.miss_per_rank or 0.0) * rank)), spec.duration or 3.0)
     elseif kind == "daze" then
         local reduction = math.min(0.75, (spec.reduction_per_rank or 0.0) * rank)
-        return T("Next rank: -%s enemy damage, attack speed, and speed for %.0fs.\n%s",
-            pct(reduction), spec.duration or 3.0, cost)
+        return T("Next rank: -%s enemy damage, attack speed, and speed for %.0fs.",
+            pct(reduction), spec.duration or 3.0)
     elseif kind == "preservation" then
         local reduction, healing, seconds = Balance.preservation_effect(rank)
-        return T("Next rank: after taking damage, gain %s damage reduction and restore %s max health over %.0fs.\nCost: 0 Rage.",
+        return T("Next rank: after taking damage, gain %s damage reduction and restore %s max health over %.0fs.",
             pct(reduction), pct(healing), seconds)
     elseif kind == "vampirism" then
-        return T("Next rank: %s hit + %s per tick; heals %s from each.\n%s",
+        return T("Next rank: %s hit + %s per tick; heals %s from each.",
             pct((spec.initial_per_rank or 0.0) * rank),
             pct((spec.tick_per_rank or 0.0) * rank),
-            pct((spec.tick_per_rank or 0.0) * rank * (spec.lifesteal_mult or 0.0)), cost)
+            pct((spec.tick_per_rank or 0.0) * rank * (spec.lifesteal_mult or 0.0)))
     elseif kind == "summon" then
         local cap = math.min(Balance.minions.skeleton.cap_max,
             (spec.cap_base or 2) + (rank - 1) * (spec.cap_per_rank or 1))
-        return T("Next rank: skeleton-mage cap %d; each deals %s hit damage and inherits statuses.\n%s; free while capped.",
-            cap, pct(Balance.minions.skeleton.dps_mult), cost)
+        return T("Next rank: skeleton-mage cap %d; each deals %s hit damage and inherits statuses.",
+            cap, pct(Balance.minions.skeleton.dps_mult))
     end
-    return T(spec.desc) .. "\n" .. cost
+    return T(spec.desc)
 end
 
 function Balance.universal_upgrade_text(card, current_rank)
@@ -800,8 +789,8 @@ function Balance.universal_upgrade_text(card, current_rank)
     elseif card.rank_id == "defense" then
         return T("Next rank: +20 max health and +3%% armor.\nTotal from cards: +%d health, +%d%% armor.",
             20 * rank, 3 * rank)
-    elseif card.rank_id == "projectiles" then
-        return T("Next rank: +1 projectile.\nTotal from cards: +%d projectiles.", rank)
+    elseif card.rank_id == "sustain" then
+        return T("Next rank: +1%% max health/s.\nTotal from cards: +%d%% health/s.", rank)
     end
     return T(card.desc or "")
 end
@@ -829,111 +818,6 @@ function Balance.basic_metrics(class_id, targets)
         total_dps = primary_total + innate_aoe_dps * targets,
         targets_hit = hits,
         effective_hp = class.hp_max / math.max(0.01, 1.0 - (class.armor or 0.0)) }
-end
-
-function Balance.skill_metrics(class_id, specialization, targets, round, rank)
-    local class = assert(class_by_id(class_id), "unknown balance class: " .. tostring(class_id))
-    local skill = Balance.skills[class_id]
-    if skill and not skill.id then skill = skill[specialization] end
-    assert(skill, "unknown balance skill for " .. tostring(class_id) .. ":" .. tostring(specialization))
-    targets = math.max(1, math.floor(targets or Balance.benchmarks.pack_targets))
-    round = math.max(1, math.floor(round or 1))
-    rank = math.max(1, math.floor(rank or 1))
-    local effects = skill.effects or {}
-    local base = class.dps * skill.damage * (1.0 + (round - 1) * (skill.round_growth or 0.0))
-    local per_target = base
-        + class.dps * (effects.burn_dps or 0.0) * (effects.burn_seconds or 0.0)
-    local multi = skill.hit == "aoe" or effects.piercing == true
-    local hits = multi and math.min(targets, skill.target_cap or targets) or 1
-    local secondary, secondary_targets = 0.0, 1
-    local spec = Balance.specialization(class_id, specialization)
-    local status_hit = class.dps * ((spec and spec.hit_damage_per_rank) or 0.0) * rank
-    if spec and spec.burn_dps_per_rank then
-        secondary = class.dps * spec.burn_dps_per_rank * rank * spec.burn_seconds
-        secondary_targets = math.min(targets, 1 + spec.spread_targets_per_rank * rank)
-    elseif spec and spec.bounce_damage then
-        secondary_targets = math.min(math.max(0, targets - 1), spec.bounces_per_rank * rank)
-        secondary = class.dps * spec.bounce_damage * secondary_targets
-    elseif spec and spec.poison_dps_per_rank then
-        secondary = class.dps * spec.poison_dps_per_rank * rank * spec.poison_seconds
-    elseif spec and spec.hemorrhage_damage_per_rank then
-        secondary = class.dps * spec.hemorrhage_damage_per_rank * rank / spec.hemorrhage_hits
-    elseif spec and spec.bleed_dps_per_rank then
-        secondary = class.dps * spec.bleed_dps_per_rank * rank * spec.bleed_seconds
-    end
-    local minion = spec and spec.minion and Balance.minions[spec.minion]
-    local minion_cap = minion and math.min((spec.cap_base or 1) + (spec.cap_per_rank or 1) * rank,
-        minion.cap_max) or 0
-    return {
-        base_single_damage = base,
-        secondary_damage = secondary,
-        status_hit_damage = status_hit,
-        single_damage = per_target + status_hit + (targets == 1 and secondary or 0.0),
-        total_damage = (per_target + status_hit) * hits
-            + secondary * (spec and spec.burn_dps_per_rank and secondary_targets or 1),
-        targets_hit = hits,
-        single_damage_per_mana = (per_target + status_hit + (targets == 1 and secondary or 0.0)) / skill.cost,
-        total_damage_per_mana = ((per_target + status_hit) * hits
-            + secondary * (spec and spec.burn_dps_per_rank and secondary_targets or 1)) / skill.cost,
-        delivery_delay = (effects.arm or 0.0) + (effects.trigger_delay or 0.0),
-        control_seconds = spec and (spec.freeze_seconds_per_rank or spec.stagger_seconds_per_rank or spec.debuff_seconds) and
-            ((spec.freeze_seconds_per_rank or spec.stagger_seconds_per_rank or spec.debuff_seconds)
-                * ((spec.freeze_seconds_per_rank or spec.stagger_seconds_per_rank) and rank or 1))
-            or effects.slow_seconds or effects.armor_break or 0.0,
-        slow_mult = spec and spec.slow_per_rank and math.max(spec.slow_min, 1.0 - spec.slow_per_rank * rank)
-            or effects.speed_mult or 1.0,
-        knockback = effects.knockback or 0.0,
-        area = skill.radius and math.pi * skill.radius * skill.radius or 0.0,
-        line_reach = skill.life and Balance.rules.basic_attack.projectile_speed * skill.life or 0.0,
-        armor_reduction = spec and (spec.armor_reduction_per_rank or 0.0) * rank or 0.0,
-        poise_reduction = spec and (spec.poise_reduction_per_rank or 0.0) * rank or 0.0,
-        move_speed_mult = spec and 1.0 + (spec.move_speed_per_rank or 0.0) * rank or 1.0,
-        bounces = spec and (spec.bounces_per_rank or 0) * rank or 0,
-        poison_dps = spec and (spec.poison_dps_per_rank or 0.0) * class.dps * rank or 0.0,
-        poison_max_stacks = spec and spec.poison_max_stacks or 0,
-        hemorrhage_burst = spec and (spec.hemorrhage_damage_per_rank or 0.0) * class.dps * rank or 0.0,
-        iframe_seconds = spec and (spec.iframe_seconds_per_rank or 0.0) * rank or 0.0,
-        resource_refund = spec and ((spec.energy_refund_per_rank or spec.mana_steal_per_rank
-            or spec.rage_refund_per_rank or 0.0)) * rank or 0.0,
-        execute_threshold = spec and (spec.execute_threshold_per_rank or 0.0) * rank or 0.0,
-        bleed_dps = spec and (spec.bleed_dps_per_rank or 0.0) * class.dps * rank or 0.0,
-        frenzy_mult = spec and (spec.frenzy_damage_per_rank or 0.0) * rank or 0.0,
-        guard = spec and (spec.guard_per_rank or 0.0) * rank or 0.0,
-        poise = spec and (spec.poise_per_rank or 0.0) * rank or 0.0,
-        knockback_mult = spec and 1.0 + (spec.knockback_per_rank or 0.0) * rank or 1.0,
-        curse_amp = spec and (spec.curse_amp_per_rank or 0.0) * rank or 0.0,
-        minion_cap = minion_cap,
-        minion_dps = minion and minion.dps_mult * class.dps or 0.0,
-        minion_pack_dps = minion and minion.dps_mult * class.dps * minion_cap or 0.0,
-        minion_hp = minion and minion.hp_mult * class.hp_max or 0.0,
-        minion_duration = minion and minion.duration or 0.0,
-    }
-end
-
--- Estimated skill casts per wave — the pacing gate ("at least three meaningful
--- casts per wave by wave three") derived from each resource's real income:
--- mana = kills (wave budget / avg threat cost), energy = flat regen,
--- rage = damage-dealt uptime + the capped received-damage trickle.
-function Balance.resource_metrics(class_id, wave)
-    local class = assert(class_by_id(class_id), "unknown balance class: " .. tostring(class_id))
-    local skill = Balance.skills[class_id]
-    if skill and not skill.id then local _, first = next(skill); skill = first end
-    if not skill then return { income = 0.0, casts_per_wave = 0.0, cost = 1.0 } end
-    wave = math.max(1, math.floor(wave or 3))
-    local b = Balance.benchmarks
-    local resource = class.resource or "mana"
-    local income
-    if resource == "energy" then
-        income = Balance.rules.energy.regen_per_second * b.wave_seconds
-    elseif resource == "rage" then
-        income = Balance.rules.rage.dealt_rate * b.wave_seconds * b.melee_uptime
-            + Balance.rules.rage.received_cap_per_wave * 0.5
-    else
-        local budget = Balance.rules.arena.wave_budgets[wave]
-            or Balance.rules.arena.wave_budgets[#Balance.rules.arena.wave_budgets]
-        income = budget / b.avg_threat_cost * Balance.rules.mana.normal_kill
-    end
-    return { income = income, casts_per_wave = income / skill.cost, cost = skill.cost }
 end
 
 function Balance.monster_metrics(id)
@@ -967,7 +851,7 @@ function Balance.report()
             on_hit = {},
         }
         for _, spec in ipairs(class.specializations or {}) do
-            row.on_hit[spec.id] = { kind = spec.kind, cost = spec.cost, spread = spec.spread == true }
+            row.on_hit[spec.id] = { kind = spec.kind, spread = spec.spread == true }
         end
         report.classes[class.id] = row
     end
@@ -996,15 +880,6 @@ function Balance._audit_body()
         assert(monster.hp > 0 and monster.dps >= 0 and monster.threat_cost > 0,
             "invalid monster balance row: " .. tostring(id))
     end
-    for id, skill in pairs(Balance.skills) do
-        if not skill.id then
-            for _, spell in pairs(skill) do
-                assert(spell.hit and spell.delivery and spell.cost > 0 and spell.damage > 0, "invalid nested skill")
-            end
-        else
-            assert(skill.hit and skill.delivery and skill.cost > 0 and skill.damage > 0, "invalid skill: " .. tostring(id))
-        end
-    end
     for _, item in ipairs(Balance.items) do
         assert(item.id and item.slot and item.effect and not item_ids[item.id], "invalid or duplicate item balance row")
         item_ids[item.id] = true
@@ -1015,136 +890,33 @@ function Balance._audit_body()
     for _, values in pairs(Balance.map_progression.drops) do
         assert(#values == #Balance.map_progression.rank, "drop progression count mismatch")
     end
-    if next(Balance.skills) == nil then
-        for _, class in ipairs(Balance.classes) do
-            assert(#(class.specializations or {}) == 3, class.id .. " must have three specializations")
-            for _, spec in ipairs(class.specializations) do
-                assert(spec.kind and spec.status and spec.cost >= 0 and spec.icon,
-                    "invalid on-hit specialization: " .. class.id)
-                local upgrade = Balance.specialization_upgrade_text(class.id, spec.id, 0)
-                assert(upgrade:find("Next rank:", 1, true)
-                    and (upgrade:find("Cost", 1, true) or upgrade:find("Passive", 1, true)),
-                    "missing specialization upgrade text: " .. class.id .. ":" .. spec.id)
-                if spec.spread then
-                    assert(Balance.on_hit.spread_damage_mult == 0.50,
-                        "spread specialization damage must remain at half strength: " .. class.id)
-                end
+    for _, class in ipairs(Balance.classes) do
+        assert(#(class.specializations or {}) == 3, class.id .. " must have three specializations")
+        for _, spec in ipairs(class.specializations) do
+            assert(spec.kind and spec.status and spec.icon,
+                "invalid on-hit specialization: " .. class.id)
+            local upgrade = Balance.specialization_upgrade_text(class.id, spec.id, 0)
+            assert(upgrade:find("Next rank:", 1, true),
+                "missing specialization upgrade text: " .. class.id .. ":" .. spec.id)
+            if spec.spread then
+                assert(Balance.on_hit.spread_damage_mult == 0.50,
+                    "spread specialization damage must remain at half strength: " .. class.id)
             end
         end
-        assert(#Balance.draft_cards == 3, "exactly three universal upgrades are required")
-        local p1_reduction, p1_healing = Balance.preservation_effect(1)
-        local p5_reduction, p5_healing = Balance.preservation_effect(5)
-        assert(math.abs(p1_reduction - 0.10) < 0.0001 and math.abs(p1_healing - 0.05) < 0.0001
-            and math.abs(p5_reduction - 0.50) < 0.0001 and math.abs(p5_healing - 0.25) < 0.0001,
-            "Warrior Preservation scaling must be 10% reduction and 5% healing per rank")
-        local universal_ids = {}
-        for _, card in ipairs(Balance.draft_cards) do
-            assert(card.rank_id and card.rarity == "universal" and not universal_ids[card.rank_id],
-                "invalid universal upgrade")
-            universal_ids[card.rank_id] = true
-            assert(Balance.universal_upgrade_text(card, 0):find("Next rank:", 1, true),
-                "missing universal upgrade text: " .. card.id)
-        end
-        return true
     end
-    local ranger = Balance.basic_metrics("ranger", 1)
-    local brawler = Balance.basic_metrics("brawler", 1)
-    local sower = Balance.basic_metrics("sower", 1)
-    local mage = Balance.basic_metrics("mage", 1)
-    local brawler_ratio = brawler.single_dps / ranger.single_dps
-    assert(brawler_ratio >= 1.4 and brawler_ratio <= 1.65, "Brawler practical DPS band failed")
-    local brawler_ehp_ratio = brawler.effective_hp / ranger.effective_hp
-    assert(brawler_ehp_ratio >= 1.7 and brawler_ehp_ratio <= 2.2, "Brawler defense band failed")
-    assert(sower.single_dps / ranger.single_dps >= 0.70
-        and sower.single_dps / ranger.single_dps <= 0.85, "Sower single-target band failed")
-    assert(Balance.basic_metrics("sower", 5).total_dps > Balance.basic_metrics("ranger", 5).total_dps,
-        "Sower pack identity failed")
-    assert(mage.single_dps / ranger.single_dps >= 0.75
-        and mage.single_dps / ranger.single_dps <= 0.90, "Mage basic-attack band failed")
-    local mage_base = Balance.skill_metrics("mage", nil, 1, 1).base_single_damage
-    for _, spec in ipairs(class_by_id("mage").specializations) do
-        assert(Balance.skill_metrics("mage", spec.id, 1, 1).base_single_damage == mage_base,
-            "Mage specialization changed base spell damage")
-    end
-    assert(Balance.skill_metrics("mage", "fire", 1).secondary_damage >= class_by_id("mage").dps,
-        "Pyromancer burn too weak to read")
-    assert(Balance.skill_metrics("mage", "ice", 1).slow_mult <= 0.70, "Cryomancer slow too weak to read")
-    assert(Balance.skill_metrics("mage", "earth", 1).armor_reduction > 0.0, "Geomancer debuff missing")
-    assert(Balance.skill_metrics("mage", "air", 5).bounces > 0, "Stormcaller bounces missing")
-    assert(Balance.skill_metrics("mage", nil, 1, 3).base_single_damage > mage_base,
-        "Mage round damage growth missing")
-    local rogue = Balance.basic_metrics("rogue", 1)
-    assert(rogue.single_dps / ranger.single_dps >= 1.10
-        and rogue.single_dps / ranger.single_dps <= 1.30, "Rogue single-target band failed")
-    assert(rogue.effective_hp / ranger.effective_hp >= 0.70
-        and rogue.effective_hp / ranger.effective_hp <= 0.90, "Rogue defense band failed")
-    local rogue_base = Balance.skill_metrics("rogue", nil, 1, 1).base_single_damage
-    for _, spec in ipairs(class_by_id("rogue").specializations) do
-        assert(Balance.skill_metrics("rogue", spec.id, 1, 1).base_single_damage == rogue_base,
-            "Rogue specialization changed base skill damage")
-    end
-    assert(Balance.skill_metrics("rogue", "poison", 1).poison_dps > 0.0, "Venomblade poison missing")
-    assert(Balance.skill_metrics("rogue", "hemorrhage", 1).hemorrhage_burst > 0.0, "Bloodletter rupture missing")
-    assert(Balance.skill_metrics("rogue", "shadow", 1).resource_refund > 0.0, "Shadowdancer refund missing")
-    assert(Balance.skill_metrics("rogue", "execute", 1).execute_threshold > 0.0, "Executioner threshold missing")
-    -- Warrior: durable close-range identity, below Brawler's raw output.
-    local warrior = Balance.basic_metrics("warrior", 1)
-    assert(warrior.single_dps < brawler.single_dps * 0.75, "Warrior must sit below Brawler raw DPS")
-    assert(warrior.single_dps / ranger.single_dps >= 0.85
-        and warrior.single_dps / ranger.single_dps <= 1.10, "Warrior single-target band failed")
-    assert(warrior.effective_hp / ranger.effective_hp >= 1.70
-        and warrior.effective_hp / ranger.effective_hp <= 2.10, "Warrior defense band failed")
-    local warrior_base = Balance.skill_metrics("warrior", nil, 1, 1).base_single_damage
-    for _, spec in ipairs(class_by_id("warrior").specializations) do
-        assert(Balance.skill_metrics("warrior", spec.id, 1, 1).base_single_damage == warrior_base,
-            "Warrior specialization changed base skill damage")
-    end
-    assert(Balance.skill_metrics("warrior", nil, 1, 3).base_single_damage > warrior_base,
-        "Warrior round damage growth missing")
-    assert(Balance.skill_metrics("warrior", "bleed", 1).bleed_dps > 0.0, "Lacerator bleed missing")
-    local berserker = Balance.skill_metrics("warrior", "berserker", 1)
-    assert(berserker.frenzy_mult > 0.0 and berserker.resource_refund > 0.0, "Berserker tempo/refund missing")
-    local vanguard = Balance.skill_metrics("warrior", "vanguard", 1)
-    assert(vanguard.guard > 0.0 and vanguard.poise > 0.0, "Vanguard guard/poise missing")
-    local warlord = Balance.skill_metrics("warrior", "warlord", 1)
-    assert(warlord.armor_reduction > 0.0 and warlord.control_seconds > 0.0
-        and warlord.knockback_mult > 1.0, "Warlord break/stagger/knockback missing")
-    assert(Balance.rules.rage.received_cap_per_wave < Balance.rules.rage.max * 0.5,
-        "Rage received-damage cap must stay a trickle, not the engine")
-    -- Necromancer: frail caster whose power rides the capped pack.
-    local necro = Balance.basic_metrics("necromancer", 1)
-    assert(necro.single_dps / ranger.single_dps >= 0.50
-        and necro.single_dps / ranger.single_dps <= 0.75, "Necromancer solo band failed")
-    assert(necro.effective_hp < ranger.effective_hp, "Necromancer must stay frailer than Ranger")
-    local necro_base = Balance.skill_metrics("necromancer", nil, 1, 1).base_single_damage
-    for _, spec in ipairs(class_by_id("necromancer").specializations) do
-        assert(Balance.skill_metrics("necromancer", spec.id, 1, 1).base_single_damage == necro_base,
-            "Necromancer specialization changed base skill damage")
-    end
-    assert(Balance.skill_metrics("necromancer", nil, 1, 3).base_single_damage > necro_base,
-        "Necromancer round damage growth missing")
-    assert(Balance.skill_metrics("necromancer", "curse", 1).curse_amp > 0.0, "Curseweaver amp missing")
-    assert(Balance.skill_metrics("necromancer", "steal", 1).resource_refund > 0.0
-        and Balance.skill_metrics("necromancer", "steal", 1).slow_mult < 1.0, "Spellstealer steal missing")
-    local bone = Balance.skill_metrics("necromancer", "bone", 1)
-    assert(bone.minion_cap > 0 and bone.minion_dps > 0.0 and bone.minion_hp > 0.0
-        and bone.minion_duration > 0.0, "Bonecaller pack metrics missing")
-    local demon = Balance.skill_metrics("necromancer", "demon", 1)
-    assert(demon.minion_cap > 0 and demon.minion_pack_dps > 0.0, "Demonologist pact metrics missing")
-    local bone_max = Balance.skill_metrics("necromancer", "bone", 1, 1, 4)
-    assert(bone_max.minion_cap <= Balance.minions.skeleton.cap_max, "Bonecaller cap must clamp to the pool")
-    -- Pack identity: at max rank the pack + caster must clearly beat the frail
-    -- solo caster, without the caster alone matching Ranger.
-    assert(necro.single_dps + bone_max.minion_pack_dps > ranger.single_dps,
-        "Necromancer max-rank pack fails to carry the class")
-    for kind, m in pairs(Balance.minions) do
-        assert(m.hp_mult > 0 and m.dps_mult > 0 and m.cap_max > 0 and m.duration > 0,
-            "invalid minion balance row: " .. kind)
-    end
-    -- Pacing gate: every class affords at least three casts by wave three.
-    for _, class in ipairs(Balance.classes) do
-        assert(Balance.resource_metrics(class.id, 3).casts_per_wave >= 3.0,
-            "resource throughput below three casts per wave: " .. class.id)
+    assert(#Balance.draft_cards == 3, "exactly three universal upgrades are required")
+    local p1_reduction, p1_healing = Balance.preservation_effect(1)
+    local p5_reduction, p5_healing = Balance.preservation_effect(5)
+    assert(math.abs(p1_reduction - 0.10) < 0.0001 and math.abs(p1_healing - 0.05) < 0.0001
+        and math.abs(p5_reduction - 0.50) < 0.0001 and math.abs(p5_healing - 0.25) < 0.0001,
+        "Warrior Preservation scaling must be 10% reduction and 5% healing per rank")
+    local universal_ids = {}
+    for _, card in ipairs(Balance.draft_cards) do
+        assert(card.rank_id and card.rarity == "universal" and not universal_ids[card.rank_id],
+            "invalid universal upgrade")
+        universal_ids[card.rank_id] = true
+        assert(Balance.universal_upgrade_text(card, 0):find("Next rank:", 1, true),
+            "missing universal upgrade text: " .. card.id)
     end
     return true
 end
