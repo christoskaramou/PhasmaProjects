@@ -17,6 +17,10 @@ __pycache__/
 /AgainstTheHero/.ath_private_plan.md
 /AgainstTheHero/.superpowers/
 */docs/
+!/AgainstTheHero/docs/
+/AgainstTheHero/docs/*
+!/AgainstTheHero/docs/VISUALS_DB.md
+!/AgainstTheHero/docs/VISUAL_DIRECTION.md
 */Assets/Agent/image_*.png
 */Assets/Agent/image_*.json
 */Assets/Agent/sessions/

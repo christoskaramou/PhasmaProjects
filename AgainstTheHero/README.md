@@ -12,7 +12,7 @@ configuration. Engine binaries are maintained separately.
 - `Assets/` - scripts, shaders, textures, fonts, particles, and other game content
 - `Assets/Scripts/Player/against_the_hero.lua` - entry dispatcher for the game
 - `Assets/Scripts/shared/` - shared card, duel, menu, art, console, and top-down view systems
-- `Assets/Scripts/modes/` - active menu battlefields: `arena`, `spud_fields`, `alien_hive`
+- `Assets/Scripts/modes/` - the active `arena` mode and its farm-creep content
 - `Assets/Scripts/old/` - older battlefields kept as design/code stock
 - `Assets/HeroBrain/` - local AI request/response scratch space; generated files are ignored
 - `phasma_project.json` - project manifest for the collection layout
@@ -44,8 +44,6 @@ Useful environment knobs for direct/debug launch paths:
 ```bash
 ATH_MODE=menu PhasmaPlayer.exe
 ATH_DUEL_MODE=arena ATH_SIDE=hero PhasmaPlayer.exe
-ATH_DUEL_MODE=spud_fields ATH_SIDE=horde PhasmaPlayer.exe
-ATH_DUEL_MODE=alien_hive ATH_SIDE=horde PhasmaPlayer.exe
 ATH_DEV=1 PhasmaPlayer.exe   # or enable Dev Mode in Settings
 ```
 
@@ -55,8 +53,6 @@ Dev cheat console (`` ` `` / F1 when Dev Mode is on): `mymap`, `swaphero <name>`
 ## Modes
 
 - `arena` - a manual-hero five-wave feel test with movement and auto-attacks
-- `spud_fields` - a chunky cartoon farm battlefield with garden-horde pressure
-- `alien_hive` - a glowing bio-hive battlefield with acid hazards and brood enemies
 
 ## Hero Brain
 
