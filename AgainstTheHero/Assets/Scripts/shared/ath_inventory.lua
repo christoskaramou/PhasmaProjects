@@ -17,6 +17,8 @@
 -- in the data model (redrawn next frame). A plain double-tap equips/unequips.
 
 local Art = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
+local Visuals = ATH_COMMON.visuals(_ENV)
+local V = Visuals.data
 
 local function ensure_hub_settings()
     if _G.ATH_HUB_SETTINGS then return end
@@ -70,10 +72,7 @@ local TAB_IDLE_BORDER = { 0.40, 0.62, 0.58, 0.9 }
 
 -- Pixel-art icon per paper-doll slot (Assets/Textures/ui/items). Shared with the
 -- duel's ground drops so an item looks the same on the floor and in the bag.
-Inv.SLOT_ICON = {
-    helmet = "ui/items/helmet.png", body = "ui/items/body.png", pants = "ui/items/pants.png",
-    gloves = "ui/items/gloves.png", weapon = "ui/items/weapon.png", jewelry = "ui/items/jewelry.png",
-}
+Inv.SLOT_ICON = V.ui.items
 
 -- Empty-slot palette — kept in sync with tools/build_scenes.py so a redrawn slot
 -- matches its authored default exactly.

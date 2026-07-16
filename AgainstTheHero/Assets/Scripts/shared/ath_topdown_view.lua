@@ -17,7 +17,7 @@
 --   * The Duel yaws creep/hero roots toward the hero each frame (would spin a flat
 --     card), so tick() resets those roots to identity and re-lays the bodies flat.
 --
--- A mode opts in (see modes/spud_fields/mode.lua):
+-- A mode opts in (see modes/arena/mode.lua):
 --   config.arena.cam_offset   = View.CAM_OFFSET
 --   config.arena.ortho_size   = ~66   (full-arena top-down framing)
 --   config.hero.sprite_texture = "Textures/modes/<id>/hero.png"

@@ -6,8 +6,10 @@
 -- live behind config.manual_hero in ath_duel.lua.
 
 local Art  = ATH_COMMON.load_script("Scripts/shared/ath_art.lua",              "shared art",       _ENV)
+local Visuals = ATH_COMMON.visuals(_ENV)
+local V = Visuals.data
 local View = ATH_COMMON.load_script("Scripts/shared/ath_topdown_view.lua",     "top-down view",    _ENV)
-local Spud = ATH_COMMON.load_script("Scripts/modes/spud_fields/characters.lua", "spud_fields cast", _ENV)
+local Spud = ATH_COMMON.load_script("Scripts/modes/arena/characters.lua", "arena cast", _ENV)
 
 local Balance = ATH_COMMON.load_script("Scripts/shared/ath_balance.lua", "balance database", _ENV)
 local ARCHETYPES = Balance.build_monsters(Spud.archetypes)
@@ -81,7 +83,7 @@ return {
             -- body_radius is derived from the rendered sprite size in
             -- ath_topdown_view, not set here.
             speed = 8.5, kite_speed = 8.5,
-            sprite_texture = "Textures/modes/arena/hero_ranger.png",
+            sprite_texture = V.heroes.ranger.texture,
             -- Selectable classes (chosen on a pick screen at run start). Each is an
             -- attack IDENTITY — ranged bolts, melee cleave, or seed-scatter — that
             -- gear/cards later bend. Stats here override the hero baseline above.
@@ -105,7 +107,7 @@ return {
         -- deeper maps are the real income (suicide-farming map I stays poor).
         -- pos = {x, y} fraction of the painted world-map ARTWORK (raw surface,
         -- full-bleed) — each map anchors to a building painted on it.
-        worldmap_image = "Textures/ui/map/worldmap.png",
+        worldmap_image = V.ui.worldmap,
         -- The journey road the dots trace — the user's numbered stations 1..12:
         -- bottom row west->east (1-5), middle row back east->west (5-10), then
         -- the top run past the old castle to the great castle (10-12).
@@ -171,12 +173,8 @@ return {
                   pos = { 0.805, 0.185 }, blurb = "The throne of Ovrevand. The King is home." },
             }
             Balance.apply_map_progression(defs)
-            for i, map in ipairs(defs) do
-                if i == 1 then
-                    map.floor = Spud.theme.floor_texture
-                else
-                    map.floor = "Textures/modes/arena/floors/" .. map.id .. ".png"
-                end
+            for _, map in ipairs(defs) do
+                map.floor = assert(V.maps[map.id], "missing visual map: " .. map.id)
             end
             return defs
         end)(),

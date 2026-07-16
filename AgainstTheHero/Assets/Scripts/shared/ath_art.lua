@@ -552,9 +552,9 @@ end
 -- and bars identically. `screen` is the runtime_ui screen id.
 -- ---------------------------------------------------------------------------
 
--- The bundled font is ASCII-only, so common typographic glyphs render as "?".
--- Map them to ASCII centrally — every label in the game (menus, HUD, and every
--- mode's win/lose text) is covered without touching a single call site.
+-- Runtime UI bakes Latin and Greek glyph ranges; unsupported typographic
+-- symbols still render as "?" and are mapped to ASCII centrally for menus,
+-- HUD, and mode win/lose text.
 local GLYPHS = {
     ["—"] = "-", ["–"] = "-", ["•"] = "-", ["·"] = "-", ["…"] = "...",
     ["▶"] = ">", ["◀"] = "<", ["▲"] = "^", ["▼"] = "v", ["→"] = "->", ["←"] = "<-",

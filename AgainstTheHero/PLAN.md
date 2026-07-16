@@ -78,7 +78,7 @@ the store is town-only.
    the game now opens in an authored town inventory/store, banks gold and item-template ids in
    `Assets/Save/profile.lua`, preserves equipped gear/backpack contents across runs and relaunches,
    and returns to town after a win or death.
-4. → maps/bosses + more battlefields (`arena` / `spud_fields` / `alien_hive` already exist).
+4. → maps/bosses + more battlefields when needed.
 
 ## Parked (do not build without the user)
 
@@ -92,6 +92,6 @@ randomized affix rolls.
 - Spine: `Assets/Scripts/shared/ath_duel.lua` (hero-vs-swarm duel engine); menu `ath_shell.lua`;
   `ath_cards.lua`, `duel_creep.lua`, `duel_flow.lua`, `ath_art.lua`, `ath_topdown_view.lua`;
   mode guide `shared/MODE_GUIDE.md`.
-- Modes: `arena` (manual-hero 5-wave testbed), `spud_fields`, `alien_hive`. 18 grimdark modes
-  archived under `Assets/Scripts/old/`.
+- Modes: `arena` (manual-hero 5-wave testbed). 18 grimdark modes are archived under
+  `Assets/Scripts/old/`.
 - Dispatcher: `Assets/Scripts/Player/against_the_hero.lua` (boots the menu, `ATH_MODE=menu`).

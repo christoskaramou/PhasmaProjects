@@ -23,6 +23,8 @@
 -- See modes/pit/mode.lua for a worked example of a mode config.
 
 local Art = ATH_COMMON.load_script("Scripts/shared/ath_art.lua", "shared art", _ENV)
+local Visuals = ATH_COMMON.visuals(_ENV)
+local V = Visuals.data
 local Cards = ATH_COMMON.load_script("Scripts/shared/ath_cards.lua", "shared cards", _ENV)
 local Flow = ATH_COMMON.load_script("Scripts/shared/duel_flow.lua", "duel flow", _ENV)
 local Creep = ATH_COMMON.load_script("Scripts/shared/duel_creep.lua", "duel creep", _ENV)
@@ -208,7 +210,7 @@ local function default_hero_actor(theme)
             position = { 0.0, 0.75, 0.12 },
             rotation = { 0.0, 0.0, -90.0 },
             scale    = { 1.0, 1.0, 1.0 },
-            texture  = "Textures/hero/knight/knight_cape_strip.png",
+            texture  = V.actors.knight.cape,
             wave_speed   = 2.5,
             wave_phase   = 3.0,
             wave_amp_deg = 10.0,
@@ -218,13 +220,13 @@ local function default_hero_actor(theme)
                 kind = "quad", quad_width = 1.6, quad_height = 2.2,
                 position = { 0.0, 1.1, 0.0 },
                 color = { 1.0, 1.0, 1.0 }, emissive = 1.0, emissive_texture = true,
-                texture = "Textures/hero/knight/knight_body.png",
+                texture = V.actors.knight.body,
             },
             sword = {
                 kind = "quad", quad_width = 1.6, quad_height = 2.2,
                 position = { 0.0, 1.1, 0.05 },
                 color = { 1.0, 1.0, 1.0 }, emissive = 1.0, emissive_texture = true,
-                texture = "Textures/hero/knight/knight_sword.png",
+                texture = V.actors.knight.sword,
             },
         },
     }
@@ -2631,7 +2633,7 @@ function Duel:ensure_pickup_pools()
         local icon = Art.part({
             name = "BeaconIcon_" .. i, kind = "quad", quad_width = 1.5, quad_height = 1.5,
             position = { 0.0, 0.16, 0.0 }, rotation = { -90.0, 0.0, 0.0 },
-            texture = "Textures/ui/items/weapon.png", emissive_texture = true,
+            texture = V.ui.items.weapon, emissive_texture = true,
         }, root)
         self.beacons[i] = { node = root, disc = disc, icon = icon, pool_index = i, active = false }
     end
@@ -2705,8 +2707,8 @@ function Duel:spawn_item_beacon(x, z, item)
         material.set(slot.disc, "base_color", vec4(col[1], col[2], col[3], 1.0))
         local icon = Inventory.SLOT_ICON[item.slot]
         if icon and Art.valid(slot.icon) then
-            Art.texture(slot.icon, "Textures/" .. icon)
-            Art.texture(slot.icon, "Textures/" .. icon, "emissive")
+            Art.texture(slot.icon, icon)
+            Art.texture(slot.icon, icon, "emissive")
         end
     end
 end
@@ -6507,7 +6509,7 @@ function Duel:update_hud()
     -- flask clears the right-side specs.
     local strip_x = S(8.0)
     if self.manual_hero and self.gold and self.state ~= "worldmap" then
-        strip_x = hud_icon("gold_icon", strip_x, "Textures/ui/hud_gold.png")
+        strip_x = hud_icon("gold_icon", strip_x, V.ui.hud.gold)
         strip_x = hud_text("gold_label", strip_x, S(72.0),
             tostring(math.floor(self.gold or 0)),
             { 0.98, 0.86, 0.36, 1.0 })
@@ -6519,7 +6521,7 @@ function Duel:update_hud()
     if self.manual_hero and (self.state == "combat" or self.state == "loot") and hero and not hero.dead then
         local cursor = strip_x
         local ready = (hero.dodge_charges or 0) >= 1
-        cursor = hud_icon("dodge_icon", cursor, "Textures/ui/hud_dodge.png")
+        cursor = hud_icon("dodge_icon", cursor, V.ui.hud.dodge)
         cursor = hud_text("dodge_label", cursor, S(96.0),
             ready and T("READY [Space]") or T(". . ."),
             ready and { 0.70, 0.92, 1.0, 1.0 } or { 0.65, 0.68, 0.72, 1.0 })
@@ -6527,7 +6529,7 @@ function Duel:update_hud()
         local drink_h = (hero.flask_drink_t or 0.0) > 0.0
             and string.format(" %.1fs", hero.flask_drink_t) or ""
         -- Flask: label glued to icon. Width fits "xN [K]".
-        cursor = hud_icon("flask_h_icon", cursor, "Textures/ui/hud_flask_health.png")
+        cursor = hud_icon("flask_h_icon", cursor, V.ui.hud.flask_health)
         cursor = hud_text("flask_h_label", cursor, drink_h ~= "" and S(64.0) or S(52.0),
             T("x%d [Q]%s", hero.flask_health or 0, drink_h),
             { 1.0, 0.72, 0.72, 1.0 }, S(0.0))

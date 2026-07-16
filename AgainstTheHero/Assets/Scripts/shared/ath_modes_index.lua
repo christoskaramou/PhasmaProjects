@@ -7,8 +7,5 @@
 return {
     modes = {
         "arena",         -- manual-hero 5-wave experiment; launch with ATH_DUEL_MODE=arena ATH_SIDE=hero
-        -- Chunky-cartoon flat-sprite arenas; per-enemy + hero textures.
-        "spud_fields",    -- sunny farm; goofy garden horde + diving crows; mud wallows slow the hero
-        "alien_hive",     -- glowing bio-hive; cute-grotesque brood + stingers; acid sumps melt the hero
     },
 }
