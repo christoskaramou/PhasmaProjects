@@ -241,7 +241,7 @@ function on_continue()
         log("continue: no save")
         return
     end
-    local slot = P.active_slot()
+    local slot = (P.last_played_slot and P.last_played_slot()) or P.active_slot()
     if not P.exists(slot) then
         for i = 1, P.SLOT_COUNT do
             if P.exists(i) then slot = i; break end
@@ -265,6 +265,10 @@ end
 
 function on_quit()
     hide_slot_picker()
+    if engine and engine.set_play_mode and engine.is_play_mode and engine.is_play_mode() then
+        engine.set_play_mode(false)
+        return
+    end
     if engine and engine.quit then engine.quit() end
 end
 

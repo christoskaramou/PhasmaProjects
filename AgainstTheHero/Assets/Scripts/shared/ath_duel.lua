@@ -506,13 +506,20 @@ end
 
 function Duel:key_pressed(name)
     if not input or not input.is_key_down then return false end
-    local down = input.is_key_down(name)
+    local down = input.is_key_down(name) == true
+    -- Cheat console owns the keyboard: swallow presses but keep edge state warm
+    -- so closing the console doesn't dump a burst of buffered key-ups/downs.
+    if self.console and self.console.visible then
+        self.key_down[name] = down
+        return false
+    end
     local pressed = down and not self.key_down[name]
     self.key_down[name] = down
     return pressed
 end
 
 function Duel:is_key_down(name)
+    if self.console and self.console.visible then return false end
     return input and input.is_key_down and input.is_key_down(name) == true
 end
 
@@ -734,6 +741,11 @@ function Duel:apply_on_hit_specializations(c, hit_damage, hit_dx, hit_dz)
                     hit_damage * ((spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)),
                     STATUS_COLOR[status] or STATUS_COLOR.earth, 0.0)
                 piercing = true
+            elseif spec.kind == "shard_cone" then
+                -- Spray continues past the target (same direction as the bolt).
+                self:spawn_earth_shards(c.x, c.z, hit_dx or 0.0, hit_dz or 0.0,
+                    hit_damage, rank, spec, c.id)
+                self:mark_status(c, status, 0.35)
             end
             end -- can_apply / not summon-capped
         end
@@ -858,6 +870,200 @@ function Duel:earth_hit_burst(x, z, tag)
               velocity = vec3(math.sin(a) * 4.0, 1.5, math.cos(a) * 4.0),
               gravity = vec3(0.0, -7.0, 0.0), orientation = "velocity",
               color_start = vec4(0.72, 0.42, 0.12, 1.0), color_end = vec4(0.16, 0.05, 0.01, 0.0) })
+    end
+end
+
+-- Geomancer rock fragments: tight cone continuing past the bolt hit.
+local ESHARD_POOL = 48
+local ESHARD_HIT_R = 0.95
+
+function Duel:ensure_earth_shards()
+    if self.eshards then return end
+    if not (self.groups and self.groups.actors) then return end
+    self.eshards = {}
+    local rock = { 0.42, 0.36, 0.28, 1.0 }
+    for i = 1, ESHARD_POOL do
+        local node = Art.cube("EarthShard_" .. i, vec3(-1000.0, -1000.0, -1000.0),
+            vec3(0.0001, 0.0001, 0.0001), rock, self.groups.actors, 0.15)
+        self.eshards[i] = { node = node, active = false }
+    end
+end
+
+function Duel:eshard_hide(p)
+    p.active = false
+    p.hit_ids = nil
+    p.trail_t = nil
+    p.vy, p.y, p.grav = nil, nil, nil
+    if Art.valid(p.node) then
+        p.node:set_position(vec3(-1000.0, -1000.0, -1000.0))
+        p.node:set_scale(vec3(0.0001, 0.0001, 0.0001))
+    end
+end
+
+function Duel:reset_earth_shards()
+    if not self.eshards then return end
+    for _, p in ipairs(self.eshards) do self:eshard_hide(p) end
+end
+
+function Duel:rock_shard_burst(x, z, vx, vz, tag)
+    local d = math.sqrt(vx * vx + vz * vz)
+    local nx, nz = (d > 0.001) and vx / d or 0.0, (d > 0.001) and vz / d or 1.0
+    Art.burst("ath_rock_dust_" .. tag, vec3(x, 0.35, z),
+        { preset = "enemy_take", count = 12, life_min = 0.10, life_max = 0.30,
+          spawn_radius = 0.22, noise_strength = 2.2, size_min = 0.04, size_max = 0.11,
+          velocity = vec3(nx * 0.8, 2.8, nz * 0.8), gravity = vec3(0.0, -8.0, 0.0),
+          color_start = vec4(0.55, 0.48, 0.38, 0.95), color_end = vec4(0.22, 0.18, 0.12, 0.0) })
+    for i = 1, 7 do
+        local ja = (math.random() - 0.5) * 1.4
+        local jx = nx * math.cos(ja) - nz * math.sin(ja)
+        local jz = nx * math.sin(ja) + nz * math.cos(ja)
+        local spd = 3.2 + math.random() * 4.5
+        Art.burst("ath_rock_chip_" .. tag .. "_" .. i, vec3(x + (math.random() - 0.5) * 0.25, 0.4 + math.random() * 0.25, z + (math.random() - 0.5) * 0.25),
+            { preset = "hero_take", count = 1, life_min = 0.14, life_max = 0.38,
+              spawn_radius = 0.03, noise_strength = 0.6,
+              size_min = 0.06 + math.random() * 0.06, size_max = 0.12 + math.random() * 0.10,
+              velocity = vec3(jx * spd, 1.2 + math.random() * 2.8, jz * spd),
+              gravity = vec3(0.0, -10.0 - math.random() * 4.0, 0.0), orientation = "velocity", drag = 0.6 + math.random() * 0.5,
+              color_start = vec4(0.40 + math.random() * 0.18, 0.34 + math.random() * 0.12, 0.24 + math.random() * 0.10, 1.0),
+              color_end = vec4(0.16, 0.12, 0.08, 0.0) })
+    end
+end
+
+function Duel:spawn_earth_shards(x, z, bx, bz, hit_damage, rank, spec, skip_id)
+    self:ensure_earth_shards()
+    if not self.eshards then return end
+    local d = math.sqrt((bx or 0.0) * (bx or 0.0) + (bz or 0.0) * (bz or 0.0))
+    if d < 0.001 then bx, bz, d = 0.0, 1.0, 1.0 end
+    bx, bz = bx / d, bz / d
+    rank = math.max(1, math.floor(rank or 1))
+    local count = math.max(3, math.floor((spec.shards_base or 4)
+        + (rank - 1) * (spec.shards_per_rank or 1)))
+    -- A few extra random chips so each volley looks broken, not counted.
+    count = count + math.floor(math.random() * 3.0)
+    local half = math.rad((spec.cone_deg or 18.0) * 0.5)
+    local base_speed = spec.speed or 15.0
+    local base_life = (spec.range or 5.0) / math.max(1.0, base_speed)
+    local dmg = hit_damage * ((spec.damage or 0.40) + (rank - 1) * (spec.damage_per_rank or 0.08))
+    local base_yaw = math.atan(bx, bz)
+    local tag = tostring(math.floor((self.realtime or 0.0) * 1000.0) + math.floor(math.random() * 97.0))
+    local ox, oz = x + bx * (0.35 + math.random() * 0.25), z + bz * (0.35 + math.random() * 0.25)
+    self:rock_shard_burst(ox, oz, bx * base_speed, bz * base_speed, "spawn_" .. tag)
+    local tones = {
+        { 0.46, 0.40, 0.32 }, { 0.38, 0.34, 0.28 }, { 0.52, 0.44, 0.34 },
+        { 0.34, 0.30, 0.24 }, { 0.44, 0.36, 0.26 }, { 0.50, 0.42, 0.30 },
+        { 0.30, 0.28, 0.22 },
+    }
+    for i = 1, count do
+        local slot
+        for _, p in ipairs(self.eshards) do
+            if not p.active then slot = p; break end
+        end
+        if not slot then break end
+        -- Random angle inside the cone (not evenly spaced).
+        local ang = base_yaw + (math.random() * 2.0 - 1.0) * half
+        -- Occasional wider outlier so the spray looks broken.
+        if math.random() < 0.22 then
+            ang = base_yaw + (math.random() * 2.0 - 1.0) * half * (1.35 + math.random() * 0.4)
+        end
+        local spd = base_speed * (0.72 + math.random() * 0.55)
+        local vx, vz = math.sin(ang) * spd, math.cos(ang) * spd
+        local jx = (math.random() - 0.5) * 0.55
+        local jz = (math.random() - 0.5) * 0.55
+        slot.active = true
+        slot.x, slot.z = ox + jx, oz + jz
+        slot.vx, slot.vz = vx, vz
+        slot.vy = 1.5 + math.random() * 4.5
+        slot.grav = 14.0 + math.random() * 8.0
+        slot.y = 0.45 + math.random() * 0.35
+        slot.life = base_life * (0.65 + math.random() * 0.55)
+        slot.damage = dmg
+        slot.hit_ids = skip_id and { [skip_id] = true } or {}
+        slot.spin = (math.random() * 2.0 - 1.0) * (280.0 + math.random() * 520.0)
+        slot.spin_p = (math.random() * 2.0 - 1.0) * (200.0 + math.random() * 360.0)
+        slot.spin_r = (math.random() * 2.0 - 1.0) * (180.0 + math.random() * 300.0)
+        slot.pitch = math.random() * 360.0
+        slot.roll = math.random() * 360.0
+        slot.yaw = math.deg(ang) + (math.random() - 0.5) * 50.0
+        slot.trail_t = 0.02 + math.random() * 0.05
+        -- Irregular splinter sizes (chunky vs needle).
+        local fat = 0.08 + math.random() * 0.16
+        local sx = fat * (0.6 + math.random() * 0.9)
+        local sy = fat * (0.45 + math.random() * 0.8)
+        local sz = fat * (1.4 + math.random() * 1.8)
+        local tone = tones[math.floor(math.random() * #tones) + 1]
+        local shade = 0.85 + math.random() * 0.3
+        if Art.valid(slot.node) then
+            material.set(slot.node, "base_color",
+                vec4(tone[1] * shade, tone[2] * shade, tone[3] * shade, 1.0))
+            material.set(slot.node, "emissive",
+                vec3(tone[1] * 0.08, tone[2] * 0.07, tone[3] * 0.05))
+            slot.node:set_scale(vec3(sx, sy, sz))
+            slot.node:set_rotation(vec3(slot.pitch, slot.yaw, slot.roll))
+            slot.node:set_position(vec3(slot.x, slot.y, slot.z))
+        end
+    end
+end
+
+function Duel:update_earth_shards(dt)
+    if not self.eshards then return end
+    local A = self.arena
+    local trail_budget = 6
+    for _, p in ipairs(self.eshards) do
+        if p.active then
+            p.vy = (p.vy or 0.0) - (p.grav or 16.0) * dt
+            p.y = math.max(0.18, (p.y or 0.55) + (p.vy or 0.0) * dt)
+            if p.y <= 0.19 and (p.vy or 0.0) < 0.0 then
+                p.vy = -(p.vy or 0.0) * 0.35
+                if math.abs(p.vy) < 0.8 then p.vy = 0.0 end
+            end
+            p.x = p.x + p.vx * dt
+            p.z = p.z + p.vz * dt
+            p.life = (p.life or 0.0) - dt
+            p.yaw = (p.yaw or 0.0) + (p.spin or 0.0) * dt
+            p.pitch = (p.pitch or 0.0) + (p.spin_p or p.spin or 0.0) * dt
+            p.roll = (p.roll or 0.0) + (p.spin_r or 0.0) * dt
+            for _, c in ipairs(self.creeps) do
+                if c.alive and not (p.hit_ids and p.hit_ids[c.id]) then
+                    local dx, dz = c.x - p.x, c.z - p.z
+                    if dx * dx + dz * dz <= ESHARD_HIT_R * ESHARD_HIT_R then
+                        p.hit_ids = p.hit_ids or {}
+                        p.hit_ids[c.id] = true
+                        local dd = math.sqrt(p.vx * p.vx + p.vz * p.vz)
+                        local nx = (dd > 0.001) and p.vx / dd or 0.0
+                        local nz = (dd > 0.001) and p.vz / dd or 0.0
+                        self:hit_creep(c, p.damage, nx * 1.6, nz * 1.6, { discrete = true })
+                        Art.burst("ath_rock_hit_" .. tostring(c.id) .. "_" .. tostring(math.floor(math.random() * 1000)),
+                            vec3(p.x, p.y or 0.5, p.z),
+                            { preset = "enemy_take", count = 4 + math.floor(math.random() * 3),
+                              life_min = 0.08, life_max = 0.22,
+                              spawn_radius = 0.08 + math.random() * 0.08,
+                              size_min = 0.04, size_max = 0.10 + math.random() * 0.05,
+                              noise_strength = 1.2 + math.random(),
+                              gravity = vec3(0.0, -9.0, 0.0), orientation = "velocity",
+                              color_start = vec4(0.48 + math.random() * 0.1, 0.40, 0.30, 1.0),
+                              color_end = vec4(0.16, 0.12, 0.08, 0.0) })
+                    end
+                end
+            end
+            local off = p.x < A.pad or p.x > A.w - A.pad or p.z < A.pad or p.z > A.h - A.pad
+            if p.life <= 0.0 or off then
+                self:eshard_hide(p)
+            elseif Art.valid(p.node) then
+                p.node:set_position(vec3(p.x, p.y or 0.55, p.z))
+                p.node:set_rotation(vec3(p.pitch or 0.0, p.yaw or 0.0, p.roll or 0.0))
+                p.trail_t = (p.trail_t or 0.0) - dt
+                if p.trail_t <= 0.0 and trail_budget > 0 and math.random() < 0.55 then
+                    trail_budget = trail_budget - 1
+                    p.trail_t = 0.05 + math.random() * 0.06
+                    Art.burst("ath_rock_trail", vec3(p.x, (p.y or 0.5) - 0.08, p.z),
+                        { preset = "hero_take", count = 1, life_max = 0.12 + math.random() * 0.08,
+                          spawn_radius = 0.02, size_min = 0.03, size_max = 0.06 + math.random() * 0.03,
+                          noise_strength = 0.4, gravity = vec3(0.0, -5.0, 0.0),
+                          color_start = vec4(0.40, 0.34, 0.26, 0.7),
+                          color_end = vec4(0.14, 0.10, 0.08, 0.0) })
+                end
+            end
+        end
     end
 end
 
@@ -1902,6 +2108,7 @@ end
 -- Crits pop bigger, gold pickups reuse the same pool tinted gold.
 -- ---------------------------------------------------------------------------
 function Duel:spawn_damage_number(x, z, amount, crit, opts)
+    if ATH_COMMON.world_frozen and ATH_COMMON.world_frozen(self) then return end
     if _G.ATH_I18N and _G.ATH_I18N.damage_text == false and not (opts and opts.text) then return end
     if not (runtime_ui and runtime_ui.set_quad) then return end
     self.dmgnums = self.dmgnums or {}
@@ -2281,9 +2488,8 @@ function Duel:update_pickups(dt)
     end
 end
 
--- Bank everything left on the floor (wave clear / boss down): forgiving, so no
--- loot is ever stranded behind a wave transition.
-function Duel:vacuum_pickups()
+-- Gold / essence bank immediately (no bag). Item beacons stay for walk-pick.
+function Duel:vacuum_coins()
     local hero = self.hero
     local gf = (hero and hero.gold_find) or 1.0
     for _, e in ipairs(self.coins or {}) do
@@ -2296,6 +2502,11 @@ function Duel:vacuum_pickups()
             park_pickup(e)
         end
     end
+end
+
+-- Bank leftover item beacons (after the loot walk, or when abandoning a map).
+-- Full bag still drops the item — the loot window is the chance to make space.
+function Duel:vacuum_items()
     for _, e in ipairs(self.beacons or {}) do
         if e.active then
             if Inventory.add_item(self, e.item) then
@@ -2307,6 +2518,11 @@ function Duel:vacuum_pickups()
         end
     end
     if runtime_ui and runtime_ui.remove then runtime_ui.remove(self.hud, "beacon_tip") end
+end
+
+function Duel:vacuum_pickups()
+    self:vacuum_coins()
+    self:vacuum_items()
 end
 
 function Duel:reset_pickups()
@@ -2690,7 +2906,7 @@ end
 -- can drive the hero (combat has no right-side action buttons to conflict with —
 -- the auto-attack is automatic).
 function Duel:update_touch_stick()
-    if not self.manual_hero or self.state ~= "combat" then self._stick = nil; return end
+    if not self.manual_hero or (self.state ~= "combat" and self.state ~= "loot") then self._stick = nil; return end
     local mx, my = ui_pointer()
     if not (mx and pointer_down()) then self._stick = nil; return end
     local _, vh = Art.surface_size() -- refresh Art._vp; vh sizes the stick radius
@@ -2890,6 +3106,7 @@ function Duel:update_hero(dt)
     end
     if (hero.flask_drink_t or 0.0) <= 0.0 then self:hero_whirl(hero, dt) end
     self:update_hero_projectiles(dt)
+    self:update_earth_shards(dt)
     self:update_seed_mines(dt)
 
     -- Self-stagger: a small decaying shove from being bitten / shot, applied after
@@ -3153,7 +3370,12 @@ function Duel:spawn_batch(count)
 end
 
 function Duel:update_spawning(dt)
-    if self.manual_hero and (self.reserve or 0.0) < self:minimum_spawn_cost() then
+    if self.endless and self.manual_hero and self.state == "combat" then
+        local minc = self:minimum_spawn_cost()
+        if (self.reserve or 0.0) < minc * 4.0 then
+            self.reserve = math.max(self.reserve or 0.0, math.max(minc * 10.0, (self.reserve_start or 200.0) * 0.5))
+        end
+    elseif self.manual_hero and (self.reserve or 0.0) < self:minimum_spawn_cost() then
         self.spawn_queue = {}
         return
     end
@@ -3250,6 +3472,8 @@ function Duel:ensure_combat_pools()
     if not self.manual_hero then return end
     self:ensure_hero_projectiles()
     self:reset_hero_projectiles()
+    self:ensure_earth_shards()
+    self:reset_earth_shards()
     self:ensure_creep_projectiles()
     self:ensure_telegraph_pool()
     self:ensure_pickup_pools()
@@ -4154,7 +4378,9 @@ end
 -- (restock is once per real town visit, not a free reroll).
 function Duel:enter_town(keep_store)
     self.state = "town"
+    self.endless = false
     self._between_wave = false
+    self._hub_tab = "map"
     self.draft_offer = nil
     self:recompute_hero_stats()
     if self.hero and not keep_store then
@@ -4185,10 +4411,13 @@ function Duel:exit_to_worldmap()
         self:enter_worldmap()
         return
     end
-    if self.state == "combat" or self.state == "pause" or self.state == "draft" or self.state == "specpick" then
+    if self.state == "combat" or self.state == "pause" or self.state == "loot" or self.state == "draft" or self.state == "specpick" then
         Inventory.hide(self)
         self:remember_map_wave()
         self:save_profile()
+        if self.state == "loot" or self.state == "combat" or self.state == "pause" then
+            self:vacuum_pickups()
+        end
         self:reset_run(true)
         self:enter_worldmap()
     end
@@ -4220,6 +4449,7 @@ end
 
 function Duel:start_map()
     if self.state ~= "town" then return end
+    self.endless = false
     -- ATH_DUEL_MAP pins the map for smokes/tuning (bypasses the unlock gate).
     local env_map = ATH_COMMON.getenv_number("ATH_DUEL_MAP", nil)
     if self.boss_tour and not self.boss_tour_started and #self.maps > 0 then
@@ -4317,6 +4547,8 @@ function Duel:begin_manual_wave(index)
     self.essence_dropped = false
     self:clear_telegraphs()
     self:reset_creep_projectiles()
+    self:reset_hero_projectiles()
+    self:reset_earth_shards()
     -- Fresh wave: dodge back to full, stale death-recap entries dropped.
     self.dmg_log = nil
     local hero = self.hero
@@ -4424,7 +4656,32 @@ function Duel:allocate_skill(spec_id)
     return true, card.name
 end
 
+-- Refund one rank from a specialization (Skills hub right-click).
+function Duel:deallocate_skill(spec_id)
+    if not self.manual_hero or not spec_id then return false, "No skill." end
+    local have = ((self.hero and self.hero.specialization_ranks) or {})[spec_id] or 0
+    if have < 1 then return false, "Nothing to remove." end
+    local cards = self.run_cards or {}
+    for i = #cards, 1, -1 do
+        local c = cards[i]
+        local eff = c and c.effect
+        if (c and c.specialization == spec_id)
+            or (eff and eff.specialization_rank == spec_id) then
+            table.remove(cards, i)
+            self.skill_points = (self.skill_points or 0) + 1
+            self:recompute_hero_stats()
+            self:save_profile()
+            self:haptic(8)
+            self:log(string.format("skill deallocate spec=%s points_left=%d",
+                tostring(spec_id), self.skill_points or 0))
+            return true
+        end
+    end
+    return false, "Nothing to remove."
+end
+
 function Duel:manual_wave_done()
+    if self.endless then return false end
     return (self.reserve or 0.0) < self:minimum_spawn_cost()
         and (not self.spawn_queue or #self.spawn_queue == 0)
         and (not self.telegraphs or #self.telegraphs == 0)
@@ -4633,6 +4890,14 @@ function Duel:recompute_hero_stats()
     end
     apply_specialization_passives(hero, self.hero_class, ref)
     finalize_attack_speed(hero, ref)
+    if self.superhero then
+        hero.hp_max = hero.hp_max * 5.0
+        hero.dps = hero.dps * 5.0
+        hero.speed = hero.speed * 2.0
+        hero.kite_speed = (hero.kite_speed or hero.speed) * 2.0
+        hero.cleave = (hero.cleave or 1) + 8
+        hero.fire_interval = math.max(0.05, (hero.fire_interval or 0.28) * 0.35)
+    end
     hero.dodge_charges = math.min(hero.dodge_charges or 1, hero.dodge_charges_max)
     hero.dodge_recharge_t = math.min(hero.dodge_recharge_t or hero.dodge_recharge, hero.dodge_recharge)
 
@@ -4642,6 +4907,38 @@ function Duel:recompute_hero_stats()
     else
         hero.hp = math.min(old_hp, hero.hp_max)
     end
+end
+
+-- Dev cheat: rebuild the live hero as another class without dumping inventory.
+function Duel:cheat_swap_hero(index)
+    local list = self.config.hero and self.config.hero.classes
+    if not (list and list[index]) then return false, "unknown hero" end
+    local keep_state = self.state
+    self.hero_class = list[index].id
+    self.hero_class_index = index
+    _G.ATH_RUN = _G.ATH_RUN or {}
+    _G.ATH_RUN.hero_index = index
+    local rebuild_hero = Art.valid(self.hero and self.hero.root) and not (self.hero and self.hero.adopted)
+    self:park_all_minions()
+    if rebuild_hero then scene.delete_node(self.hero.root) end
+    self:create_hero()
+    local specs = list[index].specializations or {}
+    if list[index].progressive_specializations then
+        self.specialization = nil
+    else
+        local keep = false
+        for _, spec in ipairs(specs) do
+            if spec.id == self.specialization then keep = true; break end
+        end
+        self.specialization = keep and self.specialization or (specs[1] and specs[1].id) or nil
+    end
+    self:ensure_combat_pools()
+    self:recompute_hero_stats()
+    if self.hero then self.hero.hp = self.hero.hp_max end
+    if keep_state == "combat" or keep_state == "pause" or keep_state == "town" then
+        self.state = keep_state
+    end
+    return true, self.hero_class
 end
 
 function Duel:draft_card_catalog()
@@ -4854,25 +5151,140 @@ function Duel:play_human_card(slot)
 end
 
 -- ---------------------------------------------------------------------------
--- Round / pause loop
+-- Round / pause / loot loop
 -- ---------------------------------------------------------------------------
 
-function Duel:begin_pause()
+-- Walk-and-pick window before leaving a wave / boss / map. Gold is already
+-- banked; item beacons stay until the hero walks onto them (or confirm loses
+-- leftovers). Gear / Esc opens the bag to free slots without auto-vacuum.
+function Duel:begin_loot(after)
+    self:vacuum_coins()
+    self:park_all_minions()
+    self:reset_hero_projectiles()
+    self:reset_earth_shards()
+    self:reset_creep_projectiles()
+    self:restore_flask_charges(2)
+    if self.hero and not self.hero.dead then
+        Art.burst("ath_wave_clear", vec3(self.hero.x, 0.8, self.hero.z),
+            { preset = "hero_take", count = 26, life_max = 0.5, spawn_radius = 0.6, size_max = 0.2,
+              color_start = vec4(1.0, 0.9, 0.4, 1.0), gravity = vec3(0.0, 2.6, 0.0) })
+    end
+    self.state = "loot"
+    self._loot_after = after
+    self._loot_inv = nil
+    self._between_wave = false
+    self:haptic(25)
+    self:set_flash("PICK UP ITEMS")
+    if after == "next_wave" then
+        self:remember_map_wave()
+        self:save_profile()
+    end
+    self:log("loot after=" .. tostring(after))
+end
+
+function Duel:rise_boss()
+    local map = self:active_map()
+    local boss_arch = map.boss or self.config.boss_archetype
+    if not boss_arch then return end
+    self.boss_spawned = true
+    local title = map.boss_title or self.config.boss_title
+    local I18n = _G.ATH_I18N
+    if title then
+        local tname = (I18n and I18n.t(title)) or title
+        self:set_flash("THE %s RISES", tname)
+    else
+        self:set_flash("A CHAMPION RISES")
+    end
+    Art.shake(0.5, 0.5)
+    self.state = "combat"
+    self:add_telegraph(self:pick_spawn_point(), boss_arch, true)
+    self:log("boss telegraphed arch=" .. tostring(boss_arch))
+end
+
+function Duel:finish_map_clear()
+    local map = self:active_map()
+    local boss_arch = map.boss or self.config.boss_archetype
+    if self.boss_tour then
+        self:log(string.format("boss tour clear map=%d boss=%s",
+            self.map_index or 1, tostring(boss_arch)))
+        if self.map_index < #self.maps then
+            self.map_index = self.map_index + 1
+            self.boss_spawned = false
+            self.boss_creep = nil
+            self.boss_spawn_time = nil
+            if self.hero then self.hero.hp = self.hero.hp_max end
+            self.state = "town"
+            self:start_map()
+        else
+            self.state = "hero_win"
+            self:set_flash("BOSS TOUR COMPLETE")
+        end
+        return
+    end
+    local unlocked
+    if #self.maps > 0 and self.map_index > (self.maps_cleared or 0) then
+        self.maps_cleared = self.map_index
+        unlocked = self.maps[self.map_index + 1]
+    end
+    self.map_next_wave = self.map_next_wave or {}
+    self.map_next_wave[math.floor(self.map_index or 1)] = 1
+    self:save_profile()
+    local clear = unlocked and T("%s UNLOCKED", T(tostring(unlocked.name))) or T("RUN CLEARED")
+    self:log(string.format("RUN CLEARED map=%d waves=%d kills=%d gold=%d",
+        self.map_index or 1, self.wave_index or 1, self.kills, self.gold or 0))
+    self:reset_run(true) -- town; loot button already was ENTER TOWN
+    self:set_flash(clear)
+end
+
+function Duel:confirm_loot()
+    if self.state ~= "loot" then return end
+    self:vacuum_pickups() -- leftover items: bag or lost
+    local after = self._loot_after
+    self._loot_after = nil
+    if after == "next_wave" then
+        self:begin_pause({ from_loot = true })
+    elseif after == "boss" then
+        self:rise_boss()
+    elseif after == "map_clear" then
+        self:finish_map_clear()
+    else
+        self.state = "combat"
+    end
+end
+
+function Duel:loot_leave_label()
+    local after = self._loot_after
+    if after == "next_wave" then return T("NEXT WAVE") end
+    if after == "boss" then return T("CONTINUE") end
+    if after == "map_clear" and self.boss_tour and (self.map_index or 1) < #self.maps then
+        return T("CONTINUE")
+    end
+    return T("ENTER TOWN")
+end
+
+function Duel:begin_pause(opts)
+    opts = opts or {}
     if self.manual_hero then
-        self:vacuum_pickups() -- bank whatever's still on the floor before the pause
-        self:park_all_minions() -- assistants never idle through the gear screen
-        self:restore_flask_charges(2)
-        if self.hero and not self.hero.dead then
-            Art.burst("ath_wave_clear", vec3(self.hero.x, 0.8, self.hero.z),
-                { preset = "hero_take", count = 26, life_max = 0.5, spawn_radius = 0.6, size_max = 0.2,
-                  color_start = vec4(1.0, 0.9, 0.4, 1.0), gravity = vec3(0.0, 2.6, 0.0) })
+        if not opts.from_loot then
+            self:vacuum_coins() -- gold only; items need the loot walk (or were none)
+            self:park_all_minions()
+            self:reset_hero_projectiles()
+            self:reset_earth_shards()
+            self:reset_creep_projectiles()
+            self:restore_flask_charges(2)
+            if self.hero and not self.hero.dead then
+                Art.burst("ath_wave_clear", vec3(self.hero.x, 0.8, self.hero.z),
+                    { preset = "hero_take", count = 26, life_max = 0.5, spawn_radius = 0.6, size_max = 0.2,
+                      color_start = vec4(1.0, 0.9, 0.4, 1.0), gravity = vec3(0.0, 2.6, 0.0) })
+            end
+            self:remember_map_wave()
+            self:save_profile()
         end
         self.state = "pause"
         self._between_wave = true -- a wave-flow pause: NEXT WAVE advances the run
+        self._hub_tab = "map" -- don't keep a mid-fight Settings/Inventory peek
         self:haptic(25)
         self:set_flash("WAVE %d CLEARED", self.wave_index or 1)
-        self:remember_map_wave() -- next enter = cleared wave + 1
-        self:save_profile()
         if self.config.hooks and self.config.hooks.on_pause then self.config.hooks.on_pause(self) end
         local bag = 0; for _, it in pairs(self.inv_grid or {}) do if it then bag = bag + 1 end end
         self:log(string.format("pause wave=%d gold=%d bag=%d", self.wave_index or 1, self.gold or 0, bag))
@@ -4892,6 +5304,13 @@ end
 function Duel:resume_combat()
     if self.manual_hero then
         Inventory.hide(self)
+        if self._loot_inv then
+            -- Gear peek during loot walk — close bag, keep picking up.
+            self._loot_inv = false
+            self.state = "loot"
+            if self.config.hooks and self.config.hooks.on_resume then self.config.hooks.on_resume(self) end
+            return
+        end
         if self._between_wave then
             self._between_wave = false
             self:begin_manual_wave((self.wave_index or 1) + 1)
@@ -4921,6 +5340,13 @@ function Duel:toggle_inventory()
     elseif self.state == "combat" then
         self._between_wave = false
         self.state = "pause"
+        self:haptic(15)
+        Inventory.show(self)
+    elseif self.state == "loot" then
+        self._loot_inv = true
+        self._between_wave = false
+        self.state = "pause"
+        self._hub_tab = "inventory"
         self:haptic(15)
         Inventory.show(self)
     end
@@ -4965,6 +5391,8 @@ function Duel:reset_run(to_town)
     self.field_t = 0.0
     self:clear_telegraphs()
     self:reset_creep_projectiles()
+    self:reset_hero_projectiles()
+    self:reset_earth_shards()
     self:clear_damage_numbers()
     if self.manual_hero then
         self.player_seat = nil
@@ -4990,16 +5418,16 @@ function Duel:reset_run(to_town)
 end
 
 function Duel:update_input(dt)
-    if self:key_pressed("R") then
-        self:reset_run(self.manual_hero and (self.state == "slain" or self.state == "hero_win"))
-        return
-    end
-    if self:key_pressed("M") then
-        if self.shell and self.shell.return_to_menu then self.shell.return_to_menu() end
+    if self.console and self.console.visible then return end
+    -- R (reset) / M (menu) are gear/UI only — no keyboard shortcuts in the shipped game.
+    if self.manual_hero and (self.state == "hero_win" or self.state == "slain") then
+        if Art.consume_click(self.hud, "end_town_btn") then
+            self:reset_run(true)
+        end
         return
     end
     if self:key_pressed("Escape") then
-        if self.manual_hero and (self.state == "combat" or self.state == "pause" or self.state == "town") then
+        if self.manual_hero and (self.state == "combat" or self.state == "pause" or self.state == "loot" or self.state == "town") then
             self:toggle_inventory()
             return
         end
@@ -5145,6 +5573,23 @@ function Duel:update_input(dt)
                 end
             end
         end
+        return
+    end
+
+    if self.state == "loot" then
+        -- Enter confirms leave; Space stays dodge (movement still live).
+        if self:key_pressed("Return") or Art.consume_click(self.hud, "loot_leave_btn") then
+            self:confirm_loot()
+            return
+        end
+        if self.autoplay then
+            self.autoplay_t = (self.autoplay_t or 0.8) - dt
+            if self.autoplay_t <= 0.0 then
+                self.autoplay_t = 0.8
+                self:confirm_loot()
+            end
+        end
+        return
     end
 end
 
@@ -5262,6 +5707,24 @@ function Duel:update_hud()
         Art.remove(self.hud, "flash")
     end
 
+    -- Loot walk leave button: centered, just above the bottom gold/flask strip so
+    -- it clears gear (top), flash (top), and the right-side spec icons.
+    if self.manual_hero and self.state == "loot" then
+        local bw, bh = S(360.0), S(56.0)
+        local by = bottom_hud_y - bh - S(18.0)
+        Art.quad(self.hud, "loot_leave_btn", sw * 0.5 - bw * 0.5, by, bw, bh,
+            { 0.20, 0.10, 0.28, 0.96 }, {
+                style = "button",
+                border = accent, accent = accent,
+                title = self:loot_leave_label(),
+                text_color = { 0.96, 0.92, 1.0, 1.0 },
+                font_scale = 1.15, align_h = "center", align_v = "middle",
+                bring_to_front = true,
+            })
+    else
+        Art.remove(self.hud, "loot_leave_btn")
+    end
+
     -- Pause overlay. The MANUAL arena's pause/inventory is now AUTHORED: the
     -- "Pause Menu" scene-node group owns the backpack grid, paper-doll, stat panel,
     -- title and NEXT WAVE button (see ath_inventory). The script only toggles the
@@ -5350,7 +5813,7 @@ function Duel:update_hud()
         Art.remove_ids(self.hud, { "gold_icon", "gold_label", "gold_chip", "gold_chip_label", "gold_chip_icon" })
     end
 
-    if self.manual_hero and self.state == "combat" and hero and not hero.dead then
+    if self.manual_hero and (self.state == "combat" or self.state == "loot") and hero and not hero.dead then
         local cursor = strip_x
         local ready = (hero.dodge_charges or 0) >= 1
         cursor = hud_icon("dodge_icon", cursor, "Textures/ui/hud_dodge.png")
@@ -5701,17 +6164,15 @@ function Duel:update_hud()
         Art.remove_ids(self.hud, { "specpick_title", "specpick_1", "specpick_2", "specpick_3", "specpick_4" })
     end
 
-    -- Terminal banners.
+    -- Terminal banners (manual arena: click RETURN TO TOWN — R keybind is gone).
     local player_won = (self.side == "hero" and self.state == "hero_win") or (self.side == "horde" and self.state == "slain")
     if self.state == "slain" or self.state == "hero_win" then
         local title, body
         if self.state == "slain" then
             title = T(player_won and "VICTORY — the hero falls" or "DEFEAT — the hero falls")
-            body = T(self.theme.lose_text or "The hero is slain.\nPress R to run it back  •  M for menu")
+            body = T(self.theme.lose_text or "The hero is slain.")
             if self.side == "horde" then body = T(self.theme.win_text or body) end
             if self.manual_hero then
-                -- Death recap: name the killer + the last three hits (newest first)
-                -- straight from the apply_hero_damage ring buffer.
                 title = T("DEFEAT - the swarm takes you")
                 local log = self.dmg_log or {}
                 local killer = (#log > 0) and log[#log].src or "the swarm"
@@ -5722,13 +6183,13 @@ function Duel:update_hud()
                         T(e.src), e.dmg, math.max(0.0, (self.death_time or e.t) - e.t))
                 end
                 lines[#lines + 1] = ""
-                lines[#lines + 1] = T("You fell before wave %d.  Press R to return to town", self.wave_index or 1)
+                lines[#lines + 1] = T("You fell before wave %d.", self.wave_index or 1)
                 body = table.concat(lines, "\n")
             end
         else
             if self.manual_hero then
-                title = "VICTORY - five waves cleared"
-                body = "The arena is quiet for now.\nPress R to return to town"
+                title = T("VICTORY - five waves cleared")
+                body = T("The arena is quiet for now.")
             else
                 title = (player_won and "VICTORY — the pit ran dry" or "DEFEAT — the hero prevails")
                 body = "The reserve is spent and the field is clear.\nPress R to run it back   -   M for menu"
@@ -5736,21 +6197,31 @@ function Duel:update_hud()
         end
         local col = player_won and { 0.10, 0.18, 0.10, 0.92 } or { 0.18, 0.06, 0.06, 0.92 }
         local bord = player_won and { 0.4, 0.95, 0.5, 0.95 } or { 0.95, 0.4, 0.36, 0.95 }
-        -- The manual defeat panel is taller (it carries the death recap) and is
-        -- CENTERED: the legacy S(380) band runs off the bottom of the surface at
-        -- HUD scale 2.775 and would clip the recap lines. The win panel needs
-        -- S(170) too — title + two body lines sit below the reserved art band
-        -- and S(120) clipped the "Press R" line.
-        local eh = (self.manual_hero and self.state == "slain") and S(230.0) or S(170.0)
-        local ey = self.manual_hero and math.max(S(40.0), sh * 0.5 - eh * 0.5) or S(380.0)
+        local eh = (self.manual_hero and self.state == "slain") and S(230.0) or S(150.0)
+        local ey = self.manual_hero and math.max(S(40.0), sh * 0.5 - eh * 0.5 - S(40.0)) or S(380.0)
         Art.quad(self.hud, "end", sw * 0.5 - S(300.0), ey, S(600.0), eh, col, {
             border = bord, title = T(title), body = T(body), no_input = true })
+        if self.manual_hero then
+            local bw, bh = S(360.0), S(56.0)
+            Art.quad(self.hud, "end_town_btn", sw * 0.5 - bw * 0.5, ey + eh + S(18.0), bw, bh,
+                { 0.20, 0.10, 0.28, 0.96 }, {
+                    style = "button",
+                    border = accent, accent = accent,
+                    title = T("RETURN TO TOWN"),
+                    text_color = { 0.96, 0.92, 1.0, 1.0 },
+                    font_scale = 1.15, align_h = "center", align_v = "middle",
+                    bring_to_front = true,
+                })
+        else
+            Art.remove(self.hud, "end_town_btn")
+        end
     else
         Art.remove(self.hud, "end")
+        Art.remove(self.hud, "end_town_btn")
     end
 
-    -- Virtual movement joystick (touch / mouse-drag), combat only.
-    if self.manual_hero and self.state == "combat" and self._stick then
+    -- Virtual movement joystick (touch / mouse-drag), combat + loot walk.
+    if self.manual_hero and (self.state == "combat" or self.state == "loot") and self._stick then
         local vp = Art._vp
         local st = self._stick
         local R = st.R or S(120.0)
@@ -5773,8 +6244,21 @@ end
 -- ---------------------------------------------------------------------------
 
 function Duel:update(dt)
-    self.realtime = self.realtime + dt
     Console.update(self)
+    -- Gear hub / cheat console hold the world via settings.time_scale=0. Early-out
+    -- so frame-based work (spawn drain) also stops; HUD/UI keep drawing. Still
+    -- poll Escape so the gear menu can close (toggle_inventory → resume).
+    if ATH_COMMON.world_frozen and ATH_COMMON.world_frozen(self) then
+        Art.tick_iso_camera(0.0)
+        self:update_input(0.0)
+        -- Leftover combat floaters use bring_to_front + high z; clear so they
+        -- don't paint over the gear hub / console.
+        self:clear_damage_numbers()
+        self:update_hud()
+        return
+    end
+
+    self.realtime = self.realtime + dt
     Art.tick_iso_camera(dt)
 
     -- DIAG: the rendered view sometimes ends up ~19x more zoomed-in than the
@@ -5852,56 +6336,12 @@ function Duel:update(dt)
                 local map = self:active_map()
                 local boss_arch = map.boss or self.config.boss_archetype
                 if boss_arch and not self.boss_spawned then
-                    self.boss_spawned = true
-                    self:vacuum_pickups()
-                    local title = map.boss_title or self.config.boss_title
-                    local I18n = _G.ATH_I18N
-                    if title then
-                        local tname = (I18n and I18n.t(title)) or title
-                        self:set_flash("THE %s RISES", tname)
-                    else
-                        self:set_flash("A CHAMPION RISES")
-                    end
-                    Art.shake(0.5, 0.5)
-                    self:add_telegraph(self:pick_spawn_point(), boss_arch, true)
-                    self:log("boss telegraphed arch=" .. tostring(boss_arch))
+                    self:begin_loot("boss")
                 else
-                    self:vacuum_pickups()
-                    if self.boss_tour then
-                        self:log(string.format("boss tour clear map=%d boss=%s",
-                            self.map_index or 1, tostring(boss_arch)))
-                        if self.map_index < #self.maps then
-                            self.map_index = self.map_index + 1
-                            self.boss_spawned = false
-                            self.boss_creep = nil
-                            self.boss_spawn_time = nil
-                            if self.hero then self.hero.hp = self.hero.hp_max end
-                            self.state = "town"
-                            self:start_map()
-                        else
-                            self.state = "hero_win"
-                            self:set_flash("BOSS TOUR COMPLETE")
-                        end
-                    else
-                        self.state = "hero_win"
-                        -- Clearing a map unlocks the next rank (persisted below).
-                        local unlocked
-                        if #self.maps > 0 and self.map_index > (self.maps_cleared or 0) then
-                            self.maps_cleared = self.map_index
-                            unlocked = self.maps[self.map_index + 1]
-                        end
-                        -- Cleared maps restart at wave 1 on the next visit.
-                        self.map_next_wave = self.map_next_wave or {}
-                        self.map_next_wave[math.floor(self.map_index or 1)] = 1
-                        self:save_profile()
-                        local clear = unlocked and T("%s UNLOCKED", T(tostring(unlocked.name))) or T("RUN CLEARED")
-                        self:set_flash(clear)
-                        self:log(string.format("RUN CLEARED map=%d waves=%d kills=%d gold=%d",
-                            self.map_index or 1, self.wave_index or 1, self.kills, self.gold or 0))
-                    end
+                    self:begin_loot("map_clear")
                 end
             else
-                self:begin_pause()
+                self:begin_loot("next_wave")
             end
         elseif (not self.manual_hero) and self.state == "combat" and self.reserve < 1.0 and self:count_alive() == 0 then
             self.state = "hero_win"
@@ -5910,6 +6350,11 @@ function Duel:update(dt)
         elseif self.state == "combat" and self.round_t <= 0.0 then
             if not self.manual_hero then self:begin_pause() end
         end
+    elseif self.state == "loot" then
+        -- Cleared arena: walk for item beacons. Gold already banked.
+        self:update_hero(sim_dt)
+        self:update_pickups(sim_dt)
+        self:update_minions(sim_dt)
     elseif self.state == "pause" or self.state == "town" or self.state == "worldmap"
         or self.state == "classpick" or self.state == "specpick" or self.state == "draft" then
         -- Sim frozen; UI + camera keep running.

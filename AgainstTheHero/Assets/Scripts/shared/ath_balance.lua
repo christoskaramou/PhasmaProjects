@@ -189,11 +189,13 @@ Balance.classes = {
               desc = "Hits deal Frost damage and slow enemy movement and attack speed.",
               accent = { 0.35, 0.78, 1.0, 0.95 }, kind = "frost", status = "frost",
               damage_per_rank = 0.20, slow_per_rank = 0.12, duration = 3.0 },
-            { id = "earth", name = "Geomancer", short = "G", tags = { "Armor", "Poise" },
+            { id = "earth", name = "Geomancer", short = "G", tags = { "Shards", "Cone" },
               icon = "Textures/modes/arena/specs/mage_earth.png",
-              desc = "Projectiles pierce in a small cone and carry every on-hit effect.",
-              accent = { 0.72, 0.46, 0.20, 0.95 }, kind = "pierce", status = "earth",
-              damage = 0.55, damage_per_rank = 0.10 },
+              desc = "Each hit sprays rock shards forward in a tight cone; shards damage every enemy they touch.",
+              accent = { 0.72, 0.46, 0.20, 0.95 }, kind = "shard_cone", status = "earth",
+              damage = 0.40, damage_per_rank = 0.08,
+              shards_base = 4, shards_per_rank = 1, cone_deg = 18.0,
+              range = 5.0, speed = 15.0 },
         },
     },
     {
@@ -793,6 +795,11 @@ function Balance.specialization_upgrade_text(class_id, id, current_rank)
         local damage = (spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)
         return T("Next rank: piercing hit deals %s hit damage.\nCarries all on-hit effects.",
             pct(damage))
+    elseif kind == "shard_cone" then
+        local damage = (spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)
+        local n = (spec.shards_base or 4) + (rank - 1) * (spec.shards_per_rank or 1)
+        return T("Next rank: %d rock shards past the hit, each %s hit damage (no riders).",
+            n, pct(damage))
     elseif kind == "frenzy" then
         local per_stack = (spec.stack_per_rank or 0.10) * rank
         return T("Next rank: +%s damage, attack speed, and speed per stack; %s at 5 stacks for %.0fs.",

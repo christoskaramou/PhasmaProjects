@@ -60,6 +60,35 @@ function Common.env_enabled(name, fallback)
     return value ~= "0" and value ~= "false" and value ~= "off" and value ~= "no"
 end
 
+-- Dev tools (cheat console, hitbox overlays, …): ATH_DEV=1 or Settings → Dev Mode.
+function Common.dev_enabled()
+    if Common.env_enabled("ATH_DEV", false) then return true end
+    local I = _G.ATH_I18N
+    return I and I.dev_mode == true
+end
+
+-- Hold the world via settings.time_scale=0 (engine freezes script dt, sprites,
+-- anim, particles). Prefer this over engine.set_paused — that also stops UI
+-- update hooks. Held while the gear hub OR the cheat console is open.
+function Common.world_frozen(D)
+    return (D and D._inv_open) or (D and D.console and D.console.visible) or false
+end
+
+function Common.sync_world_freeze(D)
+    if not (D and settings and settings.get and settings.set) then return end
+    local want = Common.world_frozen(D)
+    if want then
+        if D._saved_time_scale == nil then
+            local cur = settings.get("time_scale")
+            D._saved_time_scale = (cur == nil or cur == 0) and 1.0 or cur
+        end
+        settings.set("time_scale", 0.0)
+    elseif D._saved_time_scale ~= nil then
+        settings.set("time_scale", D._saved_time_scale)
+        D._saved_time_scale = nil
+    end
+end
+
 function Common.with_trailing_slash(path)
     path = tostring(path or "")
     if path == "" or path:sub(-1) == "/" or path:sub(-1) == "\\" then return path end

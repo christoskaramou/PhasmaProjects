@@ -7,6 +7,8 @@
 
 local COMMON_PATH = "Scripts/shared/ath_common.lua"
 local Art
+local FPS_Z = 9000.0
+local SEG_NAMES = { "a", "b", "c", "d", "e", "f", "g" }
 
 local function ensure_art()
     if Art then return Art end
@@ -21,10 +23,27 @@ local function ensure_art()
     return Art
 end
 
+local function clear_overlay(A)
+    if not (A and A.remove) then return end
+    A.remove("__scene_ui", "hud_fps_label")
+    for i = 1, 4 do
+        for _, seg in ipairs(SEG_NAMES) do
+            A.remove("__scene_ui", "hud_fps_d" .. i .. "_" .. seg)
+        end
+    end
+end
+
 hooks {
     update = function()
         local A = ensure_art()
         if not (A and A.draw_fps_digits and A.quad) then return end
+        local I = _G.ATH_I18N
+        local show = not I or I.show_fps ~= false
+        if self.set_ui then self:set_ui({ visible = show }) end
+        if not show then
+            clear_overlay(A)
+            return
+        end
         -- Use the RENDERED rect (anchor+pivot+surface applied). The node translation
         -- is only the anchor offset now, so get_world_position would be wrong.
         local r = self.get_ui_rect and self:get_ui_rect()
@@ -32,19 +51,23 @@ hooks {
         local x, y, w, h = r.x, r.y, r.w, r.h
         local pad = h * 0.16
         local labw = w * 0.30
-        -- Purple "FPS" label on the left (matches the arena clock's label color).
-        -- The backend top-anchors a label at (top + 15*text_scale); give it a
-        -- full-height box shifted up so the text centres instead of clipping.
-        local ly = y + h * 0.5 - A.s("text") * 21.0
+        -- Stay above gear-hub chrome (Pause Title is bring_to_front).
+        local front = { no_input = true, bring_to_front = true, z = FPS_Z }
+        -- Purple "FPS" label on the left — half size, vertically centred.
+        -- Backend top-anchors label text at (top + 15*scale); shift the quad so
+        -- the glyph lands mid-frame (same trick as Art.bar / ath_art fps_label).
+        local fs = 0.5
+        local ly = y + h * 0.5 - A.s("text") * fs * 21.0
         A.quad("__scene_ui", "hud_fps_label", x + pad, ly, labw, h, { 0, 0, 0, 0 },
-            { label = "FPS", text_color = { 0.55, 0.45, 0.82, 1.0 }, no_input = true })
+            { label = "FPS", font_scale = fs, text_color = { 0.55, 0.45, 0.82, 1.0 },
+              no_input = true, bring_to_front = true, z = FPS_Z })
         -- 7-segment digits fill the rest.
         local dax = x + labw + pad
         local day = y + pad
         local daw = w - labw - 2.0 * pad
         local dah = h - 2.0 * pad
         if daw > 0 and dah > 0 then
-            A.draw_fps_digits("__scene_ui", "hud_fps", dax, day, daw, dah)
+            A.draw_fps_digits("__scene_ui", "hud_fps", dax, day, daw, dah, front)
         end
     end,
 }

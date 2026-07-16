@@ -68,11 +68,9 @@ local function write_meta(meta)
     return write_table(META_PATH, { v = 1, active = meta.active or 1 })
 end
 
+-- Last-used slot from Save/slots.lua. ATH_RUN.save_slot is a session cache only
+-- (ath_run used to default it to 1, which made Continue always open slot 1).
 function Profile.active_slot()
-    local r = _G.ATH_RUN
-    if r and type(r.save_slot) == "number" then
-        return math.max(1, math.min(Profile.SLOT_COUNT, math.floor(r.save_slot)))
-    end
     return read_meta().active
 end
 
@@ -104,6 +102,28 @@ function Profile.first_empty()
     return nil
 end
 
+-- Slot Continue should open: most recently saved, else meta active, else first filled.
+function Profile.last_played_slot()
+    Profile.migrate_legacy()
+    local best, best_t = nil, -1
+    for i = 1, Profile.SLOT_COUNT do
+        if Profile.exists(i) then
+            local data = read_table(Profile.slot_path(i))
+            local t = data and tonumber(data.saved_at) or 0
+            if t > best_t then
+                best, best_t = i, t
+            end
+        end
+    end
+    if best and best_t > 0 then return best end
+    local active = Profile.active_slot()
+    if Profile.exists(active) then return active end
+    for i = 1, Profile.SLOT_COUNT do
+        if Profile.exists(i) then return i end
+    end
+    return active
+end
+
 -- Lightweight peek for menu labels (nil if empty).
 function Profile.peek(slot)
     Profile.migrate_legacy()
@@ -116,6 +136,7 @@ function Profile.peek(slot)
         hero_name = CLASS_NAMES[hi] or ("Hero " .. tostring(hi)),
         gold = math.max(0, math.floor(tonumber(data.gold) or 0)),
         maps_cleared = math.max(0, math.floor(tonumber(data.maps_cleared) or 0)),
+        saved_at = tonumber(data.saved_at) or 0,
     }
 end
 
@@ -296,7 +317,8 @@ function Profile.save(D)
         maps_cleared = math.max(0, math.floor(D.maps_cleared or 0)),
         hero_index = math.max(1, math.floor(hi)),
         map_next_wave = {}, run_cards = {},
-        skill_points = math.max(0, math.floor(D.skill_points or 0)) }
+        skill_points = math.max(0, math.floor(D.skill_points or 0)),
+        saved_at = os.time() }
     for i = 1, GRID_SIZE do
         local item = D.inv_grid and D.inv_grid[i]
         local enc = encode_item(item)

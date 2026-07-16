@@ -270,8 +270,13 @@ function Inv.set_tab(D, name)
     Inv.refresh(D)
     if name == "settings" then
         ensure_hub_settings()
-        if _G.ATH_HUB_SETTINGS and _G.ATH_HUB_SETTINGS.refresh then
-            _G.ATH_HUB_SETTINGS.refresh(D)
+        if D._settings_subtab == nil then D._settings_subtab = "game" end
+        if _G.ATH_HUB_SETTINGS then
+            if _G.ATH_HUB_SETTINGS.set_subtab then
+                _G.ATH_HUB_SETTINGS.set_subtab(D._settings_subtab)
+            elseif _G.ATH_HUB_SETTINGS.refresh then
+                _G.ATH_HUB_SETTINGS.refresh(D)
+            end
         end
     elseif name == "skills" then
         Inv.refresh_skills(D)
@@ -344,84 +349,185 @@ function Inv.stats_values_text(st)
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
 
+local SKILL_COLS, SKILL_MAX_RANK = 3, 5
+
+function Inv.class_specs(D)
+    local Balance = _G.ATH_BALANCE
+    local class_id = D and D.hero_class
+    if not (Balance and Balance.classes and class_id) then return {} end
+    for _, row in ipairs(Balance.classes) do
+        if row.id == class_id then return row.specializations or {} end
+    end
+    return {}
+end
+
+-- One icon per specialization: slot 1..3 maps directly to the branch.
+function Inv.skill_slot_info(D, slot)
+    local specs = Inv.class_specs(D)
+    local branch = math.floor(slot or 1)
+    if branch < 1 or branch > SKILL_COLS then return nil end
+    local spec = specs[branch]
+    if not spec then return nil end
+    local pts = math.max(0, math.floor(D.skill_points or 0))
+    local have = ((D.hero and D.hero.specialization_ranks) or {})[spec.id] or 0
+    local card = { specialization = spec.id, max_rank = SKILL_MAX_RANK }
+    local allowed = D.spec_card_allowed and D:spec_card_allowed(card)
+    local can_buy = pts > 0 and have < SKILL_MAX_RANK and allowed
+    local enabled = have > 0 or can_buy
+    local status
+    if have >= SKILL_MAX_RANK then
+        status = T("OWNED")
+    elseif can_buy then
+        status = T("CLICK - 1 pt")
+    elseif not allowed and have == 0 then
+        status = T("LOCKED")
+    elseif have > 0 then
+        status = T("OWNED")
+    else
+        status = "-"
+    end
+    return {
+        spec = spec, branch = branch, have = have,
+        can_buy = can_buy, allowed = allowed, enabled = enabled, status = status,
+    }
+end
+
+local function pct(v)
+    return string.format("%d%%", math.floor((v or 0.0) * 100.0 + 0.5))
+end
+
+-- Combat values at a given rank (mirrors Duel:apply_on_hit_specializations).
+function Inv.spec_rank_lines(spec, rank)
+    rank = math.max(0, math.floor(rank or 0))
+    if not spec or rank < 1 then return { T("(none)") } end
+    local kind = spec.kind
+    local lines = {}
+    if kind == "dot" then
+        lines[#lines + 1] = T("Hit %s / DoT %s of hit",
+            pct((spec.initial_per_rank or 0) * rank),
+            pct((spec.tick_per_rank or 0) * rank))
+        if spec.spread then lines[#lines + 1] = T("Spreads on death (50%)") end
+    elseif kind == "stack_dot" then
+        local per = (spec.stack_base or 0.20) + (rank - 1) * (spec.stack_rank_add or 0.10)
+        lines[#lines + 1] = T("Stack tick %s of hit (max %d)",
+            pct(per), spec.max_stacks or 5)
+    elseif kind == "frost" then
+        lines[#lines + 1] = T("Frost hit %s, slow %s",
+            pct((spec.damage_per_rank or 0) * rank),
+            pct((spec.slow_per_rank or 0) * rank))
+    elseif kind == "shadow" then
+        lines[#lines + 1] = T("Pure hit %s, smoke miss %s",
+            pct((spec.damage_per_rank or 0) * rank),
+            pct((spec.miss_per_rank or 0) * rank))
+    elseif kind == "vampirism" then
+        lines[#lines + 1] = T("Hit %s / DoT %s of hit",
+            pct((spec.initial_per_rank or 0) * rank),
+            pct((spec.tick_per_rank or 0) * rank))
+        lines[#lines + 1] = T("Heal %s of that damage", pct(spec.lifesteal_mult or 0.5))
+    elseif kind == "frenzy" then
+        lines[#lines + 1] = T("Per stack +%s dmg/AS/move (max %d)",
+            pct((spec.stack_per_rank or 0.10) * rank), spec.max_stacks or 5)
+    elseif kind == "daze" then
+        lines[#lines + 1] = T("Enemy -%s dmg/AS/move",
+            pct((spec.reduction_per_rank or 0) * rank))
+    elseif kind == "explosion" or kind == "shockwave" then
+        local dmg = (spec.damage or 0) + (rank - 1) * (spec.damage_per_rank or 0)
+        lines[#lines + 1] = T("Death blast %s of hit (%.0fm)", pct(dmg), spec.radius or 3.0)
+    elseif kind == "summon" then
+        local cap = (spec.cap_base or 2) + (rank - 1) * (spec.cap_per_rank or 1)
+        lines[#lines + 1] = T("Minion cap %d", cap)
+    elseif kind == "pierce" then
+        local dmg = (spec.damage or 0) + (rank - 1) * (spec.damage_per_rank or 0)
+        lines[#lines + 1] = T("Pierce %s of hit", pct(dmg))
+    elseif kind == "shard_cone" then
+        local dmg = (spec.damage or 0) + (rank - 1) * (spec.damage_per_rank or 0)
+        local n = (spec.shards_base or 4) + (rank - 1) * (spec.shards_per_rank or 1)
+        lines[#lines + 1] = T("%d rock shards forward", n)
+        lines[#lines + 1] = T("Each shard %s of hit (no riders)", pct(dmg))
+        lines[#lines + 1] = T("Damages every enemy touched")
+    elseif kind == "preservation" then
+        lines[#lines + 1] = T("On damage taken: -%s dmg",
+            pct((spec.damage_reduction_per_rank or 0) * rank))
+        lines[#lines + 1] = T("Regen %s max HP over %.0fs",
+            pct((spec.heal_fraction_per_rank or 0) * rank),
+            spec.heal_seconds or 5.0)
+    else
+        lines[#lines + 1] = T(tostring(spec.desc or spec.id))
+    end
+    if spec.move_speed_per_rank then
+        lines[#lines + 1] = T("Move +%s", pct((spec.move_speed_per_rank or 0) * rank))
+    end
+    return lines
+end
+
+function Inv.skill_tip(info)
+    if not (info and info.spec) then return "" end
+    local spec = info.spec
+    local have = info.have or 0
+    local lines = {
+        T(tostring(spec.name or spec.id)),
+        T("Level %d / %d", have, SKILL_MAX_RANK),
+        info.status or "",
+    }
+    if info.have > 0 then
+        lines[#lines + 1] = T("RIGHT-CLICK - refund 1")
+    end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = T("NOW")
+    for _, row in ipairs(Inv.spec_rank_lines(spec, have)) do
+        lines[#lines + 1] = row
+    end
+    if have < SKILL_MAX_RANK then
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = T("NEXT (rank %d)", have + 1)
+        for _, row in ipairs(Inv.spec_rank_lines(spec, have + 1)) do
+            lines[#lines + 1] = row
+        end
+    end
+    local tip = table.concat(lines, "\n")
+    return (Art and Art.ascii and Art.ascii(tip)) or tip
+end
+
 function Inv.refresh_skills(D)
     local header = scene.find_model("Skills Header")
     local pts = math.max(0, math.floor(D.skill_points or 0))
     if valid(header) then
-        header:set_ui({ body = T("SKILLS — %d pts", pts) })
+        local body = T("SKILLS - %d pts", pts)
+        header:set_ui({ body = (Art and Art.ascii and Art.ascii(body)) or body })
     end
-    local Balance = _G.ATH_BALANCE
-    local class_id = D.hero_class
-    local class
-    if Balance and Balance.classes then
-        for _, row in ipairs(Balance.classes) do
-            if row.id == class_id then class = row; break end
-        end
+    local clear = { 0.0, 0.0, 0.0, 0.0 }
+    -- Hide any leftover rank-ladder nodes from older scenes.
+    for i = SKILL_COLS + 1, 15 do
+        local n = scene.find_model("Skill Node " .. i)
+        if valid(n) and n.set_enabled then n:set_enabled(false) end
     end
-    local specs = (class and class.specializations) or {}
-    local ranks = (D.hero and D.hero.specialization_ranks) or {}
-    local cols, max_rank = 3, 5
-    -- Slot i: branch = (i-1)%3 + 1, rank = floor((i-1)/3) + 1 (downward tree).
-    for i = 1, cols * max_rank do
+    -- Invisible hit targets: no frame, no caption (space avoids engine "Button").
+    for i = 1, SKILL_COLS do
         local n = scene.find_model("Skill Node " .. i)
         if valid(n) then
-            local branch = ((i - 1) % cols) + 1
-            local rank = math.floor((i - 1) / cols) + 1
-            local spec = specs[branch]
-            if not spec then
-                n:set_ui({ title = "", body = "", fill = { 0.05, 0.05, 0.07, 0.5 },
-                    border = { 0.2, 0.22, 0.28, 0.6 }, text_color = { 0.5, 0.52, 0.56, 0.7 } })
-            else
-                local have = ranks[spec.id] or 0
-                local filled = have >= rank
-                local next_ok = have == rank - 1
-                local card = { specialization = spec.id, max_rank = max_rank }
-                local allowed = D.spec_card_allowed and D:spec_card_allowed(card)
-                local can_buy = pts > 0 and next_ok and allowed
-                local title = (rank == 1) and T(tostring(spec.name or spec.id)) or T("Rank %d", rank)
-                local body
-                if filled then
-                    body = T("OWNED")
-                elseif can_buy then
-                    body = T("CLICK — 1 pt")
-                elseif not allowed and have == 0 then
-                    body = T("LOCKED")
-                else
-                    body = T("—")
-                end
-                local accent = spec.accent or { 0.62, 0.34, 0.86, 1.0 }
-                local fill = filled and { accent[1] * 0.35, accent[2] * 0.35, accent[3] * 0.35, 0.95 }
-                    or (can_buy and { 0.12, 0.16, 0.22, 0.95 } or { 0.06, 0.07, 0.09, 0.85 })
-                local border = filled and accent
-                    or (can_buy and { 0.96, 0.82, 0.30, 1.0 } or { 0.30, 0.34, 0.40, 0.8 })
-                n:set_ui({
-                    title = title, body = body, fill = fill, border = border,
-                    text_color = filled and { 0.96, 0.94, 0.98, 1.0 } or { 0.82, 0.84, 0.88, 1.0 },
-                })
-            end
+            if n.set_enabled then n:set_enabled(true) end
+            n:set_ui({
+                title = " ", body = "",
+                fill = clear, border = clear, accent = clear, text_color = clear,
+                font_scale = 0.01, align_h = "center", align_v = "middle",
+            })
         end
     end
 end
 
--- Skills tree slot index → spend into that branch's next rank.
+-- Spend one point into that specialization (next rank).
 function Inv.try_allocate_skill(D, slot)
-    local Balance = _G.ATH_BALANCE
-    local class_id = D.hero_class
-    local class
-    if Balance and Balance.classes then
-        for _, row in ipairs(Balance.classes) do
-            if row.id == class_id then class = row; break end
+    local info = Inv.skill_slot_info(D, slot)
+    if not info then return false end
+    local spec = info.spec
+    if not info.can_buy then
+        if info.have >= SKILL_MAX_RANK then
+            Inv.hub_hint(D, "ALREADY OWNED")
+        elseif not info.allowed then
+            Inv.hub_hint(D, "LOCKED")
+        else
+            Inv.hub_hint(D, tostring(D.skill_points or 0) < 1 and "No skill points." or "LOCKED")
         end
-    end
-    local specs = (class and class.specializations) or {}
-    local cols = 3
-    local branch = ((math.floor(slot or 1) - 1) % cols) + 1
-    local want_rank = math.floor((math.floor(slot or 1) - 1) / cols) + 1
-    local spec = specs[branch]
-    if not spec then return false end
-    local have = ((D.hero and D.hero.specialization_ranks) or {})[spec.id] or 0
-    if have ~= want_rank - 1 then
-        Inv.hub_hint(D, have >= want_rank and "ALREADY OWNED" or "UNLOCK PRIOR RANK")
         return false
     end
     local ok, msg = D:allocate_skill(spec.id)
@@ -429,7 +535,26 @@ function Inv.try_allocate_skill(D, slot)
         Inv.hub_hint(D, tostring(msg or "LOCKED"))
         return false
     end
-    Inv.hub_hint(D, T("%s → rank %d", T(tostring(spec.name)), have + 1))
+    Inv.hub_hint(D, T("%s - rank %d", T(tostring(spec.name)), info.have + 1))
+    Inv.refresh_skills(D)
+    Inv.refresh(D)
+    return true
+end
+
+-- Refund one rank from that specialization.
+function Inv.try_deallocate_skill(D, slot)
+    local info = Inv.skill_slot_info(D, slot)
+    if not info then return false end
+    if info.have < 1 then
+        Inv.hub_hint(D, "NOTHING TO REMOVE")
+        return false
+    end
+    local ok, msg = D:deallocate_skill(info.spec.id)
+    if not ok then
+        Inv.hub_hint(D, tostring(msg or "LOCKED"))
+        return false
+    end
+    Inv.hub_hint(D, T("%s - rank %d", T(tostring(info.spec.name)), info.have - 1))
     Inv.refresh_skills(D)
     Inv.refresh(D)
     return true
@@ -512,10 +637,16 @@ function Inv.refresh(D)
 
     -- NEXT WAVE only on between-wave pause; RESUME only on mid-fight inventory peek.
     if valid(b.next_wave) and b.next_wave.set_enabled then
-        b.next_wave:set_enabled(D.state == "pause" and D._between_wave == true)
+        local next_on = D.state == "pause" and D._between_wave == true
+            and not (D.console and D.console.visible)
+        b.next_wave:set_enabled(next_on)
     end
     if valid(b.sys_resume) and b.sys_resume.set_enabled then
-        b.sys_resume:set_enabled(D.state == "pause" and not D._between_wave)
+        b.sys_resume:set_enabled(D.state == "pause" and not D._between_wave
+            and not (D.console and D.console.visible))
+    end
+    if valid(b.sys_resume) then
+        b.sys_resume:set_ui({ title = D._loot_inv and T("BACK") or T("RESUME") })
     end
     if valid(b.next_wave) then
         b.next_wave:set_ui({ title = T("NEXT WAVE   [Enter]") })
@@ -523,6 +654,7 @@ function Inv.refresh(D)
     -- ENTER: start map from town, or push the next round between waves.
     local in_town = D.state == "town"
     local can_enter = in_town or (D.state == "pause" and D._between_wave == true)
+    if D.console and D.console.visible then can_enter = false end
     if valid(b.enter_map) and b.enter_map.set_enabled then
         b.enter_map:set_enabled(can_enter)
     end
@@ -568,6 +700,28 @@ function Inv.update(D)
     Inv.ensure(D)
     if not (runtime_ui and runtime_ui.get_state) then return end
     local tab = D._hub_tab or "map"
+    if tab == "skills" then
+        local hover
+        for i = 1, SKILL_COLS do
+            local stt = runtime_ui.get_state(SCREEN, "hub_skill_" .. i)
+            if stt and stt.hovered then
+                local info = Inv.skill_slot_info(D, i)
+                if info then
+                    hover = {
+                        slot = i, info = info, mx = stt.mouse_x, my = stt.mouse_y,
+                        tip = Inv.skill_tip(info),
+                        border = (info.spec.accent or { 0.62, 0.34, 0.86, 1.0 }),
+                    }
+                end
+            end
+            if stt and stt.right_clicked then
+                Inv.try_deallocate_skill(D, i)
+            end
+        end
+        D._inv_drag, D._inv_selected, D._inv_hover, D._skill_hover = nil, nil, nil, hover
+        Inv.draw_overlay(D)
+        return
+    end
     if tab == "store" and D.state == "town" then
         local hover
         for _, s in ipairs(Inv.store_slots(D)) do
@@ -576,15 +730,16 @@ function Inv.update(D)
             if stt and stt.hovered then hover = { item = item, slot = s, mx = stt.mouse_x, my = stt.mouse_y } end
             if stt and stt.right_clicked and D.buy_store_offer then D:buy_store_offer(s.key) end
         end
-        D._inv_drag, D._inv_selected, D._inv_hover = nil, nil, hover
+        D._inv_drag, D._inv_selected, D._inv_hover, D._skill_hover = nil, nil, hover, nil
         Inv.draw_overlay(D)
         return
     end
     if tab ~= "inventory" then
-        D._inv_drag, D._inv_selected, D._inv_hover = nil, nil, nil
+        D._inv_drag, D._inv_selected, D._inv_hover, D._skill_hover = nil, nil, nil, nil
         Inv.draw_overlay(D)
         return
     end
+    D._skill_hover = nil
     local slots = Inv.slots(D)
     if #slots == 0 then return end
 
@@ -792,18 +947,112 @@ function Inv.trash_rect(D)
     return { x = bounds.x, y = bounds.y + bounds.h + 10.0 * hud, w = bounds.w, h = 52.0 * hud }
 end
 
+local function Inv_clear_inventory_overlays()
+    for _, id in ipairs({ "inv_ghost", "inv_tip", "inv_trash", "inv_selected_panel", "inv_selected_icon",
+        "inv_selected_text", "inv_selected_good", "inv_selected_bad" }) do
+        runtime_ui.remove(SCREEN, id)
+    end
+    for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
+    for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
+    for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
+end
+
+local function Inv_clear_skill_overlays()
+    for i = 1, 15 do
+        runtime_ui.remove(SCREEN, "sk_fr_" .. i)
+        runtime_ui.remove(SCREEN, "sk_ic_" .. i)
+        runtime_ui.remove(SCREEN, "sk_lv_" .. i)
+    end
+    runtime_ui.remove(SCREEN, "sk_tip")
+end
+
 function Inv.draw_overlay(D)
     if not (runtime_ui and runtime_ui.set_quad) then return end
     local tab = D._hub_tab or "map"
     local in_store = tab == "store" and D.state == "town"
-    if tab ~= "inventory" and not in_store then
-        for _, id in ipairs({ "inv_ghost", "inv_tip", "inv_trash", "inv_selected_panel", "inv_selected_icon",
-            "inv_selected_text", "inv_selected_good", "inv_selected_bad" }) do
-            runtime_ui.remove(SCREEN, id)
+    if tab == "skills" then
+        Inv_clear_inventory_overlays()
+        Art.surface_size()
+        local vp = Art._vp
+        local rw, rh = vp.rw or 2400.0, vp.rh or 1080.0
+        local function S(v) return v * Art.s("hud") end
+        for i = SKILL_COLS + 1, 15 do
+            runtime_ui.remove(SCREEN, "sk_fr_" .. i)
+            runtime_ui.remove(SCREEN, "sk_ic_" .. i)
+            runtime_ui.remove(SCREEN, "sk_lv_" .. i)
         end
-        for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
-        for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
-        for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
+        for i = 1, SKILL_COLS do
+            local n = scene.find_model("Skill Node " .. i)
+            local info = Inv.skill_slot_info(D, i)
+            local icon = info and info.spec and info.spec.icon
+            local r = icon and valid(n) and n.get_ui_rect and n:get_ui_rect() or nil
+            local fr_id, ic_id, lv_id = "sk_fr_" .. i, "sk_ic_" .. i, "sk_lv_" .. i
+            if r and r.x then
+                local accent = info.spec.accent or { 0.62, 0.34, 0.86, 1.0 }
+                local frame_fill = info.enabled
+                    and { 0.06, 0.07, 0.10, 0.92 }
+                    or { 0.04, 0.045, 0.055, 0.65 }
+                local frame_border = info.enabled
+                    and (info.have > 0 and accent or (info.can_buy and { 0.96, 0.82, 0.30, 0.95 }
+                        or { 0.45, 0.48, 0.55, 0.85 }))
+                    or { 0.22, 0.24, 0.28, 0.55 }
+                runtime_ui.set_quad(SCREEN, fr_id, {
+                    x = r.x, y = r.y, width = r.w, height = r.h, style = "panel",
+                    fill = frame_fill, border = frame_border,
+                    no_input = true, bring_to_front = true, z = OVERLAY_Z - 1100.0,
+                })
+                local pad = math.min(r.w, r.h) * 0.06
+                local isz = math.min(r.w, r.h) - pad * 2.0
+                local tint = info.enabled and { 1.0, 1.0, 1.0, 1.0 }
+                    or { 0.35, 0.37, 0.40, 0.5 }
+                runtime_ui.set_quad(SCREEN, ic_id, {
+                    x = r.x + (r.w - isz) * 0.5, y = r.y + (r.h - isz) * 0.5,
+                    width = isz, height = isz, style = "image", image = icon,
+                    fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+                    image_tint = tint, no_input = true, bring_to_front = true, z = OVERLAY_Z - 1000.0,
+                })
+                if info.have > 0 then
+                    local lw, lh = S(16.0), S(14.0)
+                    runtime_ui.set_quad(SCREEN, lv_id, {
+                        x = r.x + r.w - lw + S(2.0), y = r.y + r.h - lh + S(2.0),
+                        width = lw, height = lh, style = "text",
+                        fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
+                        body = tostring(info.have),
+                        text_color = { 0.98, 0.94, 0.78, 1.0 },
+                        font_scale = 0.8, align_h = "right", align_v = "bottom",
+                        no_input = true, bring_to_front = true, z = OVERLAY_Z - 400.0,
+                    })
+                else
+                    runtime_ui.remove(SCREEN, lv_id)
+                end
+            else
+                runtime_ui.remove(SCREEN, fr_id)
+                runtime_ui.remove(SCREEN, ic_id)
+                runtime_ui.remove(SCREEN, lv_id)
+            end
+        end
+        local hv = D._skill_hover
+        if hv and hv.tip and hv.tip ~= "" then
+            local tw, th = S(560.0), S(420.0)
+            local tx = (hv.mx or 0.0) + S(18.0)
+            local ty = (hv.my or 0.0) + S(12.0)
+            if tx + tw > rw then tx = rw - tw - S(8.0) end
+            if ty + th > rh then ty = rh - th - S(8.0) end
+            runtime_ui.set_quad(SCREEN, "sk_tip", {
+                x = tx, y = ty, style = "text", fit = true,
+                fill = { 0.04, 0.05, 0.08, 0.98 }, border = hv.border or { 0.62, 0.34, 0.86, 1.0 },
+                body = hv.tip, text_color = { 0.92, 0.94, 0.98, 1.0 },
+                font_scale = 1.35, align_h = "left", align_v = "top",
+                no_input = true, bring_to_front = true, z = OVERLAY_Z,
+            })
+        else
+            runtime_ui.remove(SCREEN, "sk_tip")
+        end
+        return
+    end
+    Inv_clear_skill_overlays()
+    if tab ~= "inventory" and not in_store then
+        Inv_clear_inventory_overlays()
         return
     end
     Art.surface_size()
@@ -952,7 +1201,14 @@ function Inv.show(D)
     local opening = not D._inv_open
     b.group:set_enabled(true)
     D._inv_open = true
-    if opening then Inv.set_tab(D, "map") end
+    if opening then
+        -- Wave clear / town land on MAP. Mid-fight gear peek keeps the last tab.
+        local tab = D._hub_tab or "map"
+        if D._between_wave or D.state == "town" then tab = "map" end
+        if tab == "store" and D.state ~= "town" then tab = "map" end
+        Inv.set_tab(D, tab)
+    end
+    if ATH_COMMON.sync_world_freeze then ATH_COMMON.sync_world_freeze(D) end
 end
 
 function Inv.hide(D)
@@ -961,6 +1217,7 @@ function Inv.hide(D)
     D._inv_open = false
     D._abandon_armed = nil
     Inv.clear(D)
+    if ATH_COMMON.sync_world_freeze then ATH_COMMON.sync_world_freeze(D) end
 end
 
 -- Tear down the transient cursor overlays + drop any in-flight drag.
@@ -982,9 +1239,16 @@ function Inv.clear(D)
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
         for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
+        for i = 1, SKILL_COLS * SKILL_MAX_RANK do
+            runtime_ui.remove(SCREEN, "sk_fr_" .. i)
+            runtime_ui.remove(SCREEN, "sk_ic_" .. i)
+            runtime_ui.remove(SCREEN, "sk_lv_" .. i)
+        end
+        runtime_ui.remove(SCREEN, "sk_tip")
     end
     D._inv_drag = nil
     D._inv_hover = nil
+    D._skill_hover = nil
 end
 
 _G.ATH_INVENTORY = Inv
