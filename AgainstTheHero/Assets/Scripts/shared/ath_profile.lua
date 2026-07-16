@@ -238,7 +238,7 @@ function Profile.load(D)
         D.save_slot = Profile.active_slot()
         D._saved_run_card_ids = nil
         D.run_cards = {}
-        D.skill_points = 0
+        D.skill_points = math.max(0, math.floor(D.skill_points or 1))
         return false
     end
 

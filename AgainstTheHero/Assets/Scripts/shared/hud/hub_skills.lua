@@ -1,10 +1,12 @@
--- Skills hub tab: one icon per specialization; click spends a skill point.
+-- Skills hub tab: the authored plates are column anchors behind the tree
+-- cells; a click that falls between cells buys the column's keystone.
 
 local function allocate(slot)
     local D = _G.ATH_ACTIVE_DUEL
     local Inv = _G.ATH_INVENTORY
-    if not (D and Inv and Inv.try_allocate_skill) then return end
-    Inv.try_allocate_skill(D, slot)
+    if not (D and Inv and Inv.try_allocate_skill and Inv.class_specs) then return end
+    local spec = Inv.class_specs(D)[slot]
+    if spec then Inv.try_allocate_skill(D, spec.id, "key") end
 end
 
 for i = 1, 3 do

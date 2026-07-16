@@ -124,15 +124,9 @@ local function build_hero(class_id, gear_ids)
         lifesteal = c.lifesteal or 0.0, regen = c.regen or 0.0, whirl = c.whirl or 0,
         thorns = 0.0, crit_chance = R.crit.base_chance, gold_find = 1.0, spec_rank = 0 }
     hero._ref = { dps = hero.dps, speed = hero.speed, kite_speed = hero.kite_speed,
-        fire_interval = hero.fire_interval }
+        fire_interval = hero.fire_interval, attack_range = hero.attack_range }
     for _, id in ipairs(gear_ids or {}) do apply_effect(hero, item_by_id(id).effect) end
     return hero
-end
-
-local function draft_card(rank_id)
-    for _, card in ipairs(Balance.draft_cards) do
-        if card.rank_id == rank_id then return card end
-    end
 end
 
 -- In-run drops: the average effect of one item of a rarity (mult keys averaged
@@ -170,67 +164,198 @@ local function avg_drop_effect(map)
 end
 
 -- ---------------------------------------------------------------------------
--- Specialization riders — mirrors apply_on_hit_specializations: DoTs REFRESH a
--- single instance per status per target (tick amount every on_hit.tick for
--- on_hit.duration); spread specs halve both components; stack_dots apply their
--- current amount both immediately and as the tick. All in units of one basic
--- hit's damage: `initial` per landed hit, `dot` per dotted target per second.
-local function rider_ev(spec, r)
+-- Specialization riders — Hero Grid edition. EV is computed from the SAME
+-- Balance.compute_spec_fx table the game runtime reads, so tree coefficients
+-- flow through with no second copy. Mutations/techniques/capstones fold in as
+-- EV adjustments (documented inline). Units: one basic hit's damage —
+-- `initial` per landed hit, `dot` per dotted target per second.
+local function rider_ev(spec, fx)
+    if not fx or (fx.points or 0) < 1 then return {} end
     local k = spec.kind
     local spread_mult = spec.spread and Balance.on_hit.spread_damage_mult or 1.0
+    local ev = {}
     if k == "dot" or k == "vampirism" then
-        local tick_amount = (spec.tick_per_rank or 0) * r * spread_mult
-        return { initial = (spec.initial_per_rank or 0) * r * spread_mult,
-            dot = tick_amount / Balance.on_hit.tick,
-            -- Spread-on-death: a dotted kill re-applies the dot (initial + ticks)
-            -- to one neighbour — the horde tool of every spread class.
-            spread_kill = spec.spread
-                and tick_amount * (1.0 + 0.5 * Balance.on_hit.duration / Balance.on_hit.tick) or nil,
-            heal_mult = spec.lifesteal_mult or 0.0 }
+        -- vampirism never spreads, so its spread_mult is already 1.0
+        local tick_amount = (fx.tick or 0) * spread_mult
+        ev.initial = (fx.initial or 0) * spread_mult
+        ev.dot = tick_amount / Balance.on_hit.tick
+        if spec.spread then
+            -- Spread-on-death re-applies to spread_targets neighbours.
+            local targets = fx.spread_plus and (fx.spread_plus.targets or 2) or 1
+            ev.spread_kill = tick_amount * (1.0 + 0.5 * Balance.on_hit.duration / Balance.on_hit.tick)
+                * targets
+        end
+        ev.heal_mult = fx.lifesteal_mult or (fx.rider_heal and fx.rider_heal.mult) or 0.0
+        if fx.capstone and fx.capstone.kind == "low_hp_boost" then
+            ev.heal_mult = ev.heal_mult * 1.3 -- EV of the sub-40% double
+        end
     elseif k == "stack_dot" then
-        local per = (spec.stack_base or 0.2) + (r - 1) * (spec.stack_rank_add or 0.1)
-        local amount = per * (spec.max_stacks or 5) * ASSUME.avg_stack_fraction
-        return { initial = amount, dot = amount / Balance.on_hit.tick * ASSUME.stack_tick_fraction }
+        local amount = (fx.stack_per or 0.2) * (fx.max_stacks or 5) * ASSUME.avg_stack_fraction
+        ev.initial = amount
+        ev.dot = amount / Balance.on_hit.tick * ASSUME.stack_tick_fraction
+        if fx.fast_tick_max then ev.dot = ev.dot * 1.15 end -- max-stack fast ticks
+        if fx.double_stack_full then ev.initial = ev.initial * 1.1 end -- faster ramp
+        ev.heal_mult = fx.rider_heal and fx.rider_heal.mult or nil
+        if fx.capstone and fx.capstone.kind == "max_stack_burst" then
+            -- One burst per target per ICD while at max stacks.
+            ev.dot = ev.dot + (fx.capstone.params.pct or 1.0)
+                / (fx.capstone.params.per_target_icd or 4.0) * 0.6
+        end
+        if fx.capstone and fx.capstone.kind == "refresh_on_kill" then
+            ev.spread_kill = (ev.spread_kill or 0) + 0.5 -- bleed smear on kills
+        end
     elseif k == "pierce" then
-        return { extra_target = (spec.damage or 0.6) + (r - 1) * (spec.damage_per_rank or 0.1) }
+        ev.extra_target = fx.damage or 0.6
+        if fx.capstone and fx.capstone.kind == "full_pierce" then
+            ev.extra_target = ev.extra_target
+                + (1.0 - (fx.damage or 0.6)) / (fx.capstone.params.every or 5)
+        end
+        if fx.skewer then ev.dps_mult = (ev.dps_mult or 1.0) * (1.0 + (fx.skewer.amp or 0.08) * 0.7) end
+        if fx.cripple then ev.avoid = (ev.avoid or 0) + 0.03 end
     elseif k == "explosion" or k == "shockwave" then
-        return { on_kill = ((spec.damage or 0) + (r - 1) * (spec.damage_per_rank or 0.1))
-            * ASSUME.splash_ev * 2.0 } -- splash reaches ~2 neighbours in a swarm
+        ev.on_kill = (fx.damage or 0) * ASSUME.splash_ev * 2.0 -- ~2 neighbours splashed
+        if fx.capstone and fx.capstone.kind == "chain_death" then
+            ev.on_kill = ev.on_kill * (1.0 + (fx.capstone.params.mult or 0.5) * 0.4)
+        end
+        if fx.stun_wave then ev.avoid = (ev.avoid or 0) + 0.02 end
+        if fx.kill_heal then ev.regen_frac = (ev.regen_frac or 0) + 0.001 end
     elseif k == "frost" then
-        return { initial = (spec.damage_per_rank or 0) * r,
-            avoid = math.min(0.75, (spec.slow_per_rank or 0) * r) * 0.5 }
+        ev.initial = fx.damage or 0
+        ev.avoid = math.min(0.75, fx.slow or 0) * 0.5
     elseif k == "shadow" then
-        return { initial = (spec.damage_per_rank or 0) * r,
-            avoid = math.min(0.75, (spec.miss_per_rank or 0) * r) }
+        ev.initial = fx.damage or 0
+        ev.avoid = math.min(0.75, fx.miss or 0)
+        if fx.capstone and fx.capstone.kind == "aura_buff" then
+            local p = fx.capstone.params
+            ev.dps_mult = (ev.dps_mult or 1.0)
+                * (1.0 + (p.dmg or 0.15) * (p.dur or 4.0) / ((p.icd or 8.0) + (p.dur or 4.0)))
+        end
     elseif k == "daze" then
-        return { avoid = math.min(0.75, (spec.reduction_per_rank or 0) * r) }
+        local reduction = fx.reduction or 0
+        if fx.capstone and fx.capstone.kind == "debuff_amp" then
+            reduction = reduction + (fx.capstone.params.extra or 0.10)
+        end
+        ev.avoid = math.min(0.75, reduction)
     elseif k == "frenzy" then
-        local stacks = (spec.max_stacks or 5) * ASSUME.avg_stack_fraction
-        return { dps_mult = 1.0 + (spec.stack_per_rank or 0.1) * r * stacks }
+        local stacks = (fx.max_stacks or 5) * ASSUME.avg_stack_fraction
+        -- Additive buckets multiply out: damage x attack rate (both stack-fed).
+        ev.dps_mult = (1.0 + (fx.dmg_per_stack or 0.01) * stacks)
+            * (1.0 + (fx.as_per_stack or 0.01) * stacks)
+        if fx.dr_at_max then ev.avoid = (ev.avoid or 0) + (fx.dr_at_max.dr or 0.08) * 0.6 end
+        if fx.kill_heal_max then ev.regen_frac = (ev.regen_frac or 0) + 0.002 end
     elseif k == "preservation" then
-        local reduction, heal_fraction, seconds = Balance.preservation_effect(r)
-        return { avoid = reduction * 0.8, regen_frac = heal_fraction / seconds * 0.5 }
+        ev.avoid = (fx.dr or 0) * 0.8
+        local seconds = (fx.heal_seconds or 5.0) + (fx.long_guard and fx.long_guard.dur or 0.0)
+        ev.regen_frac = (fx.heal or 0) / seconds * 0.5
+        if fx.capstone and fx.capstone.kind == "guardian" then ev.guardian = true end
     elseif k == "summon" then
-        local cap = math.min(Balance.minions.skeleton.cap_max,
-            (spec.cap_base or 2) + (r - 1) * (spec.cap_per_rank or 1))
-        return { pack_dps_mult = Balance.minions.skeleton.dps_mult * cap, tank = 0.15 }
+        local cap = math.min(Balance.minions.skeleton.cap_max, fx.cap or 2)
+        local dmg_mult = (fx.minion_dmg and (fx.minion_dmg.mult or 1.25) or 1.0)
+            * (fx.legion and (fx.legion.dmg_mult or 0.8) or 1.0)
+        ev.pack_dps_mult = Balance.minions.skeleton.dps_mult * cap * dmg_mult
+        ev.tank = 0.15
+        if fx.bone_armor then ev.avoid = (ev.avoid or 0) + math.min(fx.bone_armor.cap or 0.06,
+            (fx.bone_armor.dr or 0.01) * cap) * 0.7 end
+        if fx.soul_harvest then ev.regen_frac = (ev.regen_frac or 0) + 0.001 end
+        if fx.capstone and fx.capstone.kind == "summon_burst" then
+            ev.pack_dps_mult = ev.pack_dps_mult
+                + Balance.minions.skeleton.dps_mult * (fx.capstone.params.count or 4) * 0.3
+        end
+    elseif k == "shard_cone" then
+        -- Shards hit every enemy in the cone: pack damage per landed hit.
+        local per = (fx.damage or 0.4) * (fx.shards or 4)
+        ev.extra_target = per * 0.35 -- cone coverage of the swarm
+        if fx.shard_slow then ev.avoid = (ev.avoid or 0) + 0.03 end
+        if fx.capstone and fx.capstone.kind == "shard_nova" then
+            ev.extra_target = ev.extra_target * (1.0 + 3.0 / (fx.capstone.params.every or 6))
+        end
     end
-    return {}
+    -- Cross-kind extras.
+    if fx.status_dmg_down then
+        ev.avoid = (ev.avoid or 0) + (fx.status_dmg_down.pct or 0.08) * ASSUME.rider_coverage
+    end
+    if fx.elite_mult then ev.boss_mult = fx.elite_mult.mult or 1.2 end
+    if fx.assassin then ev.dps_mult = (ev.dps_mult or 1.0) * 1.03 end -- full-HP first hits
+    if fx.brittle then ev.dps_mult = (ev.dps_mult or 1.0) * (1.0 + (fx.brittle.amp or 0.08) * 0.8) end
+    local cap = fx.capstone
+    if cap and cap.kind == "proc_bonus" then
+        local p = cap.params
+        ev.initial = (ev.initial or 0) + (p.pct or 1.0) / (p.every or 5)
+            + (p.splash_pct or 0) * (p.splash_targets or 0) * ASSUME.splash_ev / (p.every or 5)
+    elseif cap and cap.kind == "status_amp" then
+        local p = cap.params
+        if p.elites_only then
+            ev.boss_mult = (ev.boss_mult or 1.0) * (1.0 + (p.amp or 0.2) * 0.9)
+        else
+            ev.dps_mult = (ev.dps_mult or 1.0) * (1.0 + (p.amp or 0.15) * 0.8)
+        end
+    elseif cap and cap.kind == "detonate" then
+        ev.dot = (ev.dot or 0) * ((cap.params.targets or 1) > 1 and 1.15 or 1.10)
+    elseif cap and cap.kind == "death_burst" then
+        ev.spread_kill = (ev.spread_kill or 0) * (1.0 + (cap.params.pct or 0.5))
+    end
+    return ev
 end
 
--- Damage-spec default: the specialization a player ranks for damage output —
--- scored from the same EV model at rank 5.
-local function best_spec(class)
-    local best, score = class.specializations[1], -1.0
-    for _, spec in ipairs(class.specializations or {}) do
-        local ev = rider_ev(spec, 5)
-        local s = 3.0 * (ev.initial or 0) + 3.0 * (ev.dot or 0) + 2.0 * (ev.extra_target or 0)
-            + (ev.on_kill or 0) + (ev.spread_kill or 0) * 1.5
-            + ((ev.dps_mult or 1) - 1) * 3.0 + (ev.pack_dps_mult or 0) * 1.5
-            + (ev.avoid or 0) + (ev.regen_frac or 0) * 20.0
-        if s > score then best, score = spec, s end
+-- Merge the primary and secondary riders into one EV table.
+local function merge_ev(evs)
+    local m = {}
+    for _, ev in ipairs(evs) do
+        m.initial = (m.initial or 0) + (ev.initial or 0)
+        m.dot = (m.dot or 0) + (ev.dot or 0)
+        m.extra_target = (m.extra_target or 0) + (ev.extra_target or 0)
+        m.on_kill = (m.on_kill or 0) + (ev.on_kill or 0)
+        m.spread_kill = (m.spread_kill or 0) + (ev.spread_kill or 0)
+        m.pack_dps_mult = (m.pack_dps_mult or 0) + (ev.pack_dps_mult or 0)
+        m.regen_frac = (m.regen_frac or 0) + (ev.regen_frac or 0)
+        m.dps_mult = (m.dps_mult or 1.0) * (ev.dps_mult or 1.0)
+        m.boss_mult = (m.boss_mult or 1.0) * (ev.boss_mult or 1.0)
+        m.avoid = 1.0 - (1.0 - (m.avoid or 0)) * (1.0 - math.min(0.75, ev.avoid or 0))
+        m.heal_mult = math.max(m.heal_mult or 0, ev.heal_mult or 0)
+        m.tank = math.max(m.tank or 0, ev.tank or 0)
+        m.guardian = m.guardian or ev.guardian
     end
-    return best
+    m.avoid = math.min(0.75, m.avoid or 0)
+    return m
+end
+
+-- The canonical scripted build order for one spec tree (acceptance baseline):
+-- keystone -> damage foundation -> mutation (prefer longshot on pierce) ->
+-- techniques -> capstone.
+local function spine_primary_for(spec)
+    local mut = (spec.kind == "pierce") and "mb" or "ma"
+    return { "key", "fa", "fa", "fb", "fb", mut, "ta", "tb", "cap" }
+end
+local SPINE_SECONDARY = { "key", "fa", "fa", "fb", "fb" }
+
+local function spec_score(class, spec)
+    local fx = Balance.compute_spec_fx(class.id, spec, { key = 1, fa = 2, fb = 2 })
+    local ev = rider_ev(spec, fx)
+    -- Deep maps are sustain-bound: avoid/heal/DoT weigh beside pack EV so
+    -- paper prefers fire/shadow/vampirism over glass shard/curse primaries.
+    return 2.0 * (ev.initial or 0) + 2.5 * (ev.dot or 0) + 1.0 * (ev.extra_target or 0)
+        + (ev.on_kill or 0) + (ev.spread_kill or 0) * 0.4
+        + ((ev.dps_mult or 1) - 1) * 3.0 + (ev.pack_dps_mult or 0) * 1.5
+        + (ev.avoid or 0) * 6.0 + (ev.heal_mult or 0) * 14.0
+        + (ev.regen_frac or 0) * 40.0 + (ev.guardian and 1.0 or 0)
+end
+
+-- Primary = requested tree (or best damage tree); secondary = next best.
+local function pick_specs(class, requested_spec)
+    local scored = {}
+    for _, spec in ipairs(class.specializations or {}) do
+        scored[#scored + 1] = { spec = spec, s = spec_score(class, spec) }
+    end
+    table.sort(scored, function(a, b) return a.s > b.s end)
+    local primary = scored[1].spec
+    if requested_spec then
+        primary = Balance.specialization(class.id, requested_spec) or primary
+    end
+    local secondary
+    for _, row in ipairs(scored) do
+        if row.spec.id ~= primary.id then secondary = row.spec; break end
+    end
+    return primary, secondary
 end
 
 -- Hero damage output vs `engaged` targets — basic_metrics math on the geared
@@ -349,17 +474,59 @@ local function on_kill(state, c)
     end
 end
 
-local function sim_map_run(class_id, gear_ids, map_index, policy)
+local function sim_map_run(class_id, gear_ids, map_index, policy, primary_spec)
     local map = MAPS[map_index]
     local class = class_by_id(class_id)
-    local spec = ARGS.spec and Balance.specialization(class_id, ARGS.spec)
-        or best_spec(class)
+    local primary, secondary = pick_specs(class, primary_spec)
     local hero = build_hero(class_id, gear_ids)
+    local rules = Balance.tree_rules
+        or { starting_points = 1, point_cap = 14, wave_points = 1, boss_points = 2 }
+    local starting_points = rules.starting_points or 1
     local state = { hero = hero, map = map, t = 0.0, hp = hero.hp_max, creeps = {},
         kills = 0, gold = 0.0, spawn_counter = 0,
         elite_acc = 0.0, elite_drop_acc = 0.0, drops = 0, pending_hit = 0.0,
-        wave = 1, flasks = R.flask.charges, flask_lock = 0.0, invuln_until = 0.0 }
-    local result = { class_id = class_id, map = map_index, spec = spec.id, waves = {},
+        wave = 1, flasks = R.flask.charges, flask_lock = 0.0, invuln_until = 0.0,
+        -- Hero Grid: milestone income against the 14-point cap, spent along
+        -- the scripted primary-then-secondary spine.
+        banked = starting_points, earned = starting_points, alloc = { [primary.id] = {} },
+        build = {}, build_i = 1, ev = {}, guardian_used = false }
+    for _, nid in ipairs(spine_primary_for(primary)) do
+        state.build[#state.build + 1] = { spec = primary, node = nid }
+    end
+    if secondary then
+        for _, nid in ipairs(SPINE_SECONDARY) do
+            state.build[#state.build + 1] = { spec = secondary, node = nid }
+        end
+    end
+    local function award_points(n)
+        local give = math.max(0, math.min(n, (rules.point_cap or 14) - state.earned))
+        state.banked = state.banked + give
+        state.earned = state.earned + give
+    end
+    local function allocate_banked()
+        while state.banked > 0 and state.build_i <= #state.build do
+            local step = state.build[state.build_i]
+            local mine = state.alloc[step.spec.id]
+            if not mine then mine = {}; state.alloc[step.spec.id] = mine end
+            mine[step.node] = (mine[step.node] or 0) + 1
+            state.banked = state.banked - 1
+            state.build_i = state.build_i + 1
+        end
+        local evs = {}
+        local range_add = 0.0
+        for _, sp in ipairs({ primary, secondary }) do
+            if sp and state.alloc[sp.id] then
+                local fx = Balance.compute_spec_fx(class_id, sp, state.alloc[sp.id])
+                evs[#evs + 1] = rider_ev(sp, fx)
+                range_add = range_add + (fx.range_add or 0.0)
+            end
+        end
+        state.ev = merge_ev(evs)
+        -- Longshot / Punch-Through: same attack_range bump the duel applies.
+        hero.attack_range = (hero._ref.attack_range or hero.attack_range) + range_add
+    end
+    allocate_banked() -- the starting point buys the primary keystone
+    local result = { class_id = class_id, map = map_index, spec = primary.id, waves = {},
         min_hp_frac = 1.0, flasks_used = 0, cleared = false, gold = 0, kills = 0, drops = 0 }
     local exposure_contact = hero.attack == "ranged" and ASSUME.contact_exposure_ranged
         or Balance.benchmarks.melee_uptime -- melee hero faces contact at its damage uptime
@@ -377,7 +544,7 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
             end
         end
         if boss_target then in_range[#in_range + 1] = boss_target end
-        local ev = hero.spec_rank > 0 and rider_ev(spec, hero.spec_rank) or {}
+        local ev = state.ev or {}
         local engaged_hits = math.min(#in_range, hero.cleave)
         local hit_rate = hero.attack == "ranged" and engaged_hits / hero.fire_interval
             or ASSUME.melee_hits_per_second * engaged_hits
@@ -398,6 +565,7 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
             local dmg = pool
             if c.boss then
                 dmg = dmg * (1.0 - ASSUME.boss_armor_uptime * (1.0 - R.boss.armored_damage_mult))
+                    * (ev.boss_mult or 1.0)
                 if c.hp < (c.max_hp or c.hp) * R.boss.phase2.hp_fraction then c.phase2 = true end
             end
             local dealt = math.min(dmg, c.hp)
@@ -479,6 +647,12 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
         end
         state.t = state.t + dt
         if spawning then state.combat_time = (state.combat_time or 0.0) + dt end
+        -- Last Stand: once per map the warrior shrugs off the killing blow.
+        if state.hp <= 0.0 and ev.guardian and not state.guardian_used then
+            state.guardian_used = true
+            state.hp = hero.hp_max * 0.20
+            state.invuln_until = state.t + 2.0
+        end
         return state.hp > 0
     end
 
@@ -488,18 +662,12 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
         return result
     end
 
-    -- Waves. Draft policy: rank the class specialization first (the real power
-    -- curve), then cycle universal cards.
+    -- Waves. Hero Grid income: +1 per wave clear (paid at the next wave's
+    -- start here), spent down the scripted spine at the hub pause.
     for wave = 1, map.waves do
         state.wave = wave
-        -- Human draft: alternate spec ranks with universals (offense/defense
-        -- cycle; the projectiles card left with the spells era).
-        if policy == "spec" and hero.spec_rank < 5 and wave % 2 == 1 then
-            hero.spec_rank = hero.spec_rank + 1
-        else
-            local cycle = { "offense", "defense", "offense" }
-            apply_effect(hero, draft_card(cycle[(wave - 1) % #cycle + 1]).effect)
-        end
+        if wave > 1 then award_points(rules.wave_points or 1) end
+        allocate_banked()
         state.hp = math.min(hero.hp_max, state.hp + hero.regen * ASSUME.between_wave_downtime)
         local reserve = wave_budget(wave, map)
         local spawn_t = 0.0
@@ -556,16 +724,13 @@ local function sim_map_run(class_id, gear_ids, map_index, policy)
         state.creeps = {}
     end
 
-    -- Boss round: its own round in-game, so it opens like any wave — one more
-    -- draft pick and the between-round downtime regen before the rise.
+    -- Boss round: its own round in-game — the last wave's +1 and the boss
+    -- entry +2 land before the rise, plus the between-round downtime regen.
     local bwave = map.waves + 1
     state.wave = bwave
-    if policy == "spec" and hero.spec_rank < 5 and bwave % 2 == 1 then
-        hero.spec_rank = hero.spec_rank + 1
-    else
-        local cycle = { "offense", "defense", "offense" }
-        apply_effect(hero, draft_card(cycle[(bwave - 1) % #cycle + 1]).effect)
-    end
+    award_points(rules.wave_points or 1)
+    award_points(rules.boss_points or 2)
+    allocate_banked()
     state.hp = math.min(hero.hp_max, state.hp + hero.regen * ASSUME.between_wave_downtime)
     local boss = make_creep(state, map.boss, false, false)
     boss.max_hp = boss.hp
@@ -608,13 +773,18 @@ print(string.format("%-6s %-5s %-12s %-12s %-10s %8s %7s %7s %6s %8s %7s",
 for _, sc in ipairs(SCENARIOS) do
     if (not ARGS.map or ARGS.map == sc.map) and (not ARGS.gear or ARGS.gear == sc.gear) then
         for _, id in ipairs(class_ids()) do
-            local r = sim_map_run(id, GEAR[sc.gear], sc.map, ARGS.policy or "spec")
-            r.gear = sc.gear
-            results[#results + 1] = r
-            print(string.format("%-6s %-5s %-12s %-12s %-10s %7.1fs %6.0f%% %7d %6d %8s %7d",
-                Balance.map_progression.rank[sc.map], sc.gear, id, r.spec, r.outcome,
-                r.total_time or 0.0, r.min_hp_frac * 100.0, r.flasks_used, r.drops,
-                r.boss_ttk and string.format("%.0fs", r.boss_ttk) or "-", r.gold))
+            local class = class_by_id(id)
+            for _, spec in ipairs(class.specializations or {}) do
+                if not ARGS.spec or ARGS.spec == spec.id then
+                    local r = sim_map_run(id, GEAR[sc.gear], sc.map, ARGS.policy or "spec", spec.id)
+                    r.gear = sc.gear
+                    results[#results + 1] = r
+                    print(string.format("%-6s %-5s %-12s %-12s %-10s %7.1fs %6.0f%% %7d %6d %8s %7d",
+                        Balance.map_progression.rank[sc.map], sc.gear, id, r.spec, r.outcome,
+                        r.total_time or 0.0, r.min_hp_frac * 100.0, r.flasks_used, r.drops,
+                        r.boss_ttk and string.format("%.0fs", r.boss_ttk) or "-", r.gold))
+                end
+            end
         end
     end
 end
@@ -689,6 +859,17 @@ if full_matrix and not ARGS.no_gates then
             if r.map == sc[1] and r.gear == sc[2] and r.class_id == "brawler" then
                 gate(string.format("brawler gear ladder map %d %s", sc[1], sc[2]),
                     r.cleared, r.outcome)
+            end
+        end
+    end
+    -- Every class's best paper primary must clear VIII with top gear. The
+    -- other trees still run and stay baseline-pinned without requiring every
+    -- utility-first build to be a deep-map solo clearer.
+    for _, r in ipairs(results) do
+        if r.map == 8 and r.gear == "top" then
+            local best = pick_specs(class_by_id(r.class_id))
+            if r.spec == best.id then
+                gate("class clears map VIII: " .. r.class_id, r.cleared, r.outcome)
             end
         end
     end
