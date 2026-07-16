@@ -620,7 +620,7 @@ function Art.quad(screen, id, x, y, w, h, fill, opts)
         -- /Art._ui_scale cancels the backend's DPI font bump so high-DPI phones get
         -- the SAME text-to-box ratio as the desktop (where _ui_scale == 1.0).
         font_scale = (opts.font_scale or 1.0) * Art.s("text") / (Art._ui_scale or 1.0), selected = opts.selected,
-        draggable = opts.draggable, bring_to_front = opts.bring_to_front,
+        draggable = opts.draggable, bring_to_front = opts.bring_to_front, z = opts.z,
         -- no_input: a decorative/background quad that must NOT capture clicks or be
         -- raised over the UI (prevents the "click empty space -> black screen" bug).
         no_input = opts.no_input,
@@ -709,13 +709,16 @@ local SEG_OFF = { 0.26, 0.20, 0.42, 0.20 } -- faint ghost of an unlit segment
 local FPS_CELLS = 4
 local FPS_SAMPLE_SECONDS = 0.25
 
-local function draw_seg_digit(screen, prefix, x, y, w, h, on)
+local function draw_seg_digit(screen, prefix, x, y, w, h, on, opts)
     on = on or {}
+    opts = opts or {}
     local t = math.max(2.0, w * 0.20)
     local midy = y + h * 0.5 - t * 0.5
     local vlen = (h - 3.0 * t) * 0.5
     local function seg(name, sx, sy, sw, sh)
-        Art.quad(screen, prefix .. "_" .. name, sx, sy, sw, sh, on[name] and SEG_LIT or SEG_OFF, { no_input = true })
+        Art.quad(screen, prefix .. "_" .. name, sx, sy, sw, sh, on[name] and SEG_LIT or SEG_OFF, {
+            no_input = true, bring_to_front = opts.bring_to_front, z = opts.z,
+        })
     end
     seg("a", x + t, y, w - 2.0 * t, t)
     seg("g", x + t, midy, w - 2.0 * t, t)
@@ -774,7 +777,7 @@ end
 -- Lets an authored HUD frame node (placed/sized in the editor) host the real
 -- digital readout: the panel + "FPS" label are the authored static look; a
 -- script supplies this rect each frame so the digits stay script-driven.
-function Art.draw_fps_digits(screen, prefix, x, y, w, h)
+function Art.draw_fps_digits(screen, prefix, x, y, w, h, opts)
     local F = Art._fps
     local m = engine and engine.get_metrics and engine.get_metrics() or nil
     local delta_ms = m and m.delta_ms or nil
@@ -798,7 +801,7 @@ function Art.draw_fps_digits(screen, prefix, x, y, w, h)
     for i = 1, FPS_CELLS do
         local p = prefix .. "_d" .. i
         if i <= ndig then
-            draw_seg_digit(screen, p, x + (i - 1) * (dw + gap), y, dw, h, SEVEN_SEG[tonumber(s:sub(i, i))])
+            draw_seg_digit(screen, p, x + (i - 1) * (dw + gap), y, dw, h, SEVEN_SEG[tonumber(s:sub(i, i))], opts)
         else
             for _, name in ipairs(SEG_NAMES) do Art.remove(screen, p .. "_" .. name) end
         end

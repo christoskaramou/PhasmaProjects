@@ -8,7 +8,7 @@
 _G.ATH_RUN = _G.ATH_RUN or {
     hero_index = 1,        -- 1-based index into arena config.hero.classes
     battlefield = "arena", -- modes/<battlefield>/mode.lua (only "arena" is manual-playable today)
-    save_slot = 1,         -- 1-based Save/slot_N.lua index
+    -- save_slot set by Profile.set_active / New Game / Continue (not defaulted to 1)
 }
 
 -- Runtime UI dispatches authored button actions inside EndFrame/BuildFrame —

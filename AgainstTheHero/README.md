@@ -46,7 +46,11 @@ ATH_MODE=menu PhasmaPlayer.exe
 ATH_DUEL_MODE=arena ATH_SIDE=hero PhasmaPlayer.exe
 ATH_DUEL_MODE=spud_fields ATH_SIDE=horde PhasmaPlayer.exe
 ATH_DUEL_MODE=alien_hive ATH_SIDE=horde PhasmaPlayer.exe
+ATH_DEV=1 PhasmaPlayer.exe   # or enable Dev Mode in Settings
 ```
+
+Dev cheat console (`` ` `` / F1 when Dev Mode is on): `mymap`, `swaphero <name>`,
+`cantdie`, `gold <n>`, `specme <n>`, `item <name>`, `endless`, `superhero`.
 
 ## Modes
 

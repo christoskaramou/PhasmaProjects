@@ -12,6 +12,8 @@ local DEFAULTS = {
     vol_music = 0.8,
     vol_sfx = 0.9,
     screen_shake = true,
+    show_fps = true,
+    dev_mode = false,
 }
 
 local I18n = _G.ATH_I18N or {}
@@ -19,10 +21,6 @@ for k, v in pairs(DEFAULTS) do
     if I18n[k] == nil then I18n[k] = v end
 end
 I18n._refreshers = I18n._refreshers or {}
-
--- Scene render settings (AA/shadows/IBL/…) live in the editor /.pescene — drop
--- any legacy player-pref keys so we never write them back.
-I18n.gfx_fxaa, I18n.gfx_taa, I18n.gfx_cas, I18n.gfx_shadows = nil, nil, nil, nil
 
 local function clamp01(x)
     x = tonumber(x) or 0
@@ -54,6 +52,8 @@ local function load_settings()
             if data.vol_music ~= nil then I18n.vol_music = clamp01(data.vol_music) end
             if data.vol_sfx ~= nil then I18n.vol_sfx = clamp01(data.vol_sfx) end
             if type(data.screen_shake) == "boolean" then I18n.screen_shake = data.screen_shake end
+            if type(data.show_fps) == "boolean" then I18n.show_fps = data.show_fps end
+            if type(data.dev_mode) == "boolean" then I18n.dev_mode = data.dev_mode end
         end
     end
 end
@@ -67,6 +67,8 @@ local function save_settings()
         vol_music = I18n.vol_music,
         vol_sfx = I18n.vol_sfx,
         screen_shake = I18n.screen_shake == true,
+        show_fps = I18n.show_fps ~= false,
+        dev_mode = I18n.dev_mode == true,
     }))
 end
 
@@ -85,6 +87,13 @@ local function load_el()
     return I18n._el
 end
 
+-- Bundled UI font is ASCII-only; fancy dashes/arrows render as "?".
+local function ascii_ui(text)
+    if type(text) ~= "string" then return text end
+    text = text:gsub("—", "-"):gsub("–", "-"):gsub("→", "->"):gsub("←", "<-")
+    return text
+end
+
 function I18n.t(key, ...)
     if key == nil then return "" end
     key = tostring(key)
@@ -95,9 +104,9 @@ function I18n.t(key, ...)
     end
     if select("#", ...) > 0 then
         local ok, formatted = pcall(string.format, out, ...)
-        if ok then return formatted end
+        if ok then out = formatted else return ascii_ui(out) end
     end
-    return out
+    return ascii_ui(out)
 end
 
 function I18n.translate_fields(fields)
@@ -155,6 +164,13 @@ function I18n.toggle_damage_text()
     save_settings()
 end
 
+function I18n.toggle_dev_mode()
+    I18n.dev_mode = not (I18n.dev_mode == true)
+    save_settings()
+    I18n.refresh()
+    return I18n.dev_mode == true
+end
+
 function I18n.set_volume(which, value)
     local key = "vol_" .. tostring(which or "")
     if I18n[key] == nil then return end
@@ -170,12 +186,11 @@ function I18n.apply_audio()
     audio.set_volume("sfx", I18n.vol_sfx)
 end
 
--- Kept as a no-op so older call sites don't error. Render settings are scene-authored.
+-- Graphics / post live in the scene's Scene Settings (game.pescene), not here.
 function I18n.apply_graphics() end
 
 function I18n.toggle_bool(key)
     if DEFAULTS[key] == nil and I18n[key] == nil then return end
-    if tostring(key):sub(1, 4) == "gfx_" then return end -- scene-authored; ignore
     if I18n[key] == nil then I18n[key] = DEFAULTS[key] end
     I18n[key] = not (I18n[key] == true)
     save_settings()

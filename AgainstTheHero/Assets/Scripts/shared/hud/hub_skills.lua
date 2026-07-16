@@ -1,4 +1,4 @@
--- Skills hub tab: click a tree node to spend one skill point into that branch.
+-- Skills hub tab: one icon per specialization; click spends a skill point.
 
 local function allocate(slot)
     local D = _G.ATH_ACTIVE_DUEL
@@ -7,6 +7,6 @@ local function allocate(slot)
     Inv.try_allocate_skill(D, slot)
 end
 
-for i = 1, 15 do
+for i = 1, 3 do
     _G["on_skill_" .. i] = function() allocate(i) end
 end

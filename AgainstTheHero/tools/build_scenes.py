@@ -286,116 +286,201 @@ CONTROLS_HELP = (
     "Gear hub · Gear btn / Esc"
 )
 
+SETTINGS_SUBTABS = [
+    ("game", "GAME", "on_sub_game"),
+    ("audio", "AUDIO", "on_sub_audio"),
+    ("graphics", "GRAPHICS", "on_sub_graphics"),
+    ("controls", "CONTROLS", "on_sub_controls"),
+]
+
 
 def add_hub_settings(b):
-    """2×2 Settings panels — top row y=+40, bottom row y=-300 (gap under tabs)."""
+    """Settings with GAME / AUDIO / GRAPHICS / CONTROLS sub-tabs (one page at a time)."""
     b.group("Settings", "Pause Menu", enabled=False)
 
-    # +Y is down. Top row just under tabs (~-394); bottom row further down.
-    panel_w, panel_h = 420.0, 250.0
-    top_y, bot_y = -200.0, 140.0
-    lx, rx = -430.0, 430.0
-    panels = [
-        ("Set Game Panel", "set_game_panel", lx, top_y, "GAME", ACCENT),
-        ("Set Audio Panel", "set_audio_panel", rx, top_y, "AUDIO", HDR_BORDER),
-        ("Set Gfx Panel", "set_gfx_panel", lx, bot_y, "GRAPHICS", HDR_BORDER),
-        ("Set Controls Panel", "set_controls_panel", rx, bot_y, "CONTROLS & HELPERS", HDR_BORDER),
-    ]
-    for name, wid, px, py, hdr, border in panels:
-        b.ui_node(name, "Settings", "panel", wid, panel_w, panel_h, px, py,
-                  fill=STATS_BG, border=border, no_input=True)
-        b.ui_node(name + " Header", "Settings", "text", wid + "_hdr",
-                  panel_w - 24.0, 28.0, px, py - panel_h * 0.5 + 22.0,
-                  body=hdr, text_color=[0.96, 0.90, 0.66, 1.0], font_scale=1.0,
-                  text_align_h=2, text_align_v=2, no_input=True, bring_to_front=True)
+    # Sub-tab bar just under the main hub tabs (tab_y=-420).
+    sub_y = -340.0
+    sub_w, sub_h, sub_pitch = 200.0, 44.0, 220.0
+    sub_left = -((len(SETTINGS_SUBTABS) - 1) * sub_pitch) * 0.5
+    for i, (key, label, action) in enumerate(SETTINGS_SUBTABS):
+        cx = sub_left + i * sub_pitch
+        b.ui_node("Set Sub " + label.title(), "Settings", "button", "set_sub_" + key,
+                  sub_w, sub_h, cx, sub_y, flags=528, script=SETTINGS_SCRIPT,
+                  action_function=action, title=label,
+                  fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+                  font_scale=0.9, text_align_h=2, text_align_v=2, bring_to_front=True)
 
-    # Game panel innards (all inside lx±panel_w/2).
-    b.ui_node("Set Lang EN", "Settings", "button", "set_lang_en",
-              80.0, 36.0, lx - 110.0, top_y - 40.0, flags=528, script=SETTINGS_SCRIPT,
+    # Shared full-width page frame (one visible subgroup at a time).
+    page_w, page_h = 920.0, 500.0
+    page_x, page_y = 0.0, -20.0
+    top = page_y - page_h * 0.5
+
+    def page(group_name, enabled, header, border=HDR_BORDER):
+        b.group(group_name, "Settings", enabled=enabled)
+        b.ui_node(group_name + " Panel", group_name, "panel", group_name.lower().replace(" ", "_") + "_panel",
+                  page_w, page_h, page_x, page_y, fill=STATS_BG, border=border, no_input=True)
+        b.ui_node(group_name + " Header", group_name, "text", group_name.lower().replace(" ", "_") + "_hdr",
+                  page_w - 40.0, 36.0, page_x, top + 30.0,
+                  body=header, text_color=[0.96, 0.90, 0.66, 1.0], font_scale=1.2,
+                  text_align_h=2, text_align_v=2, no_input=True, bring_to_front=True)
+        return top + 80.0  # first content row y
+
+    # --- GAME ---
+    y0 = page("Set Game", True, "GAME", ACCENT)
+    b.ui_node("Set Lang EN", "Set Game", "button", "set_lang_en",
+              100.0, 44.0, -220.0, y0, flags=528, script=SETTINGS_SCRIPT,
               action_function="on_lang_en", title="EN",
               fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
-              font_scale=0.9, text_align_h=2, text_align_v=2, bring_to_front=True)
-    b.ui_node("Set Lang EL", "Settings", "button", "set_lang_el",
-              80.0, 36.0, lx - 20.0, top_y - 40.0, flags=528, script=SETTINGS_SCRIPT,
+              font_scale=1.0, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Lang EL", "Set Game", "button", "set_lang_el",
+              100.0, 44.0, -90.0, y0, flags=528, script=SETTINGS_SCRIPT,
               action_function="on_lang_el", title="EL",
               fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
-              font_scale=0.9, text_align_h=2, text_align_v=2, bring_to_front=True)
-    b.ui_node("Set Damage Text", "Settings", "button", "set_damage_text",
-              160.0, 36.0, lx + 120.0, top_y - 40.0, flags=528, script=SETTINGS_SCRIPT,
+              font_scale=1.0, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Damage Text", "Set Game", "button", "set_damage_text",
+              220.0, 44.0, 140.0, y0, flags=528, script=SETTINGS_SCRIPT,
               action_function="on_damage_text", title="DAMAGE",
               fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
-              font_scale=0.85, text_align_h=2, text_align_v=2, bring_to_front=True)
-    b.ui_node("Set Loot Header", "Settings", "text", "set_loot_hdr",
-              360.0, 24.0, lx, top_y + 10.0, body="LOOT FILTER",
-              text_color=[0.72, 0.74, 0.80, 1.0], font_scale=0.9,
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    b.ui_node("Set Loot Header", "Set Game", "text", "set_loot_hdr",
+              700.0, 32.0, 0.0, y0 + 70.0, body="LOOT FILTER",
+              text_color=[0.72, 0.74, 0.80, 1.0], font_scale=1.0,
               text_align_h=2, text_align_v=2, no_input=True, bring_to_front=True)
-    loot_w, loot_gap = 72.0, 6.0
+    loot_w, loot_gap = 120.0, 14.0
     loot_span = 5 * loot_w + 4 * loot_gap
-    loot_x0 = lx - loot_span * 0.5 + loot_w * 0.5
+    loot_x0 = -loot_span * 0.5 + loot_w * 0.5
     for i, (key, btn_title, fill, text_color) in enumerate(LOOT_RARITY):
         cx = loot_x0 + i * (loot_w + loot_gap)
-        b.ui_node("Set Loot " + key.title(), "Settings", "button", "set_loot_" + key,
-                  loot_w, 36.0, cx, top_y + 60.0, flags=528, script=SETTINGS_SCRIPT,
+        b.ui_node("Set Loot " + key.title(), "Set Game", "button", "set_loot_" + key,
+                  loot_w, 44.0, cx, y0 + 120.0, flags=528, script=SETTINGS_SCRIPT,
                   action_function="on_loot_" + key, title=btn_title,
                   fill=fill, border=text_color, accent=text_color, text_color=text_color,
-                  font_scale=0.8, text_align_h=2, text_align_v=2, bring_to_front=True)
+                  font_scale=0.9, text_align_h=2, text_align_v=2, bring_to_front=True)
 
-    for i, (key, label) in enumerate([("master", "MASTER"), ("music", "MUSIC"), ("sfx", "SFX")]):
-        row_y = top_y - 50.0 + i * 50.0
-        b.ui_node("Set Vol " + label + " Label", "Settings", "text", "set_vol_" + key + "_lbl",
-                  110.0, 28.0, rx - 120.0, row_y, body=label,
-                  text_color=HDR_TEXT, font_scale=0.9, text_align_h=0, text_align_v=2,
-                  no_input=True, bring_to_front=True)
-        b.ui_node("Set Vol " + label + " Down", "Settings", "button", "set_vol_" + key + "_down",
-                  40.0, 36.0, rx + 20.0, row_y, flags=528, script=SETTINGS_SCRIPT,
-                  action_function="on_vol_" + key + "_down", title="-",
-                  fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
-                  font_scale=1.1, text_align_h=2, text_align_v=2, bring_to_front=True)
-        b.ui_node("Set Vol " + label + " Up", "Settings", "button", "set_vol_" + key + "_up",
-                  40.0, 36.0, rx + 120.0, row_y, flags=528, script=SETTINGS_SCRIPT,
-                  action_function="on_vol_" + key + "_up", title="+",
-                  fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
-                  font_scale=1.1, text_align_h=2, text_align_v=2, bring_to_front=True)
-
-    # Render/post (AA, shadows, IBL, …) are authored on the scene in the editor.
-    b.ui_node("Set Gfx Note", "Settings", "text", "set_gfx_note",
-              360.0, 80.0, lx, bot_y + 20.0,
-              body="Render settings are\nedited in the scene.",
-              text_color=[0.70, 0.74, 0.80, 1.0], font_scale=0.9,
-              text_align_h=2, text_align_v=2, no_input=True, bring_to_front=True)
-
-    b.ui_node("Set Controls Help", "Settings", "text", "set_controls_help",
-              360.0, 110.0, rx, bot_y + 10.0, body=CONTROLS_HELP,
-              text_color=[0.78, 0.80, 0.86, 1.0], font_scale=0.85,
-              text_align_h=2, text_align_v=0, no_input=True, bring_to_front=True)
-    b.ui_node("Set Shake", "Settings", "button", "set_shake",
-              260.0, 36.0, rx, bot_y + 90.0, flags=528, script=SETTINGS_SCRIPT,
+    b.ui_node("Set Shake", "Set Game", "button", "set_shake",
+              280.0, 48.0, 0.0, y0 + 200.0, flags=528, script=SETTINGS_SCRIPT,
               action_function="on_shake", title="SCREEN SHAKE",
               fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
-              font_scale=0.85, text_align_h=2, text_align_v=2, bring_to_front=True)
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    # --- AUDIO ---
+    y0 = page("Set Audio", False, "AUDIO")
+    for i, (key, label) in enumerate([("master", "MASTER"), ("music", "MUSIC"), ("sfx", "SFX")]):
+        row_y = y0 + i * 70.0
+        b.ui_node("Set Vol " + label + " Label", "Set Audio", "text", "set_vol_" + key + "_lbl",
+                  280.0, 40.0, -160.0, row_y, body=label,
+                  text_color=HDR_TEXT, font_scale=1.1, text_align_h=0, text_align_v=2,
+                  no_input=True, bring_to_front=True)
+        b.ui_node("Set Vol " + label + " Down", "Set Audio", "button", "set_vol_" + key + "_down",
+                  56.0, 48.0, 120.0, row_y, flags=528, script=SETTINGS_SCRIPT,
+                  action_function="on_vol_" + key + "_down", title="-",
+                  fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+                  font_scale=1.3, text_align_h=2, text_align_v=2, bring_to_front=True)
+        b.ui_node("Set Vol " + label + " Up", "Set Audio", "button", "set_vol_" + key + "_up",
+                  56.0, 48.0, 220.0, row_y, flags=528, script=SETTINGS_SCRIPT,
+                  action_function="on_vol_" + key + "_up", title="+",
+                  fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+                  font_scale=1.3, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    # --- GRAPHICS ---
+    y0 = page("Set Graphics", False, "GRAPHICS")
+    bw, bh = 280.0, 48.0
+    b.ui_node("Set Gfx Fxaa", "Set Graphics", "button", "set_gfx_fxaa",
+              bw, bh, -160.0, y0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_fxaa", title="FXAA",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Gfx Taa", "Set Graphics", "button", "set_gfx_taa",
+              bw, bh, 160.0, y0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_taa", title="TAA",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Gfx Grade", "Set Graphics", "button", "set_gfx_grade",
+              bw, bh, -160.0, y0 + 70.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_grade", title="COLOR GRADE",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.9, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Gfx Disney", "Set Graphics", "button", "set_gfx_disney",
+              bw, bh, 160.0, y0 + 70.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_disney", title="DISNEY PBR",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.9, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    b.ui_node("Set Gfx Scale Label", "Set Graphics", "text", "set_gfx_scale_lbl",
+              280.0, 40.0, -160.0, y0 + 160.0, body="SCALE  100%",
+              text_color=HDR_TEXT, font_scale=1.05, text_align_h=0, text_align_v=2,
+              no_input=True, bring_to_front=True)
+    b.ui_node("Set Gfx Scale Down", "Set Graphics", "button", "set_gfx_scale_down",
+              56.0, 48.0, 120.0, y0 + 160.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_scale_down", title="-",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=1.3, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Gfx Scale Up", "Set Graphics", "button", "set_gfx_scale_up",
+              56.0, 48.0, 220.0, y0 + 160.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_scale_up", title="+",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=1.3, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    b.ui_node("Set Gfx Time Label", "Set Graphics", "text", "set_gfx_time_lbl",
+              280.0, 40.0, -160.0, y0 + 230.0, body="TIME  100%",
+              text_color=HDR_TEXT, font_scale=1.05, text_align_h=0, text_align_v=2,
+              no_input=True, bring_to_front=True)
+    b.ui_node("Set Gfx Time Down", "Set Graphics", "button", "set_gfx_time_down",
+              56.0, 48.0, 120.0, y0 + 230.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_time_down", title="-",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=1.3, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Gfx Time Up", "Set Graphics", "button", "set_gfx_time_up",
+              56.0, 48.0, 220.0, y0 + 230.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_time_up", title="+",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=1.3, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    b.ui_node("Set Gfx Present", "Set Graphics", "button", "set_gfx_present",
+              520.0, 48.0, 0.0, y0 + 310.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_gfx_present", title="PRESENT  VSYNC",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
+
+    # --- CONTROLS ---
+    y0 = page("Set Controls", False, "CONTROLS & HELPERS")
+    b.ui_node("Set Controls Help", "Set Controls", "text", "set_controls_help",
+              700.0, 160.0, 0.0, y0 + 40.0, body=CONTROLS_HELP,
+              text_color=[0.78, 0.80, 0.86, 1.0], font_scale=1.05,
+              text_align_h=2, text_align_v=0, no_input=True, bring_to_front=True)
+    b.ui_node("Set Show Fps", "Set Controls", "button", "set_show_fps",
+              280.0, 48.0, -160.0, y0 + 220.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_show_fps", title="SHOW FPS",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
+    b.ui_node("Set Dev Mode", "Set Controls", "button", "set_dev_mode",
+              280.0, 48.0, 160.0, y0 + 220.0, flags=528, script=SETTINGS_SCRIPT,
+              action_function="on_dev_mode", title="DEV MODE",
+              fill=HDR_FILL, border=HDR_BORDER, accent=ACCENT, text_color=HDR_TEXT,
+              font_scale=0.95, text_align_h=2, text_align_v=2, bring_to_front=True)
 
 
 def add_hub_skills(b):
-    """Basic specialization tree: 3 branches × 5 ranks going downward."""
+    """Three specialization icons — small hit targets; frame/icon/level from Lua."""
     b.group("Skills", "Pause Menu", enabled=False)
     b.ui_node("Skills Header", "Skills", "text", "skills_header",
               900.0, 50.0, 0.0, -340.0, fill=HDR_FILL, border=ACCENT,
               body="SKILLS", text_color=HDR_TEXT, font_scale=1.5,
               text_align_h=2, text_align_v=2, no_input=True)
-    cols, ranks = 3, 5
-    card_w, card_h = 280.0, 88.0
-    pitch_x, pitch_y = 300.0, 98.0
+    cols = 3
+    card = 72.0
+    pitch_x = 110.0
     grid_left = -((cols - 1) * pitch_x) * 0.5
-    top_y = -250.0
-    for i in range(1, cols * ranks + 1):
-        col, row = (i - 1) % cols, (i - 1) // cols
-        cx = grid_left + col * pitch_x
-        cy = top_y + row * pitch_y
+    top_y = -220.0
+    clear = [0.0, 0.0, 0.0, 0.0]
+    for i in range(1, cols + 1):
+        cx = grid_left + (i - 1) * pitch_x
         b.ui_node("Skill Node " + str(i), "Skills", "button", "hub_skill_" + str(i),
-                  card_w, card_h, cx, cy, flags=528, script=SKILLS_SCRIPT,
-                  action_function="on_skill_" + str(i), title="", body="",
-                  fill=CARD_FILL, border=CARD_BORDER, accent=ACCENT,
-                  text_color=[0.9, 0.92, 0.96, 1.0], font_scale=0.85,
+                  card, card, cx, top_y, flags=528, script=SKILLS_SCRIPT,
+                  action_function="on_skill_" + str(i), title=" ", body="",
+                  fill=clear, border=clear, accent=clear,
+                  text_color=clear, font_scale=0.01,
                   text_align_h=2, text_align_v=2, bring_to_front=True)
 
 
@@ -410,7 +495,8 @@ def add_pause_menu(b):
     # (Panel would draw `label` in the accent colour at the top-left), so every
     # text-bearing inventory node is type "text" driven by `body`.
     b.ui_node("Pause Title", "Pause Menu", "text", "pause_title",
-              1500.0, 72.0, 0.0, -500.0, fill=TITLE_FILL, border=ACCENT,
+              # Keep clear of the authored top-right FPS clock (~340px + margin).
+              1100.0, 72.0, 0.0, -500.0, fill=TITLE_FILL, border=ACCENT,
               body="GEAR HUB", text_color=[0.96, 0.92, 0.70, 1.0],
               font_scale=1.8, text_align_h=2, text_align_v=2, no_input=True,
               bring_to_front=True)
@@ -545,7 +631,9 @@ def add_pause_menu(b):
 
 def build_game(path, scene_settings=None):
     doc = load(path)
-    if scene_settings is not None:
+    # Keep game.pescene Scene Settings (authored / in-game saved). Do not stamp
+    # intro settings over graphics knobs players persist via scene.save.
+    if scene_settings is not None and "settings" not in doc:
         apply_scene_settings(doc, scene_settings)
     b = Builder(doc)
     # Environment / systems stay at root.
@@ -571,6 +659,38 @@ def build_game(path, scene_settings=None):
               "HUD FPS", "HUD Gear", "HUD Gear Hit"]:
         if n in b.src:
             b.keep(n, "HUD")
+    # HP fill must match BG width (authoring drift left fill short).
+    bg_w = 920.0
+    for name, _parent, node in b.specs:
+        if name == "HUD HP BG":
+            m = list(node["local_matrix"])
+            bg_w = m[0] or bg_w
+            break
+    for name, _parent, node in b.specs:
+        if name == "HUD HP Fill":
+            m = list(node["local_matrix"])
+            m[0] = bg_w
+            m[12] = -bg_w * 0.5  # left edge of centered BG
+            node["local_matrix"] = m
+            break
+    # Gear hub title is bring_to_front; keep the FPS frame + gear above it.
+    # FPS panel: half prior 340x96 (label stays font_scale 0.5 in hud_fps.lua).
+    # Gear: 2/3 of prior 120px, tucked under FPS so it clears arena borders.
+    for name, _parent, node in b.specs:
+        if name in ("HUD FPS", "HUD Gear", "HUD Gear Hit"):
+            ui = node.get("runtime_ui")
+            if isinstance(ui, dict):
+                ui["bring_to_front"] = True
+        if name == "HUD FPS":
+            m = list(node["local_matrix"])
+            m[0], m[5] = 170.0, 48.0
+            m[12], m[13] = -40.0, 24.0
+            node["local_matrix"] = m
+        if name == "HUD Gear":
+            m = list(node["local_matrix"])
+            m[0], m[5] = 80.0, 80.0
+            m[12], m[13] = -40.0, 80.0
+            node["local_matrix"] = m
 
     # Authored pause/inventory screen (was script-drawn).
     add_pause_menu(b)

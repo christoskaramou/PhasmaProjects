@@ -18,7 +18,7 @@ end
 
 function on_enter_map()
     local D = _G.ATH_ACTIVE_DUEL
-    if not D then return end
+    if not D or (D.console and D.console.visible) then return end
     if D.state == "town" and D.start_map then
         D:start_map()
     elseif D.state == "pause" and D._between_wave and D.resume_combat then
