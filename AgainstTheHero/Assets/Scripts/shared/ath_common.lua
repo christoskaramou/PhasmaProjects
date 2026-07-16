@@ -40,6 +40,12 @@ function Common.load_script(path, label, env, opts)
     return result
 end
 
+local VISUALS_PATH = "Scripts/shared/ath_visuals.lua"
+
+function Common.visuals(env)
+    return rawget(_G, "ATH_VISUALS") or Common.load_script(VISUALS_PATH, "visual manifest", env)
+end
+
 function Common.getenv(name, fallback)
     if os and os.getenv then
         local value = os.getenv(name)
