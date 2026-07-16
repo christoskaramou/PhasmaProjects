@@ -349,7 +349,7 @@ function Inv.stats_values_text(st)
         pct(st.armor), st.lifesteal or 0.0, st.regen or 0.0)
 end
 
-local SKILL_COLS, SKILL_MAX_RANK = 3, 5
+local SKILL_COLS = 3
 
 function Inv.class_specs(D)
     local Balance = _G.ATH_BALANCE
@@ -361,34 +361,43 @@ function Inv.class_specs(D)
     return {}
 end
 
--- One icon per specialization: slot 1..3 maps directly to the branch.
-function Inv.skill_slot_info(D, slot)
-    local specs = Inv.class_specs(D)
-    local branch = math.floor(slot or 1)
-    if branch < 1 or branch > SKILL_COLS then return nil end
-    local spec = specs[branch]
-    if not spec then return nil end
+-- Hero Grid: one horizontal strip per specialization (top → bottom).
+-- Within a strip, tiers flow left → right; exclusive twins stack in one column.
+local TREE_STEPS = {
+    { "key" }, { "fa" }, { "fb" }, { "ma", "mb" }, { "ta", "tb" }, { "cap" },
+}
+
+local TIER_LABEL = {
+    keystone = "KEYSTONE", foundation = "FOUNDATION", mutation = "MUTATION",
+    technique = "TECHNIQUE", capstone = "CAPSTONE",
+}
+
+-- Cell state for one node in one spec column.
+function Inv.tree_cell_info(D, spec, node)
+    local hero = D.hero
+    local mine = (D.class_tree_nodes and D:class_tree_nodes()[spec.id]) or {}
+    local have = mine[node.id] or 0
     local pts = math.max(0, math.floor(D.skill_points or 0))
-    local have = ((D.hero and D.hero.specialization_ranks) or {})[spec.id] or 0
-    local card = { specialization = spec.id, max_rank = SKILL_MAX_RANK }
-    local allowed = D.spec_card_allowed and D:spec_card_allowed(card)
-    local can_buy = pts > 0 and have < SKILL_MAX_RANK and allowed
-    local enabled = have > 0 or can_buy
+    local allowed, why
+    if D.tree_node_allowed then allowed, why = D:tree_node_allowed(spec.id, node.id) end
+    local can_buy = pts > 0 and allowed == true
+    local points = 0
+    for _, r in pairs(mine) do points = points + r end
     local status
-    if have >= SKILL_MAX_RANK then
-        status = T("OWNED")
+    if have >= node.max_rank then
+        status = T("MAXED")
     elseif can_buy then
         status = T("CLICK - 1 pt")
-    elseif not allowed and have == 0 then
-        status = T("LOCKED")
-    elseif have > 0 then
-        status = T("OWNED")
+    elseif allowed and pts < 1 then
+        status = T("No skill points.")
     else
-        status = "-"
+        status = why or T("LOCKED")
     end
     return {
-        spec = spec, branch = branch, have = have,
-        can_buy = can_buy, allowed = allowed, enabled = enabled, status = status,
+        spec = spec, node = node, have = have, points = points,
+        allowed = allowed == true, can_buy = can_buy, status = status,
+        primary = hero and hero.primary_spec == spec.id,
+        class_id = D.hero_class, alloc = mine,
     }
 end
 
@@ -396,103 +405,359 @@ local function pct(v)
     return string.format("%d%%", math.floor((v or 0.0) * 100.0 + 0.5))
 end
 
--- Combat values at a given rank (mirrors Duel:apply_on_hit_specializations).
-function Inv.spec_rank_lines(spec, rank)
-    rank = math.max(0, math.floor(rank or 0))
-    if not spec or rank < 1 then return { T("(none)") } end
+local function on_hit()
+    local B = _G.ATH_BALANCE
+    return (B and B.on_hit) or { tick = 0.5, duration = 4.0, spread_radius = 4.0 }
+end
+
+-- Forward-declared; filled below so spec_fx_lines can reference it.
+local FX_DESC
+
+-- Effective rider summary from the computed spec_fx (mirrors the duel runtime).
+-- Every line is a concrete number — no prose-only briefing.
+function Inv.spec_fx_lines(spec, fx)
+    if not spec or not fx or (fx.points or 0) < 1 then return { T("(none)") } end
     local kind = spec.kind
     local lines = {}
+    local oh = on_hit()
+    local dur = fx.duration or spec.duration or oh.duration
     if kind == "dot" then
-        lines[#lines + 1] = T("Hit %s / DoT %s of hit",
-            pct((spec.initial_per_rank or 0) * rank),
-            pct((spec.tick_per_rank or 0) * rank))
-        if spec.spread then lines[#lines + 1] = T("Spreads on death (50%)") end
+        local spread = spec.spread and 0.5 or 1.0
+        lines[#lines + 1] = T("On hit: %s of hit damage", pct((fx.initial or 0) * spread))
+        lines[#lines + 1] = T("DoT: %s of hit every %.1fs for %.0fs",
+            pct((fx.tick or 0) * spread), oh.tick, dur)
+        if spec.spread then
+            lines[#lines + 1] = T("Death spread: %.0fm, %d target, 50%% strength",
+                (fx.spread_plus and fx.spread_plus.radius) or oh.spread_radius,
+                (fx.spread_plus and fx.spread_plus.targets) or 1)
+        end
     elseif kind == "stack_dot" then
-        local per = (spec.stack_base or 0.20) + (rank - 1) * (spec.stack_rank_add or 0.10)
-        lines[#lines + 1] = T("Stack tick %s of hit (max %d)",
-            pct(per), spec.max_stacks or 5)
+        local max_s = fx.max_stacks or spec.max_stacks or 5
+        local per = fx.stack_per or 0.20
+        local vals = {}
+        for s = 1, max_s do vals[#vals + 1] = pct(per * s) end
+        lines[#lines + 1] = T("Per stack tick: %s of hit (1-%d: %s)",
+            pct(per), max_s, table.concat(vals, "/"))
+        lines[#lines + 1] = T("Applies on hit + every %.1fs for %.0fs", oh.tick, dur)
+        if fx.fast_tick_max then
+            lines[#lines + 1] = T("At max stacks: tick every %.2fs", fx.fast_tick_max.tick or 0.35)
+        end
     elseif kind == "frost" then
-        lines[#lines + 1] = T("Frost hit %s, slow %s",
-            pct((spec.damage_per_rank or 0) * rank),
-            pct((spec.slow_per_rank or 0) * rank))
+        lines[#lines + 1] = T("Frost hit: %s of hit", pct(fx.damage))
+        lines[#lines + 1] = T("Slow move/attack: -%s for %.0fs",
+            pct(math.min(0.75, fx.slow or 0)), dur)
     elseif kind == "shadow" then
-        lines[#lines + 1] = T("Pure hit %s, smoke miss %s",
-            pct((spec.damage_per_rank or 0) * rank),
-            pct((spec.miss_per_rank or 0) * rank))
+        lines[#lines + 1] = T("Pure hit: %s of hit", pct(fx.damage))
+        lines[#lines + 1] = T("Smoke miss chance: %s for %.0fs",
+            pct(math.min(0.75, fx.miss or 0)), dur)
+        if fx.fleet then
+            lines[#lines + 1] = T("Fleet: +%s move while smoked", pct(fx.fleet.move or 0.05))
+        end
     elseif kind == "vampirism" then
-        lines[#lines + 1] = T("Hit %s / DoT %s of hit",
-            pct((spec.initial_per_rank or 0) * rank),
-            pct((spec.tick_per_rank or 0) * rank))
-        lines[#lines + 1] = T("Heal %s of that damage", pct(spec.lifesteal_mult or 0.5))
+        lines[#lines + 1] = T("On hit: %s of hit damage", pct(fx.initial))
+        lines[#lines + 1] = T("DoT: %s of hit every %.1fs for %.0fs",
+            pct(fx.tick), oh.tick, dur)
+        lines[#lines + 1] = T("Heal: %s of rider damage dealt", pct(fx.lifesteal_mult or 0.5))
+        if fx.overheal_shield then
+            lines[#lines + 1] = T("Overheal shield cap: %s max HP", pct(fx.overheal_shield.cap or 0.10))
+        end
     elseif kind == "frenzy" then
-        lines[#lines + 1] = T("Per stack +%s dmg/AS/move (max %d)",
-            pct((spec.stack_per_rank or 0.10) * rank), spec.max_stacks or 5)
+        local max_s = fx.max_stacks or 5
+        lines[#lines + 1] = T("Per stack: +%s damage, +%s attack speed, +%s move",
+            pct(fx.dmg_per_stack), pct(fx.as_per_stack), pct(fx.move_per_stack))
+        lines[#lines + 1] = T("Max %d stacks (%.0fs): +%s dmg / +%s AS / +%s move",
+            max_s, fx.duration or 3.0,
+            pct((fx.dmg_per_stack or 0) * max_s),
+            pct((fx.as_per_stack or 0) * max_s),
+            pct((fx.move_per_stack or 0) * max_s))
     elseif kind == "daze" then
-        lines[#lines + 1] = T("Enemy -%s dmg/AS/move",
-            pct((spec.reduction_per_rank or 0) * rank))
+        lines[#lines + 1] = T("Enemy damage/AS/move: -%s for %.0fs",
+            pct(math.min(0.75, fx.reduction or 0)), dur)
     elseif kind == "explosion" or kind == "shockwave" then
-        local dmg = (spec.damage or 0) + (rank - 1) * (spec.damage_per_rank or 0)
-        lines[#lines + 1] = T("Death blast %s of hit (%.0fm)", pct(dmg), spec.radius or 3.0)
+        lines[#lines + 1] = T("Death blast: %s of hit in %.1fm", pct(fx.damage), fx.radius or 3.0)
+        if fx.stun_wave then
+            lines[#lines + 1] = T("Survivors slowed %s for %.0fs",
+                pct(fx.stun_wave.daze or 0.2), fx.stun_wave.dur or 2.0)
+        end
     elseif kind == "summon" then
-        local cap = (spec.cap_base or 2) + (rank - 1) * (spec.cap_per_rank or 1)
-        lines[#lines + 1] = T("Minion cap %d", cap)
+        local Balance = _G.ATH_BALANCE
+        local sk = Balance and Balance.minions and Balance.minions.skeleton
+        lines[#lines + 1] = T("Skeleton-mage cap: %d", fx.cap or 2)
+        if sk then
+            lines[#lines + 1] = T("Each: %s hero DPS, %s hero HP, %.0fm range",
+                pct(sk.dps_mult), pct(sk.hp_mult), sk.range or 6.0)
+            lines[#lines + 1] = T("Attack every %.1fs, lasts %.0fs",
+                sk.attack_interval or 0.8, sk.duration or 30.0)
+        end
+        if fx.minion_dmg then
+            lines[#lines + 1] = T("Minion damage: %s", pct(fx.minion_dmg.mult or 1.25))
+        end
+        if fx.legion then
+            lines[#lines + 1] = T("Legion: +%d cap, minions at %s damage",
+                fx.legion.cap or 1, pct(fx.legion.dmg_mult or 0.8))
+        end
     elseif kind == "pierce" then
-        local dmg = (spec.damage or 0) + (rank - 1) * (spec.damage_per_rank or 0)
-        lines[#lines + 1] = T("Pierce %s of hit", pct(dmg))
+        lines[#lines + 1] = T("Pierce hit: %s of hit (carries on-hit)", pct(fx.damage))
+        if (fx.range_add or 0) > 0 then
+            lines[#lines + 1] = T("Attack range: +%.1fm", fx.range_add)
+        end
+        if fx.skewer then
+            lines[#lines + 1] = T("Skewer: +%s damage taken for %.0fs",
+                pct(fx.skewer.amp or 0.08), fx.skewer.dur or 3.0)
+        end
+        if fx.cripple then
+            lines[#lines + 1] = T("Cripple: -%s move for %.0fs",
+                pct(fx.cripple.slow or 0.15), fx.cripple.dur or 2.0)
+        end
     elseif kind == "shard_cone" then
-        local dmg = (spec.damage or 0) + (rank - 1) * (spec.damage_per_rank or 0)
-        local n = (spec.shards_base or 4) + (rank - 1) * (spec.shards_per_rank or 1)
-        lines[#lines + 1] = T("%d rock shards forward", n)
-        lines[#lines + 1] = T("Each shard %s of hit (no riders)", pct(dmg))
-        lines[#lines + 1] = T("Damages every enemy touched")
+        lines[#lines + 1] = T("%d shards, each %s of hit (no riders)",
+            fx.shards or 4, pct(fx.damage))
+        lines[#lines + 1] = T("Cone %.0f deg, range %.1fm, speed %.0f",
+            fx.cone_deg or 18.0, fx.range or 5.0, fx.speed or 15.0)
     elseif kind == "preservation" then
-        lines[#lines + 1] = T("On damage taken: -%s dmg",
-            pct((spec.damage_reduction_per_rank or 0) * rank))
-        lines[#lines + 1] = T("Regen %s max HP over %.0fs",
-            pct((spec.heal_fraction_per_rank or 0) * rank),
-            spec.heal_seconds or 5.0)
+        local seconds = (fx.heal_seconds or 5.0) + (fx.long_guard and fx.long_guard.dur or 0.0)
+        lines[#lines + 1] = T("On damage taken: -%s damage for %.0fs", pct(fx.dr), seconds)
+        lines[#lines + 1] = T("Regen %s max HP over %.0fs", pct(fx.heal), seconds)
     else
         lines[#lines + 1] = T(tostring(spec.desc or spec.id))
     end
-    if spec.move_speed_per_rank then
-        lines[#lines + 1] = T("Move +%s", pct((spec.move_speed_per_rank or 0) * rank))
+    if fx.rider_heal then
+        lines[#lines + 1] = T("Rider heal: %s of damage (cap %s max HP/s)",
+            pct(fx.rider_heal.mult or 0.05), pct(fx.rider_heal.cap or 0.005))
+    end
+    if fx.status_dmg_down then
+        lines[#lines + 1] = T("Afflicted deal -%s to you", pct(fx.status_dmg_down.pct or 0.08))
+    end
+    if fx.elite_mult then
+        lines[#lines + 1] = T("Elites/bosses: +%s rider damage",
+            pct((fx.elite_mult.mult or 1.2) - 1.0))
+    end
+    if fx.capstone and FX_DESC then
+        local cap = fx.capstone
+        local desc = FX_DESC[cap.kind]
+        if desc then lines[#lines + 1] = T("Capstone: %s", desc(cap.params or {})) end
     end
     return lines
 end
 
+-- Per-node effect description (foundation adds + the named mechanics).
+local ADD_LABEL = {
+    initial = "hit damage", tick = "tick damage", stack_per = "per-stack tick",
+    damage = "damage", slow = "slow", miss = "miss chance",
+    reduction = "enemy dmg/AS/move cut", dr = "damage reduction",
+    heal = "regen share", dmg_per_stack = "damage per stack",
+    as_per_stack = "attack speed per stack", move_per_stack = "move per stack",
+}
+
+FX_DESC = {
+    spread_plus = function(p) return T("Death spread: %.1fm, %d targets (copies don't re-spread).", p.radius or 5.5, p.targets or 2) end,
+    elite_mult = function(p) return T("+%s rider damage vs elites and bosses.", pct((p.mult or 1.2) - 1.0)) end,
+    fast_tick_max = function(p) return T("At max stacks the dot ticks every %.2fs.", p.tick or 0.35) end,
+    double_stack_full = function() return T("Hits on healthy (95%+) targets add two stacks.") end,
+    skewer = function(p) return T("Pierced enemies take +%s from you for %.0fs.", pct(p.amp or 0.08), p.dur or 3.0) end,
+    longshot = function(p) return T("+%.1fm attack range.", p.range or 1.5) end,
+    relentless = function(p) return T("Stacks last %.0fs and decay one per second.", p.dur or 5.0) end,
+    sixth_gear = function(p) return T("+%d maximum stack.", p.stacks or 1) end,
+    deep_slow = function(p) return T("+%s stronger slow.", pct(p.slow or 0.12)) end,
+    brittle = function(p) return T("Slowed enemies take +%s from you.", pct(p.amp or 0.08)) end,
+    blind = function(p) return T("+%s smoke miss chance.", pct(p.miss or 0.08)) end,
+    assassin = function(p) return T("+%s rider damage vs healthy (95%%+) targets.", pct((p.mult or 1.2) - 1.0)) end,
+    concussion = function(p) return T("Daze cuts another %s.", pct(p.reduction or 0.05)) end,
+    lasting = function(p) return T("Status lasts +%.0fs.", p.dur or 2.0) end,
+    blast_radius = function(p) return T("Blast radius +%.1fm.", p.add or 1.5) end,
+    stun_wave = function(p) return T("The wave slows survivors %s for %.0fs.", pct(p.daze or 0.2), p.dur or 2.0) end,
+    minion_dmg = function(p) return T("Minions deal +%s damage.", pct((p.mult or 1.25) - 1.0)) end,
+    legion = function(p) return T("+%d minion cap; minions deal %s damage.", p.cap or 1, pct(p.dmg_mult or 0.8)) end,
+    lifesteal_plus = function(p) return T("+%s of rider damage healed.", pct(p.add or 0.1)) end,
+    overheal_shield = function(p) return T("Overhealing grants a shield up to %s max HP.", pct(p.cap or 0.10)) end,
+    bulwark = function(p) return T("+%s damage reduction while guarding.", pct(p.dr or 0.05)) end,
+    second_skin = function(p) return T("+%s max HP regenerated per guard.", pct(p.heal or 0.05)) end,
+    wide_spray = function(p) return T("Cone +%.0f deg, +%d shard.", p.cone or 12.0, p.shards or 1) end,
+    dense_cores = function(p) return T("Shards hit +%s harder.", pct(p.dmg or 0.10)) end,
+    status_dmg_down = function(p) return T("Afflicted enemies deal -%s to you.", pct(p.pct or 0.08)) end,
+    rider_heal = function(p) return T("Heal %s of this rider's damage (cap %s max HP/s).", pct(p.mult or 0.05), pct(p.cap or 0.005)) end,
+    cripple = function(p) return T("Pierced enemies are slowed %s for %.0fs.", pct(p.slow or 0.15), p.dur or 2.0) end,
+    punch_through = function(p) return T("Pierce +%s damage, +%.1fm range.", pct(p.dmg or 0.05), p.range or 0.5) end,
+    dr_at_max = function(p) return T("At max stacks: +%s damage reduction.", pct(p.dr or 0.08)) end,
+    kill_heal_max = function(p) return T("Kills at max stacks heal %s max HP (cap %s/s).", pct(p.heal or 0.01), pct(p.cap or 0.03)) end,
+    kill_heal = function(p) return T("Kills heal %s max HP (cap %s/s).", pct(p.heal or 0.005), pct(p.cap or 0.02)) end,
+    long_status = function(p) return T("Status lasts +%.0fs.", p.dur or 1.0) end,
+    fleet = function(p) return T("+%s move speed while smoke is out.", pct(p.move or 0.05)) end,
+    blast_dmg = function(p) return T("Blast damage +%s of hit.", pct(p.add or 0.10)) end,
+    bone_armor = function(p) return T("+%s damage reduction per minion (cap %s).", pct(p.dr or 0.01), pct(p.cap or 0.06)) end,
+    soul_harvest = function(p) return T("Kills heal %s max HP (cap %s/s).", pct(p.heal or 0.005), pct(p.cap or 0.02)) end,
+    shard_slow = function(p) return T("Shards slow %s for %.0fs.", pct(p.slow or 0.15), p.dur or 2.0) end,
+    long_guard = function(p) return T("Guard window +%.0fs.", p.dur or 1.0) end,
+    proc_bonus = function(p) return T("Every %dth hit: +%s bonus damage%s (%.1fs cooldown).",
+        p.every or 5, pct(p.pct or 1.0),
+        (p.splash_targets or 0) > 0 and T(" + %s splash to %d nearby", pct(p.splash_pct or 0.3), p.splash_targets) or "",
+        p.icd or 2.0) end,
+    max_stack_burst = function(p) return T("Reaching max stacks bursts for +%s of hit%s (per target %.0fs).",
+        pct(p.pct or 1.0), (p.heal or 0.0) > 0.0 and T(", healing %s of it", pct(p.heal)) or "", p.per_target_icd or 4.0) end,
+    full_pierce = function(p) return T("Every %dth pierce hits at 100%% damage.", p.every or 5) end,
+    chain_death = function(p) return T("Blast kills re-blast once at %s.", pct(p.mult or 0.5)) end,
+    death_burst = function(p) return T("Afflicted deaths burst %s of the full dot (%.1fm).", pct(p.pct or 0.5), p.radius or 2.5) end,
+    status_amp = function(p) return p.elites_only
+        and T("Afflicted elites and bosses take +%s from you.", pct(p.amp or 0.2))
+        or T("Afflicted enemies take +%s from you.", pct(p.amp or 0.15)) end,
+    detonate = function(p) return (p.targets or 1) > 1
+        and T("Every %.0fs all afflicted burst for %s of their remaining dot.", p.period or 8.0, pct(p.pct or 0.3))
+        or T("Every %.0fs the strongest dot bursts for %s of its remainder.", p.period or 12.0, pct(p.pct or 1.0)) end,
+    aura_buff = function(p) return T("With %d+ smoked enemies: +%s damage for %.0fs (%.0fs cooldown).",
+        p.min_statused or 3, pct(p.dmg or 0.15), p.dur or 4.0, p.icd or 8.0) end,
+    refresh_on_kill = function(p) return T("Bleeding kills smear a stack onto everything within %.0fm.", p.radius or 5.0) end,
+    debuff_amp = function(p) return T("Daze cuts enemy damage another %s.", pct(p.extra or 0.10)) end,
+    guardian = function(p) return T("Once per map: a lethal hit leaves you at %s HP, immune %.0fs.", pct(p.heal or 0.2), p.immune or 2.0) end,
+    summon_burst = function(p) return T("Boss entry raises %d free skeletons.", p.count or 4) end,
+    low_hp_boost = function(p) return T("Below %s HP: healing riders heal x%.0f.", pct(p.threshold or 0.4), p.mult or 2.0) end,
+    shard_nova = function(p) return T("Every %dth hit: three extra shard sprays (full circle).", p.every or 6) end,
+}
+
+function Inv.node_lines(spec, node, rank, class_id)
+    local Balance = _G.ATH_BALANCE
+    local lines = {}
+    local have = math.max(0, math.floor(rank or 0))
+    if node.tier == "keystone" then
+        -- Full numeric keystone rider (rank-1 coefficients), not the prose blurb.
+        if Balance and Balance.compute_spec_fx then
+            local fx = Balance.compute_spec_fx(class_id, spec, { key = 1 })
+            for _, row in ipairs(Inv.spec_fx_lines(spec, fx)) do
+                lines[#lines + 1] = row
+            end
+        else
+            lines[#lines + 1] = T(tostring(spec.desc or spec.id))
+        end
+        return lines
+    end
+    if node.adds then
+        local max_r = node.max_rank or 1
+        for key, add in pairs(node.adds) do
+            if key == "cap" then
+                lines[#lines + 1] = T("+%d minion cap per rank (max +%d)", add, add * max_r)
+                if have > 0 then
+                    lines[#lines + 1] = T("  Now: +%d", add * have)
+                end
+            elseif key == "shards" then
+                lines[#lines + 1] = T("+%d shard per rank (max +%d)", add, add * max_r)
+                if have > 0 then
+                    lines[#lines + 1] = T("  Now: +%d", add * have)
+                end
+            else
+                lines[#lines + 1] = T("+%s %s per rank (max +%s)",
+                    pct(add), T(ADD_LABEL[key] or key), pct(add * max_r))
+                if have > 0 then
+                    lines[#lines + 1] = T("  Now: +%s", pct(add * have))
+                end
+            end
+        end
+    end
+    if node.fx_kind and FX_DESC[node.fx_kind] then
+        lines[#lines + 1] = FX_DESC[node.fx_kind](node.fx or {})
+    end
+    if #lines == 0 then
+        lines[#lines + 1] = T(tostring(spec.desc or node.name or node.id))
+    end
+    return lines
+end
+
+-- fit=true sizes the tip quad to its longest hard line (the backend never
+-- wraps body text), so bound every line here — this is what keeps the box
+-- width predictable for the screen-edge flip in draw_overlay.
+local TIP_WRAP = 44
+local function tip_wrap_line(s, out)
+    if #s <= TIP_WRAP then
+        out[#out + 1] = s
+        return
+    end
+    local line = ""
+    for word in s:gmatch("%S+") do
+        if line == "" then
+            line = word
+        elseif #line + 1 + #word <= TIP_WRAP then
+            line = line .. " " .. word
+        else
+            out[#out + 1] = line
+            line = "  " .. word -- continuation indent
+        end
+    end
+    if line ~= "" then out[#out + 1] = line end
+end
+
 function Inv.skill_tip(info)
-    if not (info and info.spec) then return "" end
-    local spec = info.spec
-    local have = info.have or 0
+    if not (info and info.spec and info.node) then return "" end
+    local Balance = _G.ATH_BALANCE
+    local spec, node = info.spec, info.node
+    local class_id = info.class_id
     local lines = {
-        T(tostring(spec.name or spec.id)),
-        T("Level %d / %d", have, SKILL_MAX_RANK),
+        T(tostring(node.name or node.id)),
+        T("%s  -  %s", T(TIER_LABEL[node.tier] or node.tier), T(tostring(spec.name or spec.id))),
+        T("Rank %d / %d", info.have or 0, node.max_rank or 1),
         info.status or "",
     }
-    if info.have > 0 then
+    if (node.gate or 0) > 0 then
+        lines[#lines + 1] = T("Unlocks at %d points in this tree.", node.gate)
+    end
+    if node.primary_only then
+        lines[#lines + 1] = T("Primary tree only.")
+    end
+    if node.choice then
+        lines[#lines + 1] = T("Choose one mutation (exclusive).")
+    end
+    if (info.have or 0) > 0 then
         lines[#lines + 1] = T("RIGHT-CLICK - refund 1")
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = T("NOW")
-    for _, row in ipairs(Inv.spec_rank_lines(spec, have)) do
+    lines[#lines + 1] = T("This node:")
+    for _, row in ipairs(Inv.node_lines(spec, node, info.have or 0, class_id)) do
         lines[#lines + 1] = row
     end
-    if have < SKILL_MAX_RANK then
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = T("NEXT (rank %d)", have + 1)
-        for _, row in ipairs(Inv.spec_rank_lines(spec, have + 1)) do
-            lines[#lines + 1] = row
+    -- Live tree totals so the player always sees the full numeric sheet.
+    if Balance and Balance.compute_spec_fx and info.alloc then
+        local fx = Balance.compute_spec_fx(class_id, spec, info.alloc)
+        if (fx.points or 0) > 0 then
+            lines[#lines + 1] = ""
+            lines[#lines + 1] = T("Tree total (%d pts):", fx.points)
+            for _, row in ipairs(Inv.spec_fx_lines(spec, fx)) do
+                lines[#lines + 1] = row
+            end
+        elseif (info.have or 0) < 1 and node.tier == "keystone" then
+            -- Preview already covered under "This node".
         end
     end
     local tip = table.concat(lines, "\n")
-    return (Art and Art.ascii and Art.ascii(tip)) or tip
+    tip = (Art and Art.ascii and Art.ascii(tip)) or tip
+    -- Wrap after ascii-mapping so counted chars are the rendered ones.
+    local wrapped = {}
+    for line in (tip .. "\n"):gmatch("(.-)\n") do tip_wrap_line(line, wrapped) end
+    return table.concat(wrapped, "\n")
 end
 
 function Inv.refresh_skills(D)
     local header = scene.find_model("Skills Header")
     local pts = math.max(0, math.floor(D.skill_points or 0))
     if valid(header) then
+        local Balance = _G.ATH_BALANCE
+        local hero = D.hero
         local body = T("SKILLS - %d pts", pts)
+        if hero and hero.primary_spec and Balance then
+            local rules = Balance.tree_rules or {}
+            local primary = Balance.specialization(D.hero_class, hero.primary_spec)
+            local ppts = D.tree_points and D:tree_points(hero.primary_spec) or 0
+            body = body .. "   " .. T("PRIMARY %s %d/%d",
+                T(tostring(primary and primary.name or hero.primary_spec)),
+                ppts, rules.primary_cap or 9)
+            for spec_id in pairs(D.class_tree_nodes and D:class_tree_nodes() or {}) do
+                if spec_id ~= hero.primary_spec then
+                    local spts = D:tree_points(spec_id)
+                    if spts > 0 then
+                        local spec = Balance.specialization(D.hero_class, spec_id)
+                        body = body .. "   " .. T("SECOND %s %d/%d",
+                            T(tostring(spec and spec.name or spec_id)),
+                            spts, rules.secondary_cap or 5)
+                    end
+                end
+            end
+        end
         header:set_ui({ body = (Art and Art.ascii and Art.ascii(body)) or body })
     end
     local clear = { 0.0, 0.0, 0.0, 0.0 }
@@ -501,7 +766,8 @@ function Inv.refresh_skills(D)
         local n = scene.find_model("Skill Node " .. i)
         if valid(n) and n.set_enabled then n:set_enabled(false) end
     end
-    -- Invisible hit targets: no frame, no caption (space avoids engine "Button").
+    -- Invisible column anchors (their rects place the tree; clicks fall
+    -- through to the keystone row drawn on top).
     for i = 1, SKILL_COLS do
         local n = scene.find_model("Skill Node " .. i)
         if valid(n) then
@@ -515,46 +781,98 @@ function Inv.refresh_skills(D)
     end
 end
 
--- Spend one point into that specialization (next rank).
-function Inv.try_allocate_skill(D, slot)
-    local info = Inv.skill_slot_info(D, slot)
-    if not info then return false end
-    local spec = info.spec
-    if not info.can_buy then
-        if info.have >= SKILL_MAX_RANK then
-            Inv.hub_hint(D, "ALREADY OWNED")
-        elseif not info.allowed then
-            Inv.hub_hint(D, "LOCKED")
-        else
-            Inv.hub_hint(D, tostring(D.skill_points or 0) < 1 and "No skill points." or "LOCKED")
+-- Cell rects: one wide strip per spec, tiers left → right under Skills Header.
+function Inv.tree_layout(D)
+    local Balance = _G.ATH_BALANCE
+    if not Balance then return {} end
+    Art.surface_size()
+    local vp = Art._vp
+    local rh = vp.rh or 1080.0
+    local function S(v) return v * Art.s("hud") end
+    local specs = Inv.class_specs(D)
+    local cells = {}
+    local n = math.min(SKILL_COLS, #specs)
+    if n < 1 then return cells end
+    -- Content band: Skills Header width when present; else span Skill Node plates.
+    local left, right, top
+    for i = 1, n do
+        local a = scene.find_model("Skill Node " .. i)
+        local r = (valid(a) and a.get_ui_rect and a:get_ui_rect()) or nil
+        if r and r.x and r.w and r.w > 1.0 then
+            left = left and math.min(left, r.x) or r.x
+            right = right and math.max(right, r.x + r.w) or (r.x + r.w)
+            top = top and math.min(top, r.y) or r.y
         end
-        return false
     end
-    local ok, msg = D:allocate_skill(spec.id)
+    if not left then return cells end
+    local hdr = scene.find_model("Skills Header")
+    if valid(hdr) and hdr.get_ui_rect then
+        local hr = hdr:get_ui_rect()
+        if hr and hr.w and hr.w > 1.0 then
+            left, right = hr.x, hr.x + hr.w
+            top = math.max(top, hr.y + hr.h + S(10.0))
+        end
+    end
+    -- Nudge left; keep half of the header band so cells stay compact.
+    left = left - S(48.0)
+    local bottom = rh - S(36.0)
+    local row_gap = S(10.0)
+    local n_steps = #TREE_STEPS
+    local col_gap = S(8.0)
+    local fill_row = (bottom - top - (n - 1) * row_gap) / n
+    local fill_step = (right - left - (n_steps - 1) * col_gap) / n_steps
+    local row_h = math.max(S(44.0), fill_row * 0.5)
+    local step_w = math.max(S(72.0), fill_step * 0.5)
+    local twin_gap = S(4.0)
+    for i = 1, n do
+        local spec = specs[i]
+        local tree = Balance.spec_tree(D.hero_class, spec.id)
+        if tree then
+            local y0 = top + (i - 1) * (row_h + row_gap)
+            for si, step in ipairs(TREE_STEPS) do
+                local x0 = left + (si - 1) * (step_w + col_gap)
+                local nt = #step
+                local cell_h = (row_h - (nt - 1) * twin_gap) / nt
+                for k, node_id in ipairs(step) do
+                    local node = tree.by_id[node_id]
+                    if node then
+                        cells[#cells + 1] = {
+                            qid = "sk_n_" .. i .. "_" .. node_id,
+                            x = x0,
+                            y = y0 + (k - 1) * (cell_h + twin_gap),
+                            w = step_w,
+                            h = cell_h,
+                            col = i, spec = spec, node = node,
+                        }
+                    end
+                end
+            end
+        end
+    end
+    return cells
+end
+
+-- Spend one point into a tree node.
+function Inv.try_allocate_skill(D, spec_id, node_id)
+    local ok, msg = D:allocate_skill(spec_id, node_id)
     if not ok then
         Inv.hub_hint(D, tostring(msg or "LOCKED"))
         return false
     end
-    Inv.hub_hint(D, T("%s - rank %d", T(tostring(spec.name)), info.have + 1))
+    Inv.hub_hint(D, T("%s", T(tostring(msg))))
     Inv.refresh_skills(D)
     Inv.refresh(D)
     return true
 end
 
--- Refund one rank from that specialization.
-function Inv.try_deallocate_skill(D, slot)
-    local info = Inv.skill_slot_info(D, slot)
-    if not info then return false end
-    if info.have < 1 then
-        Inv.hub_hint(D, "NOTHING TO REMOVE")
-        return false
-    end
-    local ok, msg = D:deallocate_skill(info.spec.id)
+-- Refund one rank from a tree node.
+function Inv.try_deallocate_skill(D, spec_id, node_id)
+    local ok, msg = D:deallocate_skill(spec_id, node_id)
     if not ok then
-        Inv.hub_hint(D, tostring(msg or "LOCKED"))
+        Inv.hub_hint(D, tostring(msg or "NOTHING TO REMOVE"))
         return false
     end
-    Inv.hub_hint(D, T("%s - rank %d", T(tostring(info.spec.name)), info.have - 1))
+    Inv.hub_hint(D, T("Refunded 1 point."))
     Inv.refresh_skills(D)
     Inv.refresh(D)
     return true
@@ -702,22 +1020,28 @@ function Inv.update(D)
     local tab = D._hub_tab or "map"
     if tab == "skills" then
         local hover
-        for i = 1, SKILL_COLS do
-            local stt = runtime_ui.get_state(SCREEN, "hub_skill_" .. i)
-            if stt and stt.hovered then
-                local info = Inv.skill_slot_info(D, i)
-                if info then
+        local cells = Inv.tree_layout(D)
+        D._tree_cells = cells
+        for _, cell in ipairs(cells) do
+            local stt = runtime_ui.get_state(SCREEN, cell.qid)
+            if stt then
+                if stt.hovered then
+                    local info = Inv.tree_cell_info(D, cell.spec, cell.node)
                     hover = {
-                        slot = i, info = info, mx = stt.mouse_x, my = stt.mouse_y,
+                        cell = cell, info = info, mx = stt.mouse_x, my = stt.mouse_y,
                         tip = Inv.skill_tip(info),
-                        border = (info.spec.accent or { 0.62, 0.34, 0.86, 1.0 }),
+                        border = (cell.spec.accent or { 0.62, 0.34, 0.86, 1.0 }),
                     }
                 end
-            end
-            if stt and stt.right_clicked then
-                Inv.try_deallocate_skill(D, i)
+                if stt.clicked then
+                    Inv.try_allocate_skill(D, cell.spec.id, cell.node.id)
+                elseif stt.right_clicked then
+                    Inv.try_deallocate_skill(D, cell.spec.id, cell.node.id)
+                end
             end
         end
+        -- Clicks between cells hit the authored plates, whose on_skill_i
+        -- action buys the keystone (see hud/hub_skills.lua).
         D._inv_drag, D._inv_selected, D._inv_hover, D._skill_hover = nil, nil, nil, hover
         Inv.draw_overlay(D)
         return
@@ -957,11 +1281,19 @@ local function Inv_clear_inventory_overlays()
     for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
 end
 
+local TREE_NODE_IDS = { "key", "fa", "fb", "ma", "mb", "ta", "tb", "cap" }
+
 local function Inv_clear_skill_overlays()
     for i = 1, 15 do
         runtime_ui.remove(SCREEN, "sk_fr_" .. i)
         runtime_ui.remove(SCREEN, "sk_ic_" .. i)
         runtime_ui.remove(SCREEN, "sk_lv_" .. i)
+    end
+    for i = 1, 3 do
+        for _, nid in ipairs(TREE_NODE_IDS) do
+            runtime_ui.remove(SCREEN, "sk_n_" .. i .. "_" .. nid)
+            runtime_ui.remove(SCREEN, "sk_ni_" .. i .. "_" .. nid)
+        end
     end
     runtime_ui.remove(SCREEN, "sk_tip")
 end
@@ -976,73 +1308,121 @@ function Inv.draw_overlay(D)
         local vp = Art._vp
         local rw, rh = vp.rw or 2400.0, vp.rh or 1080.0
         local function S(v) return v * Art.s("hud") end
-        for i = SKILL_COLS + 1, 15 do
+        for i = 1, 15 do
             runtime_ui.remove(SCREEN, "sk_fr_" .. i)
             runtime_ui.remove(SCREEN, "sk_ic_" .. i)
             runtime_ui.remove(SCREEN, "sk_lv_" .. i)
         end
-        for i = 1, SKILL_COLS do
-            local n = scene.find_model("Skill Node " .. i)
-            local info = Inv.skill_slot_info(D, i)
-            local icon = info and info.spec and info.spec.icon
-            local r = icon and valid(n) and n.get_ui_rect and n:get_ui_rect() or nil
-            local fr_id, ic_id, lv_id = "sk_fr_" .. i, "sk_ic_" .. i, "sk_lv_" .. i
-            if r and r.x then
-                local accent = info.spec.accent or { 0.62, 0.34, 0.86, 1.0 }
-                local frame_fill = info.enabled
-                    and { 0.06, 0.07, 0.10, 0.92 }
-                    or { 0.04, 0.045, 0.055, 0.65 }
-                local frame_border = info.enabled
-                    and (info.have > 0 and accent or (info.can_buy and { 0.96, 0.82, 0.30, 0.95 }
-                        or { 0.45, 0.48, 0.55, 0.85 }))
-                    or { 0.22, 0.24, 0.28, 0.55 }
-                runtime_ui.set_quad(SCREEN, fr_id, {
-                    x = r.x, y = r.y, width = r.w, height = r.h, style = "panel",
-                    fill = frame_fill, border = frame_border,
-                    no_input = true, bring_to_front = true, z = OVERLAY_Z - 1100.0,
-                })
-                local pad = math.min(r.w, r.h) * 0.06
-                local isz = math.min(r.w, r.h) - pad * 2.0
-                local tint = info.enabled and { 1.0, 1.0, 1.0, 1.0 }
-                    or { 0.35, 0.37, 0.40, 0.5 }
+        local drawn = {}
+        for _, cell in ipairs(D._tree_cells or Inv.tree_layout(D)) do
+            local info = Inv.tree_cell_info(D, cell.spec, cell.node)
+            local node = cell.node
+            local accent = cell.spec.accent or { 0.62, 0.34, 0.86, 1.0 }
+            local owned = (info.have or 0) > 0
+            local reachable = info.can_buy or owned
+            local fill = owned and { 0.07, 0.085, 0.12, 0.95 }
+                or (info.can_buy and { 0.06, 0.07, 0.10, 0.92 } or { 0.035, 0.04, 0.05, 0.72 })
+            local border = owned and accent
+                or (info.can_buy and { 0.96, 0.82, 0.30, 0.95 } or { 0.30, 0.32, 0.38, 0.65 })
+            if node.tier == "capstone" and owned then
+                border = { 0.98, 0.86, 0.30, 1.0 }
+            end
+            local twin = node.tier == "mutation" or node.tier == "technique"
+            local name = T(tostring(node.tier == "keystone" and cell.spec.name or node.name))
+            -- Leave room for the larger keystone icon; twins stay full-width.
+            local pad = node.tier == "keystone" and S(88.0) or S(12.0)
+            local char_w = S(twin and 10.0 or 11.0)
+            local budget = math.max(8, math.floor((cell.w - pad) / char_w))
+            if #name > budget then name = name:sub(1, math.max(1, budget - 1)) .. "." end
+            local label = string.format("%s%s %d/%d",
+                node.tier == "capstone" and "* " or "", name,
+                info.have or 0, node.max_rank)
+            runtime_ui.set_quad(SCREEN, cell.qid, {
+                x = cell.x, y = cell.y, width = cell.w, height = cell.h,
+                style = "panel", fill = fill, border = border,
+                label = (Art and Art.ascii and Art.ascii(label)) or label,
+                font_scale = twin and 0.90 or 1.05,
+                text_color = reachable and { 0.94, 0.95, 0.98, 1.0 } or { 0.52, 0.55, 0.62, 0.85 },
+                bring_to_front = true, z = OVERLAY_Z - 1100.0,
+            })
+            drawn[cell.qid] = true
+            -- Keystone icon: doubled vs previous S(56) cap.
+            local ic_id = "sk_ni_" .. cell.col .. "_" .. node.id
+            if node.tier == "keystone" and cell.spec.icon then
+                local isz = math.min(cell.h * 0.92, S(112.0))
                 runtime_ui.set_quad(SCREEN, ic_id, {
-                    x = r.x + (r.w - isz) * 0.5, y = r.y + (r.h - isz) * 0.5,
-                    width = isz, height = isz, style = "image", image = icon,
+                    x = cell.x + cell.w - isz - S(4.0), y = cell.y + (cell.h - isz) * 0.5,
+                    width = isz, height = isz, style = "image", image = cell.spec.icon,
                     fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
-                    image_tint = tint, no_input = true, bring_to_front = true, z = OVERLAY_Z - 1000.0,
+                    image_tint = owned and { 1.0, 1.0, 1.0, 1.0 } or { 0.4, 0.42, 0.48, 0.6 },
+                    no_input = true, bring_to_front = true, z = OVERLAY_Z - 1000.0,
                 })
-                if info.have > 0 then
-                    local lw, lh = S(16.0), S(14.0)
-                    runtime_ui.set_quad(SCREEN, lv_id, {
-                        x = r.x + r.w - lw + S(2.0), y = r.y + r.h - lh + S(2.0),
-                        width = lw, height = lh, style = "text",
-                        fill = { 0.0, 0.0, 0.0, 0.0 }, border = { 0.0, 0.0, 0.0, 0.0 },
-                        body = tostring(info.have),
-                        text_color = { 0.98, 0.94, 0.78, 1.0 },
-                        font_scale = 0.8, align_h = "right", align_v = "bottom",
-                        no_input = true, bring_to_front = true, z = OVERLAY_Z - 400.0,
-                    })
-                else
-                    runtime_ui.remove(SCREEN, lv_id)
+                drawn[ic_id] = true
+            end
+        end
+        for i = 1, 3 do
+            for _, nid in ipairs(TREE_NODE_IDS) do
+                if not drawn["sk_n_" .. i .. "_" .. nid] then
+                    runtime_ui.remove(SCREEN, "sk_n_" .. i .. "_" .. nid)
                 end
-            else
-                runtime_ui.remove(SCREEN, fr_id)
-                runtime_ui.remove(SCREEN, ic_id)
-                runtime_ui.remove(SCREEN, lv_id)
+                if not drawn["sk_ni_" .. i .. "_" .. nid] then
+                    runtime_ui.remove(SCREEN, "sk_ni_" .. i .. "_" .. nid)
+                end
             end
         end
         local hv = D._skill_hover
         if hv and hv.tip and hv.tip ~= "" then
-            local tw, th = S(560.0), S(420.0)
-            local tx = (hv.mx or 0.0) + S(18.0)
-            local ty = (hv.my or 0.0) + S(12.0)
-            if tx + tw > rw then tx = rw - tw - S(8.0) end
-            if ty + th > rh then ty = rh - th - S(8.0) end
+            local margin = S(10.0)
+            local gap = S(8.0)
+            local nlines = 0
+            for _ in string.gmatch(hv.tip, "\n") do nlines = nlines + 1 end
+            nlines = nlines + 1
+            -- Fixed box (no fit=true): placement math matches the drawn rect.
+            -- Line height tracks font_scale 1.25 — do NOT use S(); that bloated
+            -- th and the bottom-edge clamp shoved tips up away from the cell.
+            local tip_w = math.min(TIP_WRAP * 9.5 + 28.0, rw - 2.0 * margin)
+            local line_h = 20.0
+            local th = math.min(nlines * line_h + 20.0, rh - 2.0 * margin)
+            local cell = hv.cell
+            local tx, ty = margin, margin
+            if cell and cell.x then
+                local right_x = cell.x + cell.w + gap
+                local space_r = rw - margin - right_x
+                local space_l = cell.x - gap - margin
+                if space_r >= tip_w then
+                    tx = right_x
+                elseif space_l >= tip_w then
+                    tx = cell.x - gap - tip_w
+                elseif space_r >= space_l and space_r >= 100.0 then
+                    tip_w = space_r
+                    tx = right_x
+                elseif space_l >= 100.0 then
+                    tip_w = space_l
+                    tx = cell.x - gap - tip_w
+                else
+                    tip_w = math.max(100.0, math.max(space_r, space_l))
+                    tx = (space_r >= space_l) and right_x or (cell.x - gap - tip_w)
+                end
+                -- Vertical: top-align with the skill; if that would clip the
+                -- bottom edge, hang upward from the cell bottom instead.
+                ty = cell.y
+                if ty + th > rh - margin then
+                    ty = cell.y + cell.h - th
+                end
+            else
+                tx = (hv.mx or 0.0) + 18.0
+                ty = (hv.my or 0.0) + 12.0
+                if tx + tip_w > rw - margin then
+                    tx = math.max(margin, (hv.mx or 0.0) - tip_w - 18.0)
+                end
+            end
+            tx = math.max(margin, math.min(tx, rw - tip_w - margin))
+            ty = math.max(margin, math.min(ty, rh - th - margin))
             runtime_ui.set_quad(SCREEN, "sk_tip", {
-                x = tx, y = ty, style = "text", fit = true,
+                x = tx, y = ty, width = tip_w, height = th, style = "text",
                 fill = { 0.04, 0.05, 0.08, 0.98 }, border = hv.border or { 0.62, 0.34, 0.86, 1.0 },
                 body = hv.tip, text_color = { 0.92, 0.94, 0.98, 1.0 },
-                font_scale = 1.35, align_h = "left", align_v = "top",
+                font_scale = 1.25, align_h = "left", align_v = "top",
                 no_input = true, bring_to_front = true, z = OVERLAY_Z,
             })
         else
@@ -1172,15 +1552,19 @@ function Inv.draw_overlay(D)
         end
         local cmp = Inv.compare_text(D, hv)
         if cmp then tip = tip .. "\n" .. cmp end
-        -- The engine auto-fits the box to the text (fit=true); tw/th are generous
-        -- upper bounds used only to keep the popup on-screen near the edges.
-        local tw, th = S(420.0), S(340.0)
+        -- Size estimate must stay inside the viewport; oversized S(th) used to
+        -- push ty negative after the bottom clamp and clip the tip title.
+        local margin = S(10.0)
+        local nlines = 1
+        for _ in string.gmatch(tip, "\n") do nlines = nlines + 1 end
+        local tw = math.min(S(420.0), rw - 2.0 * margin)
+        local th = math.min(nlines * S(22.0) + S(28.0), rh - 2.0 * margin)
         local tx = (hv.mx or 0.0) + S(18.0)
         local ty = (hv.my or 0.0) + S(12.0)
-        if tx + tw > rw then tx = rw - tw - S(8.0) end
-        if ty + th > rh then ty = rh - th - S(8.0) end
+        tx = math.max(margin, math.min(tx, rw - tw - margin))
+        ty = math.max(margin, math.min(ty, rh - th - margin))
         runtime_ui.set_quad(SCREEN, "inv_tip", {
-            x = tx, y = ty, style = "text", fit = true,
+            x = tx, y = ty, width = tw, style = "text", fit = true,
             fill = { 0.04, 0.05, 0.08, 0.98 }, border = Inv.RARITY[hv.item.rarity or "common"],
             body = tip, text_color = { 0.92, 0.94, 0.98, 1.0 },
             font_scale = 2.0, align_h = "left", align_v = "top",
@@ -1239,12 +1623,7 @@ function Inv.clear(D)
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_inv_eq_" .. k) end
         for _, k in ipairs(Inv.SLOTS) do runtime_ui.remove(SCREEN, "inv_ic_store_" .. k) end
         for i = 1, Inv.GRID_SIZE do runtime_ui.remove(SCREEN, "inv_ic_inv_bag_" .. i) end
-        for i = 1, SKILL_COLS * SKILL_MAX_RANK do
-            runtime_ui.remove(SCREEN, "sk_fr_" .. i)
-            runtime_ui.remove(SCREEN, "sk_ic_" .. i)
-            runtime_ui.remove(SCREEN, "sk_lv_" .. i)
-        end
-        runtime_ui.remove(SCREEN, "sk_tip")
+        Inv_clear_skill_overlays()
     end
     D._inv_drag = nil
     D._inv_hover = nil

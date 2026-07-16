@@ -60,6 +60,7 @@ local CREEP_KNOCK_MELEE = RULES.knockback.creep_melee
 local CREEP_KNOCK_BOLT = RULES.knockback.creep_projectile
 local HERO_KNOCK_CONTACT = RULES.knockback.hero_contact
 local HERO_KNOCK_BOLT = RULES.knockback.hero_projectile
+local CREEP_KNOCK_SHOCK = RULES.knockback.shockwave_death
 local TELEGRAPH_T = 0.45          -- warn window before a normal creep materialises
 local TELEGRAPH_T_BIG = 0.75      -- longer, scarier warn for elites/brutes
 local TELEGRAPH_BIG_COST = 4      -- threat_cost at/above which a spawn reads as "big"
@@ -337,7 +338,7 @@ function Duel.new(config, ctx, shell)
     D.maps = config.maps or {}
     D.maps_cleared = 0
     D.map_next_wave = {}
-    D.skill_points = 0
+    D.skill_points = (Balance.tree_rules and Balance.tree_rules.starting_points) or 1
     Profile.load(D)
     if #D.maps > 0 then
         D.map_index = math.min((D.maps_cleared or 0) + 1, #D.maps)
@@ -638,6 +639,137 @@ function Duel:can_apply_summon(c, spec, rank)
     return self:count_minions("skeleton") + pending < cap
 end
 
+-- Tree-era variant: the cap comes precomputed from the spec tree.
+function Duel:can_apply_summon_fx(c, fx)
+    local cap = math.min(MINIONS.skeleton.cap_max, fx.cap or 2)
+    if (c and c.revive_cap or 0) > 0 then return false end
+    local pending = 0
+    for _, other in ipairs(self.creeps or {}) do
+        if other.alive and (other.revive_cap or 0) > 0 then pending = pending + 1 end
+    end
+    return self:count_minions("skeleton") + pending < cap
+end
+
+-- Hero-sourced damage amplifiers vs a creep: Symbols of Death window, Skewer,
+-- Brittle, and the status_amp capstones (Shatter / Kingsbane / Bramble Ward).
+-- Runs inside hit_creep, so it covers direct hits AND rider/status damage.
+function Duel:hero_damage_amp(c)
+    local hero = self.hero
+    if not hero or not c or not hero.spec_fx then return 1.0 end
+    local amp = 1.0
+    if (hero.symbols_t or 0.0) > 0.0 then amp = amp + 0.15 end
+    if (c.skewer_t or 0.0) > 0.0 then amp = amp + (c.skewer_amp or 0.08) end
+    local class = self:active_class()
+    for _, spec in ipairs(class and class.specializations or {}) do
+        local fx = hero.spec_fx[spec.id]
+        if fx and (fx.points or 0) > 0 then
+            if fx.brittle and (c.spell_slow_t or 0.0) > 0.0 then
+                amp = amp + (fx.brittle.amp or 0.08)
+            end
+            local cap = fx.capstone
+            if cap and cap.kind == "status_amp" then
+                local p = cap.params
+                local has
+                if p.at_max_stacks then
+                    has = ((c.on_hit_stacks or {})[spec.status] or 0)
+                        >= (fx.max_stacks or spec.max_stacks or 5)
+                elseif spec.kind == "frost" then
+                    has = (c.spell_slow_t or 0.0) > 0.0
+                else
+                    has = ((c.on_hit_statuses or {})[spec.status] or 0.0) > 0.0
+                end
+                if has and p.elites_only and not (c.elite or c.boss or self.boss_creep == c) then
+                    has = false
+                end
+                if has then amp = amp + (p.amp or 0.15) end
+            end
+        end
+    end
+    return amp
+end
+
+-- Transient move-speed bonuses (frenzy stacks, Fleet Shadow).
+function Duel:hero_move_bonus(hero)
+    local bonus = 0.0
+    if (hero.frenzy_t or 0.0) > 0.0 then bonus = bonus + (hero.frenzy_move or 0.0) end
+    if (hero.fleet_t or 0.0) > 0.0 then bonus = bonus + 0.05 end
+    return bonus
+end
+
+-- Periodic capstones: Combustion / Malefic Rapture detonations and the
+-- Symbols of Death window. Runs once per combat tick.
+function Duel:update_tree_effects(dt)
+    local hero = self.hero
+    if not (self.manual_hero and hero and not hero.dead) then return end
+    local class = self:active_class()
+    if not class then return end
+    for _, spec in ipairs(class.specializations or {}) do
+        local fx = (hero.spec_fx or {})[spec.id]
+        local cap = fx and fx.capstone
+        if cap and cap.kind == "detonate" then
+            hero.det_t = hero.det_t or {}
+            local t = (hero.det_t[spec.id] or cap.params.period or 10.0) - dt
+            if t <= 0.0 then
+                t = cap.params.period or 10.0
+                local many = (cap.params.targets or 1) > 1
+                local best, best_left
+                for _, c in ipairs(self.creeps or {}) do
+                    local dot = c.alive and c.on_hit_dots and c.on_hit_dots[spec.status]
+                    if dot then
+                        local left = dot.damage * math.max(0.0, dot.t)
+                            / (dot.tick_interval or Balance.on_hit.tick)
+                        if many then
+                            self:deal_status_damage(c, left * (cap.params.pct or 0.3),
+                                STATUS_COLOR[spec.status] or STATUS_COLOR.curse, 0.3)
+                        elseif not best or left > best_left then
+                            best, best_left = c, left
+                        end
+                    end
+                end
+                if not many and best then
+                    self:deal_status_damage(best, best_left * (cap.params.pct or 1.0),
+                        STATUS_COLOR[spec.status] or STATUS_COLOR.fire, 0.3)
+                end
+            end
+            hero.det_t[spec.id] = t
+        elseif cap and cap.kind == "aura_buff" then
+            hero.aura_icd = math.max(0.0, (hero.aura_icd or 0.0) - dt)
+            if hero.aura_icd <= 0.0 and (hero.symbols_t or 0.0) <= 0.0 then
+                local n, need = 0, cap.params.min_statused or 3
+                for _, c in ipairs(self.creeps or {}) do
+                    if c.alive and (c.smoke_t or 0.0) > 0.0 then
+                        n = n + 1
+                        if n >= need then break end
+                    end
+                end
+                if n >= need then
+                    hero.symbols_t = cap.params.dur or 4.0
+                    hero.aura_icd = cap.params.icd or 8.0
+                end
+            end
+        end
+    end
+end
+
+-- Rider healing with an optional per-second budget (technique caps) and
+-- optional overheal-to-shield (Sanguine Ward). The budget window resets in
+-- update_hero once per second.
+function Duel:hero_rider_heal(amount, cap_frac, shield_cap)
+    local hero = self.hero
+    if not hero or (amount or 0.0) <= 0.0 then return end
+    if cap_frac then
+        local budget = hero.hp_max * cap_frac - (hero.capped_heal_used or 0.0)
+        amount = math.min(amount, math.max(0.0, budget))
+        hero.capped_heal_used = (hero.capped_heal_used or 0.0) + amount
+        if amount <= 0.0 then return end
+    end
+    local missing = hero.hp_max - hero.hp
+    hero.hp = math.min(hero.hp_max, hero.hp + amount)
+    if shield_cap and amount > missing then
+        hero.shield = math.min(hero.hp_max * shield_cap, (hero.shield or 0.0) + (amount - missing))
+    end
+end
+
 function Duel:mark_status(c, status, duration)
     if not c then return end
     c.on_hit_statuses = c.on_hit_statuses or {}
@@ -647,77 +779,182 @@ function Duel:mark_status(c, status, duration)
     BossSkills.on_status(self, c, status)
 end
 
-function Duel:apply_on_hit_dot(c, status, initial, tick, spread, lifesteal_mult)
+function Duel:apply_on_hit_dot(c, status, initial, tick, spread, lifesteal_mult, opts)
+    opts = opts or {}
     local color = STATUS_COLOR[status] or STATUS_COLOR.poison
     local _, dealt = self:deal_status_damage(c, initial, color, 0.0)
     if (lifesteal_mult or 0.0) > 0.0 and self.hero then
-        self.hero.hp = math.min(self.hero.hp_max, self.hero.hp + dealt * lifesteal_mult)
+        self:hero_rider_heal(dealt * lifesteal_mult, opts.heal_cap, opts.shield_cap)
     end
     if not c.alive then return end
     c.on_hit_dots = c.on_hit_dots or {}
     local dot = c.on_hit_dots[status] or {}
     dot.damage = math.max(dot.damage or 0.0, tick)
     dot.t, dot.tick_t = Balance.on_hit.duration, Balance.on_hit.tick
+    dot.tick_interval = opts.tick_interval
+    dot.heal_cap, dot.shield_cap = opts.heal_cap, opts.shield_cap
     dot.spread, dot.lifesteal_mult = spread == true, lifesteal_mult or 0.0
     c.on_hit_dots[status] = dot
     self:mark_status(c, status, dot.t)
 end
 
+-- Capstone proc bookkeeping: counts qualifying applications per spec and
+-- gates on the declared ICD (Hero Grid rule: procs are bounded and never
+-- recurse into riders — deal_status_damage does not re-enter this function).
+function Duel:capstone_count(spec_id, every, icd)
+    local hero = self.hero
+    hero.cap_counts = hero.cap_counts or {}
+    hero.cap_icd = hero.cap_icd or {}
+    local n = (hero.cap_counts[spec_id] or 0) + 1
+    hero.cap_counts[spec_id] = n
+    if n < (every or 5) then return false end
+    if (self.combat_time or 0.0) < (hero.cap_icd[spec_id] or 0.0) then return false end
+    hero.cap_counts[spec_id] = 0
+    hero.cap_icd[spec_id] = (self.combat_time or 0.0) + (icd or 0.0)
+    return true
+end
+
+-- Nearby-splash helper for proc capstones (target-capped by design).
+function Duel:splash_creeps(x, z, radius, targets, damage, color, skip)
+    local r2, hit = radius * radius, 0
+    for _, c in ipairs(self.creeps or {}) do
+        if c.alive and c ~= skip then
+            local dx, dz = c.x - x, c.z - z
+            if dx * dx + dz * dz <= r2 then
+                self:deal_status_damage(c, damage, color, 0.0)
+                hit = hit + 1
+                if hit >= targets then break end
+            end
+        end
+    end
+end
+
 function Duel:apply_on_hit_specializations(c, hit_damage, hit_dx, hit_dz)
     local hero, class = self.hero, self:active_class()
     if not hero or not class or not c then return false end
-    local ranks = hero.specialization_ranks or {}
+    local all_fx = hero.spec_fx or {}
     local piercing = false
     for _, spec in ipairs(class.specializations or {}) do
-        local rank = ranks[spec.id] or 0
-        if rank > 0 and spec.kind ~= "preservation" then
-            if spec.kind == "summon" and not self:can_apply_summon(c, spec, rank) then
+        local fx = all_fx[spec.id]
+        if fx and (fx.points or 0) > 0 and spec.kind ~= "preservation" then
+            if spec.kind == "summon" and not self:can_apply_summon_fx(c, fx) then
                 -- skip capped summons; other riders still apply
             else
             local status = spec.status
             local spread_mult = spec.spread and Balance.on_hit.spread_damage_mult or 1.0
+            local cap = fx.capstone
+            -- Mutation target multipliers.
+            local hd = hit_damage
+            if fx.elite_mult and (c.elite or c.boss or self.boss_creep == c) then
+                hd = hd * (fx.elite_mult.mult or 1.2)
+            end
+            if fx.assassin and c.hp >= c.hp_max * 0.95 then
+                hd = hd * (fx.assassin.mult or 1.2)
+            end
+            hero.last_rider_hit = hit_damage
+            -- Technique: enemies carrying this status hit the hero softer.
+            if fx.status_dmg_down and c.alive then
+                local pct = fx.status_dmg_down.pct or 0.08
+                c.damage_down_t = math.max(c.damage_down_t or 0.0, fx.duration or Balance.on_hit.duration)
+                c.damage_mult = math.min(c.damage_mult or 1.0, 1.0 - pct)
+            end
+            local heal_opts = nil
+            if fx.rider_heal then
+                heal_opts = { heal_mult = fx.rider_heal.mult or 0.05, heal_cap = fx.rider_heal.cap or 0.005 }
+            end
             if spec.kind == "dot" then
-                self:apply_on_hit_dot(c, status,
-                    hit_damage * (spec.initial_per_rank or 0.0) * rank * spread_mult,
-                    hit_damage * (spec.tick_per_rank or 0.0) * rank * spread_mult,
-                    spec.spread)
+                self:apply_on_hit_dot(c, status, hd * (fx.initial or 0.0) * spread_mult,
+                    hd * (fx.tick or 0.0) * spread_mult, spec.spread,
+                    heal_opts and heal_opts.heal_mult or nil,
+                    heal_opts and { heal_cap = heal_opts.heal_cap } or nil)
+                if cap and cap.kind == "proc_bonus"
+                    and self:capstone_count(spec.id, cap.params.every, cap.params.icd) then
+                    self:deal_status_damage(c, hit_damage * (cap.params.pct or 1.0),
+                        STATUS_COLOR[status] or STATUS_COLOR.poison, 0.35)
+                    if (cap.params.splash_targets or 0) > 0 then
+                        self:splash_creeps(c.x, c.z, 3.0, cap.params.splash_targets,
+                            hit_damage * (cap.params.splash_pct or 0.0),
+                            STATUS_COLOR[status] or STATUS_COLOR.poison, c)
+                    end
+                end
             elseif spec.kind == "stack_dot" then
                 c.on_hit_stacks = c.on_hit_stacks or {}
-                local stacks = math.min(spec.max_stacks or 5, (c.on_hit_stacks[status] or 0) + 1)
+                local max_stacks = fx.max_stacks or spec.max_stacks or 5
+                local add = 1
+                if fx.double_stack_full and c.hp >= c.hp_max * 0.95 then add = 2 end
+                local stacks = math.min(max_stacks, (c.on_hit_stacks[status] or 0) + add)
                 c.on_hit_stacks[status] = stacks
-                local amount = hit_damage * stacks
-                    * ((spec.stack_base or 0.20) + (rank - 1) * (spec.stack_rank_add or 0.10))
-                self:apply_on_hit_dot(c, status, amount, amount, false, false)
+                local amount = hd * stacks * (fx.stack_per or 0.20)
+                local opts = nil
+                if fx.fast_tick_max and stacks >= max_stacks then
+                    opts = { tick_interval = fx.fast_tick_max.tick or 0.35 }
+                end
+                if heal_opts then
+                    opts = opts or {}
+                    opts.heal_cap = heal_opts.heal_cap
+                end
+                self:apply_on_hit_dot(c, status, amount, amount, false,
+                    heal_opts and heal_opts.heal_mult or false, opts)
+                -- Capstone: bursting a target that just reached full stacks.
+                if cap and cap.kind == "max_stack_burst" and stacks >= max_stacks
+                    and (self.combat_time or 0.0) >= (c._msb_until or 0.0) then
+                    c._msb_until = (self.combat_time or 0.0) + (cap.params.per_target_icd or 4.0)
+                    local _, dealt = self:deal_status_damage(c, hit_damage * (cap.params.pct or 1.0),
+                        STATUS_COLOR[status] or STATUS_COLOR.bleed, 0.35)
+                    if (cap.params.heal or 0.0) > 0.0 then
+                        self:hero_rider_heal(dealt * cap.params.heal, 0.02)
+                    end
+                end
             elseif spec.kind == "frost" then
-                self:deal_status_damage(c, hit_damage * (spec.damage_per_rank or 0.0) * rank,
-                    STATUS_COLOR.frost, 0.0)
+                self:deal_status_damage(c, hd * (fx.damage or 0.0), STATUS_COLOR.frost, 0.0)
                 if c.alive then
-                    c.spell_slow_t = spec.duration or 3.0
-                    c.spell_slow_mult = math.max(0.25, 1.0 - (spec.slow_per_rank or 0.0) * rank)
-                    c.attack_slow_t = spec.duration or 3.0
+                    c.spell_slow_t = fx.duration or 3.0
+                    c.spell_slow_mult = math.max(0.25, 1.0 - (fx.slow or 0.0))
+                    c.attack_slow_t = fx.duration or 3.0
                     c.attack_slow_mult = math.min(c.attack_slow_mult or 1.0, c.spell_slow_mult)
-                    self:mark_status(c, status, spec.duration)
+                    self:mark_status(c, status, fx.duration)
                 end
             elseif spec.kind == "shadow" then
-                self:deal_status_damage(c, hit_damage * (spec.damage_per_rank or 0.0) * rank,
-                    STATUS_COLOR.shadow, 0.0, true)
+                self:deal_status_damage(c, hd * (fx.damage or 0.0), STATUS_COLOR.shadow, 0.0, true)
                 if c.alive then
-                    c.smoke_t = spec.duration or 3.0
-                    c.smoke_miss = math.min(0.75, (spec.miss_per_rank or 0.0) * rank)
-                    self:mark_status(c, status, spec.duration)
+                    c.smoke_t = fx.duration or 3.0
+                    c.smoke_miss = math.min(0.75, fx.miss or 0.0)
+                    self:mark_status(c, status, fx.duration)
                 end
+                if fx.fleet then hero.fleet_t = fx.duration or 3.0 end
             elseif spec.kind == "vampirism" then
-                self:apply_on_hit_dot(c, status,
-                    hit_damage * (spec.initial_per_rank or 0.0) * rank,
-                    hit_damage * (spec.tick_per_rank or 0.0) * rank, false, spec.lifesteal_mult)
+                local ls = fx.lifesteal_mult or 0.5
+                if cap and cap.kind == "low_hp_boost"
+                    and hero.hp < hero.hp_max * (cap.params.threshold or 0.4) then
+                    ls = ls * (cap.params.mult or 2.0)
+                end
+                self:apply_on_hit_dot(c, status, hd * (fx.initial or 0.0),
+                    hd * (fx.tick or 0.0), false, ls,
+                    fx.overheal_shield and { shield_cap = fx.overheal_shield.cap or 0.10 } or nil)
             elseif spec.kind == "frenzy" then
-                hero.frenzy_stacks = math.min(spec.max_stacks or 5, (hero.frenzy_stacks or 0) + 1)
-                hero.frenzy_mult = hero.frenzy_stacks * (spec.stack_per_rank or 0.10) * rank
-                hero.frenzy_t = spec.duration or 3.0
+                local max_stacks = fx.max_stacks or 5
+                hero.frenzy_stacks = math.min(max_stacks, (hero.frenzy_stacks or 0) + 1)
+                hero.frenzy_dmg = hero.frenzy_stacks * (fx.dmg_per_stack or 0.01)
+                hero.frenzy_as = hero.frenzy_stacks * (fx.as_per_stack or 0.01)
+                hero.frenzy_move = hero.frenzy_stacks * (fx.move_per_stack or 0.01)
+                hero.frenzy_t = fx.duration or 3.0
+                hero.frenzy_fx = fx
                 self:mark_status(c, status, 0.22)
+                if cap and cap.kind == "proc_bonus"
+                    and self:capstone_count(spec.id, cap.params.every, cap.params.icd) then
+                    self:deal_status_damage(c, hit_damage * (cap.params.pct or 0.6),
+                        STATUS_COLOR[status] or STATUS_COLOR.bleed, 0.35)
+                    self:splash_creeps(c.x, c.z, 3.0, cap.params.splash_targets or 3,
+                        hit_damage * (cap.params.splash_pct or 0.3),
+                        STATUS_COLOR[status] or STATUS_COLOR.bleed, c)
+                end
             elseif spec.kind == "daze" then
-                local reduction = math.min(0.75, (spec.reduction_per_rank or 0.0) * rank)
-                c.daze_t, c.daze_mult = spec.duration or 3.0, 1.0 - reduction
+                local reduction = fx.reduction or 0.0
+                if cap and cap.kind == "debuff_amp" then
+                    reduction = reduction + (cap.params.extra or 0.10)
+                end
+                reduction = math.min(0.75, reduction)
+                c.daze_t, c.daze_mult = fx.duration or 3.0, 1.0 - reduction
                 c.spell_slow_t, c.spell_slow_mult = c.daze_t,
                     math.min(c.spell_slow_mult or 1.0, c.daze_mult)
                 c.attack_slow_t, c.attack_slow_mult = c.daze_t,
@@ -727,24 +964,56 @@ function Duel:apply_on_hit_specializations(c, hit_damage, hit_dx, hit_dz)
                 self:mark_status(c, status, c.daze_t)
             elseif spec.kind == "explosion" or spec.kind == "shockwave" then
                 c.on_hit_death = c.on_hit_death or {}
-                c.on_hit_death[spec.kind] = {
-                    damage = hit_damage * ((spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)),
-                    radius = spec.radius or 3.0, dx = hit_dx or 0.0, dz = hit_dz or 0.0,
+                local entry = {
+                    damage = hd * (fx.damage or 0.0),
+                    radius = fx.radius or spec.radius or 3.0,
+                    dx = hit_dx or 0.0, dz = hit_dz or 0.0,
                 }
+                if fx.stun_wave then entry.daze = fx.stun_wave end
+                if cap and cap.kind == "chain_death" then
+                    entry.chain_mult = cap.params.mult or 0.5
+                end
+                c.on_hit_death[spec.kind] = entry
                 self:mark_status(c, status, Balance.on_hit.duration)
             elseif spec.kind == "summon" then
-                c.revive_cap = math.min(MINIONS.skeleton.cap_max,
-                    (spec.cap_base or 2) + (rank - 1) * (spec.cap_per_rank or 1))
+                c.revive_cap = math.min(MINIONS.skeleton.cap_max, fx.cap or 2)
                 self:mark_status(c, status, Balance.on_hit.duration)
             elseif spec.kind == "pierce" then
-                self:deal_status_damage(c,
-                    hit_damage * ((spec.damage or 0.0) + (rank - 1) * (spec.damage_per_rank or 0.0)),
+                local coeff = fx.damage or 0.60
+                if cap and cap.kind == "full_pierce"
+                    and self:capstone_count(spec.id, cap.params.every, 0.0) then
+                    coeff = 1.0
+                end
+                self:deal_status_damage(c, hd * coeff,
                     STATUS_COLOR[status] or STATUS_COLOR.earth, 0.0)
+                if cap and cap.kind == "proc_bonus"
+                    and self:capstone_count(spec.id, cap.params.every, cap.params.icd) then
+                    self:deal_status_damage(c, hit_damage * (cap.params.pct or 0.4),
+                        STATUS_COLOR[status] or STATUS_COLOR.earth, 0.35)
+                    self:splash_creeps(c.x, c.z, 3.0, cap.params.splash_targets or 3,
+                        hit_damage * (cap.params.splash_pct or 0.4),
+                        STATUS_COLOR[status] or STATUS_COLOR.earth, c)
+                end
+                if fx.skewer and c.alive then
+                    c.skewer_t = fx.skewer.dur or 3.0
+                    c.skewer_amp = fx.skewer.amp or 0.08
+                end
+                if fx.cripple and c.alive then
+                    c.spell_slow_t = math.max(c.spell_slow_t or 0.0, fx.cripple.dur or 2.0)
+                    c.spell_slow_mult = math.min(c.spell_slow_mult or 1.0, 1.0 - (fx.cripple.slow or 0.15))
+                end
                 piercing = true
             elseif spec.kind == "shard_cone" then
                 -- Spray continues past the target (same direction as the bolt).
-                self:spawn_earth_shards(c.x, c.z, hit_dx or 0.0, hit_dz or 0.0,
-                    hit_damage, rank, spec, c.id)
+                self:spawn_earth_shards(c.x, c.z, hit_dx or 0.0, hit_dz or 0.0, hd, fx, spec, c.id)
+                if cap and cap.kind == "shard_nova"
+                    and self:capstone_count(spec.id, cap.params.every, 0.0) then
+                    -- Full-circle sundering: three extra rotated sprays.
+                    local bx, bz = hit_dx or 0.0, hit_dz or 1.0
+                    self:spawn_earth_shards(c.x, c.z, bz, -bx, hd, fx, spec, c.id)
+                    self:spawn_earth_shards(c.x, c.z, -bx, -bz, hd, fx, spec, c.id)
+                    self:spawn_earth_shards(c.x, c.z, -bz, bx, hd, fx, spec, c.id)
+                end
                 self:mark_status(c, status, 0.35)
             end
             end -- can_apply / not summon-capped
@@ -929,21 +1198,21 @@ function Duel:rock_shard_burst(x, z, vx, vz, tag)
     end
 end
 
-function Duel:spawn_earth_shards(x, z, bx, bz, hit_damage, rank, spec, skip_id)
+function Duel:spawn_earth_shards(x, z, bx, bz, hit_damage, fx, spec, skip_id)
     self:ensure_earth_shards()
     if not self.eshards then return end
     local d = math.sqrt((bx or 0.0) * (bx or 0.0) + (bz or 0.0) * (bz or 0.0))
     if d < 0.001 then bx, bz, d = 0.0, 1.0, 1.0 end
     bx, bz = bx / d, bz / d
-    rank = math.max(1, math.floor(rank or 1))
-    local count = math.max(3, math.floor((spec.shards_base or 4)
-        + (rank - 1) * (spec.shards_per_rank or 1)))
+    fx = fx or {}
+    local count = math.max(3, math.floor(fx.shards or spec.shards_base or 4))
     -- A few extra random chips so each volley looks broken, not counted.
     count = count + math.floor(math.random() * 3.0)
-    local half = math.rad((spec.cone_deg or 18.0) * 0.5)
-    local base_speed = spec.speed or 15.0
-    local base_life = (spec.range or 5.0) / math.max(1.0, base_speed)
-    local dmg = hit_damage * ((spec.damage or 0.40) + (rank - 1) * (spec.damage_per_rank or 0.08))
+    local half = math.rad((fx.cone_deg or spec.cone_deg or 18.0) * 0.5)
+    local base_speed = fx.speed or spec.speed or 15.0
+    local base_life = (fx.range or spec.range or 5.0) / math.max(1.0, base_speed)
+    local dmg = hit_damage * (fx.damage or spec.damage or 0.40)
+    local shard_slow = fx.shard_slow
     local base_yaw = math.atan(bx, bz)
     local tag = tostring(math.floor((self.realtime or 0.0) * 1000.0) + math.floor(math.random() * 97.0))
     local ox, oz = x + bx * (0.35 + math.random() * 0.25), z + bz * (0.35 + math.random() * 0.25)
@@ -977,6 +1246,7 @@ function Duel:spawn_earth_shards(x, z, bx, bz, hit_damage, rank, spec, skip_id)
         slot.y = 0.45 + math.random() * 0.35
         slot.life = base_life * (0.65 + math.random() * 0.55)
         slot.damage = dmg
+        slot.slow = shard_slow
         slot.hit_ids = skip_id and { [skip_id] = true } or {}
         slot.spin = (math.random() * 2.0 - 1.0) * (280.0 + math.random() * 520.0)
         slot.spin_p = (math.random() * 2.0 - 1.0) * (200.0 + math.random() * 360.0)
@@ -1032,6 +1302,12 @@ function Duel:update_earth_shards(dt)
                         local nx = (dd > 0.001) and p.vx / dd or 0.0
                         local nz = (dd > 0.001) and p.vz / dd or 0.0
                         self:hit_creep(c, p.damage, nx * 1.6, nz * 1.6, { discrete = true })
+                        -- Grinding Dust technique: shards chill what they chip.
+                        if p.slow and c.alive then
+                            c.spell_slow_t = math.max(c.spell_slow_t or 0.0, p.slow.dur or 2.0)
+                            c.spell_slow_mult = math.min(c.spell_slow_mult or 1.0,
+                                1.0 - (p.slow.slow or 0.15))
+                        end
                         Art.burst("ath_rock_hit_" .. tostring(c.id) .. "_" .. tostring(math.floor(math.random() * 1000)),
                             vec3(p.x, p.y or 0.5, p.z),
                             { preset = "enemy_take", count = 4 + math.floor(math.random() * 3),
@@ -1134,33 +1410,89 @@ end
 
 function Duel:trigger_on_hit_death(source)
     if not source then return end
+    local hero = self.hero
+    local sfx = (hero and hero.spec_fx) or {}
+    local smap = self._status_spec or {}
     for status, dot in pairs(source.on_hit_dots or {}) do
+        local fx = smap[status] and sfx[smap[status]] or nil
         if dot.spread then
-            local best, best_d
+            -- Epidemic mutation: wider radius, two targets, terminal copies
+            -- (default keeps the classic single re-spreadable jump).
+            local radius, targets, copies_spread = Balance.on_hit.spread_radius, 1, true
+            if fx and fx.spread_plus then
+                radius = fx.spread_plus.radius or 5.5
+                targets = fx.spread_plus.targets or 2
+                copies_spread = false
+            end
+            local cands = {}
             for _, c in ipairs(self.creeps) do
                 if c.alive and c ~= source then
                     local dx, dz = c.x - source.x, c.z - source.z
                     local d2 = dx * dx + dz * dz
-                    if d2 <= Balance.on_hit.spread_radius ^ 2 and (not best or d2 < best_d) then
-                        best, best_d = c, d2
-                    end
+                    if d2 <= radius * radius then cands[#cands + 1] = { c = c, d = d2 } end
                 end
             end
-            if best then
-                self:apply_on_hit_dot(best, status, dot.damage, dot.damage, true, dot.lifesteal_mult)
+            table.sort(cands, function(a, b) return a.d < b.d end)
+            for i = 1, math.min(targets, #cands) do
+                self:apply_on_hit_dot(cands[i].c, status, dot.damage, dot.damage,
+                    copies_spread, dot.lifesteal_mult)
             end
+        end
+        -- Blooming Death: the seeded corpse bursts for half the full dot.
+        local cap = fx and fx.capstone
+        if cap and cap.kind == "death_burst" then
+            local full = dot.damage * (Balance.on_hit.duration / Balance.on_hit.tick)
+            self:splash_creeps(source.x, source.z, cap.params.radius or 2.5, 6,
+                full * (cap.params.pct or 0.5), STATUS_COLOR[status] or STATUS_COLOR.poison, source)
         end
     end
     for kind, effect in pairs(source.on_hit_death or {}) do
         local r2 = effect.radius * effect.radius
+        if kind == "shockwave" then
+            -- The desc promises a launch: normalize the stored hit direction
+            -- (chain re-blasts store raw offsets) and kick up a dust ring
+            -- biased toward the push side so the wave reads on screen.
+            local el = math.sqrt(effect.dx * effect.dx + effect.dz * effect.dz)
+            if el > 0.001 then effect.dx, effect.dz = effect.dx / el, effect.dz / el end
+            local col = STATUS_COLOR.shockwave
+            Art.burst("ath_duel_shock_" .. tostring(source.id),
+                vec3(source.x + effect.dx * effect.radius * 0.35, 0.16,
+                    source.z + effect.dz * effect.radius * 0.35),
+                { preset = "enemy_take", count = 20, life_max = 0.35,
+                  spawn_radius = effect.radius * 0.55, size_max = 0.22,
+                  noise_strength = 1.2, gravity = vec3(0.0, 0.8, 0.0),
+                  color_start = vec4(col[1], col[2], col[3], 0.9) })
+        end
         for _, c in ipairs(self.creeps) do
             if c.alive and c ~= source then
                 local dx, dz = c.x - source.x, c.z - source.z
                 local d2 = dx * dx + dz * dz
                 local ahead = kind ~= "shockwave" or dx * effect.dx + dz * effect.dz > 0.0
                 if d2 <= r2 and ahead then
-                    self:deal_status_damage(c, effect.damage, STATUS_COLOR[kind], 0.0)
+                    local killed = self:deal_status_damage(c, effect.damage, STATUS_COLOR[kind], 0.0)
                     self:mark_status(c, kind, 0.22)
+                    if kind == "shockwave" and c.alive then
+                        local d = math.sqrt(d2)
+                        Creep.knock(c,
+                            (d > 0.001 and dx / d or effect.dx) * CREEP_KNOCK_SHOCK,
+                            (d > 0.001 and dz / d or effect.dz) * CREEP_KNOCK_SHOCK)
+                    end
+                    if effect.daze and c.alive then
+                        local mult = 1.0 - math.min(0.75, effect.daze.daze or 0.2)
+                        local dur = effect.daze.dur or 2.0
+                        c.spell_slow_t = math.max(c.spell_slow_t or 0.0, dur)
+                        c.spell_slow_mult = math.min(c.spell_slow_mult or 1.0, mult)
+                        c.attack_slow_t = math.max(c.attack_slow_t or 0.0, dur)
+                        c.attack_slow_mult = math.min(c.attack_slow_mult or 1.0, mult)
+                    end
+                    -- Seismic Chain / Soul Shatter: blast kills re-blast once.
+                    if killed and effect.chain_mult then
+                        c.on_hit_death = c.on_hit_death or {}
+                        c.on_hit_death[kind] = {
+                            damage = effect.damage * effect.chain_mult,
+                            radius = effect.radius, dx = dx, dz = dz,
+                        }
+                    end
                 end
             end
         end
@@ -1611,7 +1943,7 @@ function Duel:hero_attack(hero, dt)
     table.sort(in_range, function(a, b) return a.d < b.d end)
     hero.attack_flash = 0.12
     local attack_rate = (hero.base_fire_interval or hero.fire_interval or 0.28) / (hero.fire_interval or 0.28)
-        * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_mult or 0.0) or 0.0))
+        * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_as or 0.0) or 0.0))
     local targets = math.min(hero.cleave, #in_range)
     for i = 1, targets do
         local mult = (i == 1) and 1.0 or RULES.basic_attack.melee_secondary_mult
@@ -1894,6 +2226,7 @@ function Duel:try_summon_minion(kind, cap, x, z)
     slot.hp = spec.hp_mult * ((hero and hero.hp_max) or 100.0)
     slot.hp_max = slot.hp
     slot.dps = spec.dps_mult * ((hero and hero.dps) or 10.0)
+        * ((hero and hero.minion_dmg_mult) or 1.0)
     slot.life = spec.duration
     slot.attack_t = 0.0
     slot.alive = true
@@ -2018,24 +2351,28 @@ end
 function Duel:hit_creep(c, amount, kx, kz, opts)
     if not c or not c.alive then return false end
     opts = opts or {}
-    amount = amount * ((self.hero and self.hero.boss_damage_mult) or 1.0)
-    if self.manual_hero and c.stats and c.stats.boss and not opts.armor_applied then
-        if opts.skill then
-            if (c.armor_broken_t or 0.0) <= 0.0 then self:set_flash("ARMOR BROKEN") end
-            c.armor_broken_t = opts.armor_break_t or ARMOR_BREAK_T
-        elseif (c.armor_broken_t or 0.0) <= 0.0 then
-            amount = amount * BOSS_ARMOR_MULT
+    local rider_amount = amount
+    if not opts.pre_scaled then
+        amount = amount * ((self.hero and self.hero.boss_damage_mult) or 1.0)
+        if self.manual_hero and c.stats and c.stats.boss and not opts.armor_applied then
+            if opts.skill then
+                if (c.armor_broken_t or 0.0) <= 0.0 then self:set_flash("ARMOR BROKEN") end
+                c.armor_broken_t = opts.armor_break_t or ARMOR_BREAK_T
+            elseif (c.armor_broken_t or 0.0) <= 0.0 then
+                amount = amount * BOSS_ARMOR_MULT
+            end
         end
-    end
-    if (c.armor_debuff_t or 0.0) > 0.0 then
-        amount = amount * (1.0 + (c.armor_reduction or 0.0))
-    end
-    if (c.curse_t or 0.0) > 0.0 then
-        amount = amount * (1.0 + (c.curse_amp or 0.0))
-    end
-    if (c._tribute_armor_t or 0.0) > 0.0 then amount = amount * 0.65 end
-    if self.hero and (self.hero.frenzy_t or 0.0) > 0.0 then
-        amount = amount * (1.0 + (self.hero.frenzy_mult or 0.0))
+        if (c.armor_debuff_t or 0.0) > 0.0 then
+            amount = amount * (1.0 + (c.armor_reduction or 0.0))
+        end
+        if (c.curse_t or 0.0) > 0.0 then
+            amount = amount * (1.0 + (c.curse_amp or 0.0))
+        end
+        if (c._tribute_armor_t or 0.0) > 0.0 then amount = amount * 0.65 end
+        if self.hero and (self.hero.frenzy_t or 0.0) > 0.0 then
+            amount = amount * (1.0 + (self.hero.frenzy_dmg or 0.0))
+        end
+        amount = amount * self:hero_damage_amp(c)
     end
     local crit = opts.crit == true
     if opts.discrete then
@@ -2044,6 +2381,7 @@ function Duel:hit_creep(c, amount, kx, kz, opts)
         self:spawn_damage_number(c.x, c.z, amount, crit)
     elseif opts.melee then
         c._mdmg = (c._mdmg or 0.0) + amount
+        c._mrider = (c._mrider or 0.0) + rider_amount
         c._mdmg_t = c._mdmg_t or MELEE_FLUSH_T
     end
     local hp_before = c.hp
@@ -2084,21 +2422,26 @@ end
 -- melee dps) and pop one number.
 function Duel:flush_melee_packet(c)
     local amt = c._mdmg or 0.0
-    if amt < 0.5 then c._mdmg = 0.0; c._mdmg_t = nil; return end
+    local rider_amt = c._mrider or 0.0
+    if amt < 0.5 then
+        c._mdmg, c._mrider, c._mdmg_t = 0.0, 0.0, nil
+        return
+    end
     local hero = self.hero
     if hero then
         local dx, dz = c.x - hero.x, c.z - hero.z
         local d = math.sqrt(dx * dx + dz * dz)
-        self:apply_on_hit_specializations(c, amt,
+        self:apply_on_hit_specializations(c, rider_amt,
             d > 0.001 and dx / d or 0.0, d > 0.001 and dz / d or 0.0)
     end
     local crit = self:roll_crit()
     if crit and c.alive then
-        self:hit_creep(c, amt, nil, nil, { armor_applied = true, crit = true })
+        self:hit_creep(c, amt, nil, nil, { armor_applied = true, crit = true, pre_scaled = true })
         amt = amt * CRIT_MULT
     end
     self:spawn_damage_number(c.x, c.z, amt, crit)
     c._mdmg = 0.0
+    c._mrider = 0.0
     c._mdmg_t = nil
 end
 
@@ -2944,9 +3287,32 @@ function Duel:update_hero(dt)
     hero.flask_lock_t = math.max(0.0, (hero.flask_lock_t or 0.0) - dt)
     hero.retaliate_cd = math.max(0.0, (hero.retaliate_cd or 0.0) - dt)
     hero.frenzy_t = math.max(0.0, (hero.frenzy_t or 0.0) - dt)
-    if hero.frenzy_t <= 0.0 then hero.frenzy_stacks, hero.frenzy_mult = nil, nil end
+    if hero.frenzy_t <= 0.0 and (hero.frenzy_stacks or 0) > 0 then
+        local ffx = hero.frenzy_fx
+        if ffx and ffx.relentless then
+            -- Relentless mutation: stacks bleed off one per second, not all at once.
+            hero.frenzy_stacks = hero.frenzy_stacks - 1
+            if hero.frenzy_stacks > 0 then
+                hero.frenzy_t = 1.0
+                hero.frenzy_dmg = hero.frenzy_stacks * (ffx.dmg_per_stack or 0.01)
+                hero.frenzy_as = hero.frenzy_stacks * (ffx.as_per_stack or 0.01)
+                hero.frenzy_move = hero.frenzy_stacks * (ffx.move_per_stack or 0.01)
+            else
+                hero.frenzy_stacks, hero.frenzy_dmg, hero.frenzy_as, hero.frenzy_move = nil, nil, nil, nil
+            end
+        else
+            hero.frenzy_stacks, hero.frenzy_dmg, hero.frenzy_as, hero.frenzy_move = nil, nil, nil, nil
+        end
+    end
     hero.skill_guard_t = math.max(0.0, (hero.skill_guard_t or 0.0) - dt)
     hero.preservation_t = math.max(0.0, (hero.preservation_t or 0.0) - dt)
+    hero.symbols_t = math.max(0.0, (hero.symbols_t or 0.0) - dt)
+    hero.fleet_t = math.max(0.0, (hero.fleet_t or 0.0) - dt)
+    -- Capped rider-heal budget window (techniques): resets once per second.
+    hero.capped_heal_win = (hero.capped_heal_win or 0.0) + dt
+    if hero.capped_heal_win >= 1.0 then
+        hero.capped_heal_win, hero.capped_heal_used = 0.0, 0.0
+    end
     if hero.retaliate_pending then
         hero.retaliate_pending = nil
         self:hero_burst(3.6, hero.dps * (hero.retaliation_orbit or 0.0), { 1.0, 0.68, 0.25 })
@@ -2960,11 +3326,11 @@ function Duel:update_hero(dt)
     if (hero.hp_regen_pct or 0.0) > 0.0 then
         hero.hp = math.min(hero.hp_max, hero.hp + hero.hp_max * hero.hp_regen_pct * dt)
     end
-    local preservation_rank = self.hero_class == "warrior"
-        and ((hero.specialization_ranks or {}).preservation or 0) or 0
-    if preservation_rank > 0 and hero.preservation_t > 0.0 then
-        local _, healing, seconds = Balance.preservation_effect(preservation_rank)
-        hero.hp = math.min(hero.hp_max, hero.hp + hero.hp_max * healing / seconds * dt)
+    local pres_fx = self.hero_class == "warrior"
+        and (hero.spec_fx or {}).preservation or nil
+    if pres_fx and (pres_fx.points or 0) > 0 and hero.preservation_t > 0.0 then
+        local seconds = (pres_fx.heal_seconds or 5.0) + (pres_fx.long_guard and pres_fx.long_guard.dur or 0.0)
+        hero.hp = math.min(hero.hp_max, hero.hp + hero.hp_max * (pres_fx.heal or 0.0) / seconds * dt)
     end
     hero.hit_flash = math.max(0.0, (hero.hit_flash or 0.0) - dt)
     hero.dodge_iframe_t = math.max(0.0, (hero.dodge_iframe_t or 0.0) - dt)
@@ -3045,8 +3411,7 @@ function Duel:update_hero(dt)
             local step = math.min(dt, hero.dodge_t)
             hero.dodge_t = hero.dodge_t - dt
             self:move_hero(hero, hero.dodge_dx, hero.dodge_dz, hero.dodge_speed or (DODGE_DIST / DODGE_DUR), step)
-            local move_speed = hero.speed
-                * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_mult or 0.0) or 0.0))
+            local move_speed = hero.speed * (1.0 + self:hero_move_bonus(hero))
             hero.vel_x = hero.dodge_dx * move_speed -- exit the dash at run speed
             hero.vel_z = hero.dodge_dz * move_speed
         else
@@ -3056,8 +3421,7 @@ function Duel:update_hero(dt)
             local mag = math.sqrt(dirx * dirx + dirz * dirz)
             local tvx, tvz = 0.0, 0.0
             if mag > 0.001 then
-                local move_speed = hero.speed
-                    * (1.0 + ((hero.frenzy_t or 0.0) > 0.0 and (hero.frenzy_mult or 0.0) or 0.0))
+                local move_speed = hero.speed * (1.0 + self:hero_move_bonus(hero))
                 tvx = dirx / mag * move_speed
                 tvz = dirz / mag * move_speed
             end
@@ -3758,9 +4122,10 @@ function Duel:update_creeps(dt)
                         local _, dealt = self:deal_status_damage(c, dot.damage,
                             STATUS_COLOR[status] or STATUS_COLOR.poison, 0.0)
                         if (dot.lifesteal_mult or 0.0) > 0.0 and hero then
-                            hero.hp = math.min(hero.hp_max, hero.hp + dealt * dot.lifesteal_mult)
+                            self:hero_rider_heal(dealt * dot.lifesteal_mult,
+                                dot.heal_cap, dot.shield_cap)
                         end
-                        dot.tick_t = dot.tick_t + Balance.on_hit.tick
+                        dot.tick_t = dot.tick_t + (dot.tick_interval or Balance.on_hit.tick)
                     end
                 end
                 if dot.t <= 0.0 then c.on_hit_dots[status] = nil end
@@ -4103,19 +4468,61 @@ function Duel:update_creeps(dt)
                     self.essence_dropped = true
                     self:spawn_essence(c.x, c.z)
                 end
+                -- Tree kill hooks: kill heals + Bladestorm's bleed refresh.
+                local hero_fx = (hero and hero.spec_fx) or {}
+                for _, spec in ipairs((self:active_class() or {}).specializations or {}) do
+                    local fx = hero_fx[spec.id]
+                    if fx and (fx.points or 0) > 0 then
+                        if fx.kill_heal then
+                            self:hero_rider_heal(hero.hp_max * (fx.kill_heal.heal or 0.005),
+                                fx.kill_heal.cap or 0.02)
+                        end
+                        if fx.soul_harvest then
+                            self:hero_rider_heal(hero.hp_max * (fx.soul_harvest.heal or 0.005),
+                                fx.soul_harvest.cap or 0.02)
+                        end
+                        if fx.kill_heal_max
+                            and (hero.frenzy_stacks or 0) >= (fx.max_stacks or 5) then
+                            self:hero_rider_heal(hero.hp_max * (fx.kill_heal_max.heal or 0.01),
+                                fx.kill_heal_max.cap or 0.03)
+                        end
+                        local cap = fx.capstone
+                        if cap and cap.kind == "refresh_on_kill" and spec.kind == "stack_dot"
+                            and ((c.on_hit_stacks or {})[spec.status] or 0) > 0 then
+                            -- Bladestorm: a bleeding kill smears a stack onto
+                            -- everything in cleave range.
+                            local hd = hero.last_rider_hit or 0.0
+                            if hd > 0.0 then
+                                local r2 = (cap.params.radius or 5.0) ^ 2
+                                for _, o in ipairs(self.creeps) do
+                                    if o.alive and o ~= c then
+                                        local dx, dz = o.x - c.x, o.z - c.z
+                                        if dx * dx + dz * dz <= r2 then
+                                            o.on_hit_stacks = o.on_hit_stacks or {}
+                                            local st = math.min(fx.max_stacks or 5,
+                                                (o.on_hit_stacks[spec.status] or 0) + 1)
+                                            o.on_hit_stacks[spec.status] = st
+                                            local amount = hd * st * (fx.stack_per or 0.20)
+                                            self:apply_on_hit_dot(o, spec.status, 0.0, amount, false, false)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
             end
             if self.boss_creep == c then
                 self.boss_creep = nil
                 self:park_boss_arc()
                 self:clear_boss_hazards()
-                -- Spec points (3) land on boss kill — spent in the Skills hub tree.
-                self.skill_points = (self.skill_points or 0) + 3
+                -- Hero Grid economy: points land per wave clear and at boss
+                -- entry (see award_spec_points); the kill itself pays in loot.
                 local title = self:active_map().boss_title or self.config.boss_title
                 local I18n = _G.ATH_I18N
                 local tname = (I18n and title and I18n.t(title)) or title
                 local flash = (tname and ((I18n and I18n.t("THE %s FALLS", tname)) or ("THE " .. tname .. " FALLS"))) or "CHAMPION DOWN"
-                local bonus = (I18n and I18n.t("(+3 SKILL)")) or "(+3 SKILL)"
-                self:set_flash(flash .. "  " .. bonus)
+                self:set_flash(flash)
                 self:save_profile()
                 self:log(string.format("boss down seconds=%.1f skill_points=%d",
                     self.combat_time - (self.boss_spawn_time or self.combat_time), self.skill_points))
@@ -4202,12 +4609,25 @@ function Duel:apply_hero_damage(amount, opts)
     if (hero.skill_guard_t or 0.0) > 0.0 then
         mitig = mitig * (1.0 - clampn(hero.skill_guard or 0.0, 0.0, 0.9))
     end
-    local preservation_rank = self.hero_class == "warrior"
-        and ((hero.specialization_ranks or {}).preservation or 0) or 0
-    if preservation_rank > 0 then
-        local reduction, _, seconds = Balance.preservation_effect(preservation_rank)
+    local pres_fx = self.hero_class == "warrior"
+        and (hero.spec_fx or {}).preservation or nil
+    if pres_fx and (pres_fx.points or 0) > 0 then
+        local seconds = (pres_fx.heal_seconds or 5.0)
+            + (pres_fx.long_guard and pres_fx.long_guard.dur or 0.0)
         hero.preservation_t = seconds
-        mitig = mitig * (1.0 - reduction)
+        mitig = mitig * (1.0 - math.min(0.60, pres_fx.dr or 0.0))
+    end
+    -- Tree techniques: Iron Fury (max frenzy stacks) and Bone Armor (per minion).
+    local sfx = hero.spec_fx or {}
+    for _, fx in pairs(sfx) do
+        if fx.dr_at_max and (hero.frenzy_stacks or 0) >= (fx.max_stacks or 5) then
+            mitig = mitig * (1.0 - (fx.dr_at_max.dr or 0.08))
+        end
+        if fx.bone_armor then
+            local dr = math.min(fx.bone_armor.cap or 0.06,
+                (fx.bone_armor.dr or 0.01) * self:count_minions("skeleton"))
+            if dr > 0.0 then mitig = mitig * (1.0 - dr) end
+        end
     end
     if (hero.flask_drink_t or 0.0) > 0.0
         and amount * mitig >= hero.hp_max * RULES.flask.interrupt_hp_fraction then
@@ -4220,7 +4640,25 @@ function Duel:apply_hero_damage(amount, opts)
         hero.retaliate_cd = 0.5
     end
     local taken = amount * mitig
+    -- Sanguine Ward: the overheal shield soaks before health.
+    if (hero.shield or 0.0) > 0.0 then
+        local soaked = math.min(hero.shield, taken)
+        hero.shield = hero.shield - soaked
+        taken = taken - soaked
+    end
     hero.hp = hero.hp - taken
+    -- Last Stand: once per map, a lethal hit leaves the warrior standing.
+    if hero.hp <= 0.0 and not self._guardian_used then
+        local pfx = (hero.spec_fx or {}).preservation
+        local cap = pfx and pfx.capstone
+        if cap and cap.kind == "guardian" then
+            self._guardian_used = true
+            hero.hp = hero.hp_max * (cap.params.heal or 0.20)
+            hero.dodge_iframe_t = math.max(hero.dodge_iframe_t or 0.0, cap.params.immune or 2.0)
+            self:set_flash("LAST STAND")
+            Art.shake(0.5, 0.4)
+        end
+    end
     hero.hit_flash = HIT_FLASH_T
     BossSkills.on_hero_damage(self, taken)
     -- Death recap: a 3-entry ring buffer of the last hits (newest last).
@@ -4450,6 +4888,7 @@ end
 function Duel:start_map()
     if self.state ~= "town" then return end
     self.endless = false
+    self._guardian_used = nil -- Last Stand recharges per map
     -- ATH_DUEL_MAP pins the map for smokes/tuning (bypasses the unlock gate).
     local env_map = ATH_COMMON.getenv_number("ATH_DUEL_MAP", nil)
     if self.boss_tour and not self.boss_tour_started and #self.maps > 0 then
@@ -4555,6 +4994,9 @@ function Duel:begin_manual_wave(index)
     if hero then
         hero.rage_hit_gain = 0.0
         hero.frenzy_t, hero.skill_guard_t = 0.0, 0.0
+        hero.frenzy_stacks, hero.frenzy_dmg, hero.frenzy_as, hero.frenzy_move = nil, nil, nil, nil
+        hero.symbols_t, hero.fleet_t, hero.shield = 0.0, 0.0, 0.0
+        hero.cap_counts, hero.cap_icd, hero.det_t = nil, nil, nil
         hero.flask_drink_t, hero.flask_lock_t = 0.0, 0.0
         hero.dodge_charges = hero.dodge_charges_max or 1
         hero.dodge_recharge_t = hero.dodge_recharge or DODGE_RECHARGE
@@ -4589,6 +5031,10 @@ end
 -- ---------------------------------------------------------------------------
 function Duel:spec_card_allowed(card)
     if not card.specialization then return true end
+    -- Tree cards route through the node gate.
+    if card.tree_node then
+        return (self:tree_node_allowed(card.specialization, card.tree_node))
+    end
     local ranks = (self.hero and self.hero.specialization_ranks) or {}
     local rank = ranks[card.specialization] or 0
     if rank > 0 then return rank < (card.max_rank or 5) end -- keep ranking an owned spec
@@ -4597,6 +5043,93 @@ function Duel:spec_card_allowed(card)
         if r > 0 then owned = owned + 1 end
     end
     return owned < 2
+end
+
+-- The active class's tree allocations ({spec_id = {node_id = rank}}).
+function Duel:class_tree_nodes()
+    return ((self.hero and self.hero.tree_nodes) or {})[self.hero_class] or {}
+end
+
+-- Points currently allocated in one spec tree.
+function Duel:tree_points(spec_id)
+    local t = self:class_tree_nodes()[spec_id]
+    local points = 0
+    for _, r in pairs(t or {}) do points = points + r end
+    return points
+end
+
+-- Hero Grid gate: 9-point primary (capstone), 5-point secondary (unlocks once
+-- the primary holds 5), third tree locked while two hold points.
+function Duel:tree_node_allowed(spec_id, node_id)
+    local hero = self.hero
+    if not hero then return false, "No hero." end
+    local tree = Balance.spec_tree(self.hero_class, spec_id)
+    local node = tree and tree.by_id[node_id]
+    if not node then return false, "Unknown node." end
+    local allocs = self:class_tree_nodes()
+    local mine = allocs[spec_id] or {}
+    if (mine[node_id] or 0) >= node.max_rank then return false, "Maxed." end
+    if node.choice then
+        local twin = node_id == "ma" and "mb" or "ma"
+        if (mine[twin] or 0) > 0 then return false, "Other mutation active." end
+    end
+    local points = self:tree_points(spec_id)
+    if points < (node.gate or 0) then
+        return false, string.format("Needs %d points here.", node.gate or 0)
+    end
+    local rules = Balance.tree_rules
+    local primary = hero.primary_spec
+    if primary and primary ~= spec_id then
+        if points == 0 then
+            local owned = 0
+            for sid in pairs(allocs) do
+                if self:tree_points(sid) > 0 then owned = owned + 1 end
+            end
+            if owned >= 2 then return false, "Two trees already chosen." end
+            if self:tree_points(primary) < rules.secondary_unlock then
+                return false, string.format("Primary needs %d points first.", rules.secondary_unlock)
+            end
+        end
+        if points >= rules.secondary_cap then return false, "Secondary cap (5)." end
+        if node.primary_only then return false, "Primary tree only." end
+    else
+        if points >= rules.primary_cap then return false, "Tree complete." end
+    end
+    return true
+end
+
+-- Post-refund legality: an allocation is legal iff it can be rebuilt by
+-- adding points in ascending gate order (gates count total points in the
+-- tree, WoW-style), the keystone anchors any invested tree, mutations stay
+-- exclusive, and caps hold.
+function Duel:tree_alloc_legal(allocs, primary)
+    local rules = Balance.tree_rules
+    local owned, primary_points, secondary_invested = 0, 0, false
+    for spec_id, mine in pairs(allocs or {}) do
+        local points = 0
+        for _, r in pairs(mine) do points = points + r end
+        if points > 0 then
+            owned = owned + 1
+            local tree = Balance.spec_tree(self.hero_class, spec_id)
+            if not tree then return false end
+            if (mine.key or 0) < 1 then return false end
+            if (mine.ma or 0) > 0 and (mine.mb or 0) > 0 then return false end
+            local is_primary = primary == spec_id
+            if is_primary then primary_points = points else secondary_invested = true end
+            if points > (is_primary and rules.primary_cap or rules.secondary_cap) then return false end
+            if not is_primary and (mine.cap or 0) > 0 then return false end
+            local cum = 0
+            for _, node in ipairs(tree.nodes) do -- nodes are gate-ordered
+                local r = mine[node.id] or 0
+                if r > 0 then
+                    if r > node.max_rank then return false end
+                    if cum < (node.gate or 0) then return false end
+                    cum = cum + r
+                end
+            end
+        end
+    end
+    return owned <= 2 and (not secondary_invested or primary_points >= rules.secondary_unlock)
 end
 
 function Duel:begin_draft(catalog, guaranteed)
@@ -4633,47 +5166,81 @@ function Duel:pick_draft_card(i)
     self:log(string.format("draft pick wave=%d card=%s", self.wave_index or 1, tostring(card.id)))
 end
 
--- Spend one skill point into a class specialization branch (Skills hub tree).
--- Rank caps and the two-branch breadth lock reuse spec_card_allowed.
-function Duel:allocate_skill(spec_id)
+-- Spend one skill point into a spec-tree node (Skills hub tree).
+-- Gates, mutation exclusivity, and the 9/5 primary/secondary caps live in
+-- tree_node_allowed.
+function Duel:allocate_skill(spec_id, node_id)
     if not self.manual_hero or not spec_id then return false, "No skill." end
+    node_id = node_id or "key"
     if (self.skill_points or 0) < 1 then return false, "No skill points." end
-    local cards = Balance.specialization_cards[self.hero_class] or {}
-    local card
-    for _, c in ipairs(cards) do
-        if c.specialization == spec_id then card = c; break end
-    end
+    local ok, why = self:tree_node_allowed(spec_id, node_id)
+    if not ok then return false, why or "Locked." end
+    local card = Balance.tree_card(self.hero_class, spec_id, node_id)
     if not card then return false, "Unknown skill." end
-    if not self:spec_card_allowed(card) then return false, "Locked." end
     self.skill_points = (self.skill_points or 0) - 1
     self.run_cards = self.run_cards or {}
     self.run_cards[#self.run_cards + 1] = card
     self:recompute_hero_stats()
     self:save_profile()
     self:haptic(12)
-    self:log(string.format("skill allocate spec=%s points_left=%d",
-        tostring(spec_id), self.skill_points or 0))
+    self:log(string.format("skill allocate spec=%s node=%s points_left=%d",
+        tostring(spec_id), tostring(node_id), self.skill_points or 0))
     return true, card.name
 end
 
--- Refund one rank from a specialization (Skills hub right-click).
-function Duel:deallocate_skill(spec_id)
+-- Refund one rank from a tree node (Skills hub right-click). Refuses refunds
+-- that would leave the remaining allocation unbuildable (gate/keystone/choice
+-- integrity) — refund higher tiers first. Fully unwinding a tree is always
+-- reachable in reverse order, so respec stays free.
+function Duel:deallocate_skill(spec_id, node_id)
     if not self.manual_hero or not spec_id then return false, "No skill." end
-    local have = ((self.hero and self.hero.specialization_ranks) or {})[spec_id] or 0
-    if have < 1 then return false, "Nothing to remove." end
+    node_id = node_id or "key"
     local cards = self.run_cards or {}
     for i = #cards, 1, -1 do
         local c = cards[i]
-        local eff = c and c.effect
-        if (c and c.specialization == spec_id)
-            or (eff and eff.specialization_rank == spec_id) then
+        local tn = c and c.effect and c.effect.tree_node
+        if tn and tn.spec == spec_id and tn.node == node_id
+            and (tn.class or self.hero_class) == self.hero_class then
+            -- Simulate the refund before committing it.
+            local trial = {}
+            for sid, t in pairs(self:class_tree_nodes()) do
+                local copy = {}
+                for nid, r in pairs(t) do copy[nid] = r end
+                trial[sid] = copy
+            end
+            local mine = trial[spec_id]
+            if not mine or (mine[node_id] or 0) < 1 then return false, "Nothing to remove." end
+            mine[node_id] = mine[node_id] - 1
+            if mine[node_id] <= 0 then mine[node_id] = nil end
+            local primary = self.hero.primary_spec
+            local points_left = 0
+            for _, r in pairs(mine) do points_left = points_left + r end
+            if points_left == 0 then
+                trial[spec_id] = nil
+                if primary == spec_id then
+                    -- Primary fully unwound: the other invested tree (if any)
+                    -- inherits primary by card order.
+                    primary = nil
+                    for _, rc in ipairs(cards) do
+                        local rtn = rc.effect and rc.effect.tree_node
+                        if rtn and (rtn.class or self.hero_class) == self.hero_class
+                            and rtn.spec ~= spec_id and trial[rtn.spec] then
+                            primary = rtn.spec
+                            break
+                        end
+                    end
+                end
+            end
+            if not self:tree_alloc_legal(trial, primary) then
+                return false, "Refund higher tiers first."
+            end
             table.remove(cards, i)
             self.skill_points = (self.skill_points or 0) + 1
             self:recompute_hero_stats()
             self:save_profile()
             self:haptic(8)
-            self:log(string.format("skill deallocate spec=%s points_left=%d",
-                tostring(spec_id), self.skill_points or 0))
+            self:log(string.format("skill deallocate spec=%s node=%s points_left=%d",
+                tostring(spec_id), tostring(node_id), self.skill_points or 0))
             return true
         end
     end
@@ -4774,6 +5341,15 @@ local function apply_gear_effect(hero, effect, ref)
         local id = effect.specialization_rank
         hero.specialization_ranks[id] = math.min(5, (hero.specialization_ranks[id] or 0) + 1)
     end
+    if effect.tree_node then
+        local tn = effect.tree_node
+        hero.tree_nodes = hero.tree_nodes or {}
+        local cls = hero.tree_nodes[tn.class or "?"]
+        if not cls then cls = {}; hero.tree_nodes[tn.class or "?"] = cls end
+        local t = cls[tn.spec]
+        if not t then t = {}; cls[tn.spec] = t end
+        t[tn.node] = (t[tn.node] or 0) + 1
+    end
     if effect.upgrade_rank then
         hero.upgrade_ranks = hero.upgrade_ranks or {}
         local id = effect.upgrade_rank
@@ -4867,6 +5443,8 @@ function Duel:recompute_hero_stats()
     hero.flask_nova, hero.flask_burst = 0.0, 0.0
     hero.specialization_ranks = {}
     hero.upgrade_ranks = {}
+    hero.tree_nodes = {}
+    hero.primary_spec = nil
     hero.fire_interval = hero.base_fire_interval or hero.fire_interval or 0.28
     -- Load establishes the dodge identity; gear and cards then modify it.
     apply_equip_load(hero, self.gear_equipped)
@@ -4889,6 +5467,50 @@ function Duel:recompute_hero_stats()
         apply_gear_effect(hero, card.effect, ref)
     end
     apply_specialization_passives(hero, self.hero_class, ref)
+    -- Hero Grid: derive effective rider values (spec_fx) from tree
+    -- allocations; specialization_ranks doubles as points-in-tree for the
+    -- HUD, gates, and persistence sites.
+    hero.spec_fx = {}
+    hero.minion_dmg_mult = 1.0
+    self._status_spec = {}
+    -- Primary = first tree card of the ACTIVE class in run order (profiles
+    -- carry every class's cards; other classes' trees stay banked but inert).
+    hero.primary_spec = nil
+    for _, card in ipairs(self.run_cards or {}) do
+        local tn = card.effect and card.effect.tree_node
+        if tn and (tn.class or self.hero_class) == self.hero_class then
+            hero.primary_spec = tn.spec
+            break
+        end
+    end
+    local class_alloc = self:class_tree_nodes()
+    local class = self:active_class()
+    for _, spec in ipairs(class and class.specializations or {}) do
+        local alloc = class_alloc[spec.id]
+        if alloc then
+            local tree = Balance.spec_tree(self.hero_class, spec.id)
+            if tree then -- defensive clamp; allocate/migration already gate
+                for nid, r in pairs(alloc) do
+                    local node = tree.by_id[nid]
+                    if not node then alloc[nid] = nil
+                    elseif r > node.max_rank then alloc[nid] = node.max_rank end
+                end
+            end
+        end
+        local fx = Balance.compute_spec_fx(self.hero_class, spec, alloc)
+        hero.spec_fx[spec.id] = fx
+        -- max(): legacy modes still rank specs via effect.specialization_rank.
+        hero.specialization_ranks[spec.id] =
+            math.max(hero.specialization_ranks[spec.id] or 0, fx.points or 0)
+        self._status_spec[spec.status] = spec.id
+        if (fx.range_add or 0.0) > 0.0 then
+            hero.attack_range = hero.attack_range + fx.range_add
+        end
+        if spec.kind == "summon" and (fx.points or 0) > 0 then
+            if fx.minion_dmg then hero.minion_dmg_mult = fx.minion_dmg.mult or 1.25 end
+            if fx.legion then hero.minion_dmg_mult = hero.minion_dmg_mult * (fx.legion.dmg_mult or 0.8) end
+        end
+    end
     finalize_attack_speed(hero, ref)
     if self.superhero then
         hero.hp_max = hero.hp_max * 5.0
@@ -4951,6 +5573,11 @@ function Duel:draft_card_catalog()
             if card.id then catalog[card.id] = card end
         end
     end
+    for _, cards in pairs(Balance.tree_cards or {}) do
+        for _, card in ipairs(cards) do
+            if card.id then catalog[card.id] = card end
+        end
+    end
     return catalog
 end
 
@@ -4959,11 +5586,30 @@ function Duel:apply_saved_run_cards()
     if type(ids) ~= "table" or #ids == 0 then return end
     local catalog = self:draft_card_catalog()
     self.run_cards = {}
+    -- Legacy spine migration: the Nth occurrence of an old flat spec card
+    -- ({class}_spec_{spec}) becomes the Nth node of the canonical spine, so an
+    -- old rank-5 lands exactly on keystone + both Foundation nodes maxed.
+    local spine_seen = {}
     for _, id in ipairs(ids) do
         if id == "universal_projectiles" then id = "universal_sustain" end
         local card = catalog[id]
         -- Only specialization ranks persist; universal draft cards are retired.
-        if card and card.specialization then self.run_cards[#self.run_cards + 1] = card end
+        if card and card.specialization then
+            if card.tree_node then
+                self.run_cards[#self.run_cards + 1] = card
+            elseif card.class_id and Balance.spec_tree(card.class_id, card.specialization) then
+                local n = (spine_seen[id] or 0) + 1
+                spine_seen[id] = n
+                local node_id = Balance.tree_legacy_spine[n]
+                local node_card = node_id
+                    and Balance.tree_card(card.class_id, card.specialization, node_id)
+                if node_card then
+                    self.run_cards[#self.run_cards + 1] = node_card
+                end -- ranks past the old cap of 5 never existed; drop silently
+            else
+                self.run_cards[#self.run_cards + 1] = card
+            end
+        end
     end
 end
 
@@ -4974,10 +5620,29 @@ function Duel:reset_manual_gear(keep_progression)
     self.gear_drop_cursor = 0
     if not keep_progression then
         self.run_cards = {}
-        self.skill_points = 0
+        self.skill_points = (Balance.tree_rules and Balance.tree_rules.starting_points) or 1
     end
     -- Re-apply pending profile picks (ids cleared after choose_class).
     if self._saved_run_card_ids then self:apply_saved_run_cards() end
+    self:recompute_hero_stats()
+    -- Legacy economy banked unbounded points; anything the 14-point cap can
+    -- never spend converts to gold once here. Full respec stays whole:
+    -- refunds return spent points, and spent + kept <= point_cap.
+    local rules = Balance.tree_rules
+    if rules and self.hero then
+        local spent = 0
+        for _, t in pairs(self:class_tree_nodes()) do
+            for _, r in pairs(t) do spent = spent + r end
+        end
+        local keep = math.max(0, (rules.point_cap or 14) - spent)
+        local excess = math.floor((self.skill_points or 0) - keep)
+        if excess > 0 then
+            local payout = excess * (rules.excess_point_gold or 100)
+            self.skill_points = keep
+            self.gold = (self.gold or 0) + payout
+            self:log(string.format("legacy skill points: %d excess -> %d gold", excess, payout))
+        end
+    end
     self.draft_offer = nil
     self._inv_drag = nil
     self._inv_last_click = nil
@@ -5157,6 +5822,24 @@ end
 -- Walk-and-pick window before leaving a wave / boss / map. Gold is already
 -- banked; item beacons stay until the hero walks onto them (or confirm loses
 -- leftovers). Gear / Esc opens the bag to free slots without auto-vacuum.
+-- Hero Grid income: +1 per swarm-wave clear, +2 at boss entry, capped at 14
+-- points earned per character (spent ranks + banked points count as earned).
+function Duel:award_spec_points(n, why)
+    if not self.manual_hero or (n or 0) <= 0 then return end
+    local spent = 0
+    for _, t in pairs(self:class_tree_nodes()) do
+        for _, r in pairs(t) do spent = spent + r end
+    end
+    local cap = (Balance.tree_rules and Balance.tree_rules.point_cap) or 14
+    local give = math.max(0, math.min(n, cap - spent - (self.skill_points or 0)))
+    if give <= 0 then return end
+    self.skill_points = (self.skill_points or 0) + give
+    local I18n = _G.ATH_I18N
+    local msg = (I18n and I18n.t("+%d SKILL", give)) or string.format("+%d SKILL", give)
+    self:set_flash("%s", (self.flash and self.flash ~= "" and (self.flash .. "  ") or "") .. msg)
+    self:log(string.format("spec points +%d (%s) banked=%d", give, tostring(why), self.skill_points))
+end
+
 function Duel:begin_loot(after)
     self:vacuum_coins()
     self:park_all_minions()
@@ -5164,6 +5847,15 @@ function Duel:begin_loot(after)
     self:reset_earth_shards()
     self:reset_creep_projectiles()
     self:restore_flask_charges(2)
+    -- A cleared swarm wave pays +1. Boss-entry points land here too, so the
+    -- loot/gear window can spend them before one-shot boss-arrival capstones.
+    if after == "next_wave" or after == "boss"
+        or (after == "map_clear" and not (self:active_map().boss or self.config.boss_archetype)) then
+        self:award_spec_points(Balance.tree_rules and Balance.tree_rules.wave_points or 1, "wave clear")
+    end
+    if after == "boss" then
+        self:award_spec_points(Balance.tree_rules and Balance.tree_rules.boss_points or 2, "boss entry")
+    end
     if self.hero and not self.hero.dead then
         Art.burst("ath_wave_clear", vec3(self.hero.x, 0.8, self.hero.z),
             { preset = "hero_take", count = 26, life_max = 0.5, spawn_radius = 0.6, size_max = 0.2,
@@ -5187,6 +5879,17 @@ function Duel:rise_boss()
     local boss_arch = map.boss or self.config.boss_archetype
     if not boss_arch then return end
     self.boss_spawned = true
+    -- Apocalypse capstone: the boss's arrival raises a free bone escort.
+    local hero = self.hero
+    local sum_fx = hero and (hero.spec_fx or {}).summoner
+    local sum_cap = sum_fx and sum_fx.capstone
+    if sum_cap and sum_cap.kind == "summon_burst" and hero and not hero.dead then
+        for _ = 1, sum_cap.params.count or 4 do
+            local angle, radius = math.random() * math.pi * 2.0, 0.8 + math.random() * 1.2
+            self:try_summon_minion("skeleton", MINIONS.skeleton.cap_max + (sum_cap.params.count or 4),
+                hero.x + math.cos(angle) * radius, hero.z + math.sin(angle) * radius)
+        end
+    end
     local title = map.boss_title or self.config.boss_title
     local I18n = _G.ATH_I18N
     if title then
@@ -5859,12 +6562,12 @@ function Duel:update_hud()
             local x = bx + (i - 1) * (icon_size + gap)
             Art.remove_ids(self.hud, { id .. "_icon", id .. "_text" })
             local rank = (hero.specialization_ranks or {})[spec.id] or 0
-            local text = rank > 0 and Balance.specialization_upgrade_text(class.id, spec.id, rank - 1)
-                or Balance.specialization_upgrade_text(class.id, spec.id, 0)
-            if rank > 0 then
-                text = text:gsub(T("Next rank:"), T("Current:"), 1)
+            local fx = (hero.spec_fx or {})[spec.id]
+            local text
+            if rank > 0 and fx and Inventory.spec_fx_lines then
+                text = T("Current:") .. "\n" .. table.concat(Inventory.spec_fx_lines(spec, fx), "\n")
             else
-                text = T("Not learned.\n") .. text
+                text = T("Not learned.\n") .. T(tostring(spec.desc or spec.id))
             end
             if spec.kind == "frenzy" and (hero.frenzy_t or 0.0) > 0.0 then
                 text = text .. "\n" .. T("Active: %d stacks, %.1fs left.",
@@ -6323,6 +7026,7 @@ function Duel:update(dt)
         self:update_spawning(sim_dt)
         self:update_hero(sim_dt)
         self:update_creeps(sim_dt)
+        self:update_tree_effects(sim_dt)
         self:update_minions(sim_dt)
         self:update_telegraphs(sim_dt)
         self:update_creep_projectiles(sim_dt)
