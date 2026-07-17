@@ -2028,6 +2028,82 @@ function Duel:reset_hero_projectiles()
     for _, p in ipairs(self.hproj) do self:hproj_hide(p) end
 end
 
+-- Orbit Blades proc boon: 2 pooled orbs circling the hero, dealing contact dps
+-- through the melee-aggregation path (so hits batch and flush as damage numbers,
+-- same as the brawler's contact loop). Parked at -1000 when the boon is unheld
+-- or combat is frozen. No per-frame allocation: the two nodes live for the run.
+local ORBIT_COUNT = 2
+
+function Duel:ensure_orbit_pool()
+    if self.orbit_pool then return end
+    if not (self.groups and self.groups.actors) then return end
+    self.orbit_pool = {}
+    for i = 1, ORBIT_COUNT do
+        local node = Art.sphere("OrbitBlade_" .. i, vec3(-1000.0, 0.9, -1000.0),
+            vec3(0.42, 0.42, 0.42), { 0.70, 0.95, 1.0, 1.0 }, self.groups.actors, 2.4)
+        self.orbit_pool[i] = { node = node }
+    end
+end
+
+function Duel:park_orbit_blades()
+    for _, b in ipairs(self.orbit_pool or {}) do
+        if Art.valid(b.node) then b.node:set_position(vec3(-1000.0, 0.9, -1000.0)) end
+    end
+end
+
+function Duel:update_orbit_blades(dt)
+    local hero = self.hero
+    local ob = hero and hero.orbit_blades
+    if not (self.state == "combat" and hero and not hero.dead and ob) then
+        if self.orbit_pool then self:park_orbit_blades() end
+        return
+    end
+    self:ensure_orbit_pool()
+    if not self.orbit_pool then return end
+    self._orbit_t = (self._orbit_t or 0.0) + dt
+    local radius = ob.radius or 2.4
+    local dps = ob.dps or 14.0
+    local contact2 = (radius * 0.55) * (radius * 0.55)
+    for i, b in ipairs(self.orbit_pool) do
+        local ang = self._orbit_t * 3.2 + (i - 1) * (2.0 * math.pi / ORBIT_COUNT)
+        local bx = hero.x + math.cos(ang) * radius
+        local bz = hero.z + math.sin(ang) * radius
+        if Art.valid(b.node) then b.node:set_position(vec3(bx, 0.9, bz)) end
+        for _, c in ipairs(self.creeps) do
+            if c.alive then
+                local dx, dz = c.x - bx, c.z - bz
+                if dx * dx + dz * dz <= contact2 then
+                    self:hit_creep(c, dps * dt, dx * 0.2, dz * 0.2, { melee = true })
+                end
+            end
+        end
+    end
+end
+
+-- Critical Burst proc boon: a crit detonates a modest AoE around the victim.
+-- Visual = the death-burst particle pool; damage is flat (pre_scaled, no crit,
+-- no knockback) on OTHER creeps in range, so it can't recurse or stack knockback.
+function Duel:proc_crit_burst(c, base_amount)
+    local hero = self.hero
+    local cb = hero and hero.crit_burst
+    if not (cb and c) then return end
+    local radius = cb.radius or 2.2
+    Art.burst("ath_crit_pop_" .. tostring(c.id), vec3(c.x, 0.6, c.z),
+        { preset = "enemy_take", count = 18, life_max = 0.30, spawn_radius = radius * 0.5,
+          size_max = 0.22, color_start = vec4(1.0, 0.72, 0.2, 1.0) })
+    local dmg = (base_amount or 0.0) * (cb.dmg_mult or 0.6)
+    if dmg < 0.5 then return end
+    local r2 = radius * radius
+    for _, o in ipairs(self.creeps) do
+        if o.alive and o.id ~= c.id then
+            local dx, dz = o.x - c.x, o.z - c.z
+            if dx * dx + dz * dz <= r2 then
+                self:hit_creep(o, dmg, 0.0, 0.0, { pre_scaled = true })
+            end
+        end
+    end
+end
+
 function Duel:spawn_hero_bolt(hero, target)
     self:ensure_hero_projectiles()
     if not self.hproj then return end
@@ -2045,6 +2121,7 @@ function Duel:spawn_hero_bolt(hero, target)
     slot.life = HPROJ_LIFE
     slot.damage = (hero.dps or 10.0) * RULES.basic_attack.ranged_damage_mult
     slot.piercing, slot.hit_ids, slot.skill, slot.mage_effects, slot.rogue_effects = nil, nil, nil, nil, nil
+    slot.bounced = nil
     slot.necro_effects, slot.rogue_basic, slot.necro_basic = nil, nil, nil
     slot.trail_t = 0.03
     local bc = hero.bolt_color or { 1.0, 0.90, 0.42 }
@@ -2126,6 +2203,32 @@ function Duel:update_hero_projectiles(dt)
                       life_max = was_crit and 0.30 or 0.20, spawn_radius = was_crit and 0.32 or 0.18,
                       size_max = was_crit and 0.24 or 0.17,
                       color_start = vec4(ic[1], ic[2], ic[3], 1.0) })
+                -- Chain Bolt proc: the impact arcs ONCE to the nearest other foe
+                -- in range for a fraction of the damage, via the same discrete hit
+                -- path (crit + damage number roll independently).
+                if hero and hero.chain_bolt and not p.bounced then
+                    local cbf = hero.chain_bolt
+                    local cr2 = (cbf.range or 4.0) * (cbf.range or 4.0)
+                    local best, bestd
+                    for _, o in ipairs(self.creeps) do
+                        if o.alive and o.id ~= hit.id and not (p.hit_ids and p.hit_ids[o.id]) then
+                            local ex, ez = o.x - hit.x, o.z - hit.z
+                            local dd = ex * ex + ez * ez
+                            if dd <= cr2 and (not bestd or dd < bestd) then best, bestd = o, dd end
+                        end
+                    end
+                    if best then
+                        p.bounced = true
+                        local bx, bz = best.x - hit.x, best.z - hit.z
+                        local bd = math.sqrt(bx * bx + bz * bz)
+                        bx, bz = (bd > 0.001) and bx / bd or 0.0, (bd > 0.001) and bz / bd or 0.0
+                        self:hit_creep(best, p.damage * (cbf.fraction or 0.5),
+                            bx * CREEP_KNOCK_BOLT, bz * CREEP_KNOCK_BOLT, { discrete = true })
+                        Art.burst("ath_chain_" .. tostring(best.id), vec3(best.x, 0.6, best.z),
+                            { preset = "enemy_take", count = 8, life_max = 0.18, spawn_radius = 0.16,
+                              size_max = 0.14, color_start = vec4(0.55, 0.9, 1.0, 1.0) })
+                    end
+                end
                 if piercing then
                     p.hit_ids = p.hit_ids or {}
                     p.hit_ids[hit.id] = true
@@ -2381,6 +2484,7 @@ function Duel:hit_creep(c, amount, kx, kz, opts)
         crit = self:roll_crit()
         if crit then amount = amount * CRIT_MULT end
         self:spawn_damage_number(c.x, c.z, amount, crit)
+        if crit and self.hero and self.hero.crit_burst then self:proc_crit_burst(c, amount) end
     elseif opts.melee then
         c._mdmg = (c._mdmg or 0.0) + amount
         c._mrider = (c._mrider or 0.0) + rider_amount
@@ -2442,6 +2546,7 @@ function Duel:flush_melee_packet(c)
         amt = amt * CRIT_MULT
     end
     self:spawn_damage_number(c.x, c.z, amt, crit)
+    if crit and self.hero and self.hero.crit_burst then self:proc_crit_burst(c, amt) end
     c._mdmg = 0.0
     c._mrider = 0.0
     c._mdmg_t = nil
@@ -2642,6 +2747,7 @@ end
 local function park_pickup(e)
     e.active = false
     e.essence = nil
+    e.boon = nil
     if Art.valid(e.node) then e.node:set_position(PICKUP_PARK) end
 end
 
@@ -2700,16 +2806,86 @@ function Duel:spawn_item_beacon(x, z, item)
     slot.active = true
     slot.x, slot.z = x, z
     slot.item = item
+    slot.boon = nil -- gear beacon: clear any boon left on a reused slot
     slot.retry_t = 0.0
     local col = RARITY_COLOR[item.rarity or "common"] or RARITY_COLOR.common
     if Art.valid(slot.node) then
         slot.node:set_position(vec3(x, 0.06, z))
         material.set(slot.disc, "base_color", vec4(col[1], col[2], col[3], 1.0))
         local icon = Inventory.SLOT_ICON[item.slot]
-        if icon and Art.valid(slot.icon) then
-            Art.texture(slot.icon, icon)
-            Art.texture(slot.icon, icon, "emissive")
+        if Art.valid(slot.icon) then
+            slot.icon:set_scale(vec3(1.0, 1.0, 1.0)) -- restore (a boon beacon hides it)
+            if icon then
+                Art.texture(slot.icon, icon)
+                Art.texture(slot.icon, icon, "emissive")
+            end
         end
+    end
+end
+
+-- Boon beacons ride the gear-beacon pool but grant a proc-boon card straight into
+-- run_cards (no bag; boons aren't inventory items). They read distinct: no floating
+-- slot icon, and a faster/brighter pulse in the boon's rarity colour.
+function Duel:eligible_boon()
+    -- Exclude boons the hero owns AND boons already dropped on the field (a
+    -- second elite must not roll a duplicate before the first is picked up).
+    local taken = {}
+    for _, card in ipairs(self.run_cards or {}) do
+        if card.boon and card.id then taken[card.id] = true end
+    end
+    for _, e in ipairs(self.beacons or {}) do
+        if e.active and e.boon and e.boon.id then taken[e.boon.id] = true end
+    end
+    local pool, total = {}, 0.0
+    for _, card in ipairs(Balance.draft_boons or {}) do
+        if not taken[card.id] then pool[#pool + 1] = card; total = total + (card.weight or 1) end
+    end
+    if #pool == 0 then return nil end
+    local r = math.random() * total
+    for _, card in ipairs(pool) do
+        r = r - (card.weight or 1)
+        if r <= 0.0 then return card end
+    end
+    return pool[#pool]
+end
+
+function Duel:grant_boon(card, x, z)
+    if not card then return end
+    self.run_cards = self.run_cards or {}
+    -- Idempotent: never bank a duplicate boon (effects are non-stacking).
+    for _, c in ipairs(self.run_cards) do
+        if c.boon and c.id == card.id then return end
+    end
+    self.run_cards[#self.run_cards + 1] = card
+    self:recompute_hero_stats()
+    self:save_profile()
+    local col = RARITY_COLOR[card.rarity or "rare"] or RARITY_COLOR.rare
+    local nm = (_G.ATH_I18N and _G.ATH_I18N.t(tostring(card.name))) or tostring(card.name)
+    self:set_flash("Gained %s", nm)
+    self:spawn_damage_number(x, z, 0, false, { text = nm, color = col })
+    Art.burst("ath_boon_pickup", vec3(x, 0.7, z),
+        { preset = "hero_take", count = 28, life_max = 0.55, spawn_radius = 0.5, size_max = 0.20,
+          color_start = vec4(col[1], col[2], col[3], 1.0), gravity = vec3(0.0, 2.4, 0.0) })
+    self:haptic(14)
+    self:log("boon acquired " .. tostring(card.id))
+end
+
+function Duel:spawn_boon_beacon(x, z, card)
+    self:ensure_pickup_pools()
+    if not (card and self.beacons) then return end
+    local slot
+    for _, e in ipairs(self.beacons) do if not e.active then slot = e; break end end
+    if not slot then self:grant_boon(card, x, z); return end -- pool full: grant outright
+    slot.active = true
+    slot.x, slot.z = x, z
+    slot.item = nil
+    slot.boon = card
+    slot.retry_t = 0.0
+    local col = RARITY_COLOR[card.rarity or "rare"] or RARITY_COLOR.rare
+    if Art.valid(slot.node) then
+        slot.node:set_position(vec3(x, 0.06, z))
+        material.set(slot.disc, "base_color", vec4(col[1], col[2], col[3], 1.0))
+        if Art.valid(slot.icon) then slot.icon:set_scale(vec3(0.0001, 0.0001, 0.0001)) end
     end
 end
 
@@ -2769,12 +2945,15 @@ function Duel:update_pickups(dt)
         if e.active then
             e.retry_t = math.max(0.0, (e.retry_t or 0.0) - dt)
             local item = e.item
-            local col = RARITY_COLOR[(item and item.rarity) or "common"] or RARITY_COLOR.common
+            local info = item or e.boon -- gear OR boon: both carry name/desc/rarity
+            local col = RARITY_COLOR[(info and info.rarity) or "common"] or RARITY_COLOR.common
             if Art.valid(e.node) then
-                local p = 0.7 + 0.6 * math.abs(math.sin(self.realtime * 5.0))
+                -- Boon beacons pulse faster + brighter so they read distinct from gear.
+                local p = e.boon and (0.9 + 0.9 * math.abs(math.sin(self.realtime * 8.0)))
+                    or (0.7 + 0.6 * math.abs(math.sin(self.realtime * 5.0)))
                 material.set(e.disc, "emissive", vec3(col[1] * p, col[2] * p, col[3] * p))
             end
-            if pickup_vp and item and mx and runtime_ui and runtime_ui.set_quad then
+            if pickup_vp and info and mx and runtime_ui and runtime_ui.set_quad then
                 local sx, sy = Art.world_to_screen(pickup_vp, e.x, 0.35, e.z)
                 if sx then
                     local ex, ey = Art.world_to_screen(pickup_vp, e.x + 1.05, 0.35, e.z)
@@ -2787,14 +2966,18 @@ function Duel:update_pickups(dt)
                     local dx, dy = mx - sx, my - sy
                     local d2 = dx * dx + dy * dy
                     if d2 <= hr * hr and (not hovered or d2 < hovered.d2) then
-                        hovered = { item = item, col = col, sx = sx, sy = sy, d2 = d2 }
+                        hovered = { item = info, col = col, sx = sx, sy = sy, d2 = d2 }
                     end
                 end
             end
             local dx, dz = hero.x - e.x, hero.z - e.z
             local br = math.max(BEACON_COLLECT_R, pr)
             if not hero.dead and e.retry_t <= 0.0 and (dx * dx + dz * dz) <= br * br then
-                if Inventory.add_item(self, e.item) then
+                if e.boon then
+                    -- Boons aren't bag items: grant straight into run_cards (no bag-full).
+                    self:grant_boon(e.boon, e.x, e.z)
+                    park_pickup(e)
+                elseif Inventory.add_item(self, e.item) then
                     self:log("found " .. tostring(e.item.id))
                     self:set_flash("Found %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(e.item.name or e.item.id))) or tostring(e.item.name or e.item.id))
                     self:spawn_damage_number(e.x, e.z, 0, false,
@@ -2854,7 +3037,9 @@ end
 function Duel:vacuum_items()
     for _, e in ipairs(self.beacons or {}) do
         if e.active then
-            if Inventory.add_item(self, e.item) then
+            if e.boon then
+                self:grant_boon(e.boon, e.x, e.z) -- boons never bag; never lost
+            elseif Inventory.add_item(self, e.item) then
                 self:set_flash("Found %s", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(e.item.name or e.item.id))) or tostring(e.item.name or e.item.id))
             else
                 self:set_flash("Bag full - %s lost", (_G.ATH_I18N and _G.ATH_I18N.t(tostring(e.item.name or e.item.id))) or tostring(e.item.name or e.item.id))
@@ -2868,6 +3053,46 @@ end
 function Duel:vacuum_pickups()
     self:vacuum_coins()
     self:vacuum_items()
+end
+
+-- Hover tooltip for the top-left mutator icon row (mode.lua draw_hud passes the
+-- surface-space rects). Reuses the same pointer + set_quad text-tooltip pattern
+-- as the inventory (inv_tip) / beacon (beacon_tip) tips: hit-test ui_pointer
+-- against each icon rect, show name + one-line desc anchored just under the icon,
+-- clamped inside the viewport. Cleared when not hovering (empty rects clears it).
+function Duel:mutator_tooltip(rects)
+    if not (runtime_ui and runtime_ui.set_quad) then return end
+    local mx, my = ui_pointer()
+    local hovered
+    if mx then
+        for _, r in ipairs(rects or {}) do
+            if mx >= r.x and mx <= r.x + r.sz and my >= r.y and my <= r.y + r.sz then
+                hovered = r
+                break
+            end
+        end
+    end
+    if not hovered then
+        if runtime_ui.remove then runtime_ui.remove(self.hud, "mutator_tip") end
+        return
+    end
+    local function S(v) return v * Art.s("hud") end
+    local vp = Art._vp
+    local rw, rh = (vp and vp.rw) or 2400.0, (vp and vp.rh) or 1080.0
+    local margin = S(8.0)
+    local tw = math.min(S(300.0), rw - 2.0 * margin)
+    local tx = hovered.x
+    local ty = hovered.y + hovered.sz + S(6.0) -- just under the icon row
+    tx = math.max(margin, math.min(tx, rw - tw - margin))
+    ty = math.max(margin, math.min(ty, rh - S(90.0) - margin))
+    runtime_ui.set_quad(self.hud, "mutator_tip", {
+        x = tx, y = ty, width = tw, style = "text", fit = true,
+        fill = { 0.04, 0.05, 0.08, 0.98 }, border = hovered.col or { 0.9, 0.85, 0.4, 1.0 },
+        body = Art.ascii(tostring(hovered.name) .. "\n" .. tostring(hovered.desc or "")),
+        text_color = { 0.92, 0.94, 0.98, 1.0 },
+        font_scale = 2.0, align_h = "left", align_v = "top",
+        no_input = true, bring_to_front = true, z = 7000.0,
+    })
 end
 
 function Duel:reset_pickups()
@@ -3378,7 +3603,12 @@ function Duel:update_hero(dt)
             if (hero.flask_drink_t or 0.0) <= 0.0 and hpf < 0.35 then
                 self:try_flask()
             end
-            -- Dodge the grammar's red telegraphs: an inbound dash or a lit fuse.
+            -- Dodge the grammar's red telegraphs: an imminent boss-skill payoff
+            -- (ground slam / dive strafe / pounce), then an inbound dash or lit fuse.
+            if (hero.dodge_charges or 0) > 0 and hero.dodge_t <= 0.0 then
+                local hx, hz = BossSkills.dodge_hint(self, hero)
+                if hx then self:try_dodge(hx, hz) end
+            end
             if (hero.dodge_charges or 0) > 0 and hero.dodge_t <= 0.0 then
                 for _, c in ipairs(self.creeps) do
                     if c.alive then
@@ -3621,7 +3851,8 @@ function Duel:spawn_one(spawn, arch, free)
         local def = Creep.archetypes[Creep.resolve_archetype(arch)] or {}
         if not def.boss then
             elite = math.random() < (RULES.enemy.elite_base_chance
-                + RULES.enemy.elite_wave_chance * (self.wave_index or 1) + (map.elite_bonus or 0.0))
+                + RULES.enemy.elite_wave_chance * (self.wave_index or 1) + (map.elite_bonus or 0.0)
+                + (self.elite_wave_bonus or 0.0))
         end
     end
     local creep = Creep.create({
@@ -3719,8 +3950,9 @@ function Duel:drain_spawn_queue(per_frame)
 
         local req = table.remove(q, 1)
         -- Manual arena: random near the walls, away from the hero. Other modes
-        -- keep their authored fixed spawn ring.
-        local spawn = self.manual_hero and self:pick_spawn_point()
+        -- keep their authored fixed spawn ring. The Wave Director may pin an
+        -- explicit formation point (req.spawn); legacy entries have none.
+        local spawn = req.spawn or (self.manual_hero and self:pick_spawn_point())
             or self.spawns[(self.spawn_counter % #self.spawns) + 1]
         if self.use_telegraph then
             self:add_telegraph(spawn, req.arch, req.free)
@@ -3751,7 +3983,18 @@ function Duel:update_spawning(dt)
         local queued = self.spawn_queue and #self.spawn_queue or 0
         local pending = self.telegraphs and #self.telegraphs or 0
         local headroom = self:live_cap() - self:count_alive() - pending - queued
-        if headroom > 0 then self:spawn_batch(math.min(self:batch_size(), headroom)) end
+        if headroom > 0 then
+            if self.wave_dir then
+                local ok, err = pcall(self.wave_dir.spawn_tick, self.wave_dir, self, headroom)
+                if not ok then
+                    self:log("wave director spawn error (legacy drip): " .. tostring(err))
+                    self.wave_dir = nil
+                    self:spawn_batch(math.min(self:batch_size(), headroom))
+                end
+            else
+                self:spawn_batch(math.min(self:batch_size(), headroom))
+            end
+        end
     end
 end
 
@@ -3883,153 +4126,8 @@ end
 -- Creeps + combat
 -- ---------------------------------------------------------------------------
 
-local function segment_cross(a, b)
-    local adx, adz = a.x2 - a.x1, a.z2 - a.z1
-    local bdx, bdz = b.x2 - b.x1, b.z2 - b.z1
-    local den = adx * bdz - adz * bdx
-    if math.abs(den) < 0.001 then return nil end
-    local ox, oz = b.x1 - a.x1, b.z1 - a.z1
-    local at = (ox * bdz - oz * bdx) / den
-    local bt = (ox * adz - oz * adx) / den
-    if at <= 0.08 or at >= 0.92 or bt <= 0.08 or bt >= 0.92 then return nil end
-    return a.x1 + adx * at, a.z1 + adz * at
-end
-
-function Duel:spawn_royal_furrow_bomb(c, x, z, spec)
-    self:ensure_telegraph_pool()
-    for _, bomb in ipairs(self.furrow_bombs or {}) do
-        local dx, dz = bomb.x - x, bomb.z - z
-        if dx * dx + dz * dz < 1.0 then return end
-    end
-    local nodes = self.furrow_bomb_pool and table.remove(self.furrow_bomb_pool) or nil
-    if not nodes and self.furrow_bombs and #self.furrow_bombs > 0 then
-        nodes = table.remove(self.furrow_bombs, 1).nodes
-    end
-    if not nodes then return end
-    local radius = spec.radius or 2.2
-    if Art.valid(nodes.ring) then
-        nodes.ring:set_scale(vec3(radius * 2.0, 0.025, radius * 2.0))
-        nodes.ring:set_position(vec3(x, 0.055, z))
-    end
-    if Art.valid(nodes.core) then
-        nodes.core:set_position(vec3(x, 0.42, z))
-        nodes.core:set_scale(vec3(0.85, 0.70, 0.85))
-        material.set(nodes.core, "base_color", vec4(1.0, 0.32, 0.03, 1.0))
-        material.set(nodes.core, "emissive", vec3(3.2, 0.5, 0.04))
-    end
-    local fuse = spec.fuse or 1.35
-    self.furrow_bombs[#self.furrow_bombs + 1] = {
-        x = x, z = z, t = fuse, dur = fuse, radius = radius,
-        damage = spec.damage or 28.0, owner = c, nodes = nodes,
-    }
-    Art.burst("ath_royal_furrow_sprout", vec3(x, 0.25, z),
-        { preset = "enemy_give", count = 12, life_max = 0.35, spawn_radius = 0.25, size_max = 0.16,
-          color_start = vec4(1.0, 0.42, 0.05, 1.0), gravity = vec3(0.0, 1.4, 0.0) })
-end
-
-function Duel:add_royal_furrow(c, x1, z1, x2, z2, spec)
-    local dx, dz = x2 - x1, z2 - z1
-    local length = math.sqrt(dx * dx + dz * dz)
-    if length < 1.0 then return end
-    self:ensure_telegraph_pool()
-    local node = self.furrow_pool and table.remove(self.furrow_pool) or nil
-    if not node and self.furrows and #self.furrows > 0 then
-        node = table.remove(self.furrows, 1).node
-    end
-    if not node then return end
-    local furrow = { x1 = x1, z1 = z1, x2 = x2, z2 = z2, node = node }
-    local crossings = 0
-    for _, old in ipairs(self.furrows or {}) do
-        local x, z = segment_cross(furrow, old)
-        if x then
-            self:spawn_royal_furrow_bomb(c, x, z, spec)
-            crossings = crossings + 1
-            if crossings >= 3 then break end
-        end
-    end
-    node:set_position(vec3((x1 + x2) * 0.5, 0.025, (z1 + z2) * 0.5))
-    node:set_scale(vec3(0.46, 0.025, length))
-    node:set_rotation(vec3(0.0, math.deg(math.atan(dx, dz)), 0.0))
-    material.set(node, "base_color", vec4(0.42, 0.13, 0.025, 0.88))
-    material.set(node, "emissive", vec3(0.75, 0.16, 0.025))
-    local nx, nz = -dz / length, dx / length
-    for i = 1, 8 do
-        local t = (i - 0.5) / 8.0
-        local side = i % 2 == 0 and 1.0 or -1.0
-        Art.burst("ath_royal_furrow_dirt_" .. i, vec3(x1 + dx * t, 0.14, z1 + dz * t),
-            { preset = "enemy_give", count = 2, life_min = 0.20, life_max = 0.46,
-              spawn_radius = 0.08, noise_strength = 0.8, size_min = 0.05, size_max = 0.12,
-              velocity = vec3(nx * side * 2.2, 1.5, nz * side * 2.2), gravity = vec3(0.0, -4.0, 0.0),
-              color_start = vec4(0.72, 0.24, 0.035, 0.95), color_end = vec4(0.16, 0.035, 0.01, 0.0) })
-    end
-    self.furrows[#self.furrows + 1] = furrow
-end
-
-function Duel:update_royal_furrow_bombs(dt, hero)
-    if not self.furrow_bombs or #self.furrow_bombs == 0 then return end
-    local keep = {}
-    for _, bomb in ipairs(self.furrow_bombs) do
-        bomb.t = bomb.t - dt
-        local pulse = 0.45 + 0.55 * math.abs(math.sin(self.realtime * (12.0 + 20.0 * (1.0 - bomb.t / bomb.dur))))
-        if Art.valid(bomb.nodes.ring) then
-            material.set(bomb.nodes.ring, "base_color", vec4(1.0, 0.12, 0.04, 0.22 + 0.40 * pulse))
-            material.set(bomb.nodes.ring, "emissive", vec3(1.8 * pulse, 0.16, 0.05))
-        end
-        if Art.valid(bomb.nodes.core) then
-            material.set(bomb.nodes.core, "emissive", vec3(1.8 + 2.5 * pulse, 0.35, 0.04))
-        end
-        if bomb.t <= 0.0 then
-            local dx, dz = hero.x - bomb.x, hero.z - bomb.z
-            if dx * dx + dz * dz <= bomb.radius * bomb.radius then
-                self:apply_hero_damage(bomb.damage, { source = creep_name(bomb.owner) .. " (royal furrow)" })
-            end
-            Art.burst("ath_royal_furrow_blast", vec3(bomb.x, 0.45, bomb.z),
-                { preset = "enemy_give", count = 28, life_max = 0.42, spawn_radius = bomb.radius * 0.45,
-                  size_max = 0.28, color_start = vec4(1.0, 0.34, 0.05, 1.0) })
-            if Art.valid(bomb.nodes.ring) then bomb.nodes.ring:set_position(vec3(-1000.0, 0.055, -1000.0)) end
-            if Art.valid(bomb.nodes.core) then bomb.nodes.core:set_position(vec3(-1000.0, 0.42, -1000.0)) end
-            self.furrow_bomb_pool[#self.furrow_bomb_pool + 1] = bomb.nodes
-            Art.shake(0.35, 0.25)
-        else
-            keep[#keep + 1] = bomb
-        end
-    end
-    self.furrow_bombs = keep
-end
-
 function Duel:update_boss_skill(c, dt, hero, ev)
-    local spec = c.stats and c.stats.boss_skill
-    if not spec then return end
-    if spec.id ~= "royal_furrows" then
-        BossSkills.update(self, c, dt, hero, ev)
-        return
-    end
-    self:update_royal_furrow_bombs(dt, hero)
-    if ev and ev.windup then
-        c._furrow_start_x, c._furrow_start_z = c.x, c.z
-        Anim.play_oneshot(c, "royal_furrows", self.realtime, 0.55)
-        Art.burst("ath_royal_furrows_core", vec3(c.x, 0.72, c.z),
-            { preset = "enemy_take", count = 12, life_min = 0.08, life_max = 0.26,
-              spawn_radius = 0.14, noise_strength = 9.0, size_min = 0.05, size_max = 0.15,
-              color_start = vec4(1.0, 1.0, 1.0, 1.0), color_end = vec4(1.0, 0.22, 0.02, 0.0) })
-        for i = 1, 8 do
-            local a = i / 8.0 * math.pi * 2.0 + self.realtime * 0.7
-            local rx, rz = math.sin(a), math.cos(a)
-            Art.burst("ath_royal_furrows_ray_" .. i, vec3(c.x + rx * 0.65, 0.55, c.z + rz * 0.65),
-                { preset = "enemy_give", count = 2, life_min = 0.20, life_max = 0.42,
-                  spawn_radius = 0.04, noise_strength = 0.6, size_min = 0.035, size_max = 0.09,
-                  velocity = vec3(rx * 4.2, 1.3, rz * 4.2), drag = 1.2, orientation = "velocity",
-                  color_start = vec4(1.0, 0.28, 0.03, 0.95), color_end = vec4(0.3, 0.04, 0.01, 0.0) })
-        end
-    end
-    if c.charge_state == "dash" then
-        c._furrow_dashing = true
-        c._furrow_start_x = c._furrow_start_x or c.x
-        c._furrow_start_z = c._furrow_start_z or c.z
-    elseif c._furrow_dashing then
-        self:add_royal_furrow(c, c._furrow_start_x, c._furrow_start_z, c.x, c.z, spec)
-        c._furrow_dashing, c._furrow_start_x, c._furrow_start_z = nil, nil, nil
-    end
+    if c.stats and c.stats.boss_skill then BossSkills.update(self, c, dt, hero) end
 end
 
 function Duel:update_boss_v2(c, dt, hero)
@@ -4466,6 +4564,16 @@ function Duel:update_creeps(dt)
                 Art.shake(s.boss and 0.85 or 0.1, s.boss and 0.6 or 0.2)
             end
             if self.manual_hero and c._hero_killed then
+                -- Vampiric Surge proc: each kill restores health with a green
+                -- heal popup from the damage-number pool.
+                if hero and not hero.dead and hero.vampiric_surge then
+                    local heal = hero.vampiric_surge.heal or 5.0
+                    if hero.hp < hero.hp_max then
+                        self:hero_rider_heal(heal)
+                        self:spawn_damage_number(hero.x, hero.z, 0, false,
+                            { text = "+" .. math.floor(heal + 0.5), color = { 0.42, 0.86, 0.52 } })
+                    end
+                end
                 if c.elite and not self.essence_dropped and self:flask_total() < FLASK_CHARGES then
                     self.essence_dropped = true
                     self:spawn_essence(c.x, c.z)
@@ -5019,7 +5127,9 @@ function Duel:begin_manual_wave(index)
     if self.manual_hero then
         local kept = {}
         for _, card in ipairs(self.run_cards or {}) do
-            if card and card.specialization then kept[#kept + 1] = card end
+            -- Spec ranks persist via the Skills hub; run-scoped proc boons persist
+            -- for the whole run (reset only in reset_manual_gear).
+            if card and (card.specialization or card.boon) then kept[#kept + 1] = card end
         end
         self.run_cards = kept
         self.draft_offer = nil
@@ -5028,6 +5138,27 @@ function Duel:begin_manual_wave(index)
     self.state = "combat"
     self:set_flash("WAVE %d", self.wave_index)
     self:log(string.format("wave start wave=%d budget=%.0f", self.wave_index, self.reserve_start))
+
+    -- Wave Director (Phase 1): scripted composition/formation + one seeded
+    -- mutator per wave. Nil-gated on config.wave_scripts so every unscripted
+    -- config stays byte-identical; boss rounds always fall through to the legacy
+    -- flat drip. The per-wave mutator knobs are reset EVERY wave (incl. boss
+    -- rounds) so nothing bleeds past its wave; wave_scripts.begin re-applies the
+    -- active ones. A begin/tick error drops back to the legacy drip (one log).
+    self.wave_dir = nil
+    if self.config.wave_scripts and self.manual_hero then
+        self.elite_wave_bonus, self.drop_every_mult = nil, nil
+        self.coin_gold_mult, self.wave_drop_floor = nil, nil
+        self.buffs.speed, self.buffs.power, self.buffs.hp = 0.0, 0.0, 0.0
+        if not boss_round then
+            local ok, dir = pcall(self.config.wave_scripts.begin, self, self.wave_index)
+            if ok then
+                self.wave_dir = dir
+            else
+                self:log("wave director init error (legacy drip): " .. tostring(dir))
+            end
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -5274,7 +5405,8 @@ function Duel:maybe_drop_manual_gear(c)
     -- Gold scales steeply with map rank (deep maps are the income; wave-one
     -- suicide farming on map I stays poor).
     local gold_mult = self:active_map().gold_mult or 1.0
-    local base_gold = math.max(1, math.floor((self.gear_cfg.gold_per_kill or 1) * gold_mult + 0.5))
+    local base_gold = math.max(1, math.floor((self.gear_cfg.gold_per_kill or 1) * gold_mult
+        * (self.coin_gold_mult or 1.0) + 0.5))
     local coins = 1
     if s.boss then coins = 7 elseif c and c.elite then coins = 4 elseif cost >= TELEGRAPH_BIG_COST then coins = 2 end
     for _ = 1, coins do
@@ -5290,15 +5422,24 @@ function Duel:maybe_drop_manual_gear(c)
         local b = Duel.scale_item_stats(self:roll_drop_item(items, nil, up), 1.10)
         self:spawn_item_beacon(x - 0.9, z, a)
         self:spawn_item_beacon(x + 0.9, z, b)
+        -- Boss guarantees a boon beacon (if the hero lacks any); else just gear.
+        local boon = self:eligible_boon()
+        if boon then self:spawn_boon_beacon(x, z + 1.3, boon) end
         return
     end
     if c and c.elite then
-        if math.random() <= 0.20 then self:spawn_item_beacon(x, z, self:roll_drop_item(items)) end
+        -- Elites roll a modest chance for a BOON beacon (unowned boons only),
+        -- independent of the gear roll and wave_drop_floor; else the normal drop.
+        if math.random() < (RULES.economy.boon_elite_chance or 0.12) then
+            local boon = self:eligible_boon()
+            if boon then self:spawn_boon_beacon(x, z, boon); return end
+        end
+        if math.random() <= 0.20 then self:spawn_item_beacon(x, z, self:roll_drop_item(items, self.wave_drop_floor)) end
         return
     end
-    local every = math.max(1, math.floor(self.gear_cfg.drop_every or 6))
+    local every = math.max(1, math.floor((self.gear_cfg.drop_every or 6) * (self.drop_every_mult or 1.0)))
     if (self.kills % every) ~= 0 then return end
-    self:spawn_item_beacon(x, z, self:roll_drop_item(items))
+    self:spawn_item_beacon(x, z, self:roll_drop_item(items, self.wave_drop_floor))
 end
 
 -- Percentage (+X%) bonuses are additive from BASE, never compounded on current:
@@ -5343,6 +5484,12 @@ local function apply_gear_effect(hero, effect, ref)
     if effect.retaliation_orbit then hero.retaliation_orbit = (hero.retaliation_orbit or 0.0) + effect.retaliation_orbit end
     if effect.flask_nova then hero.flask_nova = (hero.flask_nova or 0.0) + effect.flask_nova end
     if effect.flask_burst then hero.flask_burst = (hero.flask_burst or 0.0) + effect.flask_burst end
+    -- Proc boons (Wave Director Phase 2): each sets a single hero field consumed
+    -- by its combat hook. Non-stacking (last card wins) — one card each by design.
+    if effect.chain_bolt then hero.chain_bolt = effect.chain_bolt end
+    if effect.crit_burst then hero.crit_burst = effect.crit_burst end
+    if effect.orbit_blades then hero.orbit_blades = effect.orbit_blades end
+    if effect.vampiric_surge then hero.vampiric_surge = effect.vampiric_surge end
     if effect.specialization_rank then
         hero.specialization_ranks = hero.specialization_ranks or {}
         local id = effect.specialization_rank
@@ -5448,6 +5595,8 @@ function Duel:recompute_hero_stats()
     hero.slow_aura = false
     hero.bleed_on_crit, hero.dodge_blades, hero.retaliation_orbit = 0.0, 0.0, 0.0
     hero.flask_nova, hero.flask_burst = 0.0, 0.0
+    -- Proc boons (run-scoped draft cards): reset to inactive every recompute.
+    hero.chain_bolt, hero.crit_burst, hero.orbit_blades, hero.vampiric_surge = nil, nil, nil, nil
     hero.specialization_ranks = {}
     hero.upgrade_ranks = {}
     hero.tree_nodes = {}
@@ -5575,6 +5724,9 @@ function Duel:draft_card_catalog()
     for _, card in ipairs(Balance.draft_cards or {}) do
         if card.id then catalog[card.id] = card end
     end
+    for _, card in ipairs(Balance.draft_boons or {}) do
+        if card.id then catalog[card.id] = card end
+    end
     for _, cards in pairs(Balance.specialization_cards or {}) do
         for _, card in ipairs(cards) do
             if card.id then catalog[card.id] = card end
@@ -5597,11 +5749,19 @@ function Duel:apply_saved_run_cards()
     -- ({class}_spec_{spec}) becomes the Nth node of the canonical spine, so an
     -- old rank-5 lands exactly on keystone + both Foundation nodes maxed.
     local spine_seen = {}
+    local boon_seen = {}
     for _, id in ipairs(ids) do
         if id == "universal_projectiles" then id = "universal_sustain" end
         local card = catalog[id]
+        -- Proc boons persist across save/load once obtained (elite/boss drops);
+        -- dedupe on restore so a legacy profile never re-adds the same boon.
+        if card and card.boon then
+            if not boon_seen[card.id] then
+                boon_seen[card.id] = true
+                self.run_cards[#self.run_cards + 1] = card
+            end
         -- Only specialization ranks persist; universal draft cards are retired.
-        if card and card.specialization then
+        elseif card and card.specialization then
             if card.tree_node then
                 self.run_cards[#self.run_cards + 1] = card
             elseif card.class_id and Balance.spec_tree(card.class_id, card.specialization) then
@@ -5618,6 +5778,11 @@ function Duel:apply_saved_run_cards()
             end
         end
     end
+    local restored = {}
+    for _, card in ipairs(self.run_cards) do
+        if card.boon and card.id then restored[#restored + 1] = card.id end
+    end
+    if #restored > 0 then self:log("boons restored: " .. table.concat(restored, ",")) end
 end
 
 function Duel:reset_manual_gear(keep_progression)
@@ -7050,6 +7215,7 @@ function Duel:update(dt)
     self:update_input(dt)
 
     self:drain_spawn_queue(self.config.spawns_per_frame or 1)
+    self:update_orbit_blades(sim_dt) -- gated internally to combat; parks otherwise
 
     if self.state == "combat" then
         self.combat_time = self.combat_time + sim_dt
@@ -7133,6 +7299,10 @@ function Duel:start()
 
     local seed = ATH_COMMON.getenv_number("ATH_DUEL_SEED", nil)
     if seed then math.randomseed(math.floor(seed)) end
+    -- Stable run seed for the Wave Director's deterministic per-wave mutator pick
+    -- (independent of global math.random). ATH_DUEL_SEED pins it for smokes;
+    -- otherwise a wall-clock seed so real runs get mutator variety.
+    self.run_seed = seed or self.run_seed or (os and os.time and os.time()) or 1
 
     self.groups = {}
     self.root = Art.group((self.config.id or "duel") .. "_Root", nil)
@@ -7172,6 +7342,7 @@ function Duel:stop()
     self.tele_pool = nil
     self.cproj = nil
     self.hproj = nil
+    self.orbit_pool = nil
     self.coins = nil
     self.beacons = nil
     self.minions = nil

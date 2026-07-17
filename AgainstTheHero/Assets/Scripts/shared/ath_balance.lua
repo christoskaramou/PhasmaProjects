@@ -43,6 +43,10 @@ Balance.rules = {
     economy = {
         gold_per_kill = 1, drop_every = 25,
         store_prices = { common = 50, uncommon = 150, rare = 400, epic = 1000, legendary = 2500 },
+        -- Proc-boon delivery: elites roll this chance to drop a BOON beacon (only
+        -- boons the hero lacks); tuned so a ~10-wave run sees ~2-3. Boss always
+        -- guarantees one. Independent of item-drop / wave_drop_floor rolls.
+        boon_elite_chance = 0.12,
     },
     arena = {
         spawn = { interval_start = 0.60, interval_min = 0.20, batch_start = 3,
@@ -78,6 +82,33 @@ Balance.draft_cards = {
       rarity = "universal", tags = { "Health", "Regen" },
       desc = "+1% max health/s per rank.",
       effect = { upgrade_rank = "sustain", hp_regen_pct_add = 0.01 } },
+}
+
+-- Proc boons (Wave Director Phase 2): run-scoped draft cards whose effects are a
+-- single visible proc each, built entirely on existing combat pools (tracer
+-- bolts, death-burst particles, melee-aggregation dps, damage-number popups).
+-- Rare-ish by design (uncommon/rare, never the common bucket). Applied via
+-- run_cards -> apply_gear_effect (sets a hero.<proc> field), reset by
+-- recompute_hero_stats. `weight` is the draft rarity weight (lower = rarer),
+-- kept modest so these never flood a draft. NOT one of the 3 universal upgrades
+-- (Balance.draft_cards is asserted == 3); a separate pool.
+Balance.draft_boons = {
+    { id = "chain_bolt", name = "Chain Bolt", rarity = "uncommon", weight = 10, boon = true,
+      tags = { "Ranged", "Bounce" },
+      desc = "Bolt impacts arc to the nearest other foe within 4m for 50% damage.",
+      effect = { chain_bolt = { fraction = 0.5, range = 4.0 } } },
+    { id = "crit_burst", name = "Critical Burst", rarity = "rare", weight = 6, boon = true,
+      tags = { "Crit", "AoE" },
+      desc = "Critical hits detonate a small blast around the victim for 60% of the hit.",
+      effect = { crit_burst = { radius = 2.2, dmg_mult = 0.6 } } },
+    { id = "orbit_blades", name = "Orbit Blades", rarity = "rare", weight = 6, boon = true,
+      tags = { "Orbit", "Melee" },
+      desc = "Two blades circle you, shredding foes they pass through.",
+      effect = { orbit_blades = { dps = 16.0, radius = 2.4 } } },
+    { id = "vampiric_surge", name = "Vampiric Surge", rarity = "uncommon", weight = 10, boon = true,
+      tags = { "Lifesteal", "Heal" },
+      desc = "Each kill restores 5 health.",
+      effect = { vampiric_surge = { heal = 5.0 } } },
 }
 
 -- Spells are gone. Ranked specialization riders ride every basic attack for
@@ -492,6 +523,103 @@ local KIND_TECHNIQUES = {
     shard_cone = { "shard_slow", { slow = 0.15, dur = 2.0 }, "status_dmg_down", { pct = 0.06 } },
 }
 
+-- Plain-words, one sentence per node mechanic (EL falls back to EN via T at
+-- render). Keystones use the spec's own desc; foundation lines are generated
+-- from the stats they raise; mutations/techniques/capstones key off fx_kind.
+-- Hand-written to read naturally and stay honest to compute_spec_fx.
+local NODE_PLAIN = {
+    -- mutations
+    spread_plus = "When afflicted enemies die, the ailment leaps to nearby foes.",
+    elite_mult = "Your ailment hits elites and bosses harder.",
+    fast_tick_max = "At full stacks the ailment ticks much faster.",
+    double_stack_full = "Hits on near-full-health enemies build stacks twice as fast.",
+    skewer = "Enemies you pierce take extra damage from you for a while.",
+    longshot = "Extends your attack range.",
+    relentless = "Your stacks linger longer before fading.",
+    sixth_gear = "Raises your maximum stack count.",
+    deep_slow = "Your chill slows enemies even more.",
+    brittle = "Chilled enemies take extra damage from you.",
+    blind = "Thicker smoke makes enemies miss more often.",
+    assassin = "You deal bonus damage to near-full-health enemies.",
+    concussion = "Your daze weakens enemy attacks further.",
+    lasting = "Your ailment lasts longer.",
+    blast_radius = "Widens your death explosions.",
+    stun_wave = "Enemies caught in the blast are slowed.",
+    minion_dmg = "Your minions hit harder.",
+    legion = "Raises your minion cap; the extra minions hit a little softer.",
+    lifesteal_plus = "You heal for more of your rider damage.",
+    overheal_shield = "Healing past full grants a temporary shield.",
+    bulwark = "You take less damage while guarding.",
+    second_skin = "Each guard also restores some health.",
+    wide_spray = "Widens your shard cone and adds a shard.",
+    dense_cores = "Your shards hit harder.",
+    -- techniques
+    status_dmg_down = "Afflicted enemies deal less damage to you.",
+    rider_heal = "You heal for a share of this ailment's damage.",
+    cripple = "Enemies you pierce are slowed.",
+    punch_through = "Your pierce hits harder and reaches farther.",
+    dr_at_max = "At full stacks you take less damage.",
+    kill_heal_max = "Kills at full stacks heal you.",
+    long_status = "Your ailment lasts longer.",
+    fleet = "You move faster while your smoke is out.",
+    kill_heal = "Your kills heal you a little.",
+    blast_dmg = "Your death blasts hit harder.",
+    bone_armor = "Each active minion reduces the damage you take.",
+    soul_harvest = "Your kills heal you a little.",
+    long_guard = "Extends your guard window.",
+    shard_slow = "Your shards slow the enemies they hit.",
+    -- capstones
+    proc_bonus = "Every few hits detonate for a burst of bonus damage.",
+    max_stack_burst = "Reaching full stacks bursts the target for heavy damage.",
+    full_pierce = "Every few pierces strike for full damage.",
+    chain_death = "Enemies killed by your blast explode again.",
+    death_burst = "Afflicted enemies burst when they die, spreading damage.",
+    status_amp = "Afflicted enemies take extra damage from you.",
+    detonate = "Periodically detonates your ailments for big damage.",
+    aura_buff = "With enough afflicted enemies nearby, you gain a burst of damage.",
+    refresh_on_kill = "Bleeding kills smear fresh stacks onto nearby enemies.",
+    debuff_amp = "Your daze saps even more enemy damage.",
+    guardian = "Once per map, a lethal hit leaves you barely alive and briefly immune.",
+    low_hp_boost = "While low on health, your healing riders heal for double.",
+    shard_nova = "Every few hits erupt in extra shard sprays.",
+    summon_burst = "Each boss fight begins by raising a squad of free skeletons.",
+}
+
+-- Plain phrase + canonical order for a foundation add key.
+local ADD_PLAIN = {
+    initial = "on-hit damage", tick = "damage-over-time", stack_per = "per-stack damage",
+    damage = "rider damage", slow = "slow strength", miss = "miss chance",
+    dmg_per_stack = "damage per stack", as_per_stack = "attack speed per stack",
+    move_per_stack = "move speed per stack", reduction = "enemy weakening",
+    dr = "damage reduction", heal = "regeneration", cap = "minion cap", shards = "shard count",
+}
+local ADD_ORDER = { initial = 1, tick = 2, stack_per = 3, damage = 4, slow = 5, miss = 6,
+    dmg_per_stack = 7, as_per_stack = 8, move_per_stack = 9, reduction = 10, dr = 11,
+    heal = 12, cap = 13, shards = 14 }
+
+-- Returns the plain-words sentence for a tree node (never nil for a real node).
+function Balance.node_plain(spec, node)
+    if node.tier == "keystone" then return spec.desc or spec.name or spec.id end
+    if node.fx_kind then return NODE_PLAIN[node.fx_kind] end
+    if node.adds then
+        local ks = {}
+        for k in pairs(node.adds) do ks[#ks + 1] = k end
+        table.sort(ks, function(a, b) return (ADD_ORDER[a] or 99) < (ADD_ORDER[b] or 99) end)
+        local phrases = {}
+        for _, k in ipairs(ks) do phrases[#phrases + 1] = ADD_PLAIN[k] or k end
+        local joined
+        if #phrases <= 1 then
+            joined = phrases[1] or "power"
+        elseif #phrases == 2 then
+            joined = phrases[1] .. " and " .. phrases[2]
+        else
+            joined = table.concat(phrases, ", ", 1, #phrases - 1) .. " and " .. phrases[#phrases]
+        end
+        return "Strengthens your " .. joined .. "."
+    end
+    return spec.desc or node.name or node.id
+end
+
 -- Build Balance.spec_trees[class_id][spec_id] = ordered node list, and
 -- Balance.tree_cards[class_id] = allocation cards (persisted by id in
 -- run_cards, exactly like the old repeated spec cards).
@@ -543,6 +671,18 @@ for _, class in ipairs(Balance.classes) do
         end
         Balance.spec_trees[class.id] = trees
         Balance.tree_cards[class.id] = cards
+    end
+end
+
+-- Every tree node must resolve a plain-words description and (for mechanic
+-- nodes) an FX_DESC-covered fx_kind. Fail loudly at load if a tree adds a
+-- mechanic without a matching plain line, so tooltips never fall back to a blank.
+for _, class in ipairs(Balance.classes) do
+    for spec_id, tree in pairs(Balance.spec_trees[class.id] or {}) do
+        for _, node in ipairs(tree.nodes) do
+            assert(Balance.node_plain(tree.spec, node) ~= nil,
+                "missing plain description: " .. class.id .. "/" .. spec_id .. "/" .. node.id)
+        end
     end
 end
 
@@ -675,10 +815,9 @@ Balance.monsters = {
     -- for low-dps classes — effectively HARDER than the geared map II/III bosses.
     gourd_king = { base = "pumpkin_brute", name = "Gourd King", threat_cost = 20, hp = 3000, dps = 26.0,
         range = 1.1, speed = 2.7, scale = 2.2, knockback_resist = 1.0, boss = true, tint = { 1.35, 1.1, 0.55 },
-        charge = { trigger = 11.0, windup = 0.8, mult = 3.0, duration = 1.1, cooldown = 4.5, dmg_mult = 2.0 },
         summon_archetype = "sprout", summon_every = 4.5,
         boss_arc = { windup = 0.8, radius = 5.5, range = 7.5, damage = 32.0, cooldown = 5.0, rest = 1.25 },
-        boss_skill = { id = "royal_furrows", fuse = 1.35, radius = 2.2, damage = 28.0 },
+        boss_skill = { id = "ground_slam", windup = 0.9, radius = 4.6, damage = 30.0, knockback = 8.0, cooldown = 4.6 },
         unset = { "split_into" } },
     thorn_guard = { base = "husk_knight", name = "Thorn Guard", threat_cost = 5, hp = 58, dps = 8.0,
         speed = 2.1, knockback_resist = 0.85, tint = { 0.55, 1.15, 0.52 }, tactical_role = "guard" },
@@ -701,10 +840,9 @@ Balance.monsters = {
         explode = { trigger = 2.4, fuse = 0.8, radius = 2.8, damage = 30.0, fuse_speed_mult = 1.3 } },
     wasp_queen = { base = "wasp", name = "Wasp Queen", threat_cost = 20, hp = 2840, dps = 24.0,
         range = 1.2, speed = 3.4, scale = 2.3, knockback_resist = 1.0, boss = true, tint = { 1.30, 0.85, 1.35 },
-        charge = { trigger = 12.0, windup = 0.7, mult = 3.6, duration = 1.0, cooldown = 3.8, dmg_mult = 1.9 },
         summon_archetype = "stinger_drone", summon_every = 4.0,
         boss_arc = { windup = 0.8, radius = 5.5, range = 8.0, damage = 30.0, cooldown = 4.8, rest = 1.2 },
-        boss_skill = { id = "honeyed_dodge" },
+        boss_skill = { id = "dive_strafe", windup = 1.0, sweep = 0.55, damage = 26.0, cooldown = 4.8 },
         unset = { "hold_range", "anchor_hold", "needs_los", "projectile", "tactical_role", "split_into" } },
     royal_guard = { base = "husk_knight", name = "Royal Guard", threat_cost = 6, hp = 85, dps = 11.0,
         range = 0.95, speed = 1.9, knockback_resist = 0.9, tint = { 0.75, 0.90, 1.40 }, tactical_role = "guard",
@@ -724,7 +862,6 @@ Balance.monsters = {
         projectile = { kind = "boulder_cob", speed = 11.0, cooldown = 1.3, start_y = 1.4, target_y = 0.55,
             scale = { 0.42, 0.42, 0.42 }, particle_size = 0.38, color = { 1.0, 0.78, 0.30 },
             emissive = 1.4, hit_radius = 1.05, gravity = 0.0, pulse = true },
-        charge = { trigger = 7.0, windup = 0.8, mult = 3.0, duration = 1.0, cooldown = 5.0, dmg_mult = 1.8 },
         summon_archetype = "husk_knight", summon_every = 6.0,
         boss_arc = { windup = 0.8, radius = 6.0, range = 8.0, damage = 36.0, cooldown = 5.2, rest = 1.35 },
         boss_skill = { id = "popcorn_weather" },
