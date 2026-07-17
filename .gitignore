@@ -41,3 +41,4 @@ __pycache__/
 # One-off capture/probe output from local playtests.
 */arena_cap_screen*.png
 */arena_probe.png
+.cursor/
