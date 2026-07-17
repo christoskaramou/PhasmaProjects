@@ -199,19 +199,19 @@
     }
   },
   "maps": {
-    "bramble_cottages": "Textures/modes/arena/floors/bramble_cottages.png",
-    "castle_ovrevand": "Textures/modes/arena/floors/castle_ovrevand.png",
-    "crowfield_grange": "Textures/modes/arena/floors/crowfield_grange.png",
-    "gourdhall": "Textures/modes/arena/floors/gourdhall.png",
-    "harvest_row": "Textures/modes/arena/floors/harvest_row.png",
-    "hollow_hive": "Textures/modes/arena/floors/hollow_hive.png",
-    "mossy_croft": "Textures/modes/arena/floors/mossy_croft.png",
-    "old_mill": "Textures/modes/arena/floors/old_mill.png",
-    "royal_garden": "Textures/modes/arena/floors/royal_garden.png",
-    "spud_fields": "Textures/modes/spud_fields/floor.png",
-    "sprout_hamlet": "Textures/modes/arena/floors/sprout_hamlet.png",
-    "withervane_farm": "Textures/modes/arena/floors/withervane_farm.png",
-    "wyrmroot_hermitage": "Textures/modes/arena/floors/wyrmroot_hermitage.png"
+    "bramble_cottages": "Textures/skins/darkish/maps/bramble_cottages.png",
+    "castle_ovrevand": "Textures/skins/darkish/maps/castle_ovrevand.png",
+    "crowfield_grange": "Textures/skins/darkish/maps/crowfield_grange.png",
+    "gourdhall": "Textures/skins/darkish/maps/gourdhall.png",
+    "harvest_row": "Textures/skins/darkish/maps/harvest_row.png",
+    "hollow_hive": "Textures/skins/darkish/maps/hollow_hive.png",
+    "mossy_croft": "Textures/skins/darkish/maps/mossy_croft.png",
+    "old_mill": "Textures/skins/darkish/maps/old_mill.png",
+    "royal_garden": "Textures/skins/darkish/maps/royal_garden.png",
+    "spud_fields": "Textures/skins/darkish/maps/spud_fields.png",
+    "sprout_hamlet": "Textures/skins/darkish/maps/sprout_hamlet.png",
+    "withervane_farm": "Textures/skins/darkish/maps/withervane_farm.png",
+    "wyrmroot_hermitage": "Textures/skins/darkish/maps/wyrmroot_hermitage.png"
   },
   "minions": {
     "imp": {

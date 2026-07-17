@@ -4870,21 +4870,26 @@ function Duel:apply_map_floor()
     local map = self:active_map()
     local path = map.floor or (self.theme and self.theme.floor_texture)
     if not path or self._floor_tex == path then return end
+    if self.realtime <= 0.0 then
+        self._floor_tex_pending = true
+        return
+    end
     local node = scene.find_model and scene.find_model("Floor")
     if not Art.valid(node) then return end
-    -- Authored Floor ships neutral grey (loading placeholder). Spud Fields wants
-    -- its green tint under the grass; other themed floors stay soft grey so the
-    -- painted art isn't drowned in green.
+    -- Preserve the original manifest's tint; skins own their color palette and
+    -- must not inherit the authored floor's green emissive wash.
     if map.floor and material and material.set then
-        local t = (map.id == "spud_fields") and self.theme and self.theme.floor
-        if t then
+        local t = Visuals.name == "default" and map.id == "spud_fields" and self.theme and self.theme.floor
+        if Visuals.name ~= "default" then
+            material.set(node, "base_color", vec4(1.0, 1.0, 1.0, 1.0))
+            material.set(node, "emissive", vec3(0.0, 0.0, 0.0))
+        elseif t then
             material.set(node, "base_color", vec4(t[1], t[2], t[3], 1.0))
         else
             material.set(node, "base_color", vec4(0.80, 0.80, 0.80, 1.0))
         end
     end
-    Art.texture(node, path)
-    self._floor_tex = path
+    if Art.texture(node, path) then self._floor_tex = path end
 end
 
 function Duel:start_map()
@@ -6009,6 +6014,12 @@ end
 function Duel:resume_combat()
     if self.manual_hero then
         Inventory.hide(self)
+        if self._worldmap_inv then
+            self._worldmap_inv = nil
+            self.state = "worldmap"
+            if self.config.hooks and self.config.hooks.on_resume then self.config.hooks.on_resume(self) end
+            return
+        end
         if self._loot_inv then
             -- Gear peek during loot walk — close bag, keep picking up.
             self._loot_inv = false
@@ -6052,6 +6063,12 @@ function Duel:toggle_inventory()
         self._between_wave = false
         self.state = "pause"
         self._hub_tab = "inventory"
+        self:haptic(15)
+        Inventory.show(self)
+    elseif self.state == "worldmap" then
+        self._worldmap_inv = true
+        self._between_wave = false
+        self.state = "pause"
         self:haptic(15)
         Inventory.show(self)
     end
@@ -6132,7 +6149,8 @@ function Duel:update_input(dt)
         return
     end
     if self:key_pressed("Escape") then
-        if self.manual_hero and (self.state == "combat" or self.state == "pause" or self.state == "loot" or self.state == "town") then
+        if self.manual_hero and (self.state == "combat" or self.state == "pause" or self.state == "loot"
+            or self.state == "town" or self.state == "worldmap") then
             self:toggle_inventory()
             return
         end
@@ -6163,6 +6181,10 @@ function Duel:update_input(dt)
     end
 
     if self.state == "worldmap" then
+        if Art.consume_click(self.hud, "wm_gear") then
+            self:toggle_inventory()
+            return
+        end
         local max_map = math.min((self.maps_cleared or 0) + 1, #self.maps)
         local function travel()
             self:enter_town(self._wm_from_town)
@@ -6728,10 +6750,14 @@ function Duel:update_hud()
         Art.quad(self.hud, "wm_travel", sw * 0.5 - S(100.0), sh - S(64.0), S(200.0), S(48.0),
             { 0.12, 0.28, 0.14, 0.95 }, { border = { 0.4, 0.9, 0.5, 0.95 }, align_h = "center",
               font_scale = 1.05, label = T("ENTER") })
+        local gear_size, gear_margin = S(28.0), S(10.0)
+        Art.quad(self.hud, "wm_gear", vp0.rw - vp0.x - gear_size - gear_margin,
+            gear_margin - vp0.y, gear_size, gear_size, { 0.0, 0.0, 0.0, 0.0 },
+            { style = "image", image = V.ui.hud.gear, bring_to_front = true })
     elseif self._wm_drawn then
         -- One-shot teardown on leaving the map (not a per-frame remove storm).
         self._wm_drawn = nil
-        local ids = { "wm_bg", "wm_title", "wm_dest", "wm_travel", "wm_tip" }
+        local ids = { "wm_bg", "wm_title", "wm_dest", "wm_travel", "wm_tip", "wm_gear" }
         for i = 1, 16 do
             ids[#ids + 1] = "wm_node_" .. i
             ids[#ids + 1] = "wm_pin_" .. i
@@ -6964,6 +6990,10 @@ function Duel:update(dt)
     end
 
     self.realtime = self.realtime + dt
+    if self._floor_tex_pending then
+        self._floor_tex_pending = nil
+        self:apply_map_floor()
+    end
     Art.tick_iso_camera(dt)
 
     -- DIAG: the rendered view sometimes ends up ~19x more zoomed-in than the
