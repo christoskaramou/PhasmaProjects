@@ -14,7 +14,8 @@ local STATUS_COLOR = {
     bleed = { 0.95, 0.12, 0.18 }, curse = { 0.7, 0.25, 0.95 }, shadow = { 0.5, 0.35, 0.9 },
 }
 local SKILL_COLOR = {
-    honeyed_dodge = { 1.0, 0.68, 0.08 }, popcorn_weather = { 1.0, 0.32, 0.04 },
+    ground_slam = { 1.0, 0.5, 0.08 }, dive_strafe = { 1.0, 0.22, 0.1 },
+    popcorn_weather = { 1.0, 0.32, 0.04 },
     thorn_leash = { 0.35, 0.95, 0.18 }, call_response = { 0.85, 0.18, 0.9 },
     grind_schedule = { 0.65, 0.82, 1.0 }, vanish_pounce = { 1.0, 0.18, 0.08 },
     dinner_bell = { 1.0, 0.65, 0.08 }, gale_shift = { 0.45, 0.85, 1.0 },
@@ -211,42 +212,117 @@ local function state(D, c, id)
     return s
 end
 
-local function update_wasp(D, s, c, dt, hero)
-    s.honey = s.honey or {}
-    if due(s, "cast_t", dt, 1.2, period(c, 4.8)) then
-        local h = take_disc(D, s)
-        if h then
-            local pool = { x = hero.x, z = hero.z, t = 10.0, h = h }
-            s.honey[#s.honey + 1] = pool
-            set_disc(h, pool.x, pool.z, 1.45, { 1.0, 0.68, 0.08 }, 0.24)
-            ring_burst("ath_honey_pool", pool.x, pool.z, 1.35, { 1.0, 0.68, 0.08 }, 10)
+-- GOURD KING — telegraphed ground SLAM. The boss plants (boss_rest_t suppresses
+-- the shared arc + Creep.update movement), a ring decal grows for ~0.9s, then an
+-- AoE burst around the boss knocks the hero back. Sprout summons are untouched.
+local function update_gourd(D, s, c, dt, hero)
+    local spec = c.stats.boss_skill
+    local radius = spec.radius or 4.6
+    if not s.slam then
+        if due(s, "cast_t", dt, 1.4, period(c, spec.cooldown or 4.6)) then
+            s.slam = { t = spec.windup or 0.9, dur = spec.windup or 0.9, h = take_disc(D, s) }
+            set_disc(s.slam.h, c.x, c.z, radius, { 1.0, 0.5, 0.08 }, 0.14)
+            ring_burst("ath_gourd_slam_cast", c.x, c.z, radius * 0.9, { 1.0, 0.5, 0.08 }, 14)
+            play(D, s, "ground_slam")
         end
-        play(D, s, "honey_dive")
-        c.charge_cd = 0.0
+        return
     end
-    local keep = {}
-    for _, honey in ipairs(s.honey) do
-        honey.t = honey.t - dt
-        local stuck = false
-        if honey.smeared and c.charge_state == "dash" then
-            local half = 3.6
-            local x1, z1 = honey.x - honey.dx * half, honey.z - honey.dz * half
-            local x2, z2 = honey.x + honey.dx * half, honey.z + honey.dz * half
-            stuck = point_segment_d2(c.x, c.z, x1, z1, x2, z2) <= 1.0
-        end
-        if stuck then
-            c.charge_state, c.charge_t = nil, nil
-            c.boss_rest_t = 1.1
-            break_armor(D, c, 3.5)
-            play(D, s, "honey_stuck")
-            release(D, honey.h)
-        elseif honey.t <= 0.0 then
-            release(D, honey.h)
-        else
-            keep[#keep + 1] = honey
-        end
+    -- Plant during the wind-up: suppresses boss_arc and normal walking so the
+    -- ring is honest (update_boss_v2 returns busy while boss_rest_t > 0).
+    c.boss_rest_t = math.max(c.boss_rest_t or 0.0, 0.1)
+    local slam = s.slam
+    slam.t = slam.t - dt
+    local p = 1.0 - math.max(0.0, slam.t) / slam.dur
+    set_disc(slam.h, c.x, c.z, radius, { 1.0, 0.5 - 0.32 * p, 0.06 }, 0.12 + 0.18 * p)
+    slam.fx_t = (slam.fx_t or 0.0) - dt
+    if slam.fx_t <= 0.0 then
+        slam.fx_t = 0.14
+        ring_burst("ath_gourd_slam_front", c.x, c.z, radius * (0.4 + 0.6 * p), { 1.0, 0.45, 0.06 }, 12)
     end
-    s.honey = keep
+    if slam.t <= 0.0 then
+        local dx, dz = hero.x - c.x, hero.z - c.z
+        if dx * dx + dz * dz <= radius * radius
+            and D:apply_hero_damage(spec.damage or 30.0, { source = "Gourd King (ground slam)" }) then
+            local d = math.max(0.001, math.sqrt(dx * dx + dz * dz))
+            hero.knock_x = (hero.knock_x or 0.0) + dx / d * (spec.knockback or 8.0)
+            hero.knock_z = (hero.knock_z or 0.0) + dz / d * (spec.knockback or 8.0)
+        end
+        Art.burst("ath_gourd_slam", vec3(c.x, 0.35, c.z),
+            { preset = "enemy_give", count = 30, life_max = 0.42, spawn_radius = radius * 0.5,
+              size_max = 0.30, color_start = vec4(1.0, 0.5, 0.1, 1.0) })
+        D:log("boss skill ground_slam payoff radius=" .. string.format("%.1f", radius))
+        release(D, slam.h)
+        s.slam = nil
+    end
+end
+
+-- WASP QUEEN — DIVE STRAFE. A line telegraph is drawn across the arena through
+-- the hero (~1.0s), then the queen sweeps that line fast, dealing contact damage
+-- along it. Self-driven (no charge system); drones keep spawning via summons.
+local function update_dive(D, s, c, dt, hero)
+    local spec = c.stats.boss_skill
+    local dive = s.dive
+    if not dive then
+        if due(s, "cast_t", dt, 1.2, period(c, spec.cooldown or 4.8)) then
+            local minx, maxx, minz, maxz = bounds(D)
+            local dx, dz = hero.x - c.x, hero.z - c.z
+            local d = math.max(0.001, math.sqrt(dx * dx + dz * dz))
+            dx, dz = dx / d, dz / d
+            local reach = 40.0
+            local x1 = clamp(hero.x - dx * reach, minx, maxx)
+            local z1 = clamp(hero.z - dz * reach, minz, maxz)
+            local x2 = clamp(hero.x + dx * reach, minx, maxx)
+            local z2 = clamp(hero.z + dz * reach, minz, maxz)
+            -- Sweep starts from the end nearer the queen.
+            if (x1 - c.x) ^ 2 + (z1 - c.z) ^ 2 > (x2 - c.x) ^ 2 + (z2 - c.z) ^ 2 then
+                x1, z1, x2, z2 = x2, z2, x1, z1
+            end
+            dive = { phase = "tele", t = spec.windup or 1.0, dur = spec.windup or 1.0,
+                x1 = x1, z1 = z1, x2 = x2, z2 = z2, h = take_bar(D, s), hit_t = 0.0 }
+            s.dive = dive
+            set_bar(dive.h, x1, z1, x2, z2, 0.55, { 1.0, 0.22, 0.1 }, 0.2)
+            play(D, s, "dive_strafe")
+        end
+        return
+    end
+    c.boss_rest_t = math.max(c.boss_rest_t or 0.0, 0.12)
+    if dive.phase == "tele" then
+        dive.t = dive.t - dt
+        local p = 1.0 - math.max(0.0, dive.t) / dive.dur
+        set_bar(dive.h, dive.x1, dive.z1, dive.x2, dive.z2, 0.55,
+            { 1.0, 0.22 - 0.1 * p, 0.08 }, 0.18 + 0.24 * p)
+        dive.fx_t = (dive.fx_t or 0.0) - dt
+        if dive.fx_t <= 0.0 then
+            dive.fx_t = 0.16
+            flow_motes("ath_dive_lane", dive.x1, dive.z1, dive.x2, dive.z2,
+                { 1.0, 0.3, 0.1 }, D.realtime, 10)
+        end
+        if dive.t <= 0.0 then
+            dive.phase, dive.t, dive.dur = "sweep", spec.sweep or 0.55, spec.sweep or 0.55
+            c.x, c.z = dive.x1, dive.z1
+            play(D, s, "dive_sweep")
+        end
+        return
+    end
+    dive.t = dive.t - dt
+    dive.hit_t = math.max(0.0, dive.hit_t - dt)
+    local u = clamp(1.0 - dive.t / dive.dur, 0.0, 1.0)
+    c.x = dive.x1 + (dive.x2 - dive.x1) * u
+    c.z = dive.z1 + (dive.z2 - dive.z1) * u
+    D:clamp_creep_to_arena(c)
+    Art.burst("ath_dive_wake", vec3(c.x, 0.4, c.z),
+        { preset = "enemy_take", count = 4, life_max = 0.22, spawn_radius = 0.35, size_max = 0.18,
+          color_start = vec4(1.0, 0.35, 0.12, 0.95) })
+    local dx, dz = hero.x - c.x, hero.z - c.z
+    if dive.hit_t <= 0.0 and dx * dx + dz * dz <= 1.5 ^ 2
+        and D:apply_hero_damage(spec.damage or 26.0, { source = "Wasp Queen (dive strafe)" }) then
+        local d = math.max(0.001, math.sqrt(dx * dx + dz * dz))
+        hero.knock_x = (hero.knock_x or 0.0) + dx / d * 6.0
+        hero.knock_z = (hero.knock_z or 0.0) + dz / d * 6.0
+        dive.hit_t = 0.4
+        D:log("boss skill dive_strafe payoff")
+    end
+    if dive.t <= 0.0 then release(D, dive.h); s.dive = nil end
 end
 
 local function update_corn(D, s, c, dt)
@@ -439,32 +515,55 @@ local function update_fox(D, s, c, dt, hero)
             s.pounce_lane = nil
         end
     end
+    -- Active pounce: self-driven lunge from behind the hero along the lane.
+    if s.lunge then
+        c.boss_rest_t = math.max(c.boss_rest_t or 0.0, 0.1)
+        local lg = s.lunge
+        lg.t = lg.t - dt
+        lg.hit_t = math.max(0.0, lg.hit_t - dt)
+        local u = clamp(1.0 - lg.t / lg.dur, 0.0, 1.0)
+        c.x = lg.x1 + (lg.x2 - lg.x1) * u
+        c.z = lg.z1 + (lg.z2 - lg.z1) * u
+        D:clamp_creep_to_arena(c)
+        local dx, dz = hero.x - c.x, hero.z - c.z
+        if lg.hit_t <= 0.0 and dx * dx + dz * dz <= 1.4 ^ 2
+            and D:apply_hero_damage(lg.damage, { source = "The Fox (pounce)" }) then
+            local d = math.max(0.001, math.sqrt(dx * dx + dz * dz))
+            hero.knock_x = (hero.knock_x or 0.0) + dx / d * 6.0
+            hero.knock_z = (hero.knock_z or 0.0) + dz / d * 6.0
+            lg.hit_t = 0.5
+            D:log("boss skill vanish_pounce payoff")
+        end
+        if lg.t <= 0.0 then s.lunge = nil end
+        return
+    end
     if not s.stage and due(s, "cast_t", dt, 1.0, period(c, 5.0)) then
         s.stage, s.stage_t = "vanish", 0.85
-        c.charge_state, c.charge_t = nil, nil
         c.boss_rest_t = 0.9
         boss_alpha(c, 0.05)
         play(D, s, "vanish")
     end
     if s.stage ~= "vanish" then return end
+    c.boss_rest_t = math.max(c.boss_rest_t or 0.0, 0.1)
     s.stage_t = s.stage_t - dt
     if s.stage_t > 0.0 then return end
+    -- Reappear behind the hero and lunge through where they stood.
     local facing = hero.facing or 0.0
     c.x, c.z = hero.x - math.sin(facing) * 4.5, hero.z - math.cos(facing) * 4.5
     D:clamp_creep_to_arena(c)
-    local dx, dz = hero.x - c.x, hero.z - c.z
-    local d = math.max(0.001, math.sqrt(dx * dx + dz * dz))
-    c.charge_dx, c.charge_dz = dx / d, dz / d
-    c.charge_state, c.charge_t = "dash", 0.9
     boss_alpha(c, 1.0)
+    local tx, tz = hero.x + math.sin(facing) * 1.5, hero.z + math.cos(facing) * 1.5
+    local dx, dz = tx - c.x, tz - c.z
+    local d = math.max(0.001, math.sqrt(dx * dx + dz * dz))
     local nx, nz = -dz / d * 0.34, dx / d * 0.34
     s.pounce_lane = { hs = { take_bar(D, s), take_bar(D, s) }, t = 0.9,
-        x1 = c.x, z1 = c.z, x2 = hero.x, z2 = hero.z }
-    set_bar(s.pounce_lane.hs[1], c.x + nx, c.z + nz, hero.x + nx, hero.z + nz,
+        x1 = c.x, z1 = c.z, x2 = tx, z2 = tz }
+    set_bar(s.pounce_lane.hs[1], c.x + nx, c.z + nz, tx + nx, tz + nz,
         0.06, { 1.0, 0.18, 0.05 }, 0.34)
-    set_bar(s.pounce_lane.hs[2], c.x - nx, c.z - nz, hero.x - nx, hero.z - nz,
+    set_bar(s.pounce_lane.hs[2], c.x - nx, c.z - nz, tx - nx, tz - nz,
         0.06, { 1.0, 0.18, 0.05 }, 0.34)
-    ring_burst("ath_fox_pounce", hero.x, hero.z, 1.0, { 1.0, 0.18, 0.05 }, 10)
+    ring_burst("ath_fox_pounce", tx, tz, 1.0, { 1.0, 0.18, 0.05 }, 10)
+    s.lunge = { t = 0.35, dur = 0.35, x1 = c.x, z1 = c.z, x2 = tx, z2 = tz, hit_t = 0.0, damage = 28.0 }
     play(D, s, "pounce")
     s.stage = nil
 end
@@ -728,7 +827,8 @@ local function update_king(D, s, c, dt, hero)
 end
 
 local UPDATERS = {
-    honeyed_dodge = update_wasp,
+    ground_slam = update_gourd,
+    dive_strafe = update_dive,
     popcorn_weather = update_corn,
     thorn_leash = update_briar,
     call_response = update_bog,
@@ -754,19 +854,7 @@ end
 function Skills.on_dodge(D, hero)
     local s = D._boss_skill_state
     if not (s and s.boss and s.boss.alive) then return end
-    if s.id == "honeyed_dodge" then
-        for _, honey in ipairs(s.honey or {}) do
-            local dx, dz = hero.x - honey.x, hero.z - honey.z
-            if not honey.smeared and dx * dx + dz * dz <= 2.0 ^ 2 then
-                honey.smeared, honey.dx, honey.dz = true, hero.dodge_dx, hero.dodge_dz
-                if Art.valid(honey.h.node) then
-                    honey.h.node:set_scale(vec3(7.2, 0.025, 1.2))
-                    honey.h.node:set_rotation(vec3(0.0, math.deg(math.atan(honey.dx, honey.dz)) + 90.0, 0.0))
-                end
-                break
-            end
-        end
-    elseif s.id == "thorn_leash" and s.leash then
+    if s.id == "thorn_leash" and s.leash then
         release(D, s.leash.h)
         s.leash = nil
         hero.boss_move_mult = 1.0
@@ -781,6 +869,40 @@ function Skills.on_dodge(D, hero)
             play(D, s, "rosary_break")
         end
     end
+end
+
+-- Autoplay hint: returns a flee direction (dx, dz) when a boss-skill payoff is
+-- about to land near the hero, so the pilot dodges it. Skill logic stays fully
+-- inside this file; the manual pilot just consults this one seam. Returns nil
+-- when there is nothing imminent to dodge.
+local function flee_perp(hero, x1, z1, x2, z2)
+    local lx, lz = x2 - x1, z2 - z1
+    local m = math.sqrt(lx * lx + lz * lz)
+    if m < 0.001 then return hero.x - x1, hero.z - z1 end
+    local px, pz = -lz / m, lx / m
+    if (hero.x - x1) * px + (hero.z - z1) * pz < 0.0 then px, pz = -px, -pz end
+    return px, pz
+end
+function Skills.dodge_hint(D, hero)
+    local s = D._boss_skill_state
+    if not (s and s.boss and s.boss.alive) then return nil end
+    if s.id == "ground_slam" and s.slam and s.slam.t <= 0.45 then
+        local r = (s.boss.stats.boss_skill.radius or 4.6) + 0.6
+        local dx, dz = hero.x - s.boss.x, hero.z - s.boss.z
+        if dx * dx + dz * dz <= r * r then return dx, dz end
+    elseif s.id == "dive_strafe" and s.dive then
+        local dv = s.dive
+        if (dv.phase == "sweep" or (dv.phase == "tele" and dv.t <= 0.4))
+            and point_segment_d2(hero.x, hero.z, dv.x1, dv.z1, dv.x2, dv.z2) <= 2.6 ^ 2 then
+            return flee_perp(hero, dv.x1, dv.z1, dv.x2, dv.z2)
+        end
+    elseif s.id == "vanish_pounce" and s.lunge then
+        local lg = s.lunge
+        if point_segment_d2(hero.x, hero.z, lg.x1, lg.z1, lg.x2, lg.z2) <= 2.0 ^ 2 then
+            return flee_perp(hero, lg.x1, lg.z1, lg.x2, lg.z2)
+        end
+    end
+    return nil
 end
 
 function Skills.dodge_speed_mult(D, dx, dz)

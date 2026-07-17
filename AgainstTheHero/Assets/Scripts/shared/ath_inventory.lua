@@ -546,7 +546,17 @@ local ADD_LABEL = {
     reduction = "enemy dmg/AS/move cut", dr = "damage reduction",
     heal = "regen share", dmg_per_stack = "damage per stack",
     as_per_stack = "attack speed per stack", move_per_stack = "move per stack",
+    cap = "minion cap", shards = "shard count",
 }
+local ADD_ORDER = { initial = 1, tick = 2, stack_per = 3, damage = 4, slow = 5, miss = 6,
+    dmg_per_stack = 7, as_per_stack = 8, move_per_stack = 9, reduction = 10, dr = 11,
+    heal = 12, cap = 13, shards = 14 }
+local function ordered_add_keys(adds)
+    local ks = {}
+    for k in pairs(adds) do ks[#ks + 1] = k end
+    table.sort(ks, function(a, b) return (ADD_ORDER[a] or 99) < (ADD_ORDER[b] or 99) end)
+    return ks
+end
 
 FX_DESC = {
     spread_plus = function(p) return T("Death spread: %.1fm, %d targets (copies don't re-spread).", p.radius or 5.5, p.targets or 2) end,
@@ -616,42 +626,41 @@ function Inv.node_lines(spec, node, rank, class_id)
     local Balance = _G.ATH_BALANCE
     local lines = {}
     local have = math.max(0, math.floor(rank or 0))
+    local max_r = node.max_rank or 1
+    -- Plain-words summary first (data lives with the tree; EL falls back to EN).
+    if Balance and Balance.node_plain then
+        lines[#lines + 1] = T(tostring(Balance.node_plain(spec, node)))
+    end
     if node.tier == "keystone" then
-        -- Full numeric keystone rider (rank-1 coefficients), not the prose blurb.
+        -- Full numeric keystone rider (rank-1 coefficients), every stat it touches.
         if Balance and Balance.compute_spec_fx then
             local fx = Balance.compute_spec_fx(class_id, spec, { key = 1 })
             for _, row in ipairs(Inv.spec_fx_lines(spec, fx)) do
                 lines[#lines + 1] = row
             end
-        else
-            lines[#lines + 1] = T(tostring(spec.desc or spec.id))
         end
         return lines
     end
     if node.adds then
-        local max_r = node.max_rank or 1
-        for key, add in pairs(node.adds) do
-            if key == "cap" then
-                lines[#lines + 1] = T("+%d minion cap per rank (max +%d)", add, add * max_r)
-                if have > 0 then
-                    lines[#lines + 1] = T("  Now: +%d", add * have)
-                end
-            elseif key == "shards" then
-                lines[#lines + 1] = T("+%d shard per rank (max +%d)", add, add * max_r)
-                if have > 0 then
-                    lines[#lines + 1] = T("  Now: +%d", add * have)
-                end
-            else
-                lines[#lines + 1] = T("+%s %s per rank (max +%s)",
-                    pct(add), T(ADD_LABEL[key] or key), pct(add * max_r))
-                if have > 0 then
-                    lines[#lines + 1] = T("  Now: +%s", pct(add * have))
-                end
+        for _, key in ipairs(ordered_add_keys(node.adds)) do
+            local add = node.adds[key]
+            local intlike = key == "cap" or key == "shards"
+            local function v(n) return intlike and tostring(n) or pct(n) end
+            lines[#lines + 1] = T("%s: +%s per rank (max +%s)",
+                T(ADD_LABEL[key] or key), v(add), v(add * max_r))
+            if have > 0 then
+                lines[#lines + 1] = T("  Current: +%s", v(add * have))
+            end
+            if have < max_r then
+                lines[#lines + 1] = T("  Next rank: +%s -> +%s", v(add * have), v(add * (have + 1)))
             end
         end
     end
     if node.fx_kind and FX_DESC[node.fx_kind] then
         lines[#lines + 1] = FX_DESC[node.fx_kind](node.fx or {})
+        if max_r == 1 then
+            lines[#lines + 1] = have > 0 and T("  Learned.") or T("  Not yet learned.")
+        end
     end
     if #lines == 0 then
         lines[#lines + 1] = T(tostring(spec.desc or node.name or node.id))

@@ -12,6 +12,7 @@ local View = ATH_COMMON.load_script("Scripts/shared/ath_topdown_view.lua",     "
 local Spud = ATH_COMMON.load_script("Scripts/modes/arena/characters.lua", "arena cast", _ENV)
 
 local Balance = ATH_COMMON.load_script("Scripts/shared/ath_balance.lua", "balance database", _ENV)
+local Waves = ATH_COMMON.load_script("Scripts/modes/arena/waves.lua", "wave director", _ENV)
 local ARCHETYPES = Balance.build_monsters(Spud.archetypes)
 return {
     meta = {
@@ -209,6 +210,12 @@ return {
         -- old silent stand-off field.
         auto_mix = Balance.auto_mix,
 
+        -- Wave Director (Phase 1): per-wave scripted composition/formation + one
+        -- seeded mutator. Presence of this field arms the director in the Duel;
+        -- scripted waves shape when/what/where over the same budget, unscripted
+        -- waves and boss rounds fall through to the legacy flat drip.
+        wave_scripts = Waves,
+
         hooks = {
             on_reset = function(D)
                 if D.hero then D.hero.move_mult = 1.0 end
@@ -220,8 +227,17 @@ return {
             on_spawn = function(D, creep)
                 View.on_spawn(D, creep)
             end,
-            on_combat_tick = function(D, _dt)
+            on_combat_tick = function(D, dt)
                 View.tick(D)
+                -- Wave Director per-frame tick (phase timing + lull coin magnet).
+                -- pcall'd: a director error drops the wave back to the legacy drip.
+                if D.wave_dir then
+                    local ok, err = pcall(D.wave_dir.tick, D.wave_dir, D, dt)
+                    if not ok then
+                        D:log("wave director tick error (legacy drip): " .. tostring(err))
+                        D.wave_dir = nil
+                    end
+                end
             end,
             -- Per-frame HUD overlay hook (runs at the end of update_hud, every frame
             -- in all states: classpick/combat/pause/end).
@@ -255,6 +271,49 @@ return {
                 -- On the menu path the shell owns the FPS clock, so this stays off to
                 -- avoid a double. ath_android_boot sets config.direct_boot.
                 if D.config.direct_boot then Art.draw_fps_clock(D.hud, vw) end
+
+                -- Wave Director mutator icons: a small row of tiles at the absolute
+                -- window TOP-LEFT corner (HP-bar height, above the arena frame),
+                -- mirroring the top-right FPS readout. One tile per active mutator in
+                -- pick order, growing rightward. Keyed STRICTLY off the live director
+                -- state every frame; the row's textures are refreshed by removing the
+                -- tiles whenever the active id set changes (style="image" caches its
+                -- texture per node, so a bare image swap goes stale — the wave-3
+                -- wasp-showing-thick_hide bug). Names ride the wave-start banner, so
+                -- tiles are icon-only. Cleared when no mutator: wave 1, boss rounds,
+                -- baseline map, or any non-combat state.
+                local dir = D.wave_dir
+                local active = (D.state == "combat" and dir and dir.mutators) or {}
+                local MUT_ICON_MAX = 3
+                local key = ""
+                for _, m in ipairs(active) do key = key .. m.id .. "," end
+                if key ~= (D._mut_icon_key or "") then
+                    for i = 1, MUT_ICON_MAX do Art.remove(D.hud, "mutator_icon_" .. i) end
+                    D._mut_icon_key = key
+                end
+                local mut_rects = {}
+                if #active > 0 then
+                    local function S(v) return v * Art.s("hud") end
+                    local vp = Art._vp or { x = 0.0, y = 0.0 }
+                    local isz, gap = S(30.0), S(4.0)
+                    -- Surface-space top-left corner; subtract vp for Art.quad (it
+                    -- re-adds vp) so tiles land at the ABSOLUTE window corner,
+                    -- mirroring the shell FPS readout. sx/sy stay surface-space for
+                    -- the hover hit-test (ui_pointer is surface-space too).
+                    local sx0, sy0 = S(14.0), S(20.0)
+                    for i, m in ipairs(active) do
+                        if i > MUT_ICON_MAX then break end
+                        local sx = sx0 + (i - 1) * (isz + gap)
+                        Art.quad(D.hud, "mutator_icon_" .. i, sx - vp.x, sy0 - vp.y, isz, isz,
+                            { 0.0, 0.0, 0.0, 0.0 },
+                            { style = "image", image = "Textures/ui/mutators/" .. tostring(m.id) .. ".png",
+                              no_input = true, bring_to_front = true })
+                        mut_rects[#mut_rects + 1] =
+                            { name = m.name, desc = m.desc, col = m.chip, x = sx, y = sy0, sz = isz }
+                    end
+                end
+                -- Icon hover -> name + desc tooltip (per-tile; empty rects clears it).
+                D:mutator_tooltip(mut_rects)
 
                 -- NO letterbox: the scene-driven build fills the window at its
                 -- native aspect (Free) with an anchored authored HUD, and the floor
