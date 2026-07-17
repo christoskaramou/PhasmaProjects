@@ -1,6 +1,0 @@
-{
-    "version": 1,
-    "name": "AgainstTheHero",
-    "assets": "Assets",
-    "startup_scene": "Assets/Scenes/intro.pescene"
-}
