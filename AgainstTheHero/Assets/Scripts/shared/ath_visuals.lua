@@ -13,7 +13,7 @@ local function load_manifest(name)
     return data
 end
 
-local requested = ATH_COMMON.getenv("ATH_SKIN", "default")
+local requested = ATH_COMMON.getenv("ATH_SKIN", "darkish")
 if not requested:match("^[%w_-]+$") then
     log("invalid ATH_SKIN=" .. tostring(requested) .. "; using default")
     requested = "default"

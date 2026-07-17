@@ -247,6 +247,7 @@
     "hud": {
       "dodge": "Textures/ui/hud_dodge.png",
       "flask_health": "Textures/ui/hud_flask_health.png",
+      "gear": "Textures/gear.png",
       "gold": "Textures/ui/hud_gold.png"
     },
     "items": {
