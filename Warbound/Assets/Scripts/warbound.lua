@@ -19,7 +19,7 @@ local function bootstrap_loader()
         if pe_error then pe_error("Warbound: cannot read " .. LOADER_PATH) end
         return nil
     end
-    local chunk, err = load(src, "@" .. tostring(assets_path or "") .. LOADER_PATH, "t", _ENV)
+    local chunk, err = load(src, "@" .. tostring(assets_path or "") .. LOADER_PATH, "bt", _ENV)
     if not chunk then
         if pe_error then pe_error("Warbound: loader compile error: " .. tostring(err)) end
         return nil

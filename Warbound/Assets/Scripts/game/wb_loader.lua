@@ -28,7 +28,7 @@ function Loader.require(name)
     end
 
     local env = setmetatable({ WB = Loader.WB }, { __index = _ENV, __newindex = _ENV })
-    local chunk, err = load(source, "@" .. tostring(assets_path or "") .. path, "t", env)
+    local chunk, err = load(source, "@" .. tostring(assets_path or "") .. path, "bt", env)
     if not chunk then error("Warbound: compile error in " .. path .. ": " .. tostring(err)) end
 
     local mod = chunk()
