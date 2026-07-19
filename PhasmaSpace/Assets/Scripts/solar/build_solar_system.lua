@@ -11,7 +11,7 @@
 local function load_module(path)
     local source = fs and fs.read and fs.read(path) or nil
     if not source then error("PhasmaSpace: missing module " .. path) end
-    local chunk, err = load(source, "@" .. assets_path .. path, "t", _ENV)
+    local chunk, err = load(source, "@" .. assets_path .. path, "bt", _ENV)
     if not chunk then error(err) end
     return chunk()
 end

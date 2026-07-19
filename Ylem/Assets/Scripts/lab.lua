@@ -24,7 +24,7 @@ local M = {}
 local data = (function()
     local src = fs.read("Scripts/data.lua")
     if not src then error("[lab] data.lua not found at Scripts/data.lua") end
-    return load(src, "@Scripts/data.lua", "t", _ENV)()
+    return load(src, "@Scripts/data.lua", "bt", _ENV)()
 end)()
 
 local SCREEN = "ylem"

@@ -8,7 +8,7 @@ local function load_optional_module(path)
     if not fs or not fs.read then return nil end
     local source = fs.read(path)
     if not source then return nil end
-    local chunk, err = load(source, "@" .. assets_path .. path, "t", _ENV)
+    local chunk, err = load(source, "@" .. assets_path .. path, "bt", _ENV)
     if not chunk then error(err) end
     return chunk()
 end

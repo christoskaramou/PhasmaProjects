@@ -6,7 +6,7 @@ local lab = (function()
     local path = "Scripts/lab.lua"
     local src = fs.read(path)
     if not src then error("[ylem] lab module not found at " .. path) end
-    return load(src, "@" .. path, "t", _ENV)()
+    return load(src, "@" .. path, "bt", _ENV)()
 end)()
 
 lab.init()
