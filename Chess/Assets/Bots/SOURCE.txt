@@ -1,0 +1,4 @@
+Stockfish 18 (sf_18), GPLv3. Binary: stockfish-windows-x86-64-avx2.exe
+Corresponding source and this exact binary:
+https://github.com/official-stockfish/Stockfish/releases/tag/sf_18
+Licence text: Copying.txt
