@@ -224,6 +224,7 @@ function view.text(id, x, y, w, h, body, opts)
         align_h = opts.align_h or "center", align_v = "middle",
         font_scale = opts.font_scale or FONT,
         no_input = opts.no_input ~= false, visible = true,
+        corner_radius = opts.corner_radius or 0,
         bring_to_front = opts.bring_to_front or false,
     })
 end

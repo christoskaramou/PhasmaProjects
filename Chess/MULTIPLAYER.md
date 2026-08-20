@@ -19,10 +19,18 @@
 - **Create Lobby** opens a listener on TCP 27500 and broadcasts `PC1|<id>|<name>` on UDP 27501
   about once a second. **Join Lobby** lists what it hears and connects to the one you click.
   Leaving those screens closes the lobby.
-- Host plays White, guest plays Black. A rule both sides compute identically, so the colours
-  are never negotiated and cannot be argued about.
-- Moves, resignation and a clean goodbye travel. Takeback and draw offers do NOT: both need a
-  request/response round trip, so those rows are hidden in an online game rather than offered dead.
+- Host plays White, guest plays Black — and they swap on every rematch. A rule both sides
+  compute identically, so the colours are never negotiated and cannot be argued about.
+- Moves, resignation and a clean goodbye travel. So do **draw, takeback and rematch**, each as
+  an offer the other side answers: none may be applied unilaterally, or the two boards would
+  silently disagree. An arriving offer opens the pause card by itself — an offer that only
+  lives in a corner of the HUD gets missed.
+- **Nothing local pauses an online game.** Our overlay cannot stop the opponent's copy of our
+  clock, so it does not stop ours either: the clock burns behind the pause card, behind the
+  draw prompt and behind the promotion picker, and the HUD stays on screen so you can watch it
+  do so. The offer card has no Resume for the same reason, and review (the move list, `|< Start`,
+  Replay) is refused while the game is live — rewinding would stop the clock, and a move off the
+  wire would then be checked against, and truncate, the position we rewound to.
 - **Watch Game is still unbuilt** — a spectator is a third connection to one game, which is a
   relay feature. Two peers on a LAN have nowhere to put a watcher.
 
@@ -36,6 +44,9 @@ OK  <id> <name>   host -> guest, accepted
 M <uci>           a move, e.g. "M e2e4" or "M e7e8q"
 RESIGN
 BYE
+DRAW / DRAW_OK / DRAW_NO              offer, accept, decline
+TAKEBACK / TAKEBACK_OK / TAKEBACK_NO  same shape; the undo runs back to the asker's own move
+REMATCH / REMATCH_OK
 ```
 
 ### Never trust the wire — as implemented
@@ -165,8 +176,11 @@ small, contained engine change and probably worth doing regardless.
    the answer depends on what hosts it.
 4. **Spectating ("Watch Game")** is a relay feature: a third connection that receives moves and
    can send none.
-5. **Takeback and draw offers online** need a request/response round trip. Cheap to add on top
-   of the existing protocol whenever they are wanted.
+5. **Clock drift is not reconciled.** Each side runs its own clock off its own `delta_ms` and
+   declares the flag itself, so near time-out the two can disagree by a frame or two: the
+   opponent's last-instant move can arrive after we have already called it over, and it then
+   reads as an illegal move and drops the link. A relay (or a "my clock says" line) is where
+   that gets fixed.
 
 ## Still open
 

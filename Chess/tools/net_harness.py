@@ -47,8 +47,22 @@ def click(row_id):
                'return tostring(script.chess.status().menu_page)' % row_id)
 
 
+# Existence has to be asked of the REAL get_state: the click shim below returns {} for every id.
+def exists_now(widget_id):
+    return lua('return tostring(_G.__mc.real("chess", "%s") ~= nil)' % widget_id).capitalize()
+
+
 def status(field):
-    return lua("local s = script.chess.status() return tostring(s.%s)" % field)
+    # pcall: a nested field like peer.name is asked of `false` when there is no peer, and the
+    # answer to "is there an opponent" should be "false", not a Lua error.
+    return lua("local s = script.chess.status() "
+               "local ok, v = pcall(function() return s.%s end) "
+               "return tostring(ok and v or false)" % field)
+
+
+def ms(side):
+    v = status("clock." + side)
+    return float(v) if v not in ("false", "") else -1.0
 
 
 def open_lobby():
@@ -235,6 +249,169 @@ try:
     time.sleep(0.5)
     ck("the opponent resigning ends the game", status("result"), "wins by resignation")
     peer.close()
+
+    # ── the pause card in an online game is a GAME card, not the analysis one
+    open_lobby()
+    peer = socket.create_connection(("127.0.0.1", PORT), timeout=3)
+    handshake(peer)
+    time.sleep(0.8)
+    ck("online is not an analysis board", status("analysis"), "false")
+    ck("the opponent badge names them", status("peer.name"), "Harness")
+    ck("and shows them connected", status("peer.live"), "true")
+    lua('script.chess.menu("pause")')
+    time.sleep(0.3)
+    ck("pause offers Resign", exists_now("menu_pause_resign"), "True")
+    ck("pause offers a draw", exists_now("menu_pause_draw"), "True")
+    ck("and is not the analysis card", exists_now("menu_pause_reset"), "False")
+
+    # ── a draw is offered, not taken
+    click("menu_pause_draw")
+    ck("offering a draw asks them", peer.recv(64).decode().strip(), "DRAW")
+    ck("and does not end the game", status("result"), "false")
+    peer.sendall(b"DRAW_NO\n")
+    time.sleep(0.5)
+    ck("a declined draw leaves the game running", status("result"), "false")
+    peer.sendall(b"DRAW\n")
+    time.sleep(0.6)
+    ck("their offer raises the pause card", status("menu"), "pause")
+    ck("with an Accept row", status("offer_in"), "draw")
+    click("menu_pause_draw")
+    ck("accepting answers them", peer.recv(64).decode().strip(), "DRAW_OK")
+    time.sleep(0.4)
+    ck("and agrees the draw here", status("result"), "Draw - agreed")
+
+    # ── takeback, both boards undoing the same plies
+    peer.sendall(b"REMATCH\n")
+    time.sleep(0.5)
+    click("menu_end_rematch")
+    peer.recv(64)
+    time.sleep(1.2)
+    lua('script.chess.move("e2e4")')
+    time.sleep(0.5)
+    peer.recv(64)
+    ck("a move was played", status("moves"), "1")
+    lua('script.chess.menu("pause")')
+    time.sleep(0.3)
+    click("menu_pause_takeback")
+    ck("takeback is offered", peer.recv(64).decode().strip(), "TAKEBACK")
+    ck("and the board has not moved yet", status("moves"), "1")
+    peer.sendall(b"TAKEBACK_OK\n")
+    time.sleep(0.6)
+    ck("their acceptance undoes it", status("moves"), "0")
+
+    # ── a dropped opponent stays on screen, greyed
+    peer.close()
+    time.sleep(1.0)
+    ck("the badge survives the disconnect", status("peer.name"), "Harness")
+    ck("but the dot goes grey", status("peer.live"), "false")
+
+    # ── rematch: neither side may restart alone
+    open_lobby()
+    peer = socket.create_connection(("127.0.0.1", PORT), timeout=3)
+    handshake(peer)
+    time.sleep(0.6)
+    ck("we are White as host", status("color"), "W")
+    peer.sendall(b"RESIGN\n")
+    time.sleep(2.6)
+    ck("end card is up", status("menu"), "end")
+
+    click("menu_end_rematch")
+    ck("clicking Rematch asks the opponent", peer.recv(64).decode().strip(), "REMATCH")
+    ck("and waits instead of restarting", status("rematch"), "sent")
+    ck("the finished game is still on screen", status("result"), "wins by resignation")
+
+    peer.sendall(b"REMATCH_OK\n")
+    time.sleep(1.5)
+    ck("their acceptance starts the new game", status("moves"), "0")
+    ck("the link survived it", status("online"), "host")
+    ck("and colours swapped", status("color"), "B")
+
+    # ── the other direction: they ask, we accept
+    peer.sendall(b"RESIGN\n")
+    time.sleep(2.6)
+    peer.sendall(b"REMATCH\n")
+    time.sleep(0.5)
+    ck("their offer turns the button into an acceptance", status("rematch"), "offered")
+    click("menu_end_rematch")
+    ck("accepting answers them", peer.recv(64).decode().strip(), "REMATCH_OK")
+    time.sleep(1.0)
+    ck("and starts the game here too", status("moves"), "0")
+    ck("colours swapped back", status("color"), "W")
+    peer.close()
+    time.sleep(0.5)
+
+    # -- the clock does not stop for a card. A local overlay cannot stop the opponent's copy
+    # of our clock, so the two boards would disagree about who flagged.
+    peer.close()
+    lua("script.chess.new_game{clock_min = 1}")
+    open_lobby()
+    peer = socket.create_connection(("127.0.0.1", PORT), timeout=3)
+    handshake(peer)
+    time.sleep(0.8)
+    lua('script.chess.move("e2e4")')
+    peer.recv(64)
+    peer.sendall(b"M e7e5\n")
+    time.sleep(0.7)
+    ck("it is our move again", status("turn"), "W")
+    lua('script.chess.menu("pause")')
+    time.sleep(0.3)
+    t0 = ms("w")
+    time.sleep(1.2)
+    ck("the clock burns behind the pause card", str(t0 - ms("w") > 700), "True")
+
+    click("menu_pause_resume")
+    peer.sendall(b"DRAW\n")
+    time.sleep(0.7)
+    ck("their offer takes the card", status("offer_in"), "draw")
+    ck("with no Resume to hide behind", exists_now("menu_pause_resume"), "False")
+    t0 = ms("w")
+    time.sleep(1.2)
+    ck("and the clock burns behind that one too", str(t0 - ms("w") > 700), "True")
+    click("menu_pause_decline")
+    peer.recv(64)
+
+    # Rewinding is the other way to stop a clock -- and a move off the wire would then be
+    # checked against, and truncate, the position we rewound to.
+    # A row that is not drawn never asks get_state, so the injected click is never
+    # consumed -- which is how "this button is gone" is proved without reading pixels
+    # (a hidden quad still answers get_state, so existence proves nothing here).
+    pend = '_G.__mc.id = "%s" script.chess.tick() return tostring(_G.__mc.id)'
+    ck("the review transport is not drawn", lua(pend % "mv_start"), "mv_start")
+    ck("while the panel around it is", lua(pend % "mv_bg"), "nil")
+    lua("script.chess.goto_ply(0)")
+    time.sleep(0.3)
+    ck("and a rewind is refused", status("ply"), "2")
+
+    # -- flagging behind the card ends the game there, on the end card
+    peer.close()
+    lua("script.chess.new_game{clock_min = 0.05}")
+    open_lobby()
+    peer = socket.create_connection(("127.0.0.1", PORT), timeout=3)
+    handshake(peer)
+    time.sleep(0.8)
+    lua('script.chess.move("e2e4")')
+    peer.recv(64)
+    peer.sendall(b"M e7e5\n")
+    time.sleep(0.4)
+    lua('script.chess.menu("pause")')
+    time.sleep(3.5)
+    ck("our clock flagged behind the card", status("result"), "Black wins on time")
+    ck("and the end card took over", status("menu"), "end")
+    peer.close()
+    time.sleep(0.4)
+
+    # -- offline, a pause is still a pause: there is nobody else's clock to disagree with.
+    lua('script.chess.new_game{side = "hotseat", clock_min = 1}')
+    time.sleep(0.8)
+    lua('script.chess.move("e2e4")')
+    time.sleep(0.5)
+    lua('script.chess.menu("pause")')
+    time.sleep(0.3)
+    t0 = ms("b")
+    time.sleep(1.2)
+    ck("offline the card still stops the clock", str(ms("b") == t0), "True")
+    lua("script.chess.new_game{}")
+    time.sleep(0.6)
 
     # ── the lobby is discoverable, in the format the browser parses
     open_lobby()

@@ -42,3 +42,5 @@ __pycache__/
 */arena_cap_screen*.png
 */arena_probe.png
 .cursor/
+ChessExport/
+ChessExport.zip
