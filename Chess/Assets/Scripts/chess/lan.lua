@@ -2,7 +2,7 @@
 -- line protocol that runs over it.
 --
 -- The rule this module exists to enforce: NOTHING that arrives on the wire is trusted. A peer
--- can send exactly four kinds of line, each matched against a fixed pattern before it means
+-- can send exactly six kinds of line, each matched against a fixed pattern before it means
 -- anything, and a move is only ever handed to the caller as a STRING — game.lua then runs it
 -- through R.legal_moves in its own position, for the side it believes is to move. The peer can
 -- never set board state, only propose a move we already believe is legal. Anything else drops
@@ -23,9 +23,17 @@ local STALE_MS = 4000     -- a lobby unheard from this long has gone away
 local PROTO = "PC1"
 local MOVE = "^[a-h][1-8][a-h][1-8][qrbn]?$"
 
+-- The verbs that are pure negotiation, mapped to the event the game reacts to. A table rather
+-- than another elseif chain: every one of them is the same shape.
+local OFFERS = {
+    DRAW = "draw_offer", DRAW_OK = "draw_accept", DRAW_NO = "draw_decline",
+    TAKEBACK = "takeback_offer", TAKEBACK_OK = "takeback_accept", TAKEBACK_NO = "takeback_decline",
+}
+
 local role          -- "host" | "guest" | nil when offline
 local ready         -- the handshake completed; the game may start
 local my_id, my_name
+local peer_name
 local beacon_wait = 0
 local browsing = false
 local hello_sent = false
@@ -61,6 +69,7 @@ end
 function L.role() return role end
 function L.ready() return ready end
 function L.note() return note_text end
+function L.peer_name() return peer_name end
 function L.online() return role ~= nil end
 
 local function fail(why)
@@ -138,6 +147,23 @@ function L.send_resign()
     if ready then net.send("RESIGN") end
 end
 
+-- A rematch is the one thing neither side can decide alone: restarting locally would leave the
+-- opponent sitting in a finished game with a live socket. So it is offered, and only the
+-- acceptance starts it.
+-- Draw, takeback and rematch are all "ask, then be answered" -- none may be applied
+-- unilaterally, because the other board would silently disagree with ours.
+function L.offer(what)
+    if ready then net.send(what) end
+end
+
+function L.send_rematch()
+    if ready then net.send("REMATCH") end
+end
+
+function L.send_rematch_ok()
+    if ready then net.send("REMATCH_OK") end
+end
+
 function L.close()
     if ready or role then net.send("BYE") end
     reset()
@@ -210,12 +236,12 @@ function L.tick(delta_ms)
             -- act on them, but they are still bounded and stripped of anything but text.
             local peer = (rest:match("^%d+%s+(.+)$") or "Player"):sub(1, 32):gsub("[^%w%s_-]", "")
             net.send("OK " .. my_id .. " " .. my_name)
-            ready = true
+            ready, peer_name = true, peer
             note_text = "Playing " .. peer
             events[#events + 1] = {kind = "ready"}
         elseif kind == "OK" and role == "guest" and not ready then
             local peer = (rest:match("^%d+%s+(.+)$") or "Player"):sub(1, 32):gsub("[^%w%s_-]", "")
-            ready = true
+            ready, peer_name = true, peer
             note_text = "Playing " .. peer
             events[#events + 1] = {kind = "ready"}
         elseif kind == "M" and ready then
@@ -229,6 +255,12 @@ function L.tick(delta_ms)
             events[#events + 1] = {kind = "move", uci = rest}
         elseif kind == "RESIGN" and ready then
             events[#events + 1] = {kind = "resign"}
+        elseif kind == "REMATCH" and ready then
+            events[#events + 1] = {kind = "rematch_offer"}
+        elseif kind == "REMATCH_OK" and ready then
+            events[#events + 1] = {kind = "rematch_start"}
+        elseif OFFERS[kind] and ready then
+            events[#events + 1] = {kind = OFFERS[kind]}
         elseif kind == "BYE" then
             reset(true)
             note_text = "Opponent left"

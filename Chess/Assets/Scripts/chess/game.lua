@@ -42,6 +42,10 @@ local analysis                 -- an analysis board (Analysis > New Board / Load
 local online                   -- "host" | "guest" while playing someone on the LAN
 local my_color                 -- the side THIS machine plays online; the other is the peer's
 local applying_remote          -- guard so a move that arrived on the wire is not echoed back
+local rematch_sent, rematch_offered -- online rematch: who has asked whom
+local rematch_count = 0        -- rematches on THIS link; both sides count it to swap colours
+local offer_sent, offer_in     -- "draw"/"takeback" we asked for, and one we were asked
+local peer_name, peer_live     -- the opponent badge: name survives a disconnect, the dot does not
 local replay_speed = 1
 
 -- Defined below, referenced across sections; declared here so every definition lands in
@@ -346,6 +350,11 @@ end
 -- promotions, castling and en passant consistent for free; unwinding them would not.
 local function goto_ply(n)
     n = math.max(0, math.min(n or 0, #history))
+    -- A live online game has no review: rewinding would stop a clock the opponent's copy keeps
+    -- running, and a move arriving off the wire would then be checked against -- and truncate --
+    -- the position we rewound to. A finished one is harmless to review; the head test is what
+    -- keeps a mate reviewable, since the first rewind clears `result`.
+    if online and not result and view_ply == #history and n < #history then return view_ply end
 
     if BOT then BOT.abort() end -- whatever it is searching belongs to a position we just left
     bot_wait = nil
@@ -728,7 +737,10 @@ local function draw_moves(w, h)
     local foot_h = row_h * 1.3
     -- runtime_ui does not clip, so the list has to stop above the footer rows or SAN
     -- rows draw under the buttons and the thumb counts hidden rows as visible.
-    local by = py + ph - foot_h * (analysis and 3 or 2) - 20
+    -- Review is refused while an online game is live (see goto_ply), so its two buttons are
+    -- not drawn at all: a button that highlights and then does nothing reads as a broken one.
+    local no_review = online and not result and view_ply == #history
+    local by = py + ph - foot_h * ((analysis and 3) or (no_review and 1) or 2) - 20
     local list_y = py + head_h
     local list_h = math.max(row_h, by - list_y - 4)
     local rows = math.min(MAX_ROWS, math.max(1, math.floor(list_h / row_h)))
@@ -860,19 +872,24 @@ local function draw_moves(w, h)
     -- menus before the game starts, and replay is started from the end card. What is left is
     -- the review transport and the way into the pause menu.
     local half = (pw - 20) * 0.5
-    if V.button("mv_start", px + 8, fy, half, foot_h - 4, "|< Start",
-                {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.4, 0.4, 0.45, 1}}) then
-        pause_replay()
-        scroll = 1
-        goto_ply(0)
-        if replay then replay.wait = wait_for_next() end
-    end
-    if V.button("mv_end", px + 12 + half, fy, half, foot_h - 4, "Live >|",
-                {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.4, 0.4, 0.45, 1}}) then
-        pause_replay()
-        scroll = nil
-        goto_ply(#history)
-        if replay then replay.wait = wait_for_next() end
+    if no_review then
+        V.hide("mv_start")
+        V.hide("mv_end")
+    else
+        if V.button("mv_start", px + 8, fy, half, foot_h - 4, "|< Start",
+                    {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.4, 0.4, 0.45, 1}}) then
+            pause_replay()
+            scroll = 1
+            goto_ply(0)
+            if replay then replay.wait = wait_for_next() end
+        end
+        if V.button("mv_end", px + 12 + half, fy, half, foot_h - 4, "Live >|",
+                    {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.4, 0.4, 0.45, 1}}) then
+            pause_replay()
+            scroll = nil
+            goto_ply(#history)
+            if replay then replay.wait = wait_for_next() end
+        end
     end
 
     -- Quitting moved behind the pause menu, which also offers the way back to the title.
@@ -918,6 +935,27 @@ local function draw_hud(w, h)
                "W " .. K.fmt(K.remaining(clock_k, "W")), clock_style("W"))
         V.text("clk_b", w * 0.5 + w * 0.16 + 10, h * 0.02, cw, bar,
                "B " .. K.fmt(K.remaining(clock_k, "B")), clock_style("B"))
+    end
+
+    -- Who you are playing, and whether they are still there. The name outlives the link on
+    -- purpose: a grey dot answers "where did they go", a vanished badge does not.
+    if peer_name then
+        -- Plate first, then dot, then name: all three are no_input so they batch in creation
+        -- order, and the plate is what keeps the badge readable over a bright board.
+        local dot = math.max(11, bar * 0.24)
+        local pad = dot * 0.7
+        local bw = math.max(160, w * 0.11)
+        V.text("peer_bg", 14, h * 0.02, bw, bar, "", {corner_radius = 6})
+        V.text("peer_dot", 14 + pad, h * 0.02 + (bar - dot) * 0.5, dot, dot, "",
+               {fill = peer_live and {0.30, 0.80, 0.40, 1} or {0.40, 0.40, 0.44, 1},
+                corner_radius = dot * 0.5})
+        V.text("peer_name", 14 + pad + dot + 8, h * 0.02, bw - pad - dot - 12, bar, peer_name,
+               {align_h = "left", fill = {0, 0, 0, 0},
+                text_color = peer_live and {0.95, 0.95, 0.92, 1} or {0.58, 0.58, 0.62, 1}})
+    else
+        V.hide("peer_bg")
+        V.hide("peer_dot")
+        V.hide("peer_name")
     end
 
     if promo then
@@ -1022,6 +1060,8 @@ function start_game(c, keep_link)
     -- handshake that is starting the online game right now.
     if not keep_link then LAN.close() end
     online, my_color, applying_remote = nil, nil, false
+    rematch_sent, rematch_offered, offer_sent, offer_in = false, false, nil, nil
+    if not keep_link then peer_name, peer_live = nil, false end
     G.init() -- full board + module reset; also re-arms the title overlay, undone below
     MENU.hide()
     menu_mode = nil
@@ -1080,6 +1120,35 @@ function lan_break(why)
     hud_note, hud_note_frames = why, 300
 end
 
+-- The only way an online game starts. `c.side = "hotseat"` keeps the bot out of it, but that is
+-- also how an ANALYSIS board is spelled, which is why `analysis` is cleared here by hand -- left
+-- set, the pause card offers Reset/Back instead of Resign and Offer draw.
+--
+-- Colours: both sides run this off the same message and count rematches on this link, so each
+-- derives its own side from the same rule and the swap needs no negotiating.
+local function takeback_for(color)
+    if #history == 0 then return end
+    local last = (#history % 2 == 1) and "W" or "B"
+    local n = (last == color) and 1 or 2
+    if n > #history then n = #history end
+    for _ = 1, n do history[#history] = nil end
+    flag_result, result = nil, nil
+    goto_ply(#history)
+end
+
+local function start_online()
+    local c = {}
+    for k, v in pairs(cfg) do c[k] = v end
+    c.side = "hotseat"
+    start_game(c, true)
+    analysis = false
+    online = LAN.role()
+    my_color = ((LAN.role() == "host") == (rematch_count % 2 == 0)) and "W" or "B"
+    peer_name, peer_live = LAN.peer_name(), true
+    B2.set_flip(my_color == "B")
+    C.face(my_color)
+end
+
 -- One frame of the LAN link. Every event here came off the wire, so each one is treated as a
 -- claim to be checked rather than an instruction to obey.
 function lan_tick(delta_ms)
@@ -1088,13 +1157,8 @@ function lan_tick(delta_ms)
         if ev.kind == "ready" then
             -- Host is White, guest is Black: a rule both sides compute identically, so the
             -- colours never need to be negotiated (and so cannot be argued about).
-            local c = {}
-            for k, v in pairs(cfg) do c[k] = v end
-            c.side = "hotseat" -- an online game has no bot in it
-            start_game(c, true)
-            online, my_color = LAN.role(), (LAN.role() == "host") and "W" or "B"
-            B2.set_flip(my_color == "B")
-            C.face(my_color)
+            rematch_count = 0
+            start_online()
         elseif ev.kind == "move" then
             -- Two things must hold before a peer's move touches the board: it must be THEIR
             -- turn, and the move must be legal in the position WE hold. G.move does the second
@@ -1108,15 +1172,46 @@ function lan_tick(delta_ms)
                 applying_remote = false
                 if not ok then lan_break("Opponent sent an illegal move") end
             end
+        elseif ev.kind == "draw_offer" or ev.kind == "takeback_offer" then
+            offer_in = (ev.kind == "draw_offer") and "draw" or "takeback"
+            hud_note = (peer_name or "Opponent") ..
+                       ((offer_in == "draw") and " offers a draw" or " asks to take a move back")
+            hud_note_frames = 600
+            open_menu("pause") -- an offer that only lives in a corner of the HUD gets missed
+        elseif ev.kind == "draw_accept" then
+            offer_sent = nil
+            if not result then
+                flag_result, result = "Draw - agreed", "Draw - agreed"
+                game_over_fx()
+            end
+        elseif ev.kind == "takeback_accept" then
+            offer_sent = nil
+            takeback_for(my_color)
+        elseif ev.kind == "draw_decline" or ev.kind == "takeback_decline" then
+            offer_sent = nil
+            hud_note, hud_note_frames = "Declined", 180
+        elseif ev.kind == "rematch_offer" then
+            -- Both clicked at once: the offer we already sent IS our acceptance.
+            if rematch_sent then
+                LAN.send_rematch_ok()
+                rematch_count = rematch_count + 1
+                start_online()
+            else
+                rematch_offered = true
+            end
+        elseif ev.kind == "rematch_start" then
+            rematch_count = rematch_count + 1
+            start_online()
         elseif ev.kind == "resign" then
             if not result then
                 flag_result = ((my_color == "W") and "White" or "Black") .. " wins by resignation"
                 result = flag_result
                 game_over_fx()
             end
-            online = nil
+            -- The GAME is over, not the session: the link stays up so the end card can still
+            -- offer a rematch. Only a closed link clears `online`.
         elseif ev.kind == "closed" then
-            online = nil
+            online, peer_live, offer_in, offer_sent = nil, false, nil, nil
             hud_note, hud_note_frames = ev.why, 300
         end
     end
@@ -1124,6 +1219,9 @@ end
 
 local function menu_frame(pressed)
     local s = runtime_ui.get_surface_size()
+    -- The clock keeps running behind an online card, so it must not vanish behind one either:
+    -- a clock you cannot see burning is worse than one that stops.
+    if online and menu_mode ~= "title" then draw_hud(s.w, s.h) end
     if menu_mode == "title" then
         LAN.on_page(MENU.page())
         local action = MENU.draw_main(s.w, s.h, cfg,
@@ -1201,9 +1299,10 @@ local function menu_frame(pressed)
         -- offered at all — a button that silently does nothing reads as a broken button.
         local live = not result
         local action = MENU.draw_pause(s.w, s.h, {
-            takeback = live and #history > 0 and not online, draw = live and not online,
+            takeback = live and #history > 0, draw = live,
             resign = live, over = not live,
-            analysis = analysis,
+            analysis = analysis, offer = online and offer_in or nil,
+            sent = online and offer_sent or nil,
         })
         if action == "resume" then
             if S then S.play("click") end
@@ -1212,14 +1311,33 @@ local function menu_frame(pressed)
             if S then S.play("click") end
             cfg.side = "hotseat" -- same fresh analysis board that Analysis > New Board makes
             start_game(cfg)
-        elseif action == "takeback" then
+        elseif action == "takeback" or action == "draw" then
             if S then S.play("click") end
-            close_menu()
-            G.takeback()
-        elseif action == "draw" then
+            if not online then
+                close_menu()
+                if action == "takeback" then G.takeback() else G.offer_draw() end
+            elseif offer_in == action then
+                -- They asked; this is the acceptance, and both boards act on it.
+                LAN.offer((action == "draw") and "DRAW_OK" or "TAKEBACK_OK")
+                offer_in, hud_note = nil, nil -- the "they offer a draw" note is now stale
+                close_menu()
+                if action == "draw" then
+                    flag_result, result = "Draw - agreed", "Draw - agreed"
+                    game_over_fx()
+                else
+                    takeback_for((my_color == "W") and "B" or "W")
+                end
+            else
+                LAN.offer((action == "draw") and "DRAW" or "TAKEBACK")
+                offer_sent = action
+                close_menu()
+                hud_note, hud_note_frames = "Waiting for the opponent to answer", 300
+            end
+        elseif action == "decline" then
             if S then S.play("click") end
+            LAN.offer((offer_in == "draw") and "DRAW_NO" or "TAKEBACK_NO")
+            offer_in, hud_note = nil, nil
             close_menu()
-            G.offer_draw()
         elseif action == "resign" then
             if S then S.play("click") end
             close_menu()
@@ -1234,11 +1352,26 @@ local function menu_frame(pressed)
             host_quit()
         end
     elseif menu_mode == "end" then
-        local action = MENU.draw_end(s.w, s.h, result or "", pgn_saved)
+        local action = MENU.draw_end(s.w, s.h, result or "", pgn_saved,
+                                     online and (rematch_offered and "offered"
+                                                 or (rematch_sent and "sent")) or nil)
         if action == "rematch" then
             if S then S.play("click") end
-            MENU.hide()
-            start_game(cfg)
+            if online then
+                -- Restarting alone would leave the opponent in a finished game, so this only
+                -- asks; the board does not move until they answer.
+                if rematch_offered then
+                    LAN.send_rematch_ok()
+                    rematch_count = rematch_count + 1
+                    start_online()
+                else
+                    LAN.send_rematch()
+                    rematch_sent = true
+                end
+            else
+                MENU.hide()
+                start_game(cfg)
+            end
         elseif action == "review" then
             if S then S.play("click") end
             close_menu() -- back to the board; result stays in the HUD
@@ -1337,8 +1470,11 @@ end
 -- Lifted out of G.update because that function is at LuaJIT's 60-upvalue ceiling, and clock_k /
 -- clock_warned / K / flag_result are used nowhere else in the loop.
 local function clock_tick()
-    if not (clock_k and not replay and not result and not promo and #history > 0 and
-            view_ply == #history) then
+    -- Online, nothing local may stop it: the opponent's copy of our clock does not stop for
+    -- our promotion picker, our pause card or the draw offer we are staring at, so neither may
+    -- ours. Offline all three are a real pause.
+    if not (clock_k and not result and #history > 0 and view_ply == #history and
+            (online or (not replay and not promo))) then
         return
     end
     local side = state.turn
@@ -1377,6 +1513,15 @@ function G.update()
         -- The 2D board keeps drawing under the overlay: open_menu wipes every quad, and
         -- without this the 3D set would show through the menu's translucent backdrop.
         draw_board_overlay()
+        if online then clock_tick() end
+        -- Flagging (or a resignation off the wire) behind the card ends the game there and
+        -- then. `end_wait` is what says the game ended just now rather than before the card
+        -- was opened -- without it, opening the pause card on a finished game to reach Main
+        -- menu would bounce straight back to the end card.
+        if end_wait and result and menu_mode == "pause" then
+            end_wait = nil
+            open_menu("end")
+        end
         menu_frame(pressed)
         return
     end
@@ -1657,6 +1802,7 @@ end
 -- Play back `history` with each ply's recorded think-time. `text` loads that PGN first.
 -- With no args: Pause / Continue / restart from ply 0 of the current game.
 function G.replay(text)
+    if online then return false, "not while playing online" end
     if replay and not replay.paused then
         replay.paused = true
         return true
@@ -1774,6 +1920,11 @@ function G.status()
     return {
         view2d = view2d,
         analysis = analysis or false,
+        color = my_color or false,
+        rematch = rematch_offered and "offered" or (rematch_sent and "sent") or false,
+        peer = peer_name and {name = peer_name, live = peer_live and true or false} or false,
+        offer_in = offer_in or false,
+        offer_sent = offer_sent or false,
         online = online or false,
         lan = LAN and {role = LAN.role() or false, ready = LAN.ready(),
                        note = LAN.note() or false, lobbies = #LAN.lobbies()} or false,
@@ -1782,6 +1933,9 @@ function G.status()
         -- with no mode, so it cannot be used to ask where the menu is.
         menu = menu_mode or false,
         menu_page = MENU and MENU.page() or false,
+        -- Remaining ms per side: the HUD reads K directly, but a script (or a harness)
+        -- cannot, and "did the clock keep running" is not answerable without it.
+        clock = clock_k and {w = K.remaining(clock_k, "W"), b = K.remaining(clock_k, "B")} or false,
         turn = state.turn,
         check = R.in_check(state, state.turn),
         result = result,

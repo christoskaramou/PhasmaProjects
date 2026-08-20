@@ -383,7 +383,9 @@ end
 
 -- ── end card ───────────────────────────────────────────────────────────────
 
-function menu.draw_end(w, h, result_text, pgn_saved)
+-- `rematch` is the online negotiation state: nil offline, "sent" while we wait for the
+-- opponent to answer, "offered" when they asked first and the button is now an acceptance.
+function menu.draw_end(w, h, result_text, pgn_saved, rematch)
     begin_frame()
     local action = nil
     local pw, ph = 380, 340
@@ -395,7 +397,12 @@ function menu.draw_end(w, h, result_text, pgn_saved)
     label("menu_end_result", px, py + 14, pw, 44, result_text or "", FONT + 0.15, TITLE_TEXT, false)
 
     local y = py + 72
-    if button("menu_end_rematch", bx, y, bw, bh, "Rematch", "start") then action = "rematch" end
+    local rematch_label = "Rematch"
+    if rematch == "sent" then rematch_label = "Waiting for opponent..."
+    elseif rematch == "offered" then rematch_label = "Accept rematch" end
+    if button("menu_end_rematch", bx, y, bw, bh, rematch_label, "start") and rematch ~= "sent" then
+        action = "rematch"
+    end
     y = y + bh + gap
     if button("menu_end_replay", bx, y, bw, bh, "Replay") then action = "replay" end
     y = y + bh + gap
@@ -422,15 +429,31 @@ function menu.draw_pause(w, h, can)
     can = can or {}
     local action = nil
 
-    local rows = {{"resume", "Resume"}}
-    if can.analysis then
+    local rows = {}
+    if can.offer then
+        -- An offer from the opponent takes over the card: answering it is the only thing that
+        -- matters, and burying Accept under Resume/Resign is how offers get missed. There is no
+        -- Resume either -- the clock keeps running behind this card, so walking away from the
+        -- offer unanswered would be a pause that only looks like one to us.
+        local what = (can.offer == "draw") and "draw" or "takeback"
+        rows[#rows + 1] = {"" .. can.offer, "Accept " .. what, "start"}
+        rows[#rows + 1] = {"decline", "Decline " .. what, "back"}
+        rows[#rows + 1] = {"exit", "Exit game", "exit"}
+    elseif can.analysis then
         -- Nobody to resign to and nothing to agree with on an analysis board: it is a
         -- position you are working on, so the only verbs are start over and leave.
+        rows[#rows + 1] = {"resume", "Resume"}
         rows[#rows + 1] = {"reset", "Reset"}
         rows[#rows + 1] = {"menu", "Back", "back"}
     else
-        if can.takeback then rows[#rows + 1] = {"takeback", "Offer takeback"} end
-        if can.draw then rows[#rows + 1] = {"draw", "Offer draw"} end
+        rows[#rows + 1] = {"resume", "Resume"}
+        if can.takeback then
+            rows[#rows + 1] = {"takeback",
+                               (can.sent == "takeback") and "Takeback offered..." or "Offer takeback"}
+        end
+        if can.draw then
+            rows[#rows + 1] = {"draw", (can.sent == "draw") and "Draw offered..." or "Offer draw"}
+        end
         if can.resign then rows[#rows + 1] = {"resign", "Resign"} end
         -- Abandoning a game in progress is what Resign is for, so the way back to the title
         -- only appears once the game is actually over.
