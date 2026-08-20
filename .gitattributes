@@ -1,0 +1,2 @@
+Chess/Assets/Bots/stockfish.exe filter=lfs diff=lfs merge=lfs -text
+*.pemesh filter=lfs diff=lfs merge=lfs -text

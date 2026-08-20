@@ -1,0 +1,5 @@
+# Stockfish must sit beside the pack (proc cannot spawn an exe from inside pepak,
+# and GPLv3 wants the binary + source offer as aggregation, not a linked library).
+Assets/Bots/stockfish.exe
+Assets/Bots/stockfish
+Assets/Agent
