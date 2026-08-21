@@ -1,14 +1,20 @@
 # Online play
 
-**Decided 2026-08-20, and LAN play is built.** The routes below are kept as the record of why.
+**Decided 2026-08-20; LAN play and internet play are both built.** The routes below are kept as
+the record of why.
 
 - **Transport: an engine binding, not a sidecar.** `Phasma/Runtime/Code/Script/Bindings/Net/NetBindings.cpp`
   gives Lua one TCP link and UDP broadcast. Route E (a helper exe over `proc`) was rejected on
   the facts: `proc` holds one child process-wide, so an online game would have had no hint and
   no eval; a sidecar has to be built and shipped per platform, Android included; and proc-lift
   plus a helper plus a second line protocol is more machinery than the binding.
-- **LAN first, relay later.** There is nowhere to host a relay yet, so internet play is not
-  built. The protocol and the validation are written so only the transport under them changes.
+- **Internet play goes through a relay we run** (route A below), and the game **pins its public
+  key**: TLS, but no certificate authority is trusted — the server's key must hash to exactly the
+  pin baked into `Assets/Scripts/chess/relay_config.lua` or nothing is sent. The relay itself is
+  in `relay/`; `relay/deploy.sh` puts it on a box and prints the pin.
+- **The same game protocol runs over both.** LAN and relay differ only in how the two sockets
+  find each other: a beacon on one, a six-digit code on the other. Everything above that — the
+  hello, moves, offers, rematch, keepalive — is identical, and so is the validation.
 - **Friends-only, anonymous.** No accounts, no matchmaking. The display name is generated
   (`Player 4821`) because runtime_ui has no text entry — see below, it decides the whole UX.
 
@@ -16,31 +22,37 @@
 
 `Assets/Scripts/chess/lan.lua` over the `net` binding:
 
-- **Create Lobby** opens a listener on TCP 27500 and broadcasts `PC1|<id>|<name>` on UDP 27501
-  about once a second. **Join Lobby** lists what it hears and connects to the one you click.
-  Leaving those screens closes the lobby.
+- **Create Game** dials the relay and comes back with a six-digit code to read out to a friend;
+  **Join with a Code** taps one in on a keypad (runtime_ui has no text entry, so a code is
+  tapped, not typed). Codes are single use and expire after ten minutes.
+- **Games on this Network** is the LAN path: **Host on this Network** opens a listener on TCP
+  27500 and broadcasts `PC2|<id>|<name>` on UDP 27501 about once a second, and the list below it
+  shows what is heard. Leaving those screens closes the lobby.
 - Host plays White, guest plays Black — and they swap on every rematch. A rule both sides
   compute identically, so the colours are never negotiated and cannot be argued about.
 - Moves, resignation and a clean goodbye travel. So do **draw, takeback and rematch**, each as
   an offer the other side answers: none may be applied unilaterally, or the two boards would
-  silently disagree. An arriving offer opens the pause card by itself — an offer that only
-  lives in a corner of the HUD gets missed.
+  silently disagree. An arriving offer is a **prompt on the left**, not a card over the board —
+  it costs the asker nothing to send, so it must not stop the person who has to answer. The
+  board stays live and the clock keeps running underneath it.
 - **Nothing local pauses an online game.** Our overlay cannot stop the opponent's copy of our
   clock, so it does not stop ours either: the clock burns behind the pause card, behind the
   draw prompt and behind the promotion picker, and the HUD stays on screen so you can watch it
   do so. The offer card has no Resume for the same reason, and review (the move list, `|< Start`,
   Replay) is refused while the game is live — rewinding would stop the clock, and a move off the
   wire would then be checked against, and truncate, the position we rewound to.
-- **Watch Game is still unbuilt** — a spectator is a third connection to one game, which is a
-  relay feature. Two peers on a LAN have nowhere to put a watcher.
+- **Watch Game is still unbuilt** — a spectator is a third connection to one game, and the relay
+  pairs exactly two sockets. It is a change to the relay, not a menu row.
 
 ### The wire
 
 Five verbs, each matched against a fixed pattern before it means anything:
 
 ```
-PC1 <id> <name>   guest -> host, hello
+PC2 <id> <name>   guest -> host, hello
 OK  <id> <name>   host -> guest, accepted
+PING              keepalive, every 20s: two players thinking send nothing for minutes, and a
+                  NAT (or the relay's idle timer) reads that as a dead link
 M <uci>           a move, e.g. "M e2e4" or "M e7e8q"
 RESIGN
 BYE
@@ -118,7 +130,15 @@ malicious opponent's worst case is "the game ends and says the peer misbehaved".
 
 ## Routes
 
-### A. Relay server — recommended for internet play
+### Through the relay, before the game protocol starts
+
+```
+HOST <name>          -> CODE <nnnnnn>     then wait
+JOIN <nnnnnn> <name> -> PAIRED <name>     both sides, and the relay becomes a pipe
+                     -> ERR <reason>      and the link closes
+```
+
+### A. Relay server — BUILT, and what internet play uses
 
 Both clients connect **outward** to a small server we run; it pairs them by lobby code and
 forwards bytes. No inbound ports on either player, no NAT traversal, no port forwarding, and
@@ -163,28 +183,49 @@ The catch is the one-child limit: while the net helper runs, Stockfish cannot, s
 game would have no hint and no eval bar. Lifting `proc` to a handful of named children is a
 small, contained engine change and probably worth doing regardless.
 
-## Next, when there is a relay
+## How it was built, and what each part cost
 
-1. **The relay (A)** for internet play, reusing the protocol and validation already written —
-   only the transport underneath changes. Both clients connect outward, so no inbound ports and
-   neither player learns the other's IP.
-2. **Lobby codes need a way to enter one.** runtime_ui has no text entry, so a code is a
-   button-pad or digit-stepper, not a text field. LAN discovery sidesteps this; the relay
-   cannot.
-3. **Transport integrity: TLS or HMAC-signed frames.** There is no OpenSSL in the engine build
-   today, and httplib is vendored only inside the MCP tooling. Decide it when the relay exists —
-   the answer depends on what hosts it.
-4. **Spectating ("Watch Game")** is a relay feature: a third connection that receives moves and
-   can send none.
-5. **Clock drift is not reconciled.** Each side runs its own clock off its own `delta_ms` and
-   declares the flag itself, so near time-out the two can disagree by a frame or two: the
-   opponent's last-instant move can arrive after we have already called it over, and it then
-   reads as an illegal move and drops the link. A relay (or a "my clock says" line) is where
-   that gets fixed.
+1. **The relay (A)**, in `relay/` — Python, standard library only, one thread per session. It
+   pairs by code and pipes bytes; it does not parse the game. `deploy.sh` puts it on a box.
+2. **TLS in the engine.** mbedTLS is now a build dependency of the net binding (`PE_TLS`, on by
+   default, and the binding still compiles without it). Client side only: the game never
+   terminates TLS. `net.join(host, port, {pin = ...})` is the whole API change.
+3. **Key pinning instead of a CA.** The relay's certificate is self-signed and the game checks
+   the SHA-256 of its public key against `relay_config.lua`. Stronger than the browser model
+   here — a certificate signed by a real CA for the same address is still refused — and it means
+   no CA bundle to ship and no domain to own. The cost is that changing the relay's key locks
+   out builds carrying the old pin, which is the point.
+4. **A keypad, because runtime_ui has no text entry.** Six digits, tapped. Same reason LAN play
+   uses a beacon list rather than an address field.
+5. **A keepalive.** Two players thinking send nothing for minutes; NATs and the relay's idle
+   timer both read that as gone. `PING` every 20 seconds, and the protocol tag went `PC1` → `PC2`
+   so an old build fails at hello instead of dropping an unknown verb mid-game.
+
+## Turning internet play on (parked 2026-08-21)
+
+Everything is built and tested; `Assets/Scripts/chess/relay_config.lua` is blank, so the Online
+rows say "No relay configured yet" and open no socket. Two lines of config switch it on. The
+decision that is parked is only **where the relay runs**, and the answer changes nothing in the
+game:
+
+- **Tailscale on this PC** — free, no card, no port forwarding, home IP never handed out, and
+  the link is encrypted twice. The relay runs here and `host` is the Tailscale address. Cost:
+  every player installs Tailscale once, and this machine must be on. Needs a Windows start
+  script for `relay.py` (it does not exist yet — `deploy.sh` is the Linux/systemd path).
+- **A rented Linux box** — `relay/deploy.sh user@host` and paste what it prints. Friends install
+  nothing and it works with this PC off. Hetzner is about €4/month.
+- **Oracle Cloud Always Free** — a real always-free VM, but it needs a phone number and a
+  non-prepaid credit card to verify, and Oracle STOPS Always Free instances that stay under 20%
+  CPU for seven days. A relay is idle by nature, so this route wants a keepalive of its own.
+- **playit.gg is not an option** — its free tier is Minecraft-only.
 
 ## Still open
 
-- **Who hosts the relay?** LAN-only until there is somewhere to put it.
+- **Spectating ("Watch Game")** — a third connection to one game. The relay pairs exactly two
+  sockets, so this needs a real change there, not just a menu row.
+- **Clock drift near a flag.** Each side runs both clocks off its own frame time, so within a
+  second or two of a time-out the two can disagree; the loser's last-instant move can arrive
+  after the winner has already called it, where it reads as illegal and drops the link.
 - **Is lichess (D) interesting at all**, or does online stay ours?
 
 ## Sources

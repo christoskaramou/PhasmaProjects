@@ -211,7 +211,7 @@ end
 -- twice. `page` is module state: the tree stays where you left it while the game runs
 -- underneath, and menu.home() resets it when the title is opened fresh.
 local PARENT = {
-    play = "root", pvb = "play", pvp = "play", bvb = "play", lan = "pvp",
+    play = "root", pvb = "play", pvp = "play", bvb = "play", lan = "pvp", code = "pvp",
     analysis = "root", pgn = "analysis", settings = "root",
 }
 local PGN_ROWS = 8 -- files per page; runtime_ui does not clip, so the list is paged
@@ -237,6 +237,7 @@ local TITLE = {
     analysis = "Analysis",
     pgn = "Open PGN",
     lan = "Games on this network",
+    code = "Join with a Code",
     settings = "Settings",
 }
 
@@ -272,16 +273,43 @@ local function rows_for(cfg, ctx)
         btn("m_start_pvb", "Start", "start_pvb", "start")
 
     elseif page == "pvp" then
-        -- Online play is not wired yet; the rows exist so the shape of the menu is honest
-        -- about what is coming, and each one says so rather than doing nothing.
-        btn("m_create", "Create Lobby", "lobby_create")
-        btn("m_join", "Join Lobby", "lobby_browse")
-        btn("m_watch", "Watch Game", "lobby_watch")
+        -- Two ways to meet. Over the internet the relay hands out a code; on this network a
+        -- beacon does the finding and no code is needed.
+        btn("m_create", "Create Game", "net_create")
+        go("m_join_code", "Join with a Code", "code")
+        go("m_join", "Games on this Network", "lan")
+        if ctx and ctx.code then
+            -- Spaced in threes: this gets read out loud over a phone.
+            note("m_code_out", "Your code:   " .. ctx.code:sub(1, 3) .. " " .. ctx.code:sub(4))
+            note("m_code_hint", "tell your friend - it works once")
+        end
         if ctx and ctx.note then note("m_pvp_note", ctx.note) end
+
+    elseif page == "code" then
+        -- A keypad, because runtime_ui has no text entry: there is nowhere to type a code, so
+        -- the code is tapped in. Underscores show how many digits are still missing.
+        local typed = (ctx and ctx.typed) or ""
+        note("m_code_in", typed .. string.rep("_", 6 - #typed))
+        local function keys(a, b, c, act_c, role_c)
+            r[#r + 1] = {kind = "trio", cells = {
+                {id = "m_k" .. a, label = a, act = "digit:" .. a},
+                {id = "m_k" .. b, label = b, act = "digit:" .. b},
+                {id = "m_k" .. c, label = c, act = act_c or ("digit:" .. c), role = role_c}}}
+        end
+        keys("1", "2", "3")
+        keys("4", "5", "6")
+        keys("7", "8", "9")
+        r[#r + 1] = {kind = "trio", cells = {
+            {id = "m_kdel", label = "<", act = "digit_del"},
+            {id = "m_k0", label = "0", act = "digit:0"},
+            {id = "m_kjoin", label = "Join", act = "net_join",
+             role = (#typed == 6) and "start" or nil}}}
+        if ctx and ctx.note then note("m_code_note", ctx.note) end
 
     elseif page == "lan" then
         -- Lobbies found by UDP beacon. There is no text entry in runtime_ui, so this list IS
         -- the join flow: you cannot type an address anywhere.
+        btn("m_lan_host", "Host on this Network", "lobby_create")
         local lobbies = (ctx and ctx.lobbies) or {}
         if #lobbies == 0 then
             note("m_lan_none", "Looking for games...")
@@ -362,6 +390,13 @@ function menu.draw_main(w, h, cfg, ctx)
             if button(row.right.id, bx + half + 10, y, half, bh, row.right.label,
                       row.role, row.right.on) then
                 action = row.right.act
+            end
+        elseif row.kind == "trio" then
+            local third = (bw - 20) / 3
+            for i, cell in ipairs(row.cells) do
+                if button(cell.id, bx + (i - 1) * (third + 10), y, third, bh, cell.label, cell.role) then
+                    action = cell.act
+                end
             end
         elseif row.kind == "elo" then
             elo_field(row.id, bx, y, bw, bh, cfg)

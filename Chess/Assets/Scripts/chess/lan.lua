@@ -1,5 +1,11 @@
--- lan.lua — playing someone on the same network: discovery beacons, one TCP link, and the
--- line protocol that runs over it.
+-- lan.lua — playing someone else, on this network or across the internet: discovery beacons,
+-- one link, and the line protocol that runs over it.
+--
+-- Two ways to meet, one game protocol. On a LAN the host listens and beacons, and the guest
+-- connects straight to it. Over the internet both sides instead dial OUT to a relay we run
+-- (see relay/), which pairs them by a six-digit code and then pipes bytes: no player opens a
+-- port and neither learns the other's address. That link is TLS with the relay's public key
+-- PINNED (relay_config.lua) — anything else answering on that address is refused.
 --
 -- The rule this module exists to enforce: NOTHING that arrives on the wire is trusted. A peer
 -- can send exactly six kinds of line, each matched against a fixed pattern before it means
@@ -20,7 +26,8 @@ local STALE_MS = 4000     -- a lobby unheard from this long has gone away
 
 -- Protocol. One version tag, and it is checked: a future build that changes the wire must not
 -- half-play with an old one.
-local PROTO = "PC1"
+local PROTO = "PC2" -- bumped with PING: an old build drops unknown verbs, so it must fail at
+                    -- hello rather than mid-game
 local MOVE = "^[a-h][1-8][a-h][1-8][qrbn]?$"
 
 -- The verbs that are pure negotiation, mapped to the event the game reacts to. A table rather
@@ -29,6 +36,15 @@ local OFFERS = {
     DRAW = "draw_offer", DRAW_OK = "draw_accept", DRAW_NO = "draw_decline",
     TAKEBACK = "takeback_offer", TAKEBACK_OK = "takeback_accept", TAKEBACK_NO = "takeback_decline",
 }
+
+local RELAY         -- {host, port, pin} from relay_config.lua, or nil
+local via_relay     -- this link goes through the relay rather than the LAN
+local relay_stage   -- "dial" | "wait" while the relay is still pairing us; nil once it is a pipe
+local code          -- the six-digit lobby code: ours when hosting, theirs when joining
+local ping_wait = 0
+
+local PING_MS = 20000 -- a game can think for minutes, and a NAT will drop an idle TCP link long
+                      -- before that; this is what keeps the path open
 
 local role          -- "host" | "guest" | nil when offline
 local ready         -- the handshake completed; the game may start
@@ -42,7 +58,8 @@ local note_text
 
 local function reset(keep_browse)
     role, ready, hello_sent = nil, false, false
-    beacon_wait = 0
+    via_relay, relay_stage, code = nil, nil, nil
+    beacon_wait, ping_wait = 0, PING_MS
     if not keep_browse then
         browsing = false
         found = {}
@@ -66,6 +83,11 @@ function L.name()
     return my_name
 end
 
+-- The relay is configuration, not code: the game is handed it once at load and never asks
+-- where it came from.
+function L.configure(cfg) RELAY = cfg end
+function L.relay_ready() return RELAY ~= nil and RELAY.host ~= "" and RELAY.pin ~= "" end
+function L.code() return code end
 function L.role() return role end
 function L.ready() return ready end
 function L.note() return note_text end
@@ -112,7 +134,9 @@ end
 -- screen that opened it (a listener left advertising after you walk away is a door left open).
 function L.on_page(page)
     L.browse(page == "lan")
-    if role == "host" and not ready and page ~= "pvp" and page ~= "lan" then L.close() end
+    if role == "host" and not ready and page ~= "pvp" and page ~= "lan" and page ~= "code" then
+        L.close()
+    end
 end
 
 function L.join(ip)
@@ -136,6 +160,42 @@ function L.lobbies()
     for _, l in pairs(found) do out[#out + 1] = l end
     table.sort(out, function(a, b) return a.id < b.id end)
     return out
+end
+
+-- ── the relay ──────────────────────────────────────────────────────────────
+-- Dial out, pinned. Nothing is sent until net.status() says connected, which for a pinned link
+-- means the TLS handshake finished AND the server's key matched.
+local function dial_relay()
+    if not L.relay_ready() then
+        note_text = "No relay configured yet"
+        return false
+    end
+    identity()
+    reset()
+    local ok, err = net.join(RELAY.host, RELAY.port or 27600, {pin = RELAY.pin})
+    if not ok then
+        note_text = "Could not reach the relay: " .. tostring(err)
+        return false
+    end
+    return true
+end
+
+function L.host_online()
+    if not dial_relay() then return false end
+    role, via_relay, relay_stage = "host", true, "dial"
+    note_text = "Contacting the relay..."
+    return true
+end
+
+function L.join_online(entered)
+    if type(entered) ~= "string" or not entered:match("^%d%d%d%d%d%d$") then
+        note_text = "A code is six digits"
+        return false
+    end
+    if not dial_relay() then return false end
+    role, via_relay, relay_stage, code = "guest", true, "dial", entered
+    note_text = "Contacting the relay..."
+    return true
 end
 
 -- ── the link ───────────────────────────────────────────────────────────────
@@ -195,10 +255,10 @@ end
 function L.tick(delta_ms)
     delta_ms = delta_ms or 16
     local events = {}
-    if browsing or role == "host" then drain_beacons(delta_ms) end
+    if browsing or (role == "host" and not via_relay) then drain_beacons(delta_ms) end
     if not role then return events end
 
-    if role == "host" and not ready then
+    if role == "host" and not ready and not via_relay then
         beacon_wait = beacon_wait - delta_ms
         if beacon_wait <= 0 then
             beacon_wait = BEACON_MS
@@ -212,8 +272,23 @@ function L.tick(delta_ms)
     local status = net.status()
     if status == "idle" then
         -- Listening sockets report idle only after the link is gone, so reaching here with a
-        -- role set means we lost it.
+        -- role set means we lost it. The last words first, though: the relay's refusal arrives
+        -- immediately before it hangs up, and "no game with that code" is the useful message.
         local why = ready and "Opponent disconnected" or "Connection lost"
+        for _ = 1, 8 do
+            local line = net.read_line()
+            if not line then break end
+            local kind, rest = line:match("^(%S+)%s*(.*)$")
+            if kind == "ERR" then
+                why = ({["no-such-game"] = "No game with that code",
+                        ["bad-code"] = "No game with that code",
+                        ["slow-down"] = "Too many tries - wait a minute",
+                        ["expired"] = "That game timed out",
+                        ["busy"] = "The relay is full"})[rest] or ("Relay refused us: " .. rest)
+            elseif kind == "BYE" then
+                why = "Opponent left"
+            end
+        end
         reset(true)
         note_text = why
         events[#events + 1] = {kind = "closed", why = why}
@@ -221,7 +296,15 @@ function L.tick(delta_ms)
     end
     if status ~= "connected" then return events end
 
-    if role == "guest" and not ready and not hello_sent then
+    if via_relay and relay_stage == "dial" then
+        -- Connected to the relay (and, because the link is pinned, to the RIGHT relay). Ask it
+        -- for a code, or hand it the one we were given.
+        net.send((role == "host") and ("HOST " .. my_name) or ("JOIN " .. code .. " " .. my_name))
+        relay_stage = "wait"
+        note_text = (role == "host") and "Asking for a code..." or "Looking for that game..."
+    end
+
+    if role == "guest" and not ready and not hello_sent and not relay_stage then
         net.send(PROTO .. " " .. my_id .. " " .. my_name)
         hello_sent = true
     end
@@ -231,7 +314,35 @@ function L.tick(delta_ms)
         if not line then break end
 
         local kind, rest = line:match("^(%S+)%s*(.*)$")
-        if kind == PROTO and role == "host" and not ready then
+        if relay_stage then
+            -- Three verbs, and only from the relay we pinned. Anything else here is not a relay
+            -- we recognise, so the link goes.
+            if kind == "CODE" and role == "host" and rest:match("^%d%d%d%d%d%d$") then
+                code = rest
+                note_text = "Code " .. code .. " - waiting for your friend"
+            elseif kind == "PAIRED" then
+                relay_stage = nil
+                note_text = "Connected"
+                if role == "guest" then
+                    net.send(PROTO .. " " .. my_id .. " " .. my_name)
+                    hello_sent = true
+                end
+            elseif kind == "ERR" then
+                fail(({["no-such-game"] = "No game with that code",
+                       ["bad-code"] = "No game with that code",
+                       ["slow-down"] = "Too many tries - wait a minute",
+                       ["expired"] = "That game timed out",
+                       ["busy"] = "The relay is full"})[rest] or ("Relay refused us: " .. rest))
+                events[#events + 1] = {kind = "closed", why = note_text}
+                return events
+            else
+                fail("The relay said something unexpected")
+                events[#events + 1] = {kind = "closed", why = note_text}
+                return events
+            end
+        elseif kind == "PING" then
+            -- Keepalive. Nothing to do: arriving at all is the whole point.
+        elseif kind == PROTO and role == "host" and not ready then
             -- The joiner said hello. Names are display-only and never reach a path that could
             -- act on them, but they are still bounded and stripped of anything but text.
             local peer = (rest:match("^%d+%s+(.+)$") or "Player"):sub(1, 32):gsub("[^%w%s_-]", "")
@@ -272,6 +383,16 @@ function L.tick(delta_ms)
             fail("Opponent sent something unexpected")
             events[#events + 1] = {kind = "closed", why = note_text}
             return events
+        end
+    end
+
+    -- Two players thinking is two players sending nothing, and a NAT or a relay counts that as
+    -- a dead link long before the game does.
+    if ready then
+        ping_wait = ping_wait - delta_ms
+        if ping_wait <= 0 then
+            ping_wait = PING_MS
+            net.send("PING")
         end
     end
     return events

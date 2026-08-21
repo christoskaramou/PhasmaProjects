@@ -143,9 +143,13 @@ try:
     # ── Player vs Player -> the not-built rows must answer
     lua('script.chess.menu("title")'); time.sleep(0.3)
     click("m_play"); ck("Play -> Player vs Player", click("m_pvp"), "pvp")
-    click("m_create"); time.sleep(0.4)
-    ck("Create Lobby -> note row rendered",
-       lua('return tostring((runtime_ui.get_state("chess", "m_pvp_note") or {}).hovered ~= nil)'), "true")
+    click("m_join_code"); time.sleep(0.4)
+    ck("Join with a Code -> the keypad is there",
+       lua('return tostring((runtime_ui.get_state("chess", "m_k7") or {}).hovered ~= nil)'), "true")
+    click("m_k1"); click("m_k2"); time.sleep(0.3)
+    ck("tapping digits does not join yet",
+       lua("return tostring(script.chess.status().lan.role)"), "false")
+    ck("Back -> pvp", click("m_back"), "pvp")
     ck("Back -> play", click("m_back"), "play")
     ck("Back -> root", click("m_back"), "root")
 
