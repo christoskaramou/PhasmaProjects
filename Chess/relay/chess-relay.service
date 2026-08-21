@@ -1,0 +1,38 @@
+[Unit]
+Description=Chess relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# The relay is the only part of this game exposed to the internet, so it runs with as little
+# as a process can: its own unprivileged user, no capabilities, a read-only filesystem, and a
+# memory cap that a flood hits long before the box does.
+User=chessrelay
+Group=chessrelay
+WorkingDirectory=/opt/chess-relay
+ExecStart=/usr/bin/python3 /opt/chess-relay/relay.py --cert /opt/chess-relay/cert.pem --key /opt/chess-relay/key.pem --port 27600
+Restart=always
+RestartSec=2
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+MemoryMax=128M
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

@@ -60,25 +60,54 @@ def status(field):
                "return tostring(ok and v or false)" % field)
 
 
+_bufs = {}
+
+
+def peer_line(sock, timeout=3.0):
+    """One line from the game, keepalives skipped — a real client ignores PING and so must this."""
+    sock.settimeout(timeout)
+    buf = _bufs.get(id(sock), b"")
+    while True:
+        while b"\n" not in buf:
+            try:
+                chunk = sock.recv(256)
+            except (socket.timeout, OSError):
+                _bufs[id(sock)] = buf
+                return ""
+            if not chunk:
+                _bufs[id(sock)] = buf
+                return ""
+            buf += chunk
+        text, _, buf = buf.partition(b"\n")
+        _bufs[id(sock)] = buf
+        text = text.decode(errors="replace").strip()
+        if text != "PING":
+            return text
+
+
 def ms(side):
     v = status("clock." + side)
     return float(v) if v not in ("false", "") else -1.0
 
 
 def open_lobby():
-    """Title -> Play -> Player vs Player -> Create Lobby, through the real rows."""
+    """Title -> Play -> Player vs Player -> Games on this Network -> Host, through the real rows.
+
+    Hosting on the LAN moved onto the browse page when Create Game became the internet one: a
+    beacon and a relay code are different ways to be found, and the menu says which is which."""
     lua('script.chess.menu("title")')
     time.sleep(0.3)
     click("m_play")
     click("m_pvp")
-    click("m_create")
+    click("m_join")
+    click("m_lan_host")
     time.sleep(0.4)
 
 
-def handshake(sock, hello=b"PC1 4242 Harness\n"):
+def handshake(sock, hello=b"PC2 4242 Harness\n"):
     sock.sendall(hello)
     sock.settimeout(3)
-    return sock.recv(64).decode().strip()
+    return peer_line(sock)
 
 
 fails = []
@@ -127,7 +156,7 @@ try:
     ck("inbound line", read_line(), "M e2e4")
     lua('net.send("M e7e5")')
     peer.settimeout(3)
-    ck("outbound line", peer.recv(64).decode().strip(), "M e7e5")
+    ck("outbound line", peer_line(peer), "M e7e5")
 
     # Two lines in one packet must come back as two reads, not one.
     peer.sendall(b"M g1f3\nM b8c6\n")
@@ -150,9 +179,9 @@ try:
                    % PORT), "true/nil")
     conn, _ = server.accept()
     ck("connect completes on a later frame", wait_status("connected"), "connected")
-    lua('net.send("PC1 harness")')
+    lua('net.send("PC2 harness")')
     conn.settimeout(3)
-    ck("handshake reaches us", conn.recv(64).decode().strip(), "PC1 harness")
+    ck("handshake reaches us", peer_line(conn), "PC2 harness")
     conn.close()
     server.close()
     ck("peer hangup ends the link", wait_status("idle"), "idle")
@@ -170,11 +199,11 @@ try:
     udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     udp.bind(("", DISCO))
     udp.settimeout(3)
-    ck("advertise", lua("return tostring(net.advertise(%d, 'PC1 Chess|Christos'))" % DISCO), "true")
-    ck("beacon reaches the LAN", udp.recvfrom(256)[0].decode(), "PC1 Chess|Christos")
+    ck("advertise", lua("return tostring(net.advertise(%d, 'PC2 Chess|Christos'))" % DISCO), "true")
+    ck("beacon reaches the LAN", udp.recvfrom(256)[0].decode(), "PC2 Chess|Christos")
 
     lua("return tostring(net.discover(%d))" % DISCO)
-    udp.sendto(b"PC1 Chess|peer", ("255.255.255.255", DISCO))
+    udp.sendto(b"PC2 Chess|peer", ("255.255.255.255", DISCO))
     time.sleep(0.4)
     # A broadcast loops back to every socket bound to the port INCLUDING the sender, so our own
     # beacons come back too. Drain until the peer's shows up -- filtering self is the caller's
@@ -185,11 +214,11 @@ try:
         if got.startswith("nil"):
             break
         seen.append(got)
-    ck("beacon from the LAN is seen", " ".join(seen), "PC1 Chess|peer|")
+    ck("beacon from the LAN is seen", " ".join(seen), "PC2 Chess|peer|")
     # Our own beacon comes back with the SAME source address as the peer's (both left this
     # machine), so a lobby cannot filter itself by IP -- it has to filter on an id in the
     # payload. The address that arrives is the LAN one, which is what you then net.join.
-    ck("our own beacon loops back too", " ".join(seen), "PC1 Chess|Christos|")
+    ck("our own beacon loops back too", " ".join(seen), "PC2 Chess|Christos|")
     ck("beacons carry a routable address, not loopback",
        "lan" if seen and seen[0].split("|")[-1].count(".") == 3 else " ".join(seen), "lan")
     udp.close()
@@ -208,7 +237,7 @@ try:
 
     # ── a real exchange
     lua('script.chess.move("e2e4")')
-    ck("our move reaches the opponent", peer.recv(64).decode().strip(), "M e2e4")
+    ck("our move reaches the opponent", peer_line(peer), "M e2e4")
     peer.sendall(b"M e7e5\n")
     time.sleep(0.5)
     ck("their move lands on our board", status("moves"), "2")
@@ -266,17 +295,18 @@ try:
 
     # ── a draw is offered, not taken
     click("menu_pause_draw")
-    ck("offering a draw asks them", peer.recv(64).decode().strip(), "DRAW")
+    ck("offering a draw asks them", peer_line(peer), "DRAW")
     ck("and does not end the game", status("result"), "false")
     peer.sendall(b"DRAW_NO\n")
     time.sleep(0.5)
     ck("a declined draw leaves the game running", status("result"), "false")
     peer.sendall(b"DRAW\n")
     time.sleep(0.6)
-    ck("their offer raises the pause card", status("menu"), "pause")
-    ck("with an Accept row", status("offer_in"), "draw")
-    click("menu_pause_draw")
-    ck("accepting answers them", peer.recv(64).decode().strip(), "DRAW_OK")
+    ck("their offer does NOT take the screen", status("menu"), "false")
+    ck("it asks from the side instead", exists_now("off_yes"), "True")
+    ck("and knows what it is asking", status("offer_in"), "draw")
+    click("off_yes")
+    ck("accepting answers them", peer_line(peer), "DRAW_OK")
     time.sleep(0.4)
     ck("and agrees the draw here", status("result"), "Draw - agreed")
 
@@ -284,16 +314,16 @@ try:
     peer.sendall(b"REMATCH\n")
     time.sleep(0.5)
     click("menu_end_rematch")
-    peer.recv(64)
+    peer_line(peer)
     time.sleep(1.2)
     lua('script.chess.move("e2e4")')
     time.sleep(0.5)
-    peer.recv(64)
+    peer_line(peer)
     ck("a move was played", status("moves"), "1")
     lua('script.chess.menu("pause")')
     time.sleep(0.3)
     click("menu_pause_takeback")
-    ck("takeback is offered", peer.recv(64).decode().strip(), "TAKEBACK")
+    ck("takeback is offered", peer_line(peer), "TAKEBACK")
     ck("and the board has not moved yet", status("moves"), "1")
     peer.sendall(b"TAKEBACK_OK\n")
     time.sleep(0.6)
@@ -316,7 +346,7 @@ try:
     ck("end card is up", status("menu"), "end")
 
     click("menu_end_rematch")
-    ck("clicking Rematch asks the opponent", peer.recv(64).decode().strip(), "REMATCH")
+    ck("clicking Rematch asks the opponent", peer_line(peer), "REMATCH")
     ck("and waits instead of restarting", status("rematch"), "sent")
     ck("the finished game is still on screen", status("result"), "wins by resignation")
 
@@ -333,7 +363,7 @@ try:
     time.sleep(0.5)
     ck("their offer turns the button into an acceptance", status("rematch"), "offered")
     click("menu_end_rematch")
-    ck("accepting answers them", peer.recv(64).decode().strip(), "REMATCH_OK")
+    ck("accepting answers them", peer_line(peer), "REMATCH_OK")
     time.sleep(1.0)
     ck("and starts the game here too", status("moves"), "0")
     ck("colours swapped back", status("color"), "W")
@@ -349,7 +379,7 @@ try:
     handshake(peer)
     time.sleep(0.8)
     lua('script.chess.move("e2e4")')
-    peer.recv(64)
+    peer_line(peer)
     peer.sendall(b"M e7e5\n")
     time.sleep(0.7)
     ck("it is our move again", status("turn"), "W")
@@ -362,13 +392,13 @@ try:
     click("menu_pause_resume")
     peer.sendall(b"DRAW\n")
     time.sleep(0.7)
-    ck("their offer takes the card", status("offer_in"), "draw")
-    ck("with no Resume to hide behind", exists_now("menu_pause_resume"), "False")
+    ck("their offer is a side prompt, not a card", status("menu"), "false")
+    ck("and the board is still playable behind it", status("offer_in"), "draw")
     t0 = ms("w")
     time.sleep(1.2)
-    ck("and the clock burns behind that one too", str(t0 - ms("w") > 700), "True")
-    click("menu_pause_decline")
-    peer.recv(64)
+    ck("the clock runs while they wait for an answer", str(t0 - ms("w") > 700), "True")
+    click("off_no")
+    peer_line(peer)
 
     # Rewinding is the other way to stop a clock -- and a move off the wire would then be
     # checked against, and truncate, the position we rewound to.
@@ -390,7 +420,7 @@ try:
     handshake(peer)
     time.sleep(0.8)
     lua('script.chess.move("e2e4")')
-    peer.recv(64)
+    peer_line(peer)
     peer.sendall(b"M e7e5\n")
     time.sleep(0.4)
     lua('script.chess.menu("pause")')
@@ -419,7 +449,7 @@ try:
     udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     udp.bind(("", DISCO))
     udp.settimeout(3)
-    ck("the lobby beacons itself", udp.recvfrom(256)[0].decode(), "PC1|")
+    ck("the lobby beacons itself", udp.recvfrom(256)[0].decode(), "PC2|")
     udp.close()
     # Walking away from the lobby screens must take the lobby with it, or the game keeps
     # advertising and answering from a menu the player has left.

@@ -51,6 +51,7 @@ local replay_speed = 1
 -- Defined below, referenced across sections; declared here so every definition lands in
 -- the local, not a global.
 local game_over_fx, open_menu, close_menu, start_game, request_analysis, host_quit
+local answer_offer
 local lan_tick, lan_break
 
 local PARK_X = 0.30 -- centre-to-shelf; the board's own edge is at 0.25
@@ -79,6 +80,12 @@ end
 -- start_game that the connection itself triggers, and G.init is at LuaJIT's 60-upvalue ceiling
 -- (one more name in that function and the whole file stops parsing).
 LAN = load_module("Scripts/chess/lan.lua")
+-- Where internet games meet and the key that proves it: configuration, edited per install and
+-- baked into the export. Blank until relay/deploy.sh has been run, and the menu says so.
+LAN.configure(load_module("Scripts/chess/relay_config.lua"))
+
+local code_typed, on_code_page = "", false -- the six digits being tapped into the Join
+                                           -- screen, and whether we are on it (menu_frame only)
 
 -- tween.cancel does NOT fire the tween's on_done, so the in-flight counter has to be
 -- unwound here or input stays blocked for the rest of the game.
@@ -937,6 +944,35 @@ local function draw_hud(w, h)
                "B " .. K.fmt(K.remaining(clock_k, "B")), clock_style("B"))
     end
 
+    -- A draw or takeback offer is a question, not an interruption. It sits under the opponent's
+    -- badge and the game carries on around it: the board stays live, the clock keeps running,
+    -- and the player answers when they feel like it. Taking the whole screen for something that
+    -- costs the asker nothing is how you annoy the person who has to answer.
+    if offer_in then
+        local oy = h * 0.02 + bar + 8
+        local ow = math.max(210, w * 0.135)
+        local rh = bar * 0.82
+        V.text("off_bg", 14, oy, ow, rh * 2 + 14, "", {corner_radius = 6})
+        V.text("off_msg", 22, oy + 4, ow - 16, rh,
+               (peer_name or "Opponent") ..
+               ((offer_in == "draw") and " offers a draw" or " asks to take a move back"),
+               {align_h = "left", fill = {0, 0, 0, 0}, font_scale = 1.0})
+        local half = (ow - 24) * 0.5
+        if V.button("off_yes", 22, oy + rh + 4, half, rh, "Accept",
+                    {fill = {0.16, 0.34, 0.20, 0.95}, border = {0.35, 0.65, 0.40, 1}}) then
+            answer_offer(true)
+        end
+        if V.button("off_no", 30 + half, oy + rh + 4, half, rh, "Decline",
+                    {fill = {0.28, 0.14, 0.14, 0.95}, border = {0.60, 0.35, 0.32, 1}}) then
+            answer_offer(false)
+        end
+    else
+        V.hide("off_bg")
+        V.hide("off_msg")
+        V.hide("off_yes")
+        V.hide("off_no")
+    end
+
     -- Who you are playing, and whether they are still there. The name outlives the link on
     -- purpose: a grey dot answers "where did they go", a vanished badge does not.
     if peer_name then
@@ -1136,6 +1172,26 @@ local function takeback_for(color)
     goto_ply(#history)
 end
 
+-- Answering an offer. Two buttons in the HUD and two rows on the pause card lead here, and
+-- both boards must end up agreeing, so the acceptance is sent BEFORE anything is applied.
+function answer_offer(yes)
+    if not offer_in then return end
+    local what = offer_in
+    offer_in, hud_note = nil, nil
+    if S then S.play("click") end
+    if not yes then
+        LAN.offer((what == "draw") and "DRAW_NO" or "TAKEBACK_NO")
+        return
+    end
+    LAN.offer((what == "draw") and "DRAW_OK" or "TAKEBACK_OK")
+    if what == "draw" then
+        flag_result, result = "Draw - agreed", "Draw - agreed"
+        game_over_fx()
+    else
+        takeback_for((my_color == "W") and "B" or "W")
+    end
+end
+
 local function start_online()
     local c = {}
     for k, v in pairs(cfg) do c[k] = v end
@@ -1173,11 +1229,9 @@ function lan_tick(delta_ms)
                 if not ok then lan_break("Opponent sent an illegal move") end
             end
         elseif ev.kind == "draw_offer" or ev.kind == "takeback_offer" then
+            -- No menu, no pause: draw_hud puts the question on the left and the game goes on.
             offer_in = (ev.kind == "draw_offer") and "draw" or "takeback"
-            hud_note = (peer_name or "Opponent") ..
-                       ((offer_in == "draw") and " offers a draw" or " asks to take a move back")
-            hud_note_frames = 600
-            open_menu("pause") -- an offer that only lives in a corner of the HUD gets missed
+            if S then S.play("low_time") end -- a sound, since nothing on screen jumps
         elseif ev.kind == "draw_accept" then
             offer_sent = nil
             if not result then
@@ -1224,10 +1278,14 @@ local function menu_frame(pressed)
     if online and menu_mode ~= "title" then draw_hud(s.w, s.h) end
     if menu_mode == "title" then
         LAN.on_page(MENU.page())
+        -- Digits left over from a previous visit are not part of this one.
+        if MENU.page() == "code" and not on_code_page then code_typed = "" end
+        on_code_page = MENU.page() == "code"
         local action = MENU.draw_main(s.w, s.h, cfg,
                                       {note = LAN.note() or mp_note, pgn_files = pgn_files,
                                        pgn_first = pgn_first, pgn_error = pgn_error,
-                                       lobbies = LAN.lobbies()})
+                                       lobbies = LAN.lobbies(), code = LAN.code(),
+                                       typed = code_typed})
         set_view2d(cfg.view2d) -- the title sits over a live board, so the choice previews
         S.set_volume(cfg.volume or DEFAULT_CFG.volume)
 
@@ -1279,14 +1337,18 @@ local function menu_frame(pressed)
         elseif action == "lobby_create" then
             S.play("click")
             LAN.host()
-        elseif action == "lobby_browse" then
+        elseif action == "net_create" then
             S.play("click")
-            MENU.goto_page("lan")
-        elseif action == "lobby_watch" then
+            LAN.host_online()
+        elseif action == "net_join" then
             S.play("click")
-            -- Spectating is a third connection to one game, which is a relay feature: two
-            -- peers on a LAN have nowhere to put the watcher.
-            mp_note = "Watching needs the relay - see MULTIPLAYER.md"
+            if LAN.join_online(code_typed) then code_typed = "" end
+        elseif action == "digit_del" then
+            S.play("click")
+            code_typed = code_typed:sub(1, -2)
+        elseif type(action) == "string" and action:sub(1, 6) == "digit:" then
+            S.play("click")
+            if #code_typed < 6 then code_typed = code_typed .. action:sub(7) end
         elseif type(action) == "string" and action:sub(1, 4) == "lan:" then
             S.play("click")
             local pick = LAN.lobbies()[tonumber(action:sub(5))]
@@ -1317,16 +1379,8 @@ local function menu_frame(pressed)
                 close_menu()
                 if action == "takeback" then G.takeback() else G.offer_draw() end
             elseif offer_in == action then
-                -- They asked; this is the acceptance, and both boards act on it.
-                LAN.offer((action == "draw") and "DRAW_OK" or "TAKEBACK_OK")
-                offer_in, hud_note = nil, nil -- the "they offer a draw" note is now stale
                 close_menu()
-                if action == "draw" then
-                    flag_result, result = "Draw - agreed", "Draw - agreed"
-                    game_over_fx()
-                else
-                    takeback_for((my_color == "W") and "B" or "W")
-                end
+                answer_offer(true)
             else
                 LAN.offer((action == "draw") and "DRAW" or "TAKEBACK")
                 offer_sent = action
@@ -1334,10 +1388,8 @@ local function menu_frame(pressed)
                 hud_note, hud_note_frames = "Waiting for the opponent to answer", 300
             end
         elseif action == "decline" then
-            if S then S.play("click") end
-            LAN.offer((offer_in == "draw") and "DRAW_NO" or "TAKEBACK_NO")
-            offer_in, hud_note = nil, nil
             close_menu()
+            answer_offer(false)
         elseif action == "resign" then
             if S then S.play("click") end
             close_menu()
@@ -1927,7 +1979,8 @@ function G.status()
         offer_sent = offer_sent or false,
         online = online or false,
         lan = LAN and {role = LAN.role() or false, ready = LAN.ready(),
-                       note = LAN.note() or false, lobbies = #LAN.lobbies()} or false,
+                       note = LAN.note() or false, lobbies = #LAN.lobbies(),
+                       code = LAN.code() or false, relay = LAN.relay_ready()} or false,
         eval = eval_on or false,
         -- Read-only: script.chess.menu() is a SETTER and closes the overlay when called
         -- with no mode, so it cannot be used to ask where the menu is.
