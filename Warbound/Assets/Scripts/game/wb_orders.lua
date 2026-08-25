@@ -8,7 +8,10 @@ local World = WB.world
 
 local Orders = {}
 
+local FACTIONS = { "player", "enemy" }
+
 local prev_right = false
+local buildings = {} -- scratch; rebuilt each locomote()
 
 local function mouse()
     if input and input.get_mouse_position then
@@ -126,7 +129,7 @@ function Orders.handle_input(sel, enemy_units, mouse_in_ui)
                         local _E = _state and _state.econ and _state.econ.player
                         if _E then WB.economy.order_harvest(_E, workers, kind) end
                         local movers = {}
-                        for _, u in ipairs(sel) do if u.arch ~= "worker" then movers[#movers + 1] = u end end
+                        for _, u in ipairs(sel) do if not u.arch_is_worker then movers[#movers + 1] = u end end
                         if #movers > 0 then Orders.move_to(movers, gx, gz) end
                     else
                         Orders.move_to(sel, gx, gz)
@@ -191,10 +194,10 @@ end
 
 function Orders.locomote(dt, units, state)
     -- Building obstacles (both factions): buildings aren't in `units`, so units would
-    -- phase through them. Gathered once per frame.
-    local buildings = {}
+    -- phase through them. Gathered once per frame into a reused scratch list.
+    for i = #buildings, 1, -1 do buildings[i] = nil end
     if state and state.econ then
-        for _, fac in ipairs({ "player", "enemy" }) do
+        for _, fac in ipairs(FACTIONS) do
             for _, b in ipairs(state.econ[fac].buildings) do
                 if b.alive then buildings[#buildings + 1] = b end
             end

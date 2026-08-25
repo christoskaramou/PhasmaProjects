@@ -16,6 +16,17 @@ local World = WB.world
 local Hud = {}
 local SCREEN = "hud"
 
+-- Fully-transparent color, shared. The engine reads color tables by value and never
+-- retains them, so one constant serves every widget instead of allocating a fresh
+-- table per color field per widget per frame.
+local CLEAR = { 0, 0, 0, 0 }
+local EMPTY = {}
+local NO_INPUT = { no_input = true }
+local BAR_BG = { 0.04, 0.05, 0.06, 0.95 }
+local BAR_BG_OPTS = { border = { 0.2, 0.2, 0.24, 0.95 }, no_input = true }
+local TRAIN_WHY = { gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" }
+local FACTIONS = { "player", "enemy" }
+
 local sw, sh, uiscale = 1920.0, 1080.0, 1.0
 local dyn_now = {}
 local dyn_prev = {}
@@ -34,16 +45,16 @@ end
 -- Immediate quad on the overlay screen (dynamic content drawn over authored panels).
 local function quad(id, x, y, w, h, fill, opts)
     if not (runtime_ui and runtime_ui.set_quad) then return end
-    opts = opts or {}
+    opts = opts or EMPTY
     mark(id)
     runtime_ui.set_quad(SCREEN, id, {
         x = x, y = y, width = w, height = h,
         style = opts.style or "panel",
         title = U.ascii(opts.title or ""),
         body = U.ascii(opts.body or opts.label or ""),
-        fill = fill or { 0, 0, 0, 0 },
-        border = opts.border or { 0, 0, 0, 0 },
-        accent = { 0, 0, 0, 0 },
+        fill = fill or CLEAR,
+        border = opts.border or CLEAR,
+        accent = CLEAR,
         text_color = opts.text_color or U.COLOR.ink,
         font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0),
         align_h = opts.align or "left",
@@ -53,7 +64,7 @@ local function quad(id, x, y, w, h, fill, opts)
 end
 
 local function button(id, x, y, w, h, fill, opts)
-    opts = opts or {}
+    opts = opts or EMPTY
     if not (runtime_ui and runtime_ui.set_quad) then return false end
     mark(id)
     runtime_ui.set_quad(SCREEN, id, {
@@ -62,7 +73,7 @@ local function button(id, x, y, w, h, fill, opts)
         title = U.ascii(opts.title or ""),
         body = U.ascii(opts.body or ""),
         fill = fill, border = opts.border or U.COLOR.panel_edge,
-        accent = { 0, 0, 0, 0 },
+        accent = CLEAR,
         text_color = opts.text_color or U.COLOR.ink,
         font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0),
         align_h = "center",
@@ -74,10 +85,10 @@ end
 
 local function bar(id, x, y, w, h, pct, color, label)
     pct = U.clamp(pct or 0.0, 0.0, 1.0)
-    quad(id .. "_bg", x, y, w, h, { 0.04, 0.05, 0.06, 0.95 }, { border = { 0.2, 0.2, 0.24, 0.95 }, no_input = true })
-    quad(id .. "_fg", x, y, math.max(0.0, w * pct), h, color, { no_input = true })
+    quad(id .. "_bg", x, y, w, h, BAR_BG, BAR_BG_OPTS)
+    quad(id .. "_fg", x, y, math.max(0.0, w * pct), h, color, NO_INPUT)
     if label then
-        quad(id .. "_tx", x, y - h * 0.15, w, h, { 0, 0, 0, 0 }, { label = label, font_scale = 0.95, no_input = true })
+        quad(id .. "_tx", x, y - h * 0.15, w, h, CLEAR, { label = label, font_scale = 0.95, no_input = true })
     end
 end
 
@@ -97,7 +108,13 @@ end
 
 -- HUD panel rects (surface px), so the camera can suppress edge-scroll over them.
 local panels = {}
-local function add_panel(x, y, w, h) panels[#panels + 1] = { x, y, w, h } end
+local panel_n = 0
+local function add_panel(x, y, w, h)
+    panel_n = panel_n + 1
+    local r = panels[panel_n]
+    if r then r[1], r[2], r[3], r[4] = x, y, w, h
+    else panels[panel_n] = { x, y, w, h } end
+end
 
 -- The laid-out screen rect of an authored panel, or a fallback rect if it isn't
 -- ready. Registers the rect as a HUD region (for edge-scroll suppression).
@@ -165,7 +182,7 @@ local function draw_minimap(state)
     -- click-to-recenter hit area
     mark("mm_click")
     runtime_ui.set_quad(SCREEN, "mm_click", { x = mx, y = my, width = mw, height = mh,
-        style = "panel", fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, accent = { 0, 0, 0, 0 }, no_input = false })
+        style = "panel", fill = CLEAR, border = CLEAR, accent = CLEAR, no_input = false })
     local st = runtime_ui.get_state and runtime_ui.get_state(SCREEN, "mm_click")
     if st and st.clicked and st.mouse_x then
         local u = U.clamp((st.mouse_x - mx) / mw, 0.0, 1.0)
@@ -192,13 +209,13 @@ local function draw_portrait(state)
             { border = U.COLOR.panel_edge, no_input = true })
         local tx = x + pad + face + 14.0
         local tw = w - pad - (tx - x)
-        quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 },
+        quad("port_name", tx, y + pad, tw, 30.0, CLEAR,
             { body = label .. "  (" .. (nsel.faction == "player" and "yours" or "Wilds") .. ")",
               font_scale = 1.2, no_input = true })
         local pct = (nsel.max > 0) and (nsel.amount / nsel.max) or 0.0
         bar("port_node", tx, y + pad + 44.0, tw, 30.0, pct, col,
             string.format("%d / %d left", math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)))
-        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR,
             { body = (nsel.amount <= 0) and "Depleted" or "", font_scale = 1.0, no_input = true })
         return
     end
@@ -210,18 +227,18 @@ local function draw_portrait(state)
         quad("port_head", x + pad + face * 0.22, y + pad + face * 0.5, face * 0.56, face * 0.3, U.COLOR.roof, { no_input = true })
         local tx = x + pad + face + 14.0
         local tw = w - pad - (tx - x)
-        quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 }, { body = bsel.display, font_scale = 1.2, no_input = true })
+        quad("port_name", tx, y + pad, tw, 30.0, CLEAR, { body = bsel.display, font_scale = 1.2, no_input = true })
         local hp_pct = (bsel.hp or 1) / (bsel.hp_max or 1)
         bar("port_hp", tx, y + pad + 44.0, tw, 30.0, hp_pct, U.COLOR.hp_good,
             string.format("%d / %d", math.floor((bsel.hp or 0) + 0.5), math.floor((bsel.hp_max or 0) + 0.5)))
         local foodtxt = (bsel.food_cap or 0) > 0 and string.format("Supplies %d food", bsel.food_cap) or ""
-        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR,
             { body = foodtxt, font_scale = 1.0, no_input = true })
         return
     end
 
     if #sel == 0 then
-        quad("port_empty", x + pad, y + pad, w - pad * 2, h * 0.18, { 0, 0, 0, 0 },
+        quad("port_empty", x + pad, y + pad, w - pad * 2, h * 0.18, CLEAR,
             { body = "No unit selected", font_scale = 1.1, no_input = true })
         return
     end
@@ -236,7 +253,7 @@ local function draw_portrait(state)
     local tw = w - pad - (tx - x)
     local namestr = u.display .. (u.is_hero and ("  Lv " .. (u.level or 1)) or "")
     if #sel > 1 then namestr = namestr .. "   (+" .. (#sel - 1) .. ")" end
-    quad("port_name", tx, y + pad, tw, 30.0, { 0, 0, 0, 0 }, { body = namestr, font_scale = 1.2, no_input = true })
+    quad("port_name", tx, y + pad, tw, 30.0, CLEAR, { body = namestr, font_scale = 1.2, no_input = true })
 
     local by = y + pad + 44.0
     local hp_pct = u.hp / u.hp_max
@@ -248,7 +265,7 @@ local function draw_portrait(state)
             string.format("Mana %d / %d", math.floor(u.mana or 0), math.floor(u.mana_max or 0)))
         bar("port_xp", tx, by + 78.0, tw, 16.0, (u.xp or 0) / (u.xp_to_level or 1), { 0.7, 0.5, 0.95 }, nil)
     end
-    quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, { 0, 0, 0, 0 },
+    quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR,
         { body = string.format("Damage %d    Armor %d%%", math.floor(u.dps + 0.5), math.floor((u.armor or 0) * 100 + 0.5)),
           font_scale = 1.0, no_input = true })
 end
@@ -274,7 +291,7 @@ local function draw_command_card(state)
     -- Resource node selected: no commands, just the remaining amount (portrait shows the bar).
     local nsel = WB.selection.node
     if nsel then
-        quad("cc_node", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+        quad("cc_node", x + pad, y + pad, w - pad * 2, h - pad * 2, CLEAR,
             { body = string.format("%s\n%d / %d left",
                 (nsel.kind == "gold") and "Gold Mine" or "Lumber Grove",
                 math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)),
@@ -302,9 +319,9 @@ local function draw_command_card(state)
             local fill = (status == "ok") and { 0.16, 0.2, 0.16, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
             local cost = string.format("%dg", def.gold) .. (def.lumber > 0 and string.format(" %dw", def.lumber) or "")
             if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, PE, bsel) end
-            local why = ({ gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" })[status]
+            local why = TRAIN_WHY[status]
             if why then
-                quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, { 0, 0, 0, 0 },
+                quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, CLEAR,
                     { body = why, font_scale = 0.9, no_input = true, align = "center" })
             end
             if bsel.queue and #bsel.queue > 0 then
@@ -315,14 +332,14 @@ local function draw_command_card(state)
                     string.format("Training... %d%%   (%d in queue)", math.floor(pct * 100 + 0.5), #bsel.queue))
             end
         else
-            quad("cc_bhint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+            quad("cc_bhint", x + pad, y + pad, w - pad * 2, h - pad * 2, CLEAR,
                 { body = bsel.display, font_scale = 1.1, no_input = true, align = "center" })
         end
         return
     end
 
     if #sel == 0 then
-        quad("cc_hint", x + pad, y + pad, w - pad * 2, h - pad * 2, { 0, 0, 0, 0 },
+        quad("cc_hint", x + pad, y + pad, w - pad * 2, h - pad * 2, CLEAR,
             { body = "Select a unit or building\n(left-click / drag)", font_scale = 1.0, no_input = true })
         return
     end
@@ -456,7 +473,7 @@ local function draw_building_hp(state)
         quad(id .. "_bg", px - w * 0.5 - 1, py - 8, w + 2, 8, { 0.02, 0.02, 0.03, 0.92 }, { no_input = true })
         quad(id .. "_fg", px - w * 0.5, py - 7, math.max(0.0, w * pct), 6, col, { no_input = true })
     end
-    for _, fac in ipairs({ "player", "enemy" }) do
+    for _, fac in ipairs(FACTIONS) do
         local E = state.econ and state.econ[fac]
         if E then for _, b in ipairs(E.buildings) do maybe(b) end end
     end
@@ -531,6 +548,7 @@ function Hud.reset()
     nodes = nil
     dyn_now = {}
     dyn_prev = {}
+    panel_n = 0
     for i = #panels, 1, -1 do panels[i] = nil end
 end
 
@@ -544,8 +562,8 @@ function Hud.update(state)
     end
     adopt()
     refresh_surface()
-    dyn_now = {}
-    for i = #panels, 1, -1 do panels[i] = nil end
+    for k in pairs(dyn_now) do dyn_now[k] = nil end
+    panel_n = 0
 
     draw_minimap(state)
     draw_portrait(state)
@@ -566,10 +584,11 @@ function Hud.update(state)
     draw_select_box()
     draw_rally(state)
 
+    for i = #panels, panel_n + 1, -1 do panels[i] = nil end
     for id in pairs(dyn_prev) do
         if not dyn_now[id] then runtime_ui.remove(SCREEN, id) end
     end
-    dyn_prev = dyn_now
+    dyn_prev, dyn_now = dyn_now, dyn_prev
 end
 
 return Hud

@@ -33,7 +33,8 @@ end
 
 local function tick_economy(state, E)
     -- keep idle workers harvesting (alternate gold/lumber)
-    for i, w in ipairs(enemy_workers(E)) do
+    local workers = enemy_workers(E)
+    for i, w in ipairs(workers) do
         if not w.job and w.order ~= "build" then
             Economy.order_harvest(E, { w }, (i % 2 == 0) and "gold" or "lumber")
         end
@@ -41,8 +42,8 @@ local function tick_economy(state, E)
     -- train workers up to a cap at the Wilds hall
     local hall = nil
     for _, b in ipairs(E.buildings) do if b.alive and b.state=="done" and b.arch=="enemy_town_hall" then hall=b; break end end
-    if hall and #enemy_workers(E) < 5 and Economy.train_status(state, E, hall) == "ok" then
-        if pe_log then pe_log(string.format("[ai] train worker (workers=%d gold=%d)", #enemy_workers(E), E.gold or 0)) end
+    if hall and #workers < 5 and Economy.train_status(state, E, hall) == "ok" then
+        if pe_log then pe_log(string.format("[ai] train worker (workers=%d gold=%d)", #workers, E.gold or 0)) end
         Economy.try_train(state, E, hall)
     end
 end
@@ -139,6 +140,13 @@ local function tick_military(state, E)
 end
 
 -- ---- public API ---------------------------------------------------------------
+
+function AI.reset()
+    acc = 0.0
+    damage_recent_t = 0.0
+    attacking = false
+    base_x, base_z = nil, nil
+end
 
 -- Called from Combat when a Wilds thing is hit. Only damage NEAR the Wilds base counts
 -- as a base attack: without the radius gate, the AI recalled its own attack wave the

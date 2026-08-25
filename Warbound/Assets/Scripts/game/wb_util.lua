@@ -172,6 +172,10 @@ end
 local GLYPHS = { ["—"] = "-", ["–"] = "-", ["•"] = "-", ["…"] = "...", ["→"] = "->", ["×"] = "x" }
 function U.ascii(s)
     if type(s) ~= "string" then return s end
+    -- Every GLYPHS key is multi-byte UTF-8, so a string with no high byte can't contain
+    -- one. The HUD funnels every label through here twice per widget per frame; the
+    -- early-out turns that from 6 gsub passes into one find for the common ASCII case.
+    if not s:find("[\128-\255]") then return s end
     for from, to in pairs(GLYPHS) do s = s:gsub(from, to) end
     return s
 end

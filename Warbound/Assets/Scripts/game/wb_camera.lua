@@ -26,6 +26,10 @@ Camera.dist = 30.0
 
 local cam = nil
 
+local function key_down(k)
+    return input and input.is_key_down and input.is_key_down(k) == true
+end
+
 local function get_cam()
     if cam and cam.is_valid and not cam:is_valid() then cam = nil end
     if not cam then
@@ -64,7 +68,7 @@ function Camera.init(focus_x, focus_z)
     local ex, ey, ez = cam_eye(Camera.focus_x, Camera.focus_z, Camera.dist)
     c:set_position(vec3(ex, ey, ez))
     if c.look_at then c:look_at(vec3(Camera.focus_x, 0.0, Camera.focus_z)) end
-    Camera._applied_key = nil
+    Camera._applied_x, Camera._applied_z, Camera._applied_dist = nil, nil, nil
 end
 
 -- Move the camera to match the current focus/dist (position only; orientation was
@@ -72,9 +76,11 @@ end
 function Camera.apply()
     local c = get_cam()
     if not c then return end
-    local key = string.format("%.3f|%.3f|%.3f", Camera.focus_x, Camera.focus_z, Camera.dist)
-    if key == Camera._applied_key then return end
-    Camera._applied_key = key
+    -- Compare the focus/dist numerically rather than formatting a key string: apply()
+    -- runs every frame, so the string.format was allocating on an idle camera too.
+    if Camera.focus_x == Camera._applied_x and Camera.focus_z == Camera._applied_z
+       and Camera.dist == Camera._applied_dist then return end
+    Camera._applied_x, Camera._applied_z, Camera._applied_dist = Camera.focus_x, Camera.focus_z, Camera.dist
     local ex, ey, ez = cam_eye(Camera.focus_x, Camera.focus_z, Camera.dist)
     c:set_position(vec3(ex, ey, ez))
 end
@@ -159,7 +165,13 @@ function Camera.refresh_if_needed()
     local c3x = a.c3x - tx * a.c0x - ty * a.c1x - tz * a.c2x
     local c3y = a.c3y - tx * a.c0y - ty * a.c1y - tz * a.c2y
     local c3w = a.c3w - tx * a.c0w - ty * a.c1w - tz * a.c2w
-    Camera._p = { a.c0x, a.c0y, a.c0w, a.c1x, a.c1y, a.c1w, a.c2x, a.c2y, a.c2w, c3x, c3y, c3w, a.w, a.h }
+    local p = Camera._p
+    if not p then p = {}; Camera._p = p end
+    p[1], p[2], p[3] = a.c0x, a.c0y, a.c0w
+    p[4], p[5], p[6] = a.c1x, a.c1y, a.c1w
+    p[7], p[8], p[9] = a.c2x, a.c2y, a.c2w
+    p[10], p[11], p[12] = c3x, c3y, c3w
+    p[13], p[14] = a.w, a.h
 end
 
 -- World point (wx,wy,wz) -> screen pixel. Returns sx, sy, w_clip (w_clip>0 => in front).
@@ -258,12 +270,11 @@ function Camera.update(dt, mouse_in_ui)
     end
 
     -- pan direction from keys (screen-aligned: up = -Z, right = +X)
-    local function down(k) return input and input.is_key_down and input.is_key_down(k) == true end
     local px, pz = 0.0, 0.0
-    if down("d") or down("right") then px = px + 1.0 end
-    if down("a") or down("left") then px = px - 1.0 end
-    if down("s") or down("down") then pz = pz + 1.0 end
-    if down("w") or down("up") then pz = pz - 1.0 end
+    if key_down("d") or key_down("right") then px = px + 1.0 end
+    if key_down("a") or key_down("left") then px = px - 1.0 end
+    if key_down("s") or key_down("down") then pz = pz + 1.0 end
+    if key_down("w") or key_down("up") then pz = pz - 1.0 end
 
     -- edge scroll: fires at the very screen border, but not when the cursor is over an
     -- actual HUD panel (minimap / command card / portrait / resources). The open

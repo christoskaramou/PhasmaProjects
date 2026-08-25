@@ -40,6 +40,7 @@ local P = { x = 0.5, y = GROUND_Y + 3.0, z = 0.5 }
 -- resolved to the terrain top once the component world has generated.
 local spawn = { x = 8.5, z = 8.5 } -- fallback: the map-center column
 local spawn_top = GROUND_Y
+local world_ready, world_frames = false, 0
 local vy = 0.0
 local grounded = false
 local coyote = 0.0
@@ -232,7 +233,7 @@ function update(dt)
     -- No voxel.create here: the Voxel World node owns the world. init()'s highlight
     -- meshes wipe the shared arena, and the engine reconcile rebuilds the node's
     -- world right after — wait for terrain under the spawn column, then drop onto it.
-    world_frames = (world_frames or 0) + 1
+    world_frames = world_frames + 1
     if not world_ready then
         if world_frames < 2 then return end
         local cx, cz = math.floor(spawn.x), math.floor(spawn.z)
@@ -267,7 +268,8 @@ function update(dt)
     if input.is_relative_mouse() then
         local md = input.get_mouse_delta()
         if skip_look then
-            skip_look = false
+            -- Hold skip until LMB is up so click-to-regrab does not break a block next frame.
+            if not input.is_left_mouse_down() then skip_look = false end
         elseif (md.x or 0) ~= 0 or (md.y or 0) ~= 0 then
             cam:rotate(md.x, md.y)
         end

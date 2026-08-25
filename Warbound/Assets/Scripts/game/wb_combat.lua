@@ -9,6 +9,8 @@ local Combat = {}
 local PLAYER_AGGRO = 8.0     -- idle player units defend within this radius
 local ENEMY_AGGRO = 14.0     -- the camp seeks you out within this radius
 local MAX_LEVEL = 10
+local FACTIONS = { "player", "enemy" }
+local HALL_COUNTS = { player = 0, enemy = 0 }
 
 local function nearest(u, foes, radius)
     local best, bd
@@ -89,9 +91,9 @@ function Combat.die(target, attacker, state)
     if not target.alive then return end
     if target.is_building then
         local E = state and state.econ and state.econ[target.faction]
-        -- Deactivate (park+hide the rig, alive=false) rather than kill(): kill pools the rig
-        -- into a dead pool nobody reads, permanently shrinking the faction's reserves. Return
-        -- it to building_reserves so this type can be rebuilt later.
+        -- Deactivate (park+hide the rig, alive=false) rather than kill(), and return the rig
+        -- to building_reserves — otherwise a razed building is gone for good and the faction
+        -- can never rebuild that type.
         WB.units.deactivate(target)
         if E then
             U.compact(E.buildings, function(b) return b.alive end)
@@ -107,7 +109,8 @@ function Combat.die(target, attacker, state)
     if target.faction == "enemy" then
         state.enemy_alive = math.max(0, state.enemy_alive - 1)
         state.kills = (state.kills or 0) + 1
-        state.econ.player.gold = state.econ.player.gold + (WB.units.ARCH[target.arch].bounty or 12)
+        local arch = WB.units.ARCH[target.arch]
+        state.econ.player.gold = state.econ.player.gold + ((arch and arch.bounty) or 12)
         if state.hero and state.hero.alive then
             Combat.grant_xp(state.hero, target.xp_value or 25)
         end
@@ -130,14 +133,14 @@ function Combat.apply_damage(target, amount, attacker, state)
 end
 
 function Combat.buildings_pass(dt, state)
-    for _, fac in ipairs({ "player", "enemy" }) do
+    for _, fac in ipairs(FACTIONS) do
         local E = state.econ[fac]
         local foe_fac = (fac == "player") and "enemy" or "player"
         local foes = state.econ[foe_fac].units
         for _, b in ipairs(E.buildings) do
             if b.alive and b.state == "done" and (b.dps or 0) > 0 then
                 if not (b.target and b.target.alive)
-                   or U.dist2(b.x, b.z, b.target.x, b.target.z) > b.range then
+                   or U.dist2_sq(b.x, b.z, b.target.x, b.target.z) > b.range * b.range then
                     b.target = nearest(b, foes, b.range)
                 end
                 if b.target and b.target.alive then
@@ -159,16 +162,16 @@ function Combat.buildings_pass(dt, state)
 end
 
 function Combat.standing_town_halls(state)
-    local counts = { player = 0, enemy = 0 }
-    for _, fac in ipairs({ "player", "enemy" }) do
+    HALL_COUNTS.player, HALL_COUNTS.enemy = 0, 0
+    for _, fac in ipairs(FACTIONS) do
         for _, b in ipairs(state.econ[fac].buildings) do
             if b.alive and b.state == "done"
                and (b.arch == "town_hall" or b.arch == "enemy_town_hall") then
-                counts[fac] = counts[fac] + 1
+                HALL_COUNTS[fac] = HALL_COUNTS[fac] + 1
             end
         end
     end
-    return counts
+    return HALL_COUNTS
 end
 
 -- Execute attacks for every unit whose target is alive and within reach.
@@ -176,7 +179,7 @@ function Combat.attacks(dt, units, state)
     for _, u in ipairs(units) do
         if u.alive and u.target and u.target.alive then
             local reach = u.range + (u.target.radius or 0.0) + 0.2
-            if U.dist2(u.x, u.z, u.target.x, u.target.z) <= reach then
+            if U.dist2_sq(u.x, u.z, u.target.x, u.target.z) <= reach * reach then
                 u.attack_t = (u.attack_t or 0.0) - dt
                 if u.attack_t <= 0.0 then
                     u.attack_t = u.interval

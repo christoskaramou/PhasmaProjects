@@ -25,6 +25,7 @@ end
 local E = load_module("Scripts/solar/ephemeris.lua")
 local P = load_module("Scripts/solar/planets.lua")
 local UI = load_module("Scripts/solar/solar_ui.lua")
+local ui_ctx = { props = nil, handles = nil, planets = P }
 
 local UNIX_EPOCH_JD = 2440587.5
 local FALLBACK_EPOCH_JD = 2461201.5
@@ -97,9 +98,11 @@ local handles = {}  -- node name -> SceneNodeHandle
 local root = nil    -- the SolarSystem node (found by name as a global script, or `self`)
 local bound = false -- true once the tree is indexed and orbit lines are built
 local sun_light_node = nil
+local sun_light_cached = nil
 local scene_shift = zero_pos()
 local universe_positions = {} -- body name -> heliocentric world position before root rebase
 local moon_locals = {}        -- moon name -> local orbit position before parent planet tilt
+local last_dt = 0.0
 
 local function reset_simulation_clock()
     props.epoch_jd = current_julian_date()
@@ -290,7 +293,15 @@ local function manual_orbit_offset(item)
     if item.owner then
         local owner_pos = universe_positions[item.owner]
         if not owner_pos then return nil end
-        return shifted(owner_pos, scene_shift)
+        local o = item.world_offset
+        if not o then
+            o = pos(0.0, 0.0, 0.0)
+            item.world_offset = o
+        end
+        o.x = owner_pos.x + scene_shift.x
+        o.y = owner_pos.y + scene_shift.y
+        o.z = owner_pos.z + scene_shift.z
+        return o
     end
     return scene_shift
 end
@@ -431,20 +442,30 @@ local function choose_sun_point_light(pls)
 end
 
 local function sync_sun_light(world_pos)
-    if not lights or not lights.get_point_lights or not lights.set_point_light then return end
-    local sun_light = choose_sun_point_light(lights.get_point_lights())
-    if not sun_light then return end
-    if (not sun_light_node or not sun_light_node:is_valid()) and sun_light.name and scene.find_model then
-        sun_light_node = scene.find_model(sun_light.name)
+    if not lights or not lights.set_point_light then return end
+    if not sun_light_cached then
+        if not lights.get_point_lights then return end
+        local sun_light = choose_sun_point_light(lights.get_point_lights())
+        if not sun_light then return end
+        sun_light_cached = {
+            index = sun_light.index or 0,
+            color = sun_light.color or vec3(1.0, 0.96, 0.9),
+            intensity = sun_light.intensity or 4.9e8,
+            radius = sun_light.radius or 5.0e6,
+            name = sun_light.name,
+        }
     end
+    if (not sun_light_node or not sun_light_node:is_valid()) and sun_light_cached.name and scene.find_model then
+        sun_light_node = scene.find_model(sun_light_cached.name)
+    end
+    local wp = to_vec3(world_pos)
     if sun_light_node and sun_light_node:is_valid() then
-        sun_light_node:set_position(to_vec3(world_pos))
+        sun_light_node:set_position(wp)
     end
-    lights.set_point_light(sun_light.index or 0,
-                           to_vec3(world_pos),
-                           sun_light.color or vec3(1.0, 0.96, 0.9),
-                           sun_light.intensity or 4.9e8,
-                           sun_light.radius or 5.0e6)
+    lights.set_point_light(sun_light_cached.index, wp,
+                           sun_light_cached.color,
+                           sun_light_cached.intensity,
+                           sun_light_cached.radius)
 end
 
 local function build_orbit_lines(jd)
@@ -520,21 +541,6 @@ end
 -- `follow` in the Properties panel for a fully free camera.
 local follow_state = { target = "", r = -0.82, u = 0.25, t = -0.51, expected = nil }
 
-local function atan2(y, x)
-    if x > 0.0 then
-        return math.atan(y / x)
-    elseif x < 0.0 and y >= 0.0 then
-        return math.atan(y / x) + math.pi
-    elseif x < 0.0 then
-        return math.atan(y / x) - math.pi
-    elseif y > 0.0 then
-        return math.pi * 0.5
-    elseif y < 0.0 then
-        return -math.pi * 0.5
-    end
-    return 0.0
-end
-
 local function release_follow_orbit_mouse()
     follow_state.orbit_dragging = false
     follow_state.skip_orbit_delta = false
@@ -552,8 +558,8 @@ local function rotate_follow_offset(yaw_delta, pitch_delta)
     end
     r, u, t = r / n, u / n, t / n
 
-    local yaw = atan2(t, r) + yaw_delta
-    local pitch = atan2(u, math.sqrt(r * r + t * t)) + pitch_delta
+    local yaw = math.atan2(t, r) + yaw_delta
+    local pitch = math.atan2(u, math.sqrt(r * r + t * t)) + pitch_delta
     if pitch > FOLLOW_ORBIT_PITCH_LIMIT then pitch = FOLLOW_ORBIT_PITCH_LIMIT end
     if pitch < -FOLLOW_ORBIT_PITCH_LIMIT then pitch = -FOLLOW_ORBIT_PITCH_LIMIT end
 
@@ -632,7 +638,9 @@ local function update_scene_shift()
         if cam then
             local cp = pos_from_vec3(cam:get_position())
             if length_pos(cp) > FREE_REBASE_DISTANCE then
-                scene_shift = pos(scene_shift.x - cp.x, scene_shift.y - cp.y, scene_shift.z - cp.z)
+                scene_shift.x = scene_shift.x - cp.x
+                scene_shift.y = scene_shift.y - cp.y
+                scene_shift.z = scene_shift.z - cp.z
                 cam:set_position(vec3(0.0, 0.0, 0.0))
             end
         end
@@ -646,7 +654,7 @@ local function update_scene_shift()
         return
     end
 
-    scene_shift = pos(-universe_target.x, -universe_target.y, -universe_target.z)
+    scene_shift.x, scene_shift.y, scene_shift.z = -universe_target.x, -universe_target.y, -universe_target.z
     sync_sun_light(scene_shift)
 end
 
@@ -722,13 +730,19 @@ local function follow_camera()
     follow_state.target = props.follow
 
     local n = math.sqrt(follow_state.r ^ 2 + follow_state.u ^ 2 + follow_state.t ^ 2)
+    if n < 1e-6 then n = 1.0 end
     local fr, fu, ft = follow_state.r / n * dist, follow_state.u / n * dist, follow_state.t / n * dist
     local px = target.x + rx * fr + ux * fu + tx * ft
     local py = target.y + ry * fr + uy * fu + ty * ft
     local pz = target.z + rz * fr + uz * fu + tz * ft
     cam:set_position(vec3(px, py, pz))
     cam:look_at(to_vec3(target))
-    follow_state.expected = pos(px, py, pz)
+    local e = follow_state.expected
+    if e then
+        e.x, e.y, e.z = px, py, pz
+    else
+        follow_state.expected = pos(px, py, pz)
+    end
 end
 
 local function spin_deg(jd, rot_h)
@@ -746,19 +760,44 @@ local function moon_spin_deg(jd, m)
 end
 
 local function compute_universe_positions(jd)
-    universe_positions = {}
-    universe_positions["Sun"] = zero_pos()
-    moon_locals = {}
+    local sun_pos = universe_positions["Sun"]
+    if sun_pos then
+        sun_pos.x, sun_pos.y, sun_pos.z = 0.0, 0.0, 0.0
+    else
+        universe_positions["Sun"] = zero_pos()
+    end
     for _, p in ipairs(P.planets) do
         local x, y, z = E.heliocentric(p.body, jd)  -- AU, J2000 ecliptic
         -- ecliptic -> engine: x->X, y->Z, z->Y (ecliptic north = +Y)
-        local planet_pos = pos(x * P.AU_UNITS, z * P.AU_UNITS, y * P.AU_UNITS)
-        universe_positions[p.name] = planet_pos
+        x, y, z = x * P.AU_UNITS, z * P.AU_UNITS, y * P.AU_UNITS
+        local planet_pos = universe_positions[p.name]
+        if planet_pos then
+            planet_pos.x, planet_pos.y, planet_pos.z = x, y, z
+        else
+            planet_pos = pos(x, y, z)
+            universe_positions[p.name] = planet_pos
+        end
 
-        for _, m in ipairs(p.moons or {}) do
-            local moon_local = P.moon_local_units(m, jd)
-            moon_locals[m.name] = moon_local
-            universe_positions[m.name] = shifted(planet_pos, rotate_x(moon_local, p.tilt))
+        local moons = p.moons
+        if moons then
+            local tilt = math.rad(p.tilt)
+            local c, s = math.cos(tilt), math.sin(tilt)
+            for _, m in ipairs(moons) do
+                local moon_local = P.moon_local_units(m, jd, moon_locals[m.name])
+                moon_locals[m.name] = moon_local
+                local ry = moon_local.y * c - moon_local.z * s
+                local rz = moon_local.y * s + moon_local.z * c
+                local moon_pos = universe_positions[m.name]
+                if moon_pos then
+                    moon_pos.x = moon_local.x + planet_pos.x
+                    moon_pos.y = ry + planet_pos.y
+                    moon_pos.z = rz + planet_pos.z
+                else
+                    universe_positions[m.name] = pos(moon_local.x + planet_pos.x,
+                                                    ry + planet_pos.y,
+                                                    rz + planet_pos.z)
+                end
+            end
         end
     end
 end
@@ -829,6 +868,8 @@ local function bind()
     handles = {}
     index_children(root)
     root:set_position(vec3(0.0, 0.0, 0.0))
+    sun_light_node = nil
+    sun_light_cached = nil
     scene_shift = zero_pos()
     reset_simulation_clock()
     local jd = props.epoch_jd + sim_days
@@ -854,7 +895,9 @@ local function bind()
             end
         end
     end
-    UI.init({ props = props, handles = handles, planets = P })
+    ui_ctx.props = props
+    ui_ctx.handles = handles
+    UI.init(ui_ctx)
     local n = 0
     for _ in pairs(handles) do n = n + 1 end
     pe_log("[solar] director bound, " .. tostring(n) .. " nodes indexed")
@@ -876,6 +919,7 @@ local function tick()
     if not ensure_bound() then return end
     local dt = engine.get_metrics().delta_ms * 0.001
     if dt > 0.25 then dt = 0.25 end  -- ignore hitches (loads, resizes)
+    last_dt = dt
     sim_days = sim_days + dt * props.time_scale
     local jd = props.epoch_jd + sim_days
 
@@ -883,7 +927,7 @@ local function tick()
     update_scene_shift()
     apply_scene_positions(jd)
 
-    UI.tick({ props = props, handles = handles, planets = P })
+    UI.tick(ui_ctx)
     follow_camera()
 end
 
@@ -898,29 +942,31 @@ end
 -- the player. Mirrors the editor feel: hold RMB to look, WASD to fly.
 local fly = { fwd = 0.0, side = 0.0, skip_rotation = false, smoothing = 12.0 }
 
-local function free_fly()
+local function free_fly(dt)
+    if type(input) ~= "table" then return end
     local cam = get_camera and get_camera() or nil
     if not cam then return end
-    local dt = engine.get_metrics().delta_ms * 0.001
+    dt = dt or last_dt
 
-    local rmb = input.is_right_mouse_down() and input.is_viewport_focused()
+    local rmb = input.is_right_mouse_down and input.is_right_mouse_down()
+        and input.is_viewport_focused and input.is_viewport_focused()
     if rmb then
-        if not input.is_relative_mouse() then
+        if input.set_relative_mouse and input.is_relative_mouse and not input.is_relative_mouse() then
             input.set_relative_mouse(true)
             fly.skip_rotation = true -- first relative delta is the warp jump; drop it
         end
-        local mouse = input.get_mouse_delta()
-        if not fly.skip_rotation then
+        local mouse = input.get_mouse_delta and input.get_mouse_delta() or nil
+        if mouse and not fly.skip_rotation then
             cam:rotate(mouse.x, mouse.y)
         else
             fly.skip_rotation = false
         end
-    elseif input.is_relative_mouse() then
+    elseif input.is_relative_mouse and input.set_relative_mouse and input.is_relative_mouse() then
         input.set_relative_mouse(false)
     end
 
     local target_fwd, target_side = 0.0, 0.0
-    if rmb then
+    if rmb and input.is_key_down then
         if input.is_key_down("W") then target_fwd = target_fwd + 1.0 end
         if input.is_key_down("S") then target_fwd = target_fwd - 1.0 end
         if input.is_key_down("D") then target_side = target_side + 1.0 end
@@ -948,7 +994,7 @@ function update()
     tick()
     -- Edit mode keeps fly_camera.lua (update_editor); never double-drive.
     if props.follow == "" then
-        free_fly()
+        free_fly(last_dt)
     end
 end
 

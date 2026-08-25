@@ -36,7 +36,7 @@ local function q(id, props)
 end
 
 local function begin_frame()
-    used = {}
+    for k in pairs(used) do used[k] = nil end
 end
 
 -- Hide every previously shown quad that this draw_* call did not set.

@@ -5,10 +5,14 @@ skinned2d_wave_sample = skinned2d_wave_sample or {}
 local M = skinned2d_wave_sample
 local UPDATE_ID = "skinned2d_wave_sample"
 
+local WAVE_AMP = math.rad(18.0)
+
 local state = {
     strip = nil,
     time = 0.0,
     previous_render_mode = nil,
+    joint_count = 0,
+    rotations = {},
 }
 
 local function log(message)
@@ -64,15 +68,16 @@ local function update()
     local dt = metrics and math.min(metrics.delta_ms / 1000.0, 0.05) or 0.016
     state.time = state.time + dt
 
-    local joint_count = animation.get_joint_count(state.strip)
+    local joint_count = state.joint_count
     if joint_count <= 0 then
         return
     end
 
-    local rotations = {}
+    local rotations = state.rotations
+    local denom = math.max(joint_count - 1, 1)
     for i = 1, joint_count do
-        local u = (i - 1) / math.max(joint_count - 1, 1)
-        rotations[i] = math.sin(state.time * 4.0 + u * 4.2) * math.rad(18.0) * u
+        local u = (i - 1) / denom
+        rotations[i] = math.sin(state.time * 4.0 + u * 4.2) * WAVE_AMP * u
     end
     animation.set_joint_rotations_z(state.strip, rotations)
 end
@@ -84,6 +89,8 @@ function M.stop()
     restore_render_settings()
     state.strip = nil
     state.time = 0.0
+    state.joint_count = 0
+    state.rotations = {}
 end
 
 function M.reset()
@@ -104,6 +111,8 @@ function M.reset()
     state.strip = primitives.skinned_strip_2d(8.0, 1.25, 64, 24)
     state.strip:set_name("Skinned2D Procedural Strip")
     state.strip:set_position(vec3(0.0, 0.0, 0.0))
+    state.joint_count = animation.get_joint_count(state.strip)
+    state.rotations = {}
     if material then
         material.set(state.strip, "base_color", vec4(0.16, 0.72, 0.86, 1.0))
     end

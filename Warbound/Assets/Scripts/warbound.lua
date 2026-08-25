@@ -40,14 +40,19 @@ if Loader then
 end
 
 local started = false
+local init_failed = false
 
 local function ensure_started()
-    if started then return end
-    started = true
+    if started or init_failed then return end
     if Game and Game.init then
         local ok, err = pcall(Game.init)
-        if not ok and pe_error then pe_error("Warbound: init failed: " .. tostring(err)) end
+        if not ok then
+            init_failed = true
+            if pe_error then pe_error("Warbound: init failed: " .. tostring(err)) end
+            return
+        end
     end
+    started = true
 end
 
 local function update(dt)
@@ -59,6 +64,7 @@ local function update(dt)
     if dt > 0.1 then dt = 0.1 end -- clamp huge hitches (alt-tab, first-frame compile)
 
     ensure_started()
+    if not started then return end
     if Game and Game.update then
         local ok, err = pcall(Game.update, dt)
         if not ok and pe_error then pe_error("Warbound: update error: " .. tostring(err)) end
@@ -71,6 +77,7 @@ local function destroy()
     -- Play's init hook must re-run Game.init. Without resetting `started` the second Play
     -- would skip init entirely (stale state, dead game loop while the camera still pans).
     started = false
+    init_failed = false
 end
 
 hooks {

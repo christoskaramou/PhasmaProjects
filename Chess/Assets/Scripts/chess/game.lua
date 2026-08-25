@@ -630,10 +630,16 @@ end
 -- lives here — two copies of this walk would expire the hint twice as fast.
 local MARK_COLOR = {last = "LAST", select = "SELECT", move = "MOVE",
                     capture = "CAPTURE", check = "CHECK", hint = "HINT"}
+local marks_buf = {} -- reused; compute_marks runs once per frame
 
 local function compute_marks()
-    local marks = {}
-    local function add(f, r, m) marks[#marks + 1] = {f = f, r = r, m = m} end
+    local n = 0
+    local function add(f, r, m)
+        n = n + 1
+        local mk = marks_buf[n]
+        if mk then mk.f, mk.r, mk.m = f, r, m
+        else marks_buf[n] = {f = f, r = r, m = m} end
+    end
 
     local last = history[view_ply]
     if last then
@@ -660,7 +666,8 @@ local function compute_marks()
             add(hint.tf, hint.tr, "hint")
         end
     end
-    return marks
+    for i = #marks_buf, n + 1, -1 do marks_buf[i] = nil end
+    return marks_buf
 end
 
 local function draw_grid(marks)
@@ -694,16 +701,18 @@ end
 -- ── captured pieces ────────────────────────────────────────────────────────
 -- Derived from history up to the position being VIEWED, so rewinding empties the trays in
 -- step with the board. Odd plies are White's, so an odd ply's capture is a Black man.
+local cap_w, cap_b = {}, {}
 local function captured()
-    local by_white, by_black = {}, {}
+    for i = #cap_w, 1, -1 do cap_w[i] = nil end
+    for i = #cap_b, 1, -1 do cap_b[i] = nil end
     for i = 1, view_ply do
         local rec = history[i]
         if rec and rec.cap then
-            local into = (i % 2 == 1) and by_white or by_black
+            local into = (i % 2 == 1) and cap_w or cap_b
             into[#into + 1] = rec.cap
         end
     end
-    return by_white, by_black
+    return cap_w, cap_b
 end
 
 -- White's men sit at the bottom of the board unless it is flipped, and each side's tray
@@ -721,10 +730,11 @@ end
 -- rendered underneath (the flat board is an opaque overlay, not a mode), so a single frame
 -- without these quads shows the 3D board through the gap. Anything that calls V.clear must
 -- redraw them in the SAME update, not leave it to the next one.
+local NO_MARKS = {}
 local function draw_board_overlay()
     local s = runtime_ui.get_surface_size()
     B2.begin(s.w, s.h)
-    if view2d then B2.board(state, {}) end
+    if view2d then B2.board(state, NO_MARKS) end
     draw_trays()
     B2.finish()
 end
@@ -1521,7 +1531,7 @@ end
 -- The clock burns only at the live head of a running game; rewinding to review pauses it.
 -- Lifted out of G.update because that function is at LuaJIT's 60-upvalue ceiling, and clock_k /
 -- clock_warned / K / flag_result are used nowhere else in the loop.
-local function clock_tick()
+local function clock_tick(delta_ms)
     -- Online, nothing local may stop it: the opponent's copy of our clock does not stop for
     -- our promotion picker, our pause card or the draw offer we are staring at, so neither may
     -- ours. Offline all three are a real pause.
@@ -1530,7 +1540,7 @@ local function clock_tick()
         return
     end
     local side = state.turn
-    local flagged = K.tick(clock_k, side, engine.get_metrics().delta_ms)
+    local flagged = K.tick(clock_k, side, delta_ms or 16)
     if not clock_warned[side] and K.remaining(clock_k, side) < 30000 then
         clock_warned[side] = true
         if S then S.play("low_time") end
@@ -1551,7 +1561,9 @@ function G.update()
 
     -- Before anything else, and ALSO while a menu is open: the lobby screen is where a peer
     -- connects, and beacons stop being heard the moment nobody drains them.
-    lan_tick(engine.get_metrics().delta_ms or 16)
+    -- get_metrics allocates a fresh table every call; take delta once.
+    local delta_ms = engine.get_metrics().delta_ms or 16
+    lan_tick(delta_ms)
 
     local down = input.is_left_mouse_down()
     local pressed = down and not prev_down
@@ -1565,7 +1577,7 @@ function G.update()
         -- The 2D board keeps drawing under the overlay: open_menu wipes every quad, and
         -- without this the 3D set would show through the menu's translucent backdrop.
         draw_board_overlay()
-        if online then clock_tick() end
+        if online then clock_tick(delta_ms) end
         -- Flagging (or a resignation off the wire) behind the card ends the game there and
         -- then. `end_wait` is what says the game ended just now rather than before the card
         -- was opened -- without it, opening the pause card on a finished game to reach Main
@@ -1577,8 +1589,6 @@ function G.update()
         menu_frame(pressed)
         return
     end
-
-    local delta_ms = engine.get_metrics().delta_ms or 16
 
     if not view2d then
         -- Zoom is suppressed over the move list, which scrolls with the same wheel.
@@ -1599,7 +1609,7 @@ function G.update()
         ply_ms = (ply_ms or 0) + step
     end
 
-    clock_tick()
+    clock_tick(delta_ms)
 
     if end_wait and not replay then
         -- The card waits a beat, and only lands if the player is still at the live head —
@@ -1717,6 +1727,7 @@ end
 -- synthesising pointer input.
 function G.move(text)
     if result then return false, "game over: " .. result end
+    if type(text) ~= "string" or #text < 4 then return false, "illegal: " .. tostring(text) end
     local ff, fr, tf, tr = text:byte(1) - 97, tonumber(text:sub(2, 2)),
                            text:byte(3) - 97, tonumber(text:sub(4, 4))
     local want = text:sub(5, 5):upper()
@@ -1738,8 +1749,10 @@ end
 -- that are currently highlighted. Every legal move of the selected piece gets a square,
 -- so #G.targets() must equal the legal-move count for that piece.
 function G.select(square)
+    if type(square) ~= "string" or #square < 2 then return {} end
     local file = square:byte(1) - 97
     local rank = tonumber(square:sub(2, 2))
+    if not rank or file < 0 or file > 7 or rank < 1 or rank > 8 then return {} end
     select_square(file, rank)
     return G.targets()
 end
@@ -1824,7 +1837,11 @@ end
 function G.load_pgn(text)
     local parsed, err = PGN.parse(text)
     if not parsed then return false, err or "parse failed" end
-    start_game(cfg or DEFAULT_CFG)
+    -- Analysis load, not a PvB start: DEFAULT_CFG.side is "W", which would spawn a bot.
+    local c = {}
+    for k, v in pairs(cfg or DEFAULT_CFG) do c[k] = v end
+    c.side = "hotseat"
+    start_game(c)
     for i, san in ipairs(parsed.moves) do
         local m = R.parse_san(state, san)
         if not m then
@@ -1835,6 +1852,7 @@ function G.load_pgn(text)
         history[#history + 1] = {
             from_f = m.from_f, from_r = m.from_r, to_f = m.to_f, to_r = m.to_r,
             promo = m.promo, san = rec_san, emt = parsed.emts and parsed.emts[i],
+            cap = m.capture and m.capture.kind or nil,
             key = R.position_key(state),
         }
     end
@@ -1933,7 +1951,7 @@ end
 function G.offer_draw()
     if result then return false end
     if not bot_on or bot_both or bot_would_accept_draw() then
-        result = "Draw - agreed"
+        flag_result, result = "Draw - agreed", "Draw - agreed"
         game_over_fx()
         return true
     end

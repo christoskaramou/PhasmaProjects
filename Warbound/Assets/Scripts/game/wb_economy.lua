@@ -22,6 +22,8 @@ local Camera = WB.camera
 
 local Economy = {}
 
+local FACTIONS = { "player", "enemy" }
+
 -- Harvest tuning: how much a trip yields, how long a chop takes, and how close the
 -- worker must get to the node / drop-off (node radii baked into `reach`).
 local HARVEST = {
@@ -294,7 +296,7 @@ local ECON_LOG = (os and os.getenv and os.getenv("WB_DEMO") == "1") or false
 local _econ_log_timer = 0.0
 
 function Economy.update(dt, state)
-    for _, fac in ipairs({ "player", "enemy" }) do
+    for _, fac in ipairs(FACTIONS) do
         local E = state.econ[fac]
         local cap = 0
         for _, b in ipairs(E.buildings) do

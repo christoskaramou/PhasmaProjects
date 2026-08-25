@@ -32,7 +32,7 @@ local function log_stats(phase)
 end
 
 local function edit_top(bx, bz, blk)
-    for y = 48, 4, -1 do
+    for y = GROUND_Y + 32, 4, -1 do
         if voxel.get_block(bx, y, bz) ~= 0 then
             voxel.set_block(bx, y + 1, bz, blk)
             return true

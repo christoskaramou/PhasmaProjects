@@ -272,10 +272,16 @@ end
 -- The Wilds AI is active by default; WB_AI=0 makes them passive (verification/isolation).
 local env_ai_off = env("WB_AI") == "0"
 
+local function abort_session_systems()
+    if WB.build and WB.build.cancel then WB.build.cancel() end
+    if WB.ai and WB.ai.reset then WB.ai.reset() end
+end
+
 function Game.init()
     -- Reset match state. The Lua chunk + modules persist across an editor Play -> Stop ->
     -- Play, so init must start from clean lists (not append to the prior session's) or the
     -- second Play double-adopts / runs on stale state.
+    abort_session_systems() -- stale ghost + AI director survive the chunk otherwise
     reset_state()
     if WB.selection and WB.selection.clear then WB.selection.clear() end
     if WB.hud and WB.hud.reset then WB.hud.reset() end -- re-show HUD overlay on a fresh play
@@ -341,6 +347,7 @@ function Game.init()
 end
 
 function Game.restart()
+    abort_session_systems()
     for _, u in ipairs(state.all_units) do if u.alive then Units.kill(u) end end
     reset_state()
     WB.selection.clear()
@@ -385,6 +392,7 @@ function Game.update(dt)
     Camera.update(dt, mouse_in_ui)
 
     if state.result then
+        if WB.build and WB.build.is_placing and WB.build.is_placing() then WB.build.cancel() end
         if r_pressed() then Game.restart() end
         WB.hud.update(state)
         return
@@ -418,6 +426,8 @@ function Game.update(dt)
     WB.hud.update(state)
 end
 
-function Game.destroy() end
+function Game.destroy()
+    abort_session_systems()
+end
 
 return Game

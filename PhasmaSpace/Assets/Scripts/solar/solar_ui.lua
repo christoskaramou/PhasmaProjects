@@ -10,6 +10,8 @@ local C_LIGHT = 299792458.0 -- m/s
 local M_PER_UNIT = 1.0e7    -- 1 engine unit = 10,000 km
 
 M.bodies = {}
+M.marker_ids = {}
+M.follow_opt_ids = {}
 
 local state = {
     built = false,
@@ -21,6 +23,12 @@ local state = {
     last_follow = nil,
     last_ts_text = nil,
     last_speed_text = nil,
+    last_pick_label = nil,
+    last_hud_speed = nil,
+    last_hud_zoom = nil,
+    last_hud_follow = nil,
+    picker_options_open = false,
+    marker_visible = {},
     prev_time_scale = 1.0 / 86400.0, -- real time
 }
 
@@ -93,7 +101,7 @@ local function set_free_camera_follow(props)
 end
 
 local function follow_option_id(index)
-    return "follow_opt_" .. tostring(index)
+    return M.follow_opt_ids[index] or ("follow_opt_" .. tostring(index))
 end
 
 local function sync_follow_picker_options()
@@ -114,7 +122,16 @@ end
 function M.init(ctx)
     runtime_ui.clear(PANEL)
     M.bodies = build_body_list(ctx)
+    M.marker_ids = {}
+    M.follow_opt_ids = {}
+    for i, name in ipairs(M.bodies) do
+        M.marker_ids[i] = "m_" .. name
+        M.follow_opt_ids[i] = "follow_opt_" .. tostring(i)
+    end
     state.follow_picker_open = false
+    state.picker_options_open = false
+    state.last_pick_label = nil
+    state.marker_visible = {}
     runtime_ui.set_title(PANEL, "PhasmaSpace")
     runtime_ui.set_screen_scrollable(PANEL, true)
     runtime_ui.set_bool(PANEL, "orbits", "Orbit Lines", state.orbits_visible)
@@ -128,7 +145,9 @@ function M.init(ctx)
     runtime_ui.set_button(PANEL, "spd_slow", "Cam Speed  /2")
     runtime_ui.set_button(PANEL, "spd_fast", "Cam Speed  x2")
     runtime_ui.set_text(PANEL, "follow_lbl", "Following", body_label(ctx.props.follow))
-    runtime_ui.set_button(PANEL, "follow_pick", follow_picker_label(ctx.props))
+    local pick_label = follow_picker_label(ctx.props)
+    runtime_ui.set_button(PANEL, "follow_pick", pick_label)
+    state.last_pick_label = pick_label
     runtime_ui.show(PANEL)
 
     runtime_ui.clear(HUD)
@@ -167,6 +186,24 @@ end
 -- markers only appear near their parent planet so system-scale views don't
 -- stack moon labels on their parent planets.
 local MARKER_MAX_ANGULAR = 0.002 -- body angular radius below this -> show marker
+local MARKER_FILL = { 0.05, 0.09, 0.16, 0.55 }
+local MARKER_ACCENT = { 0.05, 0.09, 0.16, 0.0 }
+local MARKER_BORDER = { 0.45, 0.70, 1.00, 0.8 }
+local MARKER_TEXT = { 0.85, 0.93, 1.00, 0.95 }
+local MARKER_HIDDEN = { x = -1000.0, y = -1000.0, width = 8.0, height = 8.0, visible = false }
+local marker_quad = {
+    x = 0.0, y = 0.0, width = 90.0, height = 32.0,
+    label = "", font_scale = 1.0, visible = true,
+    style = "button", align_h = "center", align_v = "middle",
+    fill = MARKER_FILL, accent = MARKER_ACCENT, border = MARKER_BORDER, text_color = MARKER_TEXT,
+}
+
+local function scale_speed(cam, f)
+    local speed = cam:get_speed() * f
+    if speed < 0.01 then speed = 0.01 end
+    if speed > 100000.0 then speed = 100000.0 end
+    cam:set_speed(speed)
+end
 
 local function update_markers(ctx)
     local cam = get_camera and get_camera() or nil
@@ -181,8 +218,8 @@ local function update_markers(ctx)
     local vp = cam:get_view_projection()
     local cp = cam:get_position()
 
-    for _, name in ipairs(M.bodies) do
-        local id = "m_" .. name
+    for i, name in ipairs(M.bodies) do
+        local id = M.marker_ids[i]
         local body = ctx.handles[name]
         local shown = false
         if state.markers_on and body and name ~= ctx.props.follow then
@@ -209,16 +246,12 @@ local function update_markers(ctx)
                         local sy = (ny * 0.5 + 0.5) * sh
                         local label = marker_label(name)
                         local width = math.min(170.0, math.max(90.0, #label * 7.5 + 24.0))
-                        runtime_ui.set_quad(MARKERS, id, {
-                            x = sx - width * 0.5, y = sy + 8.0, width = width, height = 32.0,
-                            label = label, font_scale = marker_font_scale, visible = true,
-                            style = "button", align_h = "center", align_v = "middle",
-                            -- colors are plain tables: vec4 userdata is ignored by ReadColorOption
-                            fill = { 0.05, 0.09, 0.16, 0.55 },
-                            accent = { 0.05, 0.09, 0.16, 0.0 },
-                            border = { 0.45, 0.70, 1.00, 0.8 },
-                            text_color = { 0.85, 0.93, 1.00, 0.95 },
-                        })
+                        marker_quad.x = sx - width * 0.5
+                        marker_quad.y = sy + 8.0
+                        marker_quad.width = width
+                        marker_quad.label = label
+                        marker_quad.font_scale = marker_font_scale
+                        runtime_ui.set_quad(MARKERS, id, marker_quad)
                         shown = true
                         local st = runtime_ui.get_state(MARKERS, id)
                         if st and st.clicked then ctx.props.follow = name end
@@ -226,8 +259,11 @@ local function update_markers(ctx)
                 end
             end
         end
-        if not shown then
-            runtime_ui.set_quad(MARKERS, id, { x = -1000.0, y = -1000.0, width = 8.0, height = 8.0, visible = false })
+        if shown then
+            state.marker_visible[id] = true
+        elseif state.marker_visible[id] ~= false then
+            runtime_ui.set_quad(MARKERS, id, MARKER_HIDDEN)
+            state.marker_visible[id] = false
         end
     end
 end
@@ -295,8 +331,15 @@ function M.tick(ctx)
         end
     end
 
-    runtime_ui.set_button(PANEL, "follow_pick", follow_picker_label(props))
-    sync_follow_picker_options()
+    local pick_label = follow_picker_label(props)
+    if pick_label ~= state.last_pick_label then
+        runtime_ui.set_button(PANEL, "follow_pick", pick_label)
+        state.last_pick_label = pick_label
+    end
+    if state.follow_picker_open ~= state.picker_options_open then
+        sync_follow_picker_options()
+        state.picker_options_open = state.follow_picker_open
+    end
     if props.follow ~= state.last_follow then
         runtime_ui.set_text(PANEL, "follow_lbl", "Following", body_label(props.follow))
         state.last_follow = props.follow
@@ -306,14 +349,8 @@ function M.tick(ctx)
     -- or, in free cam, scales fly speed.
     local cam = get_camera and get_camera() or nil
     if cam then
-        local function scale_speed(f)
-            local speed = cam:get_speed() * f
-            if speed < 0.01 then speed = 0.01 end
-            if speed > 100000.0 then speed = 100000.0 end
-            cam:set_speed(speed)
-        end
-        if runtime_ui.consume_click(PANEL, "spd_slow") then scale_speed(0.5) end
-        if runtime_ui.consume_click(PANEL, "spd_fast") then scale_speed(2.0) end
+        if runtime_ui.consume_click(PANEL, "spd_slow") then scale_speed(cam, 0.5) end
+        if runtime_ui.consume_click(PANEL, "spd_fast") then scale_speed(cam, 2.0) end
 
         local wheel = input.get_mouse_wheel and input.get_mouse_wheel() or nil
         local wy = 0.0
@@ -330,17 +367,24 @@ function M.tick(ctx)
                 if d > 500.0 then d = 500.0 end
                 props.follow_distance = d
             else
-                scale_speed(1.25 ^ wy)
+                scale_speed(cam, 1.25 ^ wy)
             end
         end
 
-        local text = fmt_speed(cam:get_speed() * M_PER_UNIT)
-        if props.follow ~= "" then
-            text = text .. string.format("  |  zoom %.1f R", props.follow_distance)
-        end
-        if text ~= state.last_speed_text then
-            runtime_ui.set_text(HUD, "speed", "Cam", text)
-            state.last_speed_text = text
+        local speed = cam:get_speed()
+        if speed ~= state.last_hud_speed or props.follow ~= state.last_hud_follow
+            or props.follow_distance ~= state.last_hud_zoom then
+            local text = fmt_speed(speed * M_PER_UNIT)
+            if props.follow ~= "" then
+                text = text .. string.format("  |  zoom %.1f R", props.follow_distance)
+            end
+            if text ~= state.last_speed_text then
+                runtime_ui.set_text(HUD, "speed", "Cam", text)
+                state.last_speed_text = text
+            end
+            state.last_hud_speed = speed
+            state.last_hud_zoom = props.follow_distance
+            state.last_hud_follow = props.follow
         end
     end
 end

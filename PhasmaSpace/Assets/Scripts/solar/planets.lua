@@ -76,7 +76,7 @@ local function solve_kepler_rad(mean_anomaly, ecc)
     return E
 end
 
-function P.moon_local_units(m, jd)
+function P.moon_local_units(m, jd, out)
     local a = P.dist_units(m.a_km) * (m.dist_scale or 1.0)
     local period = m.period_d or 1.0
     if math.abs(period) < 1e-9 then period = 1.0 end
@@ -101,6 +101,10 @@ function P.moon_local_units(m, jd)
     local x = (cw * cO - sw * sO * ci) * xp + (-sw * cO - cw * sO * ci) * yp
     local y = (cw * sO + sw * cO * ci) * xp + (-sw * sO + cw * cO * ci) * yp
     local z = (sw * si) * xp + (cw * si) * yp
+    if out then
+        out.x, out.y, out.z = x, z, y
+        return out
+    end
     return { x = x, y = z, z = y }
 end
 
