@@ -12,6 +12,10 @@ local Units = WB.units
 
 local Build = {}
 
+local FACTIONS = { "player", "enemy" }
+-- Node positions are fixed World constants, so the keep-clear list is built once.
+local RESOURCE_NODES = { World.mine, World.forest, World.wilds_mine, World.wilds_forest }
+
 -- Build definitions: player arch keys -> costs + times.
 -- The AI maps to enemy variants via faction_arch().
 Build.DEFS = {
@@ -33,13 +37,12 @@ end
 function Build.spot_valid(state, x, z, radius)
     local bx, bz = World.clamp(x, z, radius + 1.0)
     if math.abs(bx - x) > 0.01 or math.abs(bz - z) > 0.01 then return false end -- clamped => out of bounds
-    for _, fac in ipairs({ "player", "enemy" }) do
+    for _, fac in ipairs(FACTIONS) do
         for _, b in ipairs(state.econ[fac].buildings) do
             if b.alive and U.dist2(x, z, b.x, b.z) < (radius + b.radius + 1.5) then return false end
         end
     end
-    local nodes = { World.mine, World.forest, World.wilds_mine, World.wilds_forest }
-    for _, n in ipairs(nodes) do
+    for _, n in ipairs(RESOURCE_NODES) do
         if n and U.dist2(x, z, n.x, n.z) < radius + 6.0 then return false end
     end
     return true
@@ -136,7 +139,7 @@ end
 
 function Build.update(dt, state)
     Build.update_placement(dt, state)  -- player ghost-follow; no-op when not placing
-    for _, fac in ipairs({ "player", "enemy" }) do
+    for _, fac in ipairs(FACTIONS) do
         for _, b in ipairs(state.econ[fac].buildings) do
             if b.alive and b.state == "site" then
                 -- Count every worker assigned to this site and adjacent to it. More builders

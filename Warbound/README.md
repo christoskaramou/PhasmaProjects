@@ -19,8 +19,9 @@ and assets are original.
 Warbound is a Lua-only PhasmaEngine project, run through **PhasmaPlayer**.
 Point the engine build's `phasma_settings.json` at this project (set `project_path`
 to this folder and `startup_scene` to `Assets/Scenes/skirmish.pescene`), then launch
-`PhasmaPlayer.exe`. The whole game boots from `Assets/Scripts/Player/warbound.lua`
-(PhasmaPlayer auto-runs every `.lua` in `Scripts/Player/`).
+`PhasmaPlayer.exe`. The whole game boots from `Assets/Scripts/warbound.lua`, which the
+scene names in its `scene_scripts.on_play` manifest — so the boot runs only when the
+Warbound scene plays, not via the `Scripts/Player/` auto-scan.
 
 ## Authored scene + script-driven dynamics
 
@@ -52,7 +53,7 @@ is why they're authored as JSON by `build_hud.py`.
 Assets/
   Scenes/skirmish.pescene      AUTHORED scene: terrain, scenery, camera, unit rigs (real nodes)
   Scripts/
-    Player/warbound.lua        boot: loads modules, drives the per-frame loop
+    warbound.lua               boot (scene on_play): loads modules, drives the per-frame loop
     game/                      the game, split into focused modules (see PLAN.md)
 ```
 

@@ -5,9 +5,9 @@
 -- position + Y-facing each frame (both safe to write per-frame); the rig's parts
 -- and scale are baked once at build time (per-frame scale writes are unreliable).
 --
--- Death never deletes nodes (that staling other nodes' draw constants on this
--- engine). Instead the rig is parked far below the map and pushed to a per-archetype
--- pool for reuse on the next spawn of that archetype.
+-- Death never deletes nodes (that stales other nodes' draw constants on this engine).
+-- Instead the rig is parked far below the map and hidden; respawns reuse the authored
+-- offstage reserves (E.unit_reserves) through Units.activate.
 
 local U = WB.util
 local C = U.COLOR
@@ -194,9 +194,7 @@ Units.ARCH.wilds_worker = (function()
     return w
 end)()
 
--- ---- rig construction + pooling ----------------------------------------------
-
-local pools = {} -- archetype -> { parked rigs }
+-- ---- rig construction --------------------------------------------------------
 
 local function build_rig(arch_name, node_name, parent)
     local arch = Units.ARCH[arch_name]
@@ -255,6 +253,12 @@ local function make_unit_table(arch_name, root, parts, ring, x, z)
     Units.set_selected(unit, false)
     Units.place(unit, x, z)
     Units.face(unit, math.sin(unit.facing), math.cos(unit.facing))
+    if arch.rig then
+        for _, spec in ipairs(arch.rig) do
+            if spec.name == "Body" then unit.body_color = spec.color; break end
+            if spec.name == "Head" and not unit.body_color then unit.body_color = spec.color end
+        end
+    end
     return unit
 end
 
@@ -337,10 +341,15 @@ end
 -- locomotion has placed the unit for the frame.
 function Units.tick_visual(unit, dt, t)
     if not unit.alive or not U.valid(unit.root) then return end
-    -- walk bob (raise the whole rig slightly while moving)
+    -- walk bob (raise the whole rig slightly while moving). Skip the engine write when
+    -- idle: locomote already placed the unit, and a leftover bob is flattened on the
+    -- first standing frame via `_bobbed`.
     local y = 0.0
     if unit.moving then y = math.abs(math.sin(t * 9.0 + unit.id * 1.3)) * 0.09 end
-    unit.root:set_position(vec3(unit.x, y, unit.z))
+    if unit.moving or unit._bobbed then
+        unit.root:set_position(vec3(unit.x, y, unit.z))
+    end
+    unit._bobbed = unit.moving == true
 
     -- weapon swing
     local arch = Units.ARCH[unit.arch]
@@ -351,7 +360,9 @@ function Units.tick_visual(unit, dt, t)
             local phase = 1.0 - U.clamp((unit.attack_swing or 0.0) / 0.25, 0.0, 1.0)
             local swing = math.sin(phase * math.pi) * -75.0 -- chop forward then back
             w:set_rotation(vec3(swing, 0.0, 0.0))
-        else
+            unit._swinging = true
+        elseif unit._swinging then
+            unit._swinging = false
             w:set_rotation(vec3(0.0, 0.0, 0.0))
         end
     end
@@ -367,10 +378,8 @@ function Units.tick_visual(unit, dt, t)
     elseif unit._flashed then
         unit._flashed = false
         local body = unit.parts and (unit.parts.Body or unit.parts.Head)
-        local arch2 = Units.ARCH[unit.arch]
-        if U.valid(body) and arch2 then
-            local col = (unit.faction == "player") and (unit.is_hero and C.hero or C.player) or C.enemy
-            material.set(body, "emissive", U.cv3(col, 0.14))
+        if U.valid(body) and material and material.set then
+            material.set(body, "emissive", U.cv3(unit.body_color or C.player, 0.14))
         end
     end
     if (unit.hit_flash or 0.0) > 0.0 then unit._flashed = true end
@@ -409,7 +418,9 @@ function Units.activate(unit, x, z)
     return unit
 end
 
--- Kill a unit: hide selection, park the rig offstage, and pool it for reuse.
+-- Kill a unit: hide selection and park the rig offstage. The unit table keeps its own
+-- rig handles, so respawns come from the authored reserve pools (E.unit_reserves) via
+-- Units.activate — nothing here needs a separate rig pool.
 function Units.kill(unit)
     if not unit.alive then return end
     unit.alive = false
@@ -419,8 +430,6 @@ function Units.kill(unit)
     if U.valid(unit.root) then
         unit.root:set_position(vec3(unit.x, PARK_Y, unit.z))
     end
-    pools[unit.arch] = pools[unit.arch] or {}
-    table.insert(pools[unit.arch], { root = unit.root, parts = unit.parts, ring = unit.ring })
 end
 
 return Units

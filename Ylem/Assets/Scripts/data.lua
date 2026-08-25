@@ -160,10 +160,16 @@ function D.lore(z)
     return (e and D.cat_lore[e[4]]) or "One of the building blocks of the universe."
 end
 
+-- Cached: lab calls this from draw (identity, board, quests). Lore is static.
+D._get = {}
 function D.get(z)
+    local c = D._get[z]
+    if c then return c end
     local e = D.elements[z]
     if not e then return nil end
-    return { z = e[1], sym = e[2], name = e[3], cat = e[4], lore = D.lore(z) }
+    c = { z = e[1], sym = e[2], name = e[3], cat = e[4], lore = D.lore(z) }
+    D._get[z] = c
+    return c
 end
 
 -- Electron configuration (Madelung / Aufbau fill order) — the foundation for the orbital
@@ -191,8 +197,11 @@ local CONFIG_FIX = {
 }
 
 -- subshells filling `nelec` electrons in Madelung order + the real-ground-state fix:
--- { {n=,l=,e=}, ... }
+-- { {n=,l=,e=}, ... }. Cached: cloud/shells views call this every frame.
+D._cfg = {}
 function D.config(nelec)
+    local hit = D._cfg[nelec]
+    if hit then return hit end
     local out = {}
     local left = nelec
     for _, s in ipairs(D.FILL_ORDER) do
@@ -220,6 +229,7 @@ function D.config(nelec)
             end
         end
     end
+    D._cfg[nelec] = out
     return out
 end
 

@@ -1,6 +1,7 @@
 local sensor = nil
 local direction = 1.0
 local registered = false
+local missing_logged = false
 local overlapping = {}
 local overlap_count = 0
 
@@ -51,17 +52,19 @@ local function register()
         return
     end
 
-    reset_state()
     sensor = scene.find_model("Moving Trigger Mesh")
+    if not sensor or not sensor:is_valid() then
+        if not missing_logged then
+            pe_log("[TriggerDemo] missing Moving Trigger Mesh")
+            missing_logged = true
+        end
+        return
+    end
 
+    reset_state()
     set_sensor_color()
     for _, name in ipairs({ "Collision Mesh A", "Collision Mesh B", "Collision Mesh C" }) do
         set_color(scene.find_model(name), colors.block_idle, false)
-    end
-
-    if not sensor or not sensor:is_valid() then
-        pe_log("[TriggerDemo] missing Moving Trigger Mesh")
-        return
     end
 
     physics.on_trigger_enter(sensor, function(other, self_trigger)
@@ -102,7 +105,9 @@ hooks {
     end,
 
     update = function()
-        register()
+        if not registered then
+            register()
+        end
 
         if not sensor or not sensor:is_valid() then
             return
@@ -121,5 +126,6 @@ hooks {
 
     destroy = function()
         registered = false
+        missing_logged = false
     end,
 }

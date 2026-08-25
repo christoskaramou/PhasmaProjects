@@ -211,7 +211,7 @@ end
 
 function b2.begin(w, h)
     L = b2.layout(w, h)
-    used = {}
+    for k in pairs(used) do used[k] = nil end
     return L
 end
 

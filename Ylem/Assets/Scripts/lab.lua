@@ -103,9 +103,9 @@ local RAD_INFO = {
 local function set_lastrad(key, note) M.lastrad = { key = key, note = note } end
 local CATALYSTS = { "spark", "heat", "pressure", "Fe", "Ni", "Pt", "V2O5" } -- the lab's real helpers (toggle chips)
 local STEPPERS = { -- the left-hand assembly atom's manual controls
-    { kind = "p", plus = "st_p_plus", minus = "st_p_minus" },
-    { kind = "n", plus = "st_n_plus", minus = "st_n_minus" },
-    { kind = "e", plus = "st_e_plus", minus = "st_e_minus" },
+    { kind = "p", plus = "st_p_plus", minus = "st_p_minus", lbl = "protons", c = C_PROTON },
+    { kind = "n", plus = "st_n_plus", minus = "st_n_minus", lbl = "neutrons", c = C_NEUTRON },
+    { kind = "e", plus = "st_e_plus", minus = "st_e_minus", lbl = "electrons", c = C_ELEC },
 }
 -- atom representation modes (dropdown). Bohr = the classic gameplay rings; the other three
 -- read the real Madelung electron configuration (see data.config): a written readout, true
@@ -155,16 +155,22 @@ local function can_add_neutron()
     if M.atom.protons < 1 then return false end
     return M.atom.neutrons < neutron_max(M.atom.protons)
 end
-local function iso_name() return string.format("%s-%d", element().sym, mass()) end
+local function iso_name()
+    local el = element()
+    return string.format("%s-%d", el and el.sym or "?", mass())
+end
 
 -- electrons grouped by principal quantum number n from the real Madelung config — the
 -- True-shells (Aufbau) view. K(19) reads 2/8/8/1, not the period rings' 2/8/9.
+local _ns_e, _ns_out, _ns_nmax
 local function n_shell_occ(e)
+    if _ns_e == e and _ns_out then return _ns_out, _ns_nmax end
     local occ = {}
     for _, s in ipairs(data.config(e)) do occ[s.n] = (occ[s.n] or 0) + s.e end
     local out, nmax = {}, 0
     for i = 1, 7 do if occ[i] and occ[i] > 0 then nmax = i end end
     for i = 1, nmax do out[i] = occ[i] or 0 end
+    _ns_e, _ns_out, _ns_nmax = e, out, nmax
     return out, nmax
 end
 
@@ -322,11 +328,11 @@ local function load_progress()
     if not src then return end
     local ok, t = pcall(function() return load(src, "@" .. SAVE_PATH, "t", {})() end)
     if not ok or type(t) ~= "table" or t.v ~= 1 then return end
-    M.discovered = t.discovered or M.discovered
-    M.carded = t.carded or M.carded
-    M.mol_disc = t.mol_disc or M.mol_disc
-    M.shelf = t.shelf or M.shelf
-    M.stats = t.stats or M.stats
+    if type(t.discovered) == "table" then M.discovered = t.discovered end
+    if type(t.carded) == "table" then M.carded = t.carded end
+    if type(t.mol_disc) == "table" then M.mol_disc = t.mol_disc end
+    if type(t.shelf) == "table" then M.shelf = t.shelf end
+    if type(t.stats) == "table" then M.stats = t.stats end
     M.discovered[1], M.carded[1] = true, true
     if t.view == "bohr" or t.view == "cloud" or t.view == "shells" then M.view = t.view end
     M.tcount = t.tcount or 0
@@ -426,9 +432,13 @@ local function bench_react(s)
     if not won then M.gtoast = { msg = "REACTION   " .. s.eq, age = 0.0 } end
     if newk then
         local m = data.molecules[newk]
-        M.card = { el = { sym = m.sym, name = m.name, lore = m.lore, eq = s.eq }, age = 0.0 }
-        M.hold = HOLD_DUR
-        sfx(SFX_CARD)
+        if m then
+            M.card = { el = { sym = m.sym, name = m.name, lore = m.lore, eq = s.eq }, age = 0.0 }
+            M.hold = HOLD_DUR
+            sfx(SFX_CARD)
+        else
+            sfx(SFX_LOCK)
+        end
     else
         sfx(SFX_LOCK)
     end
@@ -531,8 +541,9 @@ local function layout()
     local r0 = g.unit * 0.05
     local rmaxT = g.unit * (0.13 + 0.15 * math.sqrt(M.atom.protons / data.MAX_Z))
     local step = nrings > 1 and (rmaxT - r0) / (nrings - 1) or 0
-    g.radii = {}
-    for i = 1, #data.SHELLS do g.radii[i] = r0 + (i - 1) * step end
+    local radii = g.radii or {}
+    for i = 1, #data.SHELLS do radii[i] = r0 + (i - 1) * step end
+    g.radii = radii
     g.rmax = r0 + (math.max(1, nrings) - 1) * step
     g.nrings = nrings
 
@@ -829,8 +840,13 @@ local function decay_step()
         M.atom.protons, M.atom.neutrons = math.max(1, z - 2), math.max(0, n - 2)
         M.emit = { kind = "a" }; txt = "alpha decay"; radkey = "alpha"
     elseif mode == "betam" then
-        M.atom.protons, M.atom.neutrons = z + 1, n - 1
-        M.emit = { kind = "e" }; txt = "beta- decay"; radkey = "betam"
+        if z >= data.MAX_Z then
+            M.atom.neutrons = math.max(0, n - 1)
+            M.emit = { kind = "n" }; txt = "neutron emission"; radkey = "n"
+        else
+            M.atom.protons, M.atom.neutrons = z + 1, n - 1
+            M.emit = { kind = "e" }; txt = "beta- decay"; radkey = "betam"
+        end
     elseif mode == "nemit" then
         M.atom.neutrons = n - 1
         M.emit = { kind = "n" }; txt = "neutron emission"; radkey = "n"
@@ -989,8 +1005,10 @@ local function advance(dt)
             M.mol_disc[M.bonding.kind] = true
             M.bonding = nil
             M.hold = HOLD_DUR
-            M.card = { el = { sym = m.sym, name = m.name, lore = m.lore, eq = rr and rr.eq }, age = 0.0 }
-            sfx(SFX_CARD)
+            if m then
+                M.card = { el = { sym = m.sym, name = m.name, lore = m.lore, eq = rr and rr.eq }, age = 0.0 }
+                sfx(SFX_CARD)
+            end
         end
     end
     -- fusion: the assembled chunk slams in, counts land on impact
@@ -1279,6 +1297,7 @@ local function draw_molecule()
     local kind = (M.molecule and M.molecule.kind) or (M.bonding and M.bonding.kind) or "H2"
     local prog = M.bonding and ease_out(clamp01(M.bonding.t)) or 1.0
     local m = data.molecules[kind]
+    if not m then return end
     -- small movements: every atom gets the SAME tiny jitter (equal amplitude, its own
     -- phase), so the outer atoms move no more than the core. ~1/3 of the earlier amount.
     local cx, cy = g.cx, g.cy
@@ -1352,7 +1371,7 @@ local function draw_molecule()
             local ey = cy + math.sin(ang) * g.radii[1] * 0.85
             dot("mole" .. i, ex, ey, g.de, C_ELEC, 30.0)
         end
-    else -- central: the built core atom + partner atoms bonded around it
+    elseif m.render == "central" and m.partners then -- core + partners; acids have no render
         local dCP = g.unit * 0.135
         local jcx, jcy = jit(0.0)
         local cR = draw_nucleus("molC", cx + jcx, cy + jcy, M.atom.protons, M.atom.neutrons, nil, nil, CPK[m.core] or C_PROTON)
@@ -1408,21 +1427,18 @@ local function draw_stage()
     local nr = math.max(1, #stage_shells(s.e))
     mini_atom("st", x, y, s.p, s.n, s.e, g.sr0 + (nr - 1) * g.srstep, FA)
 
-    local rows = { { kind = "p", lbl = "protons", c = C_PROTON, v = s.p },
-                   { kind = "n", lbl = "neutrons", c = C_NEUTRON, v = s.n },
-                   { kind = "e", lbl = "electrons", c = C_ELEC, v = s.e } }
-    for i, r in ipairs(rows) do
+    for i, r in ipairs(STEPPERS) do
         local ry = g.stepy + (i - 1) * g.stepdy
-        local onm = M.held_id == ("st_" .. r.kind .. "_minus")
-        quad("st_" .. r.kind .. "_minus", { x = x - g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
+        local onm = M.held_id == r.minus
+        quad(r.minus, { x = x - g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
             width = g.stbtn, height = g.stbtn, z = 46.0, style = "button", title = "-", font_scale = 2.2,
             fill = onm and { 0.16, 0.20, 0.10, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
             border = col(r.c, onm and 0.95 or 0.5), accent = col(r.c, onm and 0.9 or 0.7),
             text_color = { 0.9, 0.92, 0.96, 1.0 } })
-        label("st_" .. r.kind .. "_v", x, ry - g.unit * 0.020, g.unit * 0.14, g.unit * 0.05, tostring(r.v), col(r.c, 1.0), 2.6, 41.0)
+        label("st_" .. r.kind .. "_v", x, ry - g.unit * 0.020, g.unit * 0.14, g.unit * 0.05, tostring(s[r.kind]), col(r.c, 1.0), 2.6, 41.0)
         label("st_" .. r.kind .. "_l", x, ry + g.unit * 0.020, g.unit * 0.18, g.unit * 0.03, r.lbl, C_DIMTEXT, 1.2, 41.0)
-        local on = M.held_id == ("st_" .. r.kind .. "_plus")
-        quad("st_" .. r.kind .. "_plus", { x = x + g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
+        local on = M.held_id == r.plus
+        quad(r.plus, { x = x + g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
             width = g.stbtn, height = g.stbtn, z = 46.0, style = "button", title = "+", font_scale = 2.2,
             fill = on and { 0.16, 0.20, 0.10, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
             border = col(r.c, on and 0.95 or 0.6), accent = col(r.c, 0.9),
@@ -2077,6 +2093,7 @@ local function draw()
         end
         if M.card then
             local e = M.card.el
+            if e then
             quad("card", {
                 x = (g.w - cw2) * 0.5, y = yy, width = cw2, height = ch, z = 60.0,
                 style = "panel", font_scale = 2.2, bring_to_front = true,
@@ -2085,6 +2102,7 @@ local function draw()
                 fill = { 0.05, 0.06, 0.10, 0.97 }, border = C_LOCK,
                 accent = { 1.00, 0.82, 0.34, 1.0 }, text_color = { 0.92, 0.94, 0.98, 1.0 },
             })
+            end
         end
     end
 
@@ -2130,8 +2148,10 @@ local function reconcile()
     end
     if not M.decay then M._drfq = nil end
     if instability() == 0 and M.flash <= 0 then M._nqx, M._nqy, M._nfq = nil, nil, nil end
+    local old = M._prev
+    for k in pairs(old) do old[k] = nil end
     M._prev = M._live
-    M._live = {}
+    M._live = old
 end
 
 function M.update(dt)

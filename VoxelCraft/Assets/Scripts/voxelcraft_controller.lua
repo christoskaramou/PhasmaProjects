@@ -42,6 +42,7 @@ local coyote = 0.0
 local prevJump = false
 local prevBreak, prevPlace = false, false
 local skip_look = false -- swallow the cursor-capture snap on the frame the mouse is grabbed
+local world_ready, world_frames = false, 0
 
 -- Block-selection wireframe (Minecraft-style outline of the targeted block).
 local highlight = nil
@@ -224,7 +225,7 @@ function update(dt)
 
     -- Defer voxel-world creation one frame so the highlight mesh (init) has
     -- uploaded before the arena reserves around it. Until then, no world exists.
-    world_frames = (world_frames or 0) + 1
+    world_frames = world_frames + 1
     if not world_ready then
         if world_frames < 2 then return end
         if settings and settings.set then
@@ -237,7 +238,7 @@ function update(dt)
     end
 
     for i = 1, #HOTBAR do
-        if input.is_key_down(tostring(i)) then selected_slot = i end
+        if input.is_key_down(HOTBAR[i].label) then selected_slot = i end
     end
 
     -- Look: cursor is grabbed, so the mouse always looks (Minecraft-style). If the
@@ -246,7 +247,8 @@ function update(dt)
     if input.is_relative_mouse() then
         local md = input.get_mouse_delta()
         if skip_look then
-            skip_look = false
+            -- Hold skip until LMB is up so click-to-regrab does not break a block next frame.
+            if not input.is_left_mouse_down() then skip_look = false end
         elseif (md.x or 0) ~= 0 or (md.y or 0) ~= 0 then
             cam:rotate(md.x, md.y)
         end

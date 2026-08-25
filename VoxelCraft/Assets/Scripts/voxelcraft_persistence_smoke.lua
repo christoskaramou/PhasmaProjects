@@ -14,6 +14,7 @@ local anchor = { x = HOME.x, y = HOME.y, z = HOME.z }
 local function fail(msg)
     pe_log("[voxelcraft_persistence_smoke] FAIL " .. tostring(msg))
     engine.quit()
+    return false
 end
 
 local function set_anchor_here()
@@ -30,7 +31,7 @@ local function wait_ground()
     end
     if not surfaceY then
         if frame > 360 then
-            fail("timed out waiting for generated ground")
+            return fail("timed out waiting for generated ground")
         end
         return false
     end
@@ -39,14 +40,15 @@ end
 
 local function assert_home_edits()
     if voxel.get_block(0, 4, 0) ~= 1 then
-        fail("section-0 edit missing at 0,4,0")
+        return fail("section-0 edit missing at 0,4,0")
     end
     if voxel.get_block(0, 8, 0) ~= 1 then
-        fail("generation-time edit missing at 0,8,0")
+        return fail("generation-time edit missing at 0,8,0")
     end
     if voxel.get_block(0, 20, 0) ~= 2 then
-        fail("section-1 edit missing at 0,20,0")
+        return fail("section-1 edit missing at 0,20,0")
     end
+    return true
 end
 
 local function boot_world()
@@ -79,14 +81,14 @@ function update()
             return
         end
         if voxel.get_block(0, 8, 0) ~= 1 then
-            fail("generation-time queued edit missing at 0,8,0")
+            return fail("generation-time queued edit missing at 0,8,0")
         end
         voxel.set_block(0, 4, 0, 1)
         if voxel.get_block(0, 4, 0) ~= 1 then
-            fail("section-0 edit did not apply at 0,4,0")
+            return fail("section-0 edit did not apply at 0,4,0")
         end
         if not voxel.save_all() then
-            fail("save_all failed after section-0 edit")
+            return fail("save_all failed after section-0 edit")
         end
         voxel.destroy()
         phase = "reload_after_section0"
@@ -100,17 +102,17 @@ function update()
             return
         end
         if voxel.get_block(0, 4, 0) ~= 1 then
-            fail("section-0 edit lost after reload")
+            return fail("section-0 edit lost after reload")
         end
         if voxel.get_block(0, 8, 0) ~= 1 then
-            fail("generation-time edit lost after reload")
+            return fail("generation-time edit lost after reload")
         end
         voxel.set_block(0, 20, 0, 2)
         if voxel.get_block(0, 20, 0) ~= 2 then
-            fail("section-1 edit did not apply at 0,20,0")
+            return fail("section-1 edit did not apply at 0,20,0")
         end
         if not voxel.save_all() then
-            fail("save_all failed after section-1 edit")
+            return fail("save_all failed after section-1 edit")
         end
         voxel.destroy()
         phase = "reload_after_section1"
@@ -123,7 +125,7 @@ function update()
         if not wait_ground() then
             return
         end
-        assert_home_edits()
+        if not assert_home_edits() then return end
         phase = "unload_away"
         frame = 0
         anchor.x, anchor.y, anchor.z = FAR.x, FAR.y, FAR.z
@@ -144,7 +146,7 @@ function update()
         if not wait_ground() then
             return
         end
-        assert_home_edits()
+        if not assert_home_edits() then return end
         phase = "done"
         return
     end

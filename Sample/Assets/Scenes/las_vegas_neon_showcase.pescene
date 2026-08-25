@@ -28279,7 +28279,7 @@
                 "blend_distance": 0.0,
                 "runMode": 2,
                 "shape": 0,
-                "scriptEnabled": true,
+                "scriptEnabled": false,
                 "scriptPath": "",
                 "fireForCamera": true,
                 "onEnter": "on_enter",
@@ -28323,9 +28323,9 @@
                     "IBL": true,
                     "IBL_intensity": 1.0
                 },
-                "audioEnabled": true,
+                "audioEnabled": false,
                 "audioSource": {
-                    "file": "C:\\Users\\Christos\\repos\\PhasmaProjects\\Sample\\Assets\\Audio\\industrial-drum.wav",
+                    "file": "",
                     "volume": 1.429998,
                     "pitch": 1.0,
                     "min_distance": 1.0,

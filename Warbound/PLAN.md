@@ -12,9 +12,10 @@ Enemy: **the Wilds** (feral raiders and beasts, red/brown).
 ## Engine integration (how this runs)
 
 - Lua-only project on PhasmaEngine, run via **PhasmaPlayer**.
-- PhasmaPlayer auto-runs every `.lua` in `Assets/Scripts/Player/`. `warbound.lua` is
-  the sole boot script: it loads the game modules through `wb_loader` and installs a
-  `hooks{ update }` driver.
+- `skirmish.pescene` names `Assets/Scripts/warbound.lua` in its `scene_scripts.on_play`
+  manifest (NOT the `Scripts/Player/` auto-scan), so the scene owns its own driver.
+  `warbound.lua` is the sole boot script: it loads the game modules through `wb_loader`
+  and installs a `hooks{ update }` driver.
 - **Authored scene, script-driven dynamics (ATH pattern).** `skirmish.pescene` authors
   the full static world (terrain, scenery, gold mine, camera), every unit rig, AND the
   HUD panels as real nodes. At runtime the scripts ADOPT those nodes by name
@@ -36,7 +37,8 @@ Enemy: **the Wilds** (feral raiders and beasts, red/brown).
 
 1. **Never `delete_node` mid-combat.** The renderer uses swap-and-pop storage; deleting
    a node mid-frame staling other nodes' draw constants → garbage/giant transforms.
-   Dead units are **parked offstage** (huge -Y offset) and their rigs pooled for reuse.
+   Dead units are **parked offstage** (huge -Y offset) and hidden; respawns reuse the
+   authored offstage reserves (`E.unit_reserves`) via `Units.activate`.
 2. **Bake scale at node creation.** Per-frame writes to a node's scale are unreliable;
    only position / rotation / material writes are safe every frame. Unit size is set once.
 3. **Reuse the scene's active camera.** Adding a new camera + `set_active` does not swap
