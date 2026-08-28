@@ -30,6 +30,20 @@ end)()
 local SCREEN = "ylem"
 local TAU = math.pi * 2.0
 
+-- board (col,row) -> Z; built once so hover hit-tests don't scan 118
+local ZGRID, PT_IDS, QEL_IDS = {}, {}, {}
+for z = 1, data.MAX_Z do
+    local gc, gr = data.grid(z)
+    ZGRID[gc + gr * 32] = z
+    PT_IDS[z] = "pt" .. z
+    QEL_IDS[z] = "q_el" .. z
+end
+local MS_IDS, QMOL_IDS = {}, {}
+for i = 1, #data.mol_list do
+    MS_IDS[i] = "ms" .. i
+    QMOL_IDS[i] = "q_mol" .. i
+end
+
 -- Tunables ------------------------------------------------------------------
 local CATCH_DUR = 0.55  -- electron spiral-in
 local PCATCH_DUR = 0.30 -- proton / neutron pull-into-nucleus
@@ -78,6 +92,28 @@ local GAMMA_DUR = 0.35  -- gamma de-excitation: an excited daughter nucleus rela
 local C_GAMMA = { 0.82, 0.76, 1.0, 1.0 } -- pale violet-white: the emitted gamma EM burst
 local C_HINT     = { 0.66, 0.74, 0.86, 0.55 }
 local C_DIMTEXT  = { 0.55, 0.60, 0.70, 1.0 }
+local C_CLEAR    = { 0, 0, 0, 0 }
+local C_WHITE    = { 1, 1, 1, 1 }
+local C_PANEL    = { 0.05, 0.06, 0.10, 0.98 }
+local C_TIP_TEXT = { 0.92, 0.94, 0.98, 1.0 }
+local C_BTN_ON   = { 0.16, 0.20, 0.10, 0.95 }
+local C_BTN_OFF  = { 0.10, 0.12, 0.16, 0.9 }
+local C_CELL_HIT = { 0.24, 0.18, 0.05, 0.95 }
+local C_CELL_ON  = { 0.10, 0.13, 0.19, 0.92 }
+local C_CELL_OFF = { 0.05, 0.06, 0.09, 0.5 }
+local C_CELL_MOD = { 0.06, 0.07, 0.11, 0.9 }
+local C_BORD_ON  = { 0.40, 0.45, 0.55, 0.6 }
+local C_BORD_OFF = { 0.20, 0.24, 0.30, 0.4 }
+local C_BORD_MOD = { 0.30, 0.34, 0.44, 0.5 }
+local C_TEXT_HIT = { 1.0, 0.90, 0.60, 1.0 }
+local C_TEXT_ON  = { 0.94, 0.88, 0.72, 1.0 }
+local C_TEXT_OFF = { 0.42, 0.46, 0.54, 0.7 }
+local C_TEXT_MOD = { 0.55, 0.60, 0.70, 0.9 }
+local C_ION      = { 0.86, 0.92, 1.0, 0.9 }
+local C_DECAY_H  = { 0.92, 0.86, 0.72, 0.92 }
+local C_BANNER   = { 0.09, 0.11, 0.17, 0.94 }
+local C_BENCH_GO = { 0.10, 0.16, 0.11, 0.95 }
+local C_LOCK_A95, C_ELEC_A90 -- frozen after palettes (see below)
 local RING_PEAK  = 0.78
 local NUC_MAX_DOTS = 28  -- past this a heavy nucleus draws a solid core + a scatter of dots
 -- CPK-ish atom colours for the molecule (ball-and-stick) view, lightened so they read on the
@@ -126,7 +162,25 @@ local function lerp(a, b, t) return a + (b - a) * t end
 local function ease_out(t) return 1.0 - (1.0 - t) * (1.0 - t) end
 local function sign(x) return x < 0.0 and -1.0 or 1.0 end
 local function wrap_pi(a) return (a + math.pi) % TAU - math.pi end
-local function col(c, a) return { c[1], c[2], c[3], a or c[4] } end
+-- scratch tint: palette returned as-is when alpha matches; otherwise one reusable slot.
+-- freeze_col copies the scratch on submit so M._opt never aliases it.
+local _col = { 0, 0, 0, 0 }
+local function col(c, a)
+    a = a or c[4]
+    if a == c[4] then return c end
+    _col[1], _col[2], _col[3], _col[4] = c[1], c[2], c[3], a
+    return _col
+end
+local function freeze_col(c)
+    if c ~= _col then return c end
+    return { c[1], c[2], c[3], c[4] }
+end
+local function same4(a, b)
+    return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3] and a[4] == b[4]
+end
+C_LOCK_A95 = { C_LOCK[1], C_LOCK[2], C_LOCK[3], 0.95 }
+C_ELEC_A90 = { C_ELEC[1], C_ELEC[2], C_ELEC[3], 0.9 }
+local C_ELEC_A92 = { C_ELEC[1], C_ELEC[2], C_ELEC[3], 0.92 }
 -- pulse alpha cached + quantised so unstable/decay labels don't re-set_quad every frame.
 local function pulse_a(key, rate, lo, hi, period)
     period = period or 4
@@ -138,11 +192,7 @@ local function pulse_a(key, rate, lo, hi, period)
 end
 
 -- Atom queries --------------------------------------------------------------
-local function electrons()
-    local n = 0
-    for _, sh in ipairs(M.atom.shells) do n = n + #sh.e end
-    return n
-end
+local function electrons() return M.atom.ne or 0 end
 local function is_neutral() return electrons() == M.atom.protons end
 local function element() return data.get(M.atom.protons) end
 local function mass() return M.atom.protons + M.atom.neutrons end
@@ -157,7 +207,11 @@ local function can_add_neutron()
 end
 local function iso_name()
     local el = element()
-    return string.format("%s-%d", el and el.sym or "?", mass())
+    local z, n = M.atom.protons, M.atom.neutrons
+    if M._ison and M._isoz == z and M._isonn == n then return M._ison end
+    M._isoz, M._isonn = z, n
+    M._ison = string.format("%s-%d", el and el.sym or "?", z + n)
+    return M._ison
 end
 
 -- electrons grouped by principal quantum number n from the real Madelung config — the
@@ -215,14 +269,18 @@ local function reaction_kind()
     return nil
 end
 
+local _reqs = {} -- keyed by reaction object; do not write onto data.lua tables
 local function reqs_of(r)
-    local q = {}
+    local q = _reqs[r]
+    if q then return q end
+    q = {}
     if r.cat then q[#q + 1] = r.cat end
     if type(r.cond) == "table" then
         for _, c in ipairs(r.cond) do q[#q + 1] = c end -- Haber really needs heat AND pressure
     elseif r.cond then
         q[#q + 1] = r.cond
     end
+    _reqs[r] = q
     return q
 end
 
@@ -239,6 +297,7 @@ local function target_shell()
 end
 
 -- State ---------------------------------------------------------------------
+local bump_bench
 local RING_SPIN = { 0.90, -0.58, 0.72, -0.46, 0.60, -0.40, 0.52 }
 local function build_rings()
     local shells = {}
@@ -253,7 +312,7 @@ end
 -- reset just the atom + its transient effects (a fresh synthesis run); keep the target,
 -- the discovered board, and the session stats.
 local function reset_atom()
-    M.atom = { protons = 1, neutrons = 0, shells = build_rings() }
+    M.atom = { protons = 1, neutrons = 0, shells = build_rings(), ne = 1 }
     M.fly = nil
     M.sw = nil
     M.card = nil
@@ -290,6 +349,7 @@ function M.reset()
     M.target = { kind = "el", z = 2 } -- first target: Helium (teaches proton + shell-lock)
     M.shelf = {} -- synthesized molecules by species count — the bench's reagent inventory
     M.mol_disc = {} -- molecules ever made (fills the discovered strip)
+    bump_bench()
     M.lastrad = nil -- most recent radiation event (readout, bottom-right)
     M.view = M.view or "bohr" -- atom representation mode (dropdown); persists across runs
     if M.view ~= "bohr" and M.view ~= "cloud" and M.view ~= "shells" then M.view = "bohr" end
@@ -336,6 +396,7 @@ local function load_progress()
     M.discovered[1], M.carded[1] = true, true
     if t.view == "bohr" or t.view == "cloud" or t.view == "shells" then M.view = t.view end
     M.tcount = t.tcount or 0
+    bump_bench()
 end
 
 local function target_label()
@@ -391,15 +452,23 @@ local function check_target()
     end
 end
 
+bump_bench = function() M._bgen = (M._bgen or 0) + 1; M._bsig = nil end
+
 -- THE BENCH: true species-level stoichiometry. Reactions between MOLECULES pulled from
 -- the shelf (N2 + 3 H2 needs three H2 you actually made), gated by the same catalyst
 -- chips as formation reactions. Products land back on the shelf; new species get a card.
+local _bench = {}
 local function bench_offers()
-    local out = {}
+    local el = element()
+    local busy = (M.molecule or M.bonding or M.fusing or M.fission) and 1 or 0
+    local sig = (M._bgen or 0) .. "|" .. M.atom.protons .. "|" .. (M.atom.ne or 0) .. "|"
+        .. M.atom.neutrons .. "|" .. busy .. "|" .. (el and el.sym or "")
+    if sig == M._bsig then return _bench end
+    M._bsig = sig
+    local n = 0
     for _, s in ipairs(data.species) do
         local ok = true
         if s.core then -- acid + metal: the reaction consumes the BUILT atom as its metal
-            local el = element()
             ok = el ~= nil and el.sym == s.core and is_neutral() and is_stable_iso()
                 and not (M.molecule or M.bonding or M.fusing or M.fission)
         end
@@ -408,9 +477,10 @@ local function bench_offers()
                 if (M.shelf[k] or 0) < cnt then ok = false; break end
             end
         end
-        if ok then out[#out + 1] = s end
+        if ok then n = n + 1; _bench[n] = s end
     end
-    return out
+    for i = n + 1, #_bench do _bench[i] = nil end
+    return _bench
 end
 
 local function bench_react(s)
@@ -430,6 +500,7 @@ local function bench_react(s)
         end
     end
     if not won then M.gtoast = { msg = "REACTION   " .. s.eq, age = 0.0 } end
+    bump_bench()
     if newk then
         local m = data.molecules[newk]
         if m then
@@ -475,6 +546,16 @@ end
 -- unchanged quad every frame is pure waste — skip the call when this id's opts match last frame.
 -- (set_quad used to cost ~150us/call from per-call filesystem stats; the engine now memoizes the
 -- image-path resolve so it's ~us-scale, but the skip still saves the marshalling + table churn.)
+local function freeze_opts(opts)
+    local fill, border, accent, tc, tint = opts.fill, opts.border, opts.accent, opts.text_color, opts.image_tint
+    if fill == _col then opts.fill = freeze_col(fill) end
+    if border == _col then opts.border = freeze_col(border) end
+    if accent == _col then opts.accent = freeze_col(accent) end
+    if tc == _col then opts.text_color = freeze_col(tc) end
+    if tint == _col then opts.image_tint = freeze_col(tint) end
+    return opts
+end
+
 local function quad(id, opts)
     M._live[id] = true
     local prev = M._opt[id]
@@ -484,34 +565,77 @@ local function quad(id, opts)
         if same then for k in pairs(prev) do if opts[k] == nil then same = false; break end end end
         if same then return end
     end
+    opts = freeze_opts(opts)
     M._opt[id] = opts
     runtime_ui.set_quad(SCREEN, id, opts)
 end
 
-local function dot(id, x, y, d, c, z)
-    quad(id, {
-        x = x - d * 0.5, y = y - d * 0.5, width = d, height = d, z = z or 30.0,
-        style = "image", path = "dot.png", image_tint = c,
-        fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, no_input = true,
-    })
+-- sprite/label: compare prev before allocating an opts table (hold-skip used to still churn).
+local function sprite(id, x, y, d, c, z, path, zdef)
+    z = z or zdef
+    local ox, oy = x - d * 0.5, y - d * 0.5
+    M._live[id] = true
+    local prev = M._opt[id]
+    if prev and prev.x == ox and prev.y == oy and prev.width == d and prev.z == z
+        and prev.path == path and same4(prev.image_tint, c) then
+        return
+    end
+    local opts = {
+        x = ox, y = oy, width = d, height = d, z = z,
+        style = "image", path = path, image_tint = freeze_col(c),
+        fill = C_CLEAR, border = C_CLEAR, no_input = true,
+    }
+    M._opt[id] = opts
+    runtime_ui.set_quad(SCREEN, id, opts)
 end
 
+local function dot(id, x, y, d, c, z) sprite(id, x, y, d, c, z, "dot.png", 30.0) end
 local function ring(id, x, y, radius, c, z)
-    local d = 2.0 * radius / RING_PEAK
-    quad(id, {
-        x = x - d * 0.5, y = y - d * 0.5, width = d, height = d, z = z or 12.0,
-        style = "image", path = "ring.png", image_tint = c,
-        fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, no_input = true,
-    })
+    sprite(id, x, y, 2.0 * radius / RING_PEAK, c, z, "ring.png", 12.0)
 end
 
 local function label(id, x, y, w, h, text, c, fs, z)
-    quad(id, {
-        x = x - w * 0.5, y = y, width = w, height = h, z = z or 41.0,
-        style = "text", body = text, text_color = c,
-        fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 },
+    z = z or 41.0
+    local ox = x - w * 0.5
+    M._live[id] = true
+    local prev = M._opt[id]
+    if prev and prev.x == ox and prev.y == y and prev.width == w and prev.height == h
+        and prev.z == z and prev.body == text and prev.font_scale == fs and same4(prev.text_color, c) then
+        return
+    end
+    local opts = {
+        x = ox, y = y, width = w, height = h, z = z,
+        style = "text", body = text, text_color = freeze_col(c),
+        fill = C_CLEAR, border = C_CLEAR,
         align_h = "center", align_v = "middle", font_scale = fs, no_input = true,
+    }
+    M._opt[id] = opts
+    runtime_ui.set_quad(SCREEN, id, opts)
+end
+
+local function tip_panel(id, x, y, w, h, label_s, title, body, footer, border, fs)
+    quad(id, {
+        x = x, y = y, width = w, height = h, z = 63.0, style = "panel",
+        font_scale = fs or 1.7, bring_to_front = true, no_input = true,
+        label = label_s, title = title, body = body, footer = footer,
+        fill = C_PANEL, border = border or C_LOCK, accent = C_LOCK, text_color = C_TIP_TEXT,
     })
+end
+
+local function cell_look(hit, disc, modal)
+    if hit then return C_CELL_HIT, C_LOCK_A95, C_TEXT_HIT end
+    if disc then return C_CELL_ON, modal and C_BORD_MOD or C_BORD_ON, C_TEXT_ON end
+    if modal then return C_CELL_MOD, C_BORD_MOD, C_TEXT_MOD end
+    return C_CELL_OFF, C_BORD_OFF, C_TEXT_OFF
+end
+
+local function toast_banner(id, y, z, msg, age, fill, border_c, tc)
+    local g = M.g
+    local a = clamp01(math.min(age / 0.25, (TOAST_DUR - age) / 0.4))
+    quad(id, { x = g.w * 0.5 - g.unit * 0.28, y = y, width = g.unit * 0.56, height = g.unit * 0.06,
+        z = z, style = "text", body = msg, align_h = "center", align_v = "middle", font_scale = 2.0,
+        fill = { fill[1], fill[2], fill[3], 0.9 * a }, border = col(border_c, 0.7 * a),
+        text_color = { tc[1], tc[2], tc[3], a }, no_input = true })
 end
 
 -- Geometry ------------------------------------------------------------------
@@ -582,12 +706,13 @@ local function add_electron_quiet()
     if not si then return end
     local sh = M.atom.shells[si]
     sh.e[#sh.e + 1] = { spread = (#sh.e) / (#sh.e + 1) * TAU }
+    M.atom.ne = (M.atom.ne or 0) + 1
 end
 
 local function remove_electron_quiet()
     for si = #M.atom.shells, 1, -1 do
         local sh = M.atom.shells[si]
-        if #sh.e > 0 then sh.e[#sh.e] = nil; return end
+        if #sh.e > 0 then sh.e[#sh.e] = nil; M.atom.ne = M.atom.ne - 1; return end
     end
 end
 
@@ -658,6 +783,7 @@ local function add_electron_juicy()
     if not si then return false end
     local g, sh = M.g, M.atom.shells[si]
     sh.e[#sh.e + 1] = { spread = (#sh.e) / (#sh.e + 1) * TAU }
+    M.atom.ne = (M.atom.ne or 0) + 1
     sh.flare = 1.0
     if #sh.e == sh.cap and not sh.locked then
         sh.locked = true
@@ -683,13 +809,17 @@ local function stage_add(kind, d)
 end
 
 -- distribute an electron count into shells by the period caps (drives the faint staging render)
+local _ss_e, _ss_out
 local function stage_shells(ecount)
+    if _ss_e == ecount and _ss_out then return _ss_out end
     local out = {}
+    local left = ecount
     for i, cap in ipairs(data.SHELLS) do
-        local c = math.min(cap, ecount)
-        out[i] = c; ecount = ecount - c
-        if ecount <= 0 then break end
+        local c = math.min(cap, left)
+        out[i] = c; left = left - c
+        if left <= 0 then break end
     end
+    _ss_e, _ss_out = ecount, out
     return out
 end
 
@@ -1002,6 +1132,7 @@ local function advance(dt)
             M.molecule = { kind = M.bonding.kind }
             -- onto the shelf: molecules are the bench's reagents (species stoichiometry)
             M.shelf[M.bonding.kind] = (M.shelf[M.bonding.kind] or 0) + 1
+            bump_bench()
             M.mol_disc[M.bonding.kind] = true
             M.bonding = nil
             M.hold = HOLD_DUR
@@ -1048,6 +1179,7 @@ local function update_fly(dt)
         if f.t >= 1.0 then
             local sh = M.atom.shells[f.shell]
             sh.e[#sh.e + 1] = { spread = (a - sh.phase) % TAU }
+            M.atom.ne = (M.atom.ne or 0) + 1
             on_electron_added(f.shell)
             M.fly = nil
         end
@@ -1068,28 +1200,53 @@ local function update_fly(dt)
     end
 end
 
+local Q_ECOLS, Q_MCOLS = 15, 8
+local function quest_layout()
+    local g = M.g
+    local qx, qy = g.unit * 0.02, g.unit * 0.105
+    local qw, qh = g.unit * 0.32, g.unit * 0.036
+    local ec, mcw, mch = g.unit * 0.036, g.unit * 0.068, g.unit * 0.030
+    local erows = math.ceil(data.MAX_Z / Q_ECOLS)
+    local mrows = math.ceil(#data.mol_list / Q_MCOLS)
+    local px, py2 = qx, qy + qh + g.unit * 0.008
+    local gx0, gy0 = px + g.unit * 0.012, py2 + g.unit * 0.034
+    local my0 = gy0 + erows * ec + g.unit * 0.004
+    local mgy0 = my0 + g.unit * 0.028
+    return qx, qy, qw, qh, px, py2, gx0, gy0, ec, erows, my0, mgy0, mcw, mch, mrows
+end
+
 local function handle_input()
     local g = M.g
     -- quest catalog: pick any element/molecule as the target. Modal while open.
     local qb = runtime_ui.get_state(SCREEN, "questbtn")
     if qb and qb.clicked then M.questOpen = not M.questOpen; return end
     if M.questOpen then
-        for z = 1, data.MAX_Z do
-            local st = runtime_ui.get_state(SCREEN, "q_el" .. z)
-            if st and st.clicked then
-                M.target = { kind = "el", z = z }
-                M.questOpen = false
-                reset_atom()
-                return
+        local st = runtime_ui.get_state(SCREEN, "questhit")
+        if st and st.clicked then
+            local mx, my = st.mouse_x, st.mouse_y
+            local _, _, _, _, _, _, gx0, gy0, ec, erows, _, mgy0, mcw, mch, mrows = quest_layout()
+            local c0 = math.floor((mx - gx0) / ec)
+            local r0 = math.floor((my - gy0) / ec)
+            if c0 >= 0 and c0 < Q_ECOLS and r0 >= 0 and r0 < erows then
+                local z = r0 * Q_ECOLS + c0 + 1
+                if z >= 1 and z <= data.MAX_Z then
+                    M.target = { kind = "el", z = z }
+                    M.questOpen = false
+                    reset_atom()
+                    return
+                end
             end
-        end
-        for i, key in ipairs(data.mol_list) do
-            local st = runtime_ui.get_state(SCREEN, "q_mol" .. i)
-            if st and st.clicked then
-                M.target = { kind = "mol", key = key }
-                M.questOpen = false
-                reset_atom()
-                return
+            c0 = math.floor((mx - gx0) / mcw)
+            r0 = math.floor((my - mgy0) / mch)
+            if c0 >= 0 and c0 < Q_MCOLS and r0 >= 0 and r0 < mrows then
+                local i = r0 * Q_MCOLS + c0 + 1
+                local key = data.mol_list[i]
+                if key then
+                    M.target = { kind = "mol", key = key }
+                    M.questOpen = false
+                    reset_atom()
+                    return
+                end
             end
         end
         return -- swallow everything else while the catalog is open
@@ -1100,7 +1257,7 @@ local function handle_input()
     if ts and ts.clicked then new_target(); return end
     for _, c in ipairs(CATALYSTS) do
         local cs = runtime_ui.get_state(SCREEN, "cat_" .. c)
-        if cs and cs.clicked then M.cat[c] = not M.cat[c]; return end
+        if cs and cs.clicked then M.cat[c] = not M.cat[c]; bump_bench(); return end
     end
     local fsn = runtime_ui.get_state(SCREEN, "fission")
     if fsn and fsn.clicked then start_fission(); M.held_id = nil; return end
@@ -1182,13 +1339,13 @@ local function handle_input()
     local held
     for _, st in ipairs(STEPPERS) do
         local pls = runtime_ui.get_state(SCREEN, st.plus)
-        if pls and pls.down then held = { id = st.plus, kind = st.kind, dir = 1 } end
+        if pls and pls.down then held = st; held._dir = 1; held._id = st.plus end
         local ms = runtime_ui.get_state(SCREEN, st.minus)
-        if ms and ms.down then held = { id = st.minus, kind = st.kind, dir = -1 } end
+        if ms and ms.down then held = st; held._dir = -1; held._id = st.minus end
     end
     if held then
-        if M.held_id ~= held.id then stage_add(held.kind, held.dir) end -- newly pressed: instant step
-        M.held_id, M.held_kind, M.held_dir = held.id, held.kind, held.dir
+        if M.held_id ~= held._id then stage_add(held.kind, held._dir) end -- newly pressed: instant step
+        M.held_id, M.held_kind, M.held_dir = held._id, held.kind, held._dir
     else
         M.held_id = nil
     end
@@ -1240,8 +1397,8 @@ local function draw_orbital(idp, x, y, e, R, alpha_mul)
     local frac = clamp01(val.e / (2 * (2 * l + 1)))
     quad(idp, { x = x - side * 0.5, y = y - side * 0.5, width = side, height = side, z = 13.0,
         style = "image", path = "orbital_" .. val.n .. data.L_CHAR[l] .. "_m" .. math.abs(m) .. ".png",
-        image_tint = { 1, 1, 1, math.min(1.0, (0.55 + 0.45 * frac) * alpha_mul) },
-        fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, no_input = true })
+        image_tint = col(C_WHITE, math.min(1.0, (0.55 + 0.45 * frac) * alpha_mul)),
+        fill = C_CLEAR, border = C_CLEAR, no_input = true })
 end
 
 -- a complete atom in the SELECTED view (Bohr rings+electrons OR the orbital cloud) plus its
@@ -1432,17 +1589,17 @@ local function draw_stage()
         local onm = M.held_id == r.minus
         quad(r.minus, { x = x - g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
             width = g.stbtn, height = g.stbtn, z = 46.0, style = "button", title = "-", font_scale = 2.2,
-            fill = onm and { 0.16, 0.20, 0.10, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
+            fill = onm and C_BTN_ON or C_BTN_OFF,
             border = col(r.c, onm and 0.95 or 0.5), accent = col(r.c, onm and 0.9 or 0.7),
-            text_color = { 0.9, 0.92, 0.96, 1.0 } })
+            text_color = C_TIP_TEXT })
         label("st_" .. r.kind .. "_v", x, ry - g.unit * 0.020, g.unit * 0.14, g.unit * 0.05, tostring(s[r.kind]), col(r.c, 1.0), 2.6, 41.0)
         label("st_" .. r.kind .. "_l", x, ry + g.unit * 0.020, g.unit * 0.18, g.unit * 0.03, r.lbl, C_DIMTEXT, 1.2, 41.0)
         local on = M.held_id == r.plus
         quad(r.plus, { x = x + g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
             width = g.stbtn, height = g.stbtn, z = 46.0, style = "button", title = "+", font_scale = 2.2,
-            fill = on and { 0.16, 0.20, 0.10, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
+            fill = on and C_BTN_ON or C_BTN_OFF,
             border = col(r.c, on and 0.95 or 0.6), accent = col(r.c, 0.9),
-            text_color = { 0.95, 0.95, 0.98, 1.0 } })
+            text_color = C_TIP_TEXT })
     end
 
     -- MERGE + a live preview of the isotope the chunk will make (gold when it hits the target).
@@ -1454,13 +1611,13 @@ local function draw_stage()
     local hit = M.target and M.target.kind == "el" and M.target.z == rp and re == rp
     quad("merge", { x = x - g.mergew * 0.5, y = g.mergey, width = g.mergew, height = g.mergeh, z = 46.0,
         style = "button", title = "MERGE", font_scale = 2.0,
-        fill = any and { 0.10, 0.16, 0.11, 0.95 } or { 0.08, 0.09, 0.12, 0.7 },
+        fill = any and C_BENCH_GO or { 0.08, 0.09, 0.12, 0.7 },
         border = hit and C_LOCK or col(C_ELEC, any and 0.7 or 0.3), accent = col(C_LOCK, 0.85),
         text_color = any and { 0.90, 0.96, 0.90, 1.0 } or { 0.6, 0.65, 0.72, 0.8 } })
     if any and rel then
         label("merge_pv", x, g.mergey + g.mergeh + g.unit * 0.012, g.unit * 0.42, g.unit * 0.036,
             string.format("makes  %s-%d  %s", rel.sym, rp + rn, (re == rp) and "neutral" or (re < rp and "ion+" or "ion-")),
-            hit and col(C_LOCK, 0.95) or C_DIMTEXT, 1.4, 41.0)
+            hit and C_LOCK_A95 or C_DIMTEXT, 1.4, 41.0)
     end
 end
 
@@ -1485,15 +1642,9 @@ local function draw_element_tip(z, mx, my)
         or ("t1/2 " .. data.fmt_hl(data.halflife_s(e.z, data.principal(e.z))))
     -- footer is a single non-wrapping line in the backend, so keep it short (it overflowed
     -- before); the atomic number lives in the corner label and the lore wraps in the body.
-    quad("eltip", {
-        x = tx, y = ty, width = tw, height = th, z = 63.0, style = "panel",
-        font_scale = 1.8, bring_to_front = true, no_input = true,
-        label = "Atomic number " .. e.z, title = e.name .. "   (" .. e.sym .. ")",
-        body = (CAT_NAME[e.cat] or "Element") .. ".   " .. e.lore,
-        footer = string.format("%s-%d   -   %s", e.sym, mass0, stable),
-        fill = { 0.05, 0.06, 0.10, 0.98 }, border = C_LOCK,
-        accent = { 1.00, 0.82, 0.34, 1.0 }, text_color = { 0.92, 0.94, 0.98, 1.0 },
-    })
+    tip_panel("eltip", tx, ty, tw, th, "Atomic number " .. e.z, e.name .. "   (" .. e.sym .. ")",
+        (CAT_NAME[e.cat] or "Element") .. ".   " .. e.lore,
+        string.format("%s-%d   -   %s", e.sym, mass0, stable), C_LOCK, 1.8)
 end
 
 -- what each condition chip does + when to use it (real chemistry + the fusion gate).
@@ -1513,13 +1664,7 @@ local function draw_chip_tip(c, mx, my)
     local tw, th = g.unit * 0.42, g.unit * 0.20
     local tx = math.max(g.unit * 0.01, mx - tw - g.unit * 0.02) -- left of the cursor (chips hug the right edge)
     local ty = math.max(g.unit * 0.01, math.min(my, g.h - th - g.unit * 0.01))
-    quad("chiptip", {
-        x = tx, y = ty, width = tw, height = th, z = 63.0, style = "panel",
-        font_scale = 1.7, bring_to_front = true, no_input = true,
-        label = M.cat[c] and "ON" or "off", title = tip.t, body = tip.b, footer = tip.f,
-        fill = { 0.05, 0.06, 0.10, 0.98 }, border = C_LOCK,
-        accent = { 1.00, 0.82, 0.34, 1.0 }, text_color = { 0.92, 0.94, 0.98, 1.0 },
-    })
+    tip_panel("chiptip", tx, ty, tw, th, M.cat[c] and "ON" or "off", tip.t, tip.b, tip.f)
 end
 
 -- ATOM VIEWS -----------------------------------------------------------------
@@ -1609,7 +1754,7 @@ local function draw()
     if electrons() <= E_GLOW_MAX then ecx, ecy = acx, acy end
 
     quad("bg", { x = 0, y = 0, width = g.w, height = g.h, z = 0.0,
-        style = "panel", fill = C_BG, border = { 0, 0, 0, 0 }, no_input = true })
+        style = "panel", fill = C_BG, border = C_CLEAR, no_input = true })
 
     if M.sw then ring("shock", ecx, ecy, M.sw.r, col(C_LOCK, M.sw.alpha), 15.0) end
     if M.gamma then -- gamma photon: a fast violet EM burst as the nucleus sheds excitation energy
@@ -1710,7 +1855,7 @@ local function draw()
                     dot("fp" .. i, p.x, p.y, g.nucR, col(C_PROTON, a), 52.0)
                     local le = data.get(p.z)
                     if le then label("fpl" .. i, p.x, p.y - g.nucR * 1.7, g.unit * 0.14, g.unit * 0.04,
-                        le.sym, col({ 1, 1, 1, 1 }, a), 1.8, 53.0) end
+                        le.sym, col(C_WHITE, a), 1.8, 53.0) end
                 end
             end
         end
@@ -1720,7 +1865,7 @@ local function draw()
     local el = element()
     if el then
         local unstable = instability() > 0
-        local sym_c = is_neutral() and col(C_LOCK, math.min(1.0, 0.9 * bright)) or { 0.86, 0.92, 1.0, 0.9 }
+        local sym_c = is_neutral() and col(C_LOCK, math.min(1.0, 0.9 * bright)) or C_ION
         label("ident_sym", g.cx, g.iy, g.unit * 0.4, g.unit * 0.10, el.sym, sym_c, 4.0, 41.0)
         local iso_c = unstable and col(C_UNSTABLE, pulse_a("iso", 6.0, 0.7, 1.0)) or C_DIMTEXT
         label("ident_iso", g.cx, g.iy + g.unit * 0.085, g.unit * 0.6, g.unit * 0.045,
@@ -1734,14 +1879,14 @@ local function draw()
                 local m = -val.l + ((val.e - 1) % (2 * val.l + 1))
                 label("ident_orb", g.cx, g.iy + g.unit * 0.170, g.unit * 0.6, g.unit * 0.05,
                     string.format("outer  %d%s  (%d, %d, %d)", val.n, data.L_CHAR[val.l], val.n, val.l, m),
-                    col(C_ELEC, 0.92), 1.7, 41.0)
+                    C_ELEC_A92, 1.7, 41.0)
             end
         elseif M.view == "shells" then
             local occ, nmax = n_shell_occ(electrons())
             local parts = {}
             for i = 1, nmax do parts[i] = tostring(occ[i] or 0) end
             label("ident_orb", g.cx, g.iy + g.unit * 0.170, g.unit * 0.6, g.unit * 0.05,
-                "shells  " .. table.concat(parts, " . "), col(C_ELEC, 0.92), 1.7, 41.0)
+                "shells  " .. table.concat(parts, " . "), C_ELEC_A92, 1.7, 41.0)
         end
     end
 
@@ -1758,7 +1903,7 @@ local function draw()
             or (stabilizes("p") and "MERGE +1 proton to stabilize")
             or "no stable route - let it decay"
         label("decay_hint", g.cx, py + g.unit * 0.052, g.unit * 0.75, g.unit * 0.04, hint,
-            { 0.92, 0.86, 0.72, 0.92 }, 1.6, 43.0)
+            C_DECAY_H, 1.6, 43.0)
         if M.decay.hl then
             label("decay_hl", g.cx, py + g.unit * 0.092, g.unit * 0.6, g.unit * 0.036,
                 "real half-life  " .. M.decay.hl, C_DIMTEXT, 1.4, 43.0)
@@ -1790,14 +1935,16 @@ local function draw()
         quad("bond_src", { x = bx - g.dp * 1.1, y = by - g.dp * 1.1, width = g.dp * 2.2, height = g.dp * 2.2,
             z = 40.0, style = "image", path = "dot.png",
             image_tint = col(pc, bdrag and 0.28 or (met and 1.0 or 0.4)),
-            fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, draggable = met, bring_to_front = true })
+            fill = C_CLEAR, border = C_CLEAR, draggable = met, bring_to_front = true })
     end
 
     -- catalyst / condition chips (top-right, under Restart): the lab's real helpers. Toggle
     -- to enable reactions that require them (Haber = Fe + pressure, combustion = spark...).
     -- The pending reaction's needs are outlined red until satisfied.
     do
-        local need = {}
+        local need = M._need or {}
+        for k in pairs(need) do need[k] = nil end
+        M._need = need
         if rx then for _, k in ipairs(reqs_of(rx)) do need[k] = true end end
         for _, s in ipairs(M._bench or {}) do
             if not reqs_met(s) then for _, k in ipairs(reqs_of(s)) do need[k] = true end end
@@ -1809,7 +1956,7 @@ local function draw()
             local on = M.cat[c]
             quad("cat_" .. c, { x = x0, y = y0 + (i - 1) * (chh + g.unit * 0.012),
                 width = cw, height = chh, z = 46.0, style = "button", title = c, font_scale = 1.4,
-                fill = on and { 0.16, 0.20, 0.10, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
+                fill = on and C_BTN_ON or C_BTN_OFF,
                 border = on and C_LOCK or (need[c] and col(C_UNSTABLE, 0.85) or { 0.4, 0.45, 0.55, 0.55 }),
                 accent = on and col(C_LOCK, 0.9) or col(C_ELEC, 0.5),
                 text_color = on and { 0.95, 0.9, 0.6, 1.0 } or { 0.8, 0.85, 0.92, 0.9 } })
@@ -1823,7 +1970,7 @@ local function draw()
     for _ in pairs(M.discovered) do dn = dn + 1 end
     local tkey = M.target and (M.target.kind == "el" and ("z" .. M.target.z) or M.target.key) or "-"
     local bkey = string.format("%d|%s|%d|%d|%.0f", M.atom.protons, tkey, dn, M.won and 1 or 0, g.cell)
-    for z = 1, data.MAX_Z do M._live["pt" .. z] = true end
+    for z = 1, data.MAX_Z do M._live[PT_IDS[z]] = true end
     if bkey ~= M._bkey then
         M._bkey = bkey
         for z = 1, data.MAX_Z do
@@ -1831,32 +1978,36 @@ local function draw()
             local e = data.get(z)
             local x = g.boardX + (gc - 1) * g.cell
             local y = g.boardY + (gr - 1) * g.cell
-            local fill, border, tc
-            if M.target and M.target.kind == "el" and M.target.z == z then
-                fill = { 0.24, 0.18, 0.05, 0.95 }; border = col(C_LOCK, 0.95); tc = { 1.0, 0.90, 0.60, 1.0 }
-            elseif M.discovered[z] then
-                fill = { 0.10, 0.13, 0.19, 0.92 }
-                border = (M.atom.protons == z) and col(C_ELEC, 0.9) or { 0.40, 0.45, 0.55, 0.6 }
-                tc = { 0.94, 0.88, 0.72, 1.0 }
-            else
-                fill = { 0.05, 0.06, 0.09, 0.5 }; border = { 0.20, 0.24, 0.30, 0.4 }; tc = { 0.42, 0.46, 0.54, 0.7 }
+            local fill, border, tc = cell_look(
+                M.target and M.target.kind == "el" and M.target.z == z, M.discovered[z])
+            if M.discovered[z] and M.atom.protons == z and not (M.target and M.target.kind == "el" and M.target.z == z) then
+                border = C_ELEC_A90
             end
-            quad("pt" .. z, { x = x + g.cell * 0.06, y = y + g.cell * 0.06,
+            quad(PT_IDS[z], { x = x + g.cell * 0.06, y = y + g.cell * 0.06,
                 width = g.cell * 0.88, height = g.cell * 0.88, z = 44.0,
                 style = "text", body = e.sym, align_h = "center", align_v = "middle",
                 font_scale = math.max(0.7, math.min(1.3, g.cell * 0.028)),
-                fill = fill, border = border, text_color = tc,
-                no_input = not M.discovered[z] }) -- discovered cells are hoverable for a tooltip
+                fill = fill, border = border, text_color = tc, no_input = true })
         end
     end
 
     -- hover a discovered element on the board -> tooltip (name, symbol, atomic number, lore).
-    local hz, hmx, hmy
-    for z in pairs(M.discovered) do
-        local st = runtime_ui.get_state(SCREEN, "pt" .. z)
-        if st and st.hovered then hz, hmx, hmy = z, st.mouse_x, st.mouse_y; break end
+    do
+        local bh = g.cell * g.pt_rows
+        M._live["pthit"] = true
+        local prev = M._opt["pthit"]
+        if not prev or prev.x ~= g.boardX or prev.y ~= g.boardY or prev.width ~= g.boardW or prev.height ~= bh then
+            quad("pthit", { x = g.boardX, y = g.boardY, width = g.boardW, height = bh,
+                z = 44.5, style = "panel", fill = C_CLEAR, border = C_CLEAR })
+        end
+        local st = runtime_ui.get_state(SCREEN, "pthit")
+        if st and st.hovered then
+            local c = math.floor((st.mouse_x - g.boardX) / g.cell) + 1
+            local r = math.floor((st.mouse_y - g.boardY) / g.cell) + 1
+            local hz = ZGRID[c + r * 32]
+            if hz and M.discovered[hz] then draw_element_tip(hz, st.mouse_x, st.mouse_y) end
+        end
     end
-    if hz then draw_element_tip(hz, hmx or g.cx, hmy or g.cy) end
 
     -- hover a condition chip -> what it does + when to use it.
     for _, c in ipairs(CATALYSTS) do
@@ -1877,7 +2028,7 @@ local function draw()
             quad("bench" .. i, { x = g.unit * 0.015, y = by0, width = bw, height = bh, z = 46.0,
                 style = "button", font_scale = 1.3,
                 title = "REACT:  " .. s.eq .. (met and "" or ("    needs " .. table.concat(reqs_of(s), "+"))),
-                fill = met and { 0.10, 0.16, 0.11, 0.95 } or { 0.10, 0.12, 0.16, 0.9 },
+                fill = met and C_BENCH_GO or C_BTN_OFF,
                 border = met and col(C_LOCK, 0.9) or col(C_UNSTABLE, 0.7),
                 accent = col(C_LOCK, 0.8),
                 text_color = met and { 0.92, 0.96, 0.90, 1.0 } or { 0.75, 0.78, 0.85, 0.9 } })
@@ -1892,7 +2043,7 @@ local function draw()
         for _ in pairs(M.mol_disc) do mdisc = mdisc + 1 end
         local mtkey = (M.target and M.target.kind == "mol") and M.target.key or "-"
         local mskey = string.format("%d|%d|%s|%.1f", msum, mdisc, mtkey, g.msCell)
-        for i = 1, g.msN do M._live["ms" .. i] = true end
+        for i = 1, g.msN do M._live[MS_IDS[i]] = true end
         if mskey ~= M._mskey then
             M._mskey = mskey
             for i, key in ipairs(data.mol_list) do
@@ -1902,39 +2053,37 @@ local function draw()
                 local y = g.msY + r0 * (g.msH + g.unit * 0.004)
                 local disc = M.mol_disc[key]
                 local cnt = M.shelf[key] or 0
-                local fill, border, tc
-                if M.target and M.target.kind == "mol" and M.target.key == key then
-                    fill = { 0.24, 0.18, 0.05, 0.95 }; border = col(C_LOCK, 0.95); tc = { 1.0, 0.90, 0.60, 1.0 }
-                elseif disc then
-                    fill = { 0.10, 0.13, 0.19, 0.92 }; border = { 0.40, 0.45, 0.55, 0.6 }; tc = { 0.94, 0.88, 0.72, 1.0 }
-                else
-                    fill = { 0.05, 0.06, 0.09, 0.5 }; border = { 0.20, 0.24, 0.30, 0.4 }; tc = { 0.42, 0.46, 0.54, 0.7 }
-                end
-                quad("ms" .. i, { x = x + g.msCell * 0.04, y = y, width = g.msCell * 0.92, height = g.msH,
+                local fill, border, tc = cell_look(
+                    M.target and M.target.kind == "mol" and M.target.key == key, disc)
+                quad(MS_IDS[i], { x = x + g.msCell * 0.04, y = y, width = g.msCell * 0.92, height = g.msH,
                     z = 44.0, style = "text", body = key .. (cnt > 0 and (" x" .. cnt) or ""),
                     align_h = "center", align_v = "middle",
                     font_scale = math.max(0.65, math.min(1.15, g.msCell * 0.016)),
-                    fill = fill, border = border, text_color = tc,
-                    no_input = not disc }) -- discovered cells are hoverable for a tooltip
+                    fill = fill, border = border, text_color = tc, no_input = true })
             end
         end
         -- hover a discovered molecule -> its name + lore
-        for i, key in ipairs(data.mol_list) do
-            if M.mol_disc[key] then
-                local st = runtime_ui.get_state(SCREEN, "ms" .. i)
-                if st and st.hovered then
+        do
+            local msHtot = 2 * (g.msH + g.unit * 0.004)
+            M._live["mshit"] = true
+            local prev = M._opt["mshit"]
+            if not prev or prev.x ~= g.msX or prev.y ~= g.msY or prev.width ~= g.msW or prev.height ~= msHtot then
+                quad("mshit", { x = g.msX, y = g.msY, width = g.msW, height = msHtot, z = 45.0,
+                    style = "panel", fill = C_CLEAR, border = C_CLEAR })
+            end
+            local st = runtime_ui.get_state(SCREEN, "mshit")
+            if st and st.hovered then
+                local rowH = g.msH + g.unit * 0.004
+                local c0 = math.floor((st.mouse_x - g.msX) / g.msCell)
+                local r0 = math.floor((st.mouse_y - g.msY) / rowH)
+                local i = r0 * g.msCols + c0 + 1
+                local key = (c0 >= 0 and r0 >= 0 and r0 < 2) and data.mol_list[i]
+                if key and M.mol_disc[key] then
                     local mm = data.molecules[key]
                     local tw, th = g.unit * 0.42, g.unit * 0.16
                     local tx = math.max(g.unit * 0.01, math.min((st.mouse_x or g.cx) - tw * 0.5, g.w - tw - g.unit * 0.01))
-                    quad("mstip", {
-                        x = tx, y = g.msY - th - g.unit * 0.012, width = tw, height = th, z = 63.0,
-                        style = "panel", font_scale = 1.7, bring_to_front = true, no_input = true,
-                        label = "on shelf: " .. (M.shelf[key] or 0), title = mm.name .. "   (" .. mm.sym .. ")",
-                        body = mm.lore,
-                        fill = { 0.05, 0.06, 0.10, 0.98 }, border = C_LOCK,
-                        accent = { 1.00, 0.82, 0.34, 1.0 }, text_color = { 0.92, 0.94, 0.98, 1.0 },
-                    })
-                    break
+                    tip_panel("mstip", tx, g.msY - th - g.unit * 0.012, tw, th,
+                        "on shelf: " .. (M.shelf[key] or 0), mm.name .. "   (" .. mm.sym .. ")", mm.lore)
                 end
             end
         end
@@ -1966,12 +2115,8 @@ local function draw()
         dot("radoutdot", rxx - g.unit * 0.018, ryy + rh * 0.5, g.de, ri.c, 47.0)
         local st = runtime_ui.get_state(SCREEN, "radout")
         if st and st.hovered then
-            quad("radtip", { x = rxx + rw - g.unit * 0.44, y = ryy - g.unit * 0.172,
-                width = g.unit * 0.44, height = g.unit * 0.16, z = 63.0,
-                style = "panel", font_scale = 1.7, bring_to_front = true, no_input = true,
-                label = M.lastrad.note or "", title = ri.name, body = ri.desc,
-                fill = { 0.05, 0.06, 0.10, 0.98 }, border = col(ri.c, 0.9), accent = col(ri.c, 0.9),
-                text_color = { 0.92, 0.94, 0.98, 1.0 } })
+            tip_panel("radtip", rxx + rw - g.unit * 0.44, ryy - g.unit * 0.172, g.unit * 0.44, g.unit * 0.16,
+                M.lastrad.note or "", ri.name, ri.desc, nil, col(ri.c, 0.9))
         end
     end
 
@@ -1983,7 +2128,7 @@ local function draw()
             or { 0.86, 0.92, 1.0, 0.96 }
         quad("target_btn", { x = tx, y = ty, width = g.unit * 0.32, height = g.unit * 0.065, z = 46.0,
             style = "button", title = M.won and "DONE!  tap for next" or ("TARGET:  " .. target_label()),
-            font_scale = 1.8, fill = { 0.09, 0.11, 0.17, 0.94 },
+            font_scale = 1.8, fill = C_BANNER,
             border = M.won and C_LOCK or col(C_ELEC, 0.6), accent = col(C_LOCK, 0.8), text_color = tc })
         quad("target_sub", { x = tx, y = ty + g.unit * 0.072, width = g.unit * 0.36, height = g.unit * 0.03,
             z = 46.0, style = "text",
@@ -1992,62 +2137,66 @@ local function draw()
                 and "made on the BENCH  -  react shelf molecules (bottom-left)"
                 or "synthesize this  -  assemble on the left, then MERGE",
             align_h = "left", align_v = "middle", font_scale = 1.2,
-            fill = { 0, 0, 0, 0 }, border = { 0, 0, 0, 0 }, text_color = C_DIMTEXT, no_input = true })
+            fill = C_CLEAR, border = C_CLEAR, text_color = C_DIMTEXT, no_input = true })
     end
 
     -- QUESTS: pick any element or molecule as the next target; the TARGET button above
     -- stays the random roll. A modal catalog — input is swallowed while it is open.
     do
-        local qx, qy = g.unit * 0.02, g.unit * 0.105
-        local qw, qh = g.unit * 0.32, g.unit * 0.036
+        local qx, qy, qw, qh, px, py2, gx0, gy0, ec, erows, my0, mgy0, mcw, mch, mrows = quest_layout()
         quad("questbtn", { x = qx, y = qy, width = qw, height = qh, z = 47.0, style = "button",
             title = "QUESTS  " .. (M.questOpen and "^" or "v"), font_scale = 1.4,
-            fill = { 0.09, 0.11, 0.17, 0.94 }, border = col(C_LOCK, 0.55),
+            fill = C_BANNER, border = col(C_LOCK, 0.55),
             accent = col(C_LOCK, 0.7), text_color = { 0.92, 0.90, 0.80, 0.96 } })
         if M.questOpen then
-            local ec, mcw, mch = g.unit * 0.036, g.unit * 0.068, g.unit * 0.030
-            local ecols, mcols = 15, 8
-            local erows = math.ceil(data.MAX_Z / ecols)
-            local mrows = math.ceil(#data.mol_list / mcols)
-            local px, py2 = qx, qy + qh + g.unit * 0.008
-            local pw = math.max(ecols * ec, mcols * mcw) + g.unit * 0.024
+            local pw = math.max(Q_ECOLS * ec, Q_MCOLS * mcw) + g.unit * 0.024
             local ph = erows * ec + mrows * mch + g.unit * 0.096
-            quad("questpanel", { x = px, y = py2, width = pw, height = ph, z = 61.0,
-                style = "panel", bring_to_front = true, no_input = true,
-                fill = { 0.04, 0.05, 0.09, 0.98 }, border = col(C_LOCK, 0.6),
-                accent = col(C_LOCK, 0.7), text_color = { 0.9, 0.9, 0.9, 1.0 } })
-            label("quest_he", px + pw * 0.5, py2 + g.unit * 0.006, pw, g.unit * 0.024, "ELEMENTS", C_HINT, 1.2, 62.0)
-            local gx0, gy0 = px + g.unit * 0.012, py2 + g.unit * 0.034
-            for z = 1, data.MAX_Z do
-                local r0 = math.floor((z - 1) / ecols)
-                local c0 = (z - 1) % ecols
-                local e = data.get(z)
-                local hit = M.target and M.target.kind == "el" and M.target.z == z
-                quad("q_el" .. z, { x = gx0 + c0 * ec, y = gy0 + r0 * ec,
-                    width = ec * 0.92, height = ec * 0.92, z = 62.0, style = "text",
-                    body = e.sym, align_h = "center", align_v = "middle", font_scale = 0.9,
-                    bring_to_front = true,
-                    fill = hit and { 0.24, 0.18, 0.05, 0.95 }
-                        or (M.discovered[z] and { 0.10, 0.13, 0.19, 0.92 } or { 0.06, 0.07, 0.11, 0.9 }),
-                    border = hit and col(C_LOCK, 0.95) or { 0.30, 0.34, 0.44, 0.5 },
-                    text_color = M.discovered[z] and { 0.94, 0.88, 0.72, 1.0 } or { 0.55, 0.60, 0.70, 0.9 } })
+            local dn, md = 0, 0
+            for _ in pairs(M.discovered) do dn = dn + 1 end
+            for _ in pairs(M.mol_disc) do md = md + 1 end
+            local tkey = M.target and (M.target.kind == "el" and ("z" .. M.target.z) or M.target.key) or "-"
+            local qsig = string.format("%s|%d|%d|%.0f", tkey, dn, md, g.unit)
+            M._live["questpanel"] = true
+            M._live["quest_he"] = true
+            M._live["quest_hm"] = true
+            M._live["questhit"] = true
+            for z = 1, data.MAX_Z do M._live[QEL_IDS[z]] = true end
+            for i = 1, #data.mol_list do M._live[QMOL_IDS[i]] = true end
+            if qsig ~= M._qsig then
+                M._qsig = qsig
+                quad("questpanel", { x = px, y = py2, width = pw, height = ph, z = 61.0,
+                    style = "panel", bring_to_front = true, no_input = true,
+                    fill = { 0.04, 0.05, 0.09, 0.98 }, border = col(C_LOCK, 0.6),
+                    accent = col(C_LOCK, 0.7), text_color = { 0.9, 0.9, 0.9, 1.0 } })
+                label("quest_he", px + pw * 0.5, py2 + g.unit * 0.006, pw, g.unit * 0.024, "ELEMENTS", C_HINT, 1.2, 62.0)
+                for z = 1, data.MAX_Z do
+                    local r0 = math.floor((z - 1) / Q_ECOLS)
+                    local c0 = (z - 1) % Q_ECOLS
+                    local e = data.get(z)
+                    local fill, border, tc = cell_look(M.target and M.target.kind == "el" and M.target.z == z,
+                        M.discovered[z], true)
+                    quad(QEL_IDS[z], { x = gx0 + c0 * ec, y = gy0 + r0 * ec,
+                        width = ec * 0.92, height = ec * 0.92, z = 62.0, style = "text",
+                        body = e.sym, align_h = "center", align_v = "middle", font_scale = 0.9,
+                        fill = fill, border = border, text_color = tc, no_input = true })
+                end
+                label("quest_hm", px + pw * 0.5, my0, pw, g.unit * 0.024, "MOLECULES", C_HINT, 1.2, 62.0)
+                for i, key in ipairs(data.mol_list) do
+                    local r0 = math.floor((i - 1) / Q_MCOLS)
+                    local c0 = (i - 1) % Q_MCOLS
+                    local fill, border, tc = cell_look(M.target and M.target.kind == "mol" and M.target.key == key,
+                        M.mol_disc[key], true)
+                    quad(QMOL_IDS[i], { x = gx0 + c0 * mcw, y = mgy0 + r0 * mch,
+                        width = mcw * 0.94, height = mch * 0.9, z = 62.0, style = "text",
+                        body = key, align_h = "center", align_v = "middle", font_scale = 0.85,
+                        fill = fill, border = border, text_color = tc, no_input = true })
+                end
+                quad("questhit", { x = gx0, y = gy0, width = math.max(Q_ECOLS * ec, Q_MCOLS * mcw),
+                    height = (mgy0 + mrows * mch) - gy0, z = 63.0, style = "panel",
+                    fill = C_CLEAR, border = C_CLEAR, bring_to_front = true })
             end
-            local my0 = gy0 + erows * ec + g.unit * 0.004
-            label("quest_hm", px + pw * 0.5, my0, pw, g.unit * 0.024, "MOLECULES", C_HINT, 1.2, 62.0)
-            local mgy0 = my0 + g.unit * 0.028
-            for i, key in ipairs(data.mol_list) do
-                local r0 = math.floor((i - 1) / mcols)
-                local c0 = (i - 1) % mcols
-                local hit = M.target and M.target.kind == "mol" and M.target.key == key
-                quad("q_mol" .. i, { x = gx0 + c0 * mcw, y = mgy0 + r0 * mch,
-                    width = mcw * 0.94, height = mch * 0.9, z = 62.0, style = "text",
-                    body = key, align_h = "center", align_v = "middle", font_scale = 0.85,
-                    bring_to_front = true,
-                    fill = hit and { 0.24, 0.18, 0.05, 0.95 }
-                        or (M.mol_disc[key] and { 0.10, 0.13, 0.19, 0.92 } or { 0.06, 0.07, 0.11, 0.9 }),
-                    border = hit and col(C_LOCK, 0.95) or { 0.30, 0.34, 0.44, 0.5 },
-                    text_color = M.mol_disc[key] and { 0.94, 0.88, 0.72, 1.0 } or { 0.55, 0.60, 0.70, 0.9 } })
-            end
+        else
+            M._qsig = nil
         end
     end
 
@@ -2063,20 +2212,10 @@ local function draw()
 
     -- decay toast (mid)
     if M.toast then
-        local a = clamp01(math.min(M.toast.age / 0.25, (TOAST_DUR - M.toast.age) / 0.4))
-        quad("toast", { x = g.w * 0.5 - g.unit * 0.28, y = g.h * 0.30, width = g.unit * 0.56, height = g.unit * 0.06,
-            z = 58.0, style = "text", body = M.toast.msg, align_h = "center", align_v = "middle", font_scale = 2.0,
-            fill = { 0.06, 0.05, 0.04, 0.9 * a }, border = col(C_UNSTABLE, 0.7 * a),
-            text_color = { 1.0, 0.86, 0.7, a }, no_input = true })
+        toast_banner("toast", g.h * 0.30, 58.0, M.toast.msg, M.toast.age, { 0.06, 0.05, 0.04, 1 }, C_UNSTABLE, { 1.0, 0.86, 0.7, 1 })
     end
-
-    -- synthesized / quench toast (gold)
     if M.gtoast then
-        local a = clamp01(math.min(M.gtoast.age / 0.25, (TOAST_DUR - M.gtoast.age) / 0.4))
-        quad("gtoast", { x = g.w * 0.5 - g.unit * 0.28, y = g.h * 0.36, width = g.unit * 0.56, height = g.unit * 0.06,
-            z = 59.0, style = "text", body = M.gtoast.msg, align_h = "center", align_v = "middle", font_scale = 2.0,
-            fill = { 0.05, 0.06, 0.04, 0.9 * a }, border = col(C_LOCK, 0.7 * a),
-            text_color = { 1.0, 0.92, 0.72, a }, no_input = true })
+        toast_banner("gtoast", g.h * 0.36, 59.0, M.gtoast.msg, M.gtoast.age, { 0.05, 0.06, 0.04, 1 }, C_LOCK, { 1.0, 0.92, 0.72, 1 })
     end
 
     -- birth card
@@ -2099,8 +2238,8 @@ local function draw()
                 style = "panel", font_scale = 2.2, bring_to_front = true,
                 label = e.eq or (e.sym .. (e.z and ("  -  Z " .. e.z) or "")), title = string.upper(e.name), body = e.lore,
                 footer = "click to continue",
-                fill = { 0.05, 0.06, 0.10, 0.97 }, border = C_LOCK,
-                accent = { 1.00, 0.82, 0.34, 1.0 }, text_color = { 0.92, 0.94, 0.98, 1.0 },
+                fill = C_PANEL, border = C_LOCK,
+                accent = C_LOCK, text_color = C_TIP_TEXT,
             })
             end
         end
@@ -2122,15 +2261,15 @@ local function draw()
         local vw, vh = g.unit * 0.24, g.unit * 0.05
         quad("viewbtn", { x = vx, y = vy, width = vw, height = vh, z = 47.0, style = "button",
             title = "View:  " .. view_name(M.view) .. (M.viewOpen and "  ^" or "  v"), font_scale = 1.4,
-            fill = { 0.09, 0.11, 0.17, 0.94 }, border = col(C_ELEC, 0.6),
+            fill = C_BANNER, border = col(C_ELEC, 0.6),
             accent = col(C_ELEC, 0.7), text_color = { 0.86, 0.92, 1.0, 0.96 } })
         if M.viewOpen then
             for i, v in ipairs(VIEWS) do
                 local sel = M.view == v.key
                 quad("view_" .. v.key, { x = vx, y = vy + vh + (i - 1) * (vh * 0.92), width = vw, height = vh * 0.86,
                     z = 47.0, style = "button", title = v.name, font_scale = 1.3, bring_to_front = true,
-                    fill = sel and { 0.16, 0.20, 0.10, 0.97 } or { 0.07, 0.09, 0.13, 0.97 },
-                    border = sel and C_LOCK or { 0.4, 0.45, 0.55, 0.6 },
+                    fill = sel and C_BTN_ON or { 0.07, 0.09, 0.13, 0.97 },
+                    border = sel and C_LOCK or C_BORD_ON,
                     accent = col(C_ELEC, 0.6), text_color = { 0.86, 0.9, 0.96, 1.0 } })
             end
         end
@@ -2138,8 +2277,8 @@ local function draw()
 
     quad("reset", { x = g.w - 150.0, y = 26.0, width = 122.0, height = 44.0, z = 45.0,
         style = "button", title = "Restart", font_scale = 1.7,
-        fill = { 0.10, 0.12, 0.16, 0.9 }, border = { 0.4, 0.5, 0.62, 0.7 },
-        accent = { 0.34, 0.55, 0.92, 0.8 }, text_color = { 0.86, 0.9, 0.96, 1.0 } })
+        fill = C_BTN_OFF, border = { 0.4, 0.5, 0.62, 0.7 },
+        accent = C_RING, text_color = C_TIP_TEXT })
 end
 
 local function reconcile()

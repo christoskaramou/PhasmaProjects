@@ -24,6 +24,33 @@ local BTN_TEXT = {0.97, 0.95, 0.85, 1}
 local TITLE_TEXT = {1.0, 0.88, 0.55, 1}
 -- RuntimeUi bakes at 16px; +2px to match the in-game overlay.
 local FONT = 18 / 16
+local ZERO = {0, 0, 0, 0}
+local EMPTY_STATE = {}
+local HIDE_Q = {visible = false, no_input = true}
+local LIT = {0, 0, 0, 1}
+local LABEL_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "",
+    style = "text", fill = ZERO, accent = ZERO, border = ZERO,
+    text_color = TITLE_TEXT, align_h = "center", align_v = "middle",
+    font_scale = FONT, no_input = false, visible = true,
+}
+local BTN_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "",
+    style = "panel", fill = BTN_FILL, accent = ZERO, border = BTN_BORDER,
+    text_color = BTN_TEXT, align_h = "center", align_v = "middle",
+    corner_radius = 6, font_scale = FONT, visible = true,
+}
+local PANEL_Q = {
+    x = 0, y = 0, w = 0, h = 0,
+    style = "panel", fill = PANEL_FILL, accent = ZERO, border = PANEL_BORDER,
+    corner_radius = 10, visible = true,
+}
+local DRAG_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "",
+    style = "panel", fill = BTN_FILL, accent = ZERO, border = BTN_BORDER,
+    text_color = BTN_TEXT, align_h = "center", align_v = "middle",
+    corner_radius = 6, font_scale = FONT, draggable = true, visible = true,
+}
 
 function menu.init(screen_name)
     SCREEN = screen_name or SCREEN
@@ -43,34 +70,26 @@ end
 local function end_frame()
     for id, st in pairs(all) do
         if st == "shown" and not used[id] then
-            runtime_ui.set_quad(SCREEN, id, {visible = false, no_input = true})
+            runtime_ui.set_quad(SCREEN, id, HIDE_Q)
             all[id] = "hidden"
         end
     end
 end
 
 local function state(id)
-    return runtime_ui.get_state(SCREEN, id) or {}
+    return runtime_ui.get_state(SCREEN, id) or EMPTY_STATE
 end
 
 -- Full-window backdrop. NOT no_input: it swallows clicks so the board under the
 -- overlay never sees them.
 local function backdrop(w, h)
-    q("menu_backdrop", {
-        x = 0, y = 0, w = w, h = h,
-        style = "panel", fill = BACKDROP_FILL,
-        accent = {0, 0, 0, 0}, border = {0, 0, 0, 0},
-        visible = true,
-    })
+    BACK_Q.w, BACK_Q.h = w, h
+    q("menu_backdrop", BACK_Q)
 end
 
 local function panel(id, x, y, w, h)
-    q(id, {
-        x = x, y = y, w = w, h = h,
-        style = "panel", fill = PANEL_FILL,
-        accent = {0, 0, 0, 0}, border = PANEL_BORDER,
-        corner_radius = 10, visible = true,
-    })
+    PANEL_Q.x, PANEL_Q.y, PANEL_Q.w, PANEL_Q.h = x, y, w, h
+    q(id, PANEL_Q)
 end
 
 -- `no_input` DEFAULTS FALSE here, unlike view.text. Every caption this module draws sits on
@@ -80,15 +99,11 @@ end
 local function label(id, x, y, w, h, body, scale, color, no_input)
     -- style "text": a panel at font_scale 1.8 in a 44px box does not clip, so
     -- "PhasmaChess" painted over the buttons and read as leftover ghost text.
-    q(id, {
-        x = x, y = y, w = w, h = h, body = body,
-        style = "text", fill = {0, 0, 0, 0},
-        accent = {0, 0, 0, 0}, border = {0, 0, 0, 0},
-        text_color = color or {0.95, 0.95, 0.92, 1},
-        align_h = "center", align_v = "middle",
-        font_scale = scale or FONT,
-        no_input = no_input == true, visible = true,
-    })
+    LABEL_Q.x, LABEL_Q.y, LABEL_Q.w, LABEL_Q.h, LABEL_Q.body = x, y, w, h, body
+    LABEL_Q.text_color = color or {0.95, 0.95, 0.92, 1}
+    LABEL_Q.font_scale = scale or FONT
+    LABEL_Q.no_input = no_input == true
+    q(id, LABEL_Q)
 end
 
 -- Button roles. Colour carries the meaning: leaving is faint red, starting is faint green,
@@ -112,7 +127,11 @@ local ROLE = {
 }
 
 local function lit(c, k)
-    return {math.min(1.0, c[1] * k), math.min(1.0, c[2] * k), math.min(1.0, c[3] * k), c[4]}
+    LIT[1] = math.min(1.0, c[1] * k)
+    LIT[2] = math.min(1.0, c[2] * k)
+    LIT[3] = math.min(1.0, c[3] * k)
+    LIT[4] = c[4]
+    return LIT
 end
 
 local function button(id, x, y, w, h, body, role, selected)
@@ -124,13 +143,11 @@ local function button(id, x, y, w, h, body, role, selected)
     local fill = selected and lit(pal.fill, SELECTED_LIFT) or pal.fill
     if st.down then fill = lit(fill, PRESS_SINK)
     elseif st.hovered then fill = lit(fill, HOVER_LIFT) end
-    q(id, {
-        x = x, y = y, w = w, h = h, body = body,
-        style = "panel", fill = fill, accent = {0, 0, 0, 0},
-        border = pal.border, text_color = pal.text,
-        align_h = "center", align_v = "middle",
-        corner_radius = 6, font_scale = FONT, visible = true,
-    })
+    BTN_Q.x, BTN_Q.y, BTN_Q.w, BTN_Q.h, BTN_Q.body = x, y, w, h, body
+    BTN_Q.fill = fill
+    BTN_Q.border = pal.border
+    BTN_Q.text_color = pal.text
+    q(id, BTN_Q)
     -- `clicked` is the RELEASE, not the press: the backend's InvisibleButton is
     -- PressedOnClickRelease, so sliding off a button before letting go cancels it.
     return (st and st.clicked) or false
@@ -169,13 +186,9 @@ local function drag_field(id, x, y, w, h, body)
     local fill = pal.fill
     if st.dragging or st.down then fill = lit(fill, PRESS_SINK)
     elseif st.hovered then fill = lit(fill, HOVER_LIFT) end
-    q(id, {
-        x = x, y = y, w = w, h = h, body = body,
-        style = "panel", fill = fill, accent = {0, 0, 0, 0},
-        border = pal.border, text_color = pal.text,
-        align_h = "center", align_v = "middle", corner_radius = 6,
-        font_scale = FONT, draggable = true, visible = true,
-    })
+    DRAG_Q.x, DRAG_Q.y, DRAG_Q.w, DRAG_Q.h, DRAG_Q.body = x, y, w, h, body
+    DRAG_Q.fill = fill
+    q(id, DRAG_Q)
     return st
 end
 
@@ -518,7 +531,7 @@ end
 function menu.hide()
     for id, st in pairs(all) do
         if st == "shown" then
-            runtime_ui.set_quad(SCREEN, id, {visible = false, no_input = true})
+            runtime_ui.set_quad(SCREEN, id, HIDE_Q)
             all[id] = "hidden"
         end
     end

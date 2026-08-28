@@ -28333,7 +28333,7 @@
                     "loop": false,
                     "spatial": true
                 },
-                "physicsEnabled": true,
+                "physicsEnabled": false,
                 "physicsMode": 0,
                 "physicsBodyType": 0,
                 "physicsMass": 1.0,

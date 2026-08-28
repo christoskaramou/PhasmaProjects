@@ -12,7 +12,7 @@ local Units = WB.units
 
 local Build = {}
 
-local FACTIONS = { "player", "enemy" }
+local FACTIONS = U.FACTIONS
 -- Node positions are fixed World constants, so the keep-clear list is built once.
 local RESOURCE_NODES = { World.mine, World.forest, World.wilds_mine, World.wilds_forest }
 
@@ -24,6 +24,9 @@ Build.DEFS = {
     tower     = { arch = "tower",     gold = 120, lumber = 30, build_time = 12.0, label = "Tower",     letter = "T" },
     town_hall = { arch = "town_hall", gold = 300, lumber = 80, build_time = 24.0, label = "Town Hall", letter = "H" },
 }
+for _, def in pairs(Build.DEFS) do
+    def.cost_label = string.format("%dg %dw", def.gold, def.lumber)
+end
 
 -- Player arch -> enemy arch, so the AI builds Wilds variants from the same DEFS.
 local function faction_arch(E, base_arch)
@@ -137,6 +140,8 @@ end
 
 -- ---- construction tick -------------------------------------------------------
 
+local BUILDERS = {}
+
 function Build.update(dt, state)
     Build.update_placement(dt, state)  -- player ghost-follow; no-op when not placing
     for _, fac in ipairs(FACTIONS) do
@@ -144,16 +149,19 @@ function Build.update(dt, state)
             if b.alive and b.state == "site" then
                 -- Count every worker assigned to this site and adjacent to it. More builders
                 -- build faster (capped), so extra workers meaningfully help finish.
-                local builders = {}
+                local n = 0
                 for _, u in ipairs(state.econ[fac].units) do
                     if u.alive and u.order == "build" and u.build_target == b
                        and U.dist2(u.x, u.z, b.x, b.z) <= b.radius + 2.2 then
-                        builders[#builders + 1] = u
+                        n = n + 1
+                        BUILDERS[n] = u
                     end
                 end
-                if #builders > 0 then
-                    local rate = math.min(#builders, 3) -- diminishing help past 3 workers
-                    for _, w in ipairs(builders) do
+                for i = #BUILDERS, n + 1, -1 do BUILDERS[i] = nil end
+                if n > 0 then
+                    local rate = math.min(n, 3) -- diminishing help past 3 workers
+                    for i = 1, n do
+                        local w = BUILDERS[i]
                         if (w.attack_swing or 0.0) <= 0.0 then w.attack_swing = 0.25 end
                     end
                     b.build_t = b.build_t - dt * rate
@@ -161,8 +169,8 @@ function Build.update(dt, state)
                     if b.build_t <= 0.0 then
                         b.state = "done"; b.hp = b.hp_max
                         Build.tint_site(b, false)
-                        for _, w in ipairs(builders) do w.order = "idle"; w.build_target = nil end
-                        if pe_log then pe_log(string.format("[build] %s complete (%s, %d builders)", Units.ARCH[b.arch].display, fac, #builders)) end
+                        for i = 1, n do BUILDERS[i].order = "idle"; BUILDERS[i].build_target = nil end
+                        if pe_log then pe_log(string.format("[build] %s complete (%s, %d builders)", Units.ARCH[b.arch].display, fac, n)) end
                     end
                 end
             end
@@ -193,8 +201,7 @@ end
 
 function Build.update_placement(dt, state)
     if not placing then return end
-    local mx, my = nil, nil
-    if input and input.get_mouse_position then local m = input.get_mouse_position(); if m and m.x then mx, my = m.x, m.y end end
+    local mx, my = U.mouse()
     -- NOTE: capture BOTH returns of pick_ground directly. The `mx and pick_ground() or nil`
     -- idiom truncates multi-returns to one value, so gz was always nil -> World.clamp(gx, nil)
     -- threw in U.clamp every frame, which aborted Build.update before the ghost was ever

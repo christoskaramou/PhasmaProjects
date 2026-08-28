@@ -229,8 +229,18 @@ end
 local function make_unit_table(arch_name, root, parts, ring, x, z)
     local arch = Units.ARCH[arch_name]
     next_id = next_id + 1
+    local mm
+    if arch.is_building then
+        mm = (arch.faction == "player") and "mm_b" or "mm_eb"
+    else
+        mm = (arch.faction == "player") and "mm_p" or "mm_e"
+    end
+    local hid = next_id
     local unit = {
         id = next_id, arch = arch_name, faction = arch.faction, display = arch.display,
+        hud_mm = mm .. hid,
+        hud_fh_bg = "fh" .. hid .. "_bg", hud_fh_fg = "fh" .. hid .. "_fg",
+        hud_bh_bg = "bh" .. hid .. "_bg", hud_bh_fg = "bh" .. hid .. "_fg",
         x = x, z = z, facing = (arch.faction == "player") and math.pi or 0.0,
         hp = arch.hp, hp_max = arch.hp, dps = arch.dps, armor = arch.armor,
         range = arch.range, interval = arch.interval, attack_t = 0.0,

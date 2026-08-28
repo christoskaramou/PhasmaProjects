@@ -60,10 +60,18 @@ local DEFAULT_EMT = 800 -- ms, used when a PGN has no [%emt] (older saves)
 local DEFAULT_CFG = {side = "W", elo = 1500, clock_min = 0, clock_inc = 0,
                      volume = 0.15, view2d = true}
 
-local function hide_promo()
+local function hide_named(ids)
     if not V then return end
-    for _, id in ipairs({"Q", "R", "B", "N"}) do V.hide("promo_" .. id) end
-    V.hide("promo_lbl")
+    for i = 1, #ids do V.hide(ids[i]) end
+end
+
+local PROMO_KINDS = {"Q", "R", "B", "N"}
+local PROMO_IDS = {"promo_Q", "promo_R", "promo_B", "promo_N", "promo_lbl"}
+local OFFER_IDS = {"off_bg", "off_msg", "off_yes", "off_no"}
+local PEER_IDS = {"peer_bg", "peer_dot", "peer_name"}
+
+local function hide_promo()
+    hide_named(PROMO_IDS)
 end
 
 local KIND_NAME = {K = "King", Q = "Queen", R = "Rook", B = "Bishop", N = "Knight", P = "Pawn"}
@@ -303,12 +311,30 @@ function game_over_fx()
     end_wait = 100
 end
 
+local function agree_draw()
+    flag_result, result = "Draw - agreed", "Draw - agreed"
+    game_over_fx()
+end
+
+local function back_to_title()
+    LAN.close()
+    online = nil
+    MENU.hide()
+    MENU.home()
+    menu_mode = "title"
+end
+
 local function move_sound(m)
     if not S then return end
     if m.promo then S.play("promote")
     elseif m.capture then S.play("capture")
     else S.play("move") end
     if not result and R.in_check(state, state.turn) then S.play("check") end
+end
+
+local function move_label(ply, san)
+    if ply % 2 == 1 then return string.format("%d.  %s", (ply + 1) / 2, san) end
+    return san
 end
 
 local function finish(m)
@@ -319,11 +345,13 @@ local function finish(m)
 
     local was_over = result ~= nil
     local san = apply(m, false)
-    history[#history + 1] = {
+    local ply = #history + 1
+    history[ply] = {
         from_f = m.from_f, from_r = m.from_r, to_f = m.to_f, to_r = m.to_r,
         promo = m.promo, san = san, emt = ply_ms,
         cap = m.capture and m.capture.kind or nil,
         key = R.position_key(state), -- position AFTER the move, for the threefold count
+        label = move_label(ply, san),
     }
     ply_ms = 0
     view_ply = #history
@@ -631,42 +659,43 @@ end
 local MARK_COLOR = {last = "LAST", select = "SELECT", move = "MOVE",
                     capture = "CAPTURE", check = "CHECK", hint = "HINT"}
 local marks_buf = {} -- reused; compute_marks runs once per frame
+local marks_n = 0
+local function marks_add(f, r, m)
+    marks_n = marks_n + 1
+    local mk = marks_buf[marks_n]
+    if mk then mk.f, mk.r, mk.m = f, r, m
+    else marks_buf[marks_n] = {f = f, r = r, m = m} end
+end
 
 local function compute_marks()
-    local n = 0
-    local function add(f, r, m)
-        n = n + 1
-        local mk = marks_buf[n]
-        if mk then mk.f, mk.r, mk.m = f, r, m
-        else marks_buf[n] = {f = f, r = r, m = m} end
-    end
+    marks_n = 0
 
     local last = history[view_ply]
     if last then
-        add(last.from_f, last.from_r, "last")
-        add(last.to_f, last.to_r, "last")
+        marks_add(last.from_f, last.from_r, "last")
+        marks_add(last.to_f, last.to_r, "last")
     end
-    if selected then add(selected.file, selected.rank, "select") end
+    if selected then marks_add(selected.file, selected.rank, "select") end
     if targets then
         -- One square per legal move. A promotion generates four moves onto the same
         -- square, which simply collapse onto one highlight.
         for _, m in ipairs(targets) do
-            add(m.to_f, m.to_r, m.capture and "capture" or "move")
+            marks_add(m.to_f, m.to_r, m.capture and "capture" or "move")
         end
     end
     if not result and R.in_check(state, state.turn) then
         local kf, kr = R.king_square(state, state.turn)
-        if kf then add(kf, kr, "check") end
+        if kf then marks_add(kf, kr, "check") end
     end
     if hint then
         hint.frames = hint.frames - 1
         if hint.frames <= 0 then hint = nil
         else
-            add(hint.ff, hint.fr, "hint")
-            add(hint.tf, hint.tr, "hint")
+            marks_add(hint.ff, hint.fr, "hint")
+            marks_add(hint.tf, hint.tr, "hint")
         end
     end
-    for i = #marks_buf, n + 1, -1 do marks_buf[i] = nil end
+    for i = #marks_buf, marks_n + 1, -1 do marks_buf[i] = nil end
     return marks_buf
 end
 
@@ -744,6 +773,43 @@ end
 -- couple of dozen widgets that fit on screen.
 local MAX_ROWS = 40
 local shown_rows = 0
+local ZERO = {0, 0, 0, 0}
+local EMPTY_STATE = {}
+local HUD_OPTS = {font_scale = 1.275}
+local MV_HEAD = {fill = ZERO, font_scale = 1.225}
+local MV_CUR = {style = "button", align_h = "left", fill = {0.22, 0.34, 0.55, 0.95},
+                border = ZERO, corner_radius = 4, text_color = {1, 1, 1, 1}}
+local MV_OLD = {style = "button", align_h = "left", fill = ZERO,
+                border = ZERO, corner_radius = 4, text_color = {0.88, 0.88, 0.84, 1}}
+local MV_BTN = {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.40, 0.40, 0.45, 1}}
+local MV_QUIT = {fill = {0.28, 0.11, 0.11, 0.95}, border = {0.65, 0.35, 0.30, 1}}
+local MV_THUMB = {fill = {0.55, 0.58, 0.64, 0.95}, bring_to_front = true}
+local MV_SCROLL_Q = {
+    x = 0, y = 0, w = 12, h = 0, style = "panel", fill = {0.07, 0.07, 0.09, 0.95},
+    accent = ZERO, border = {0.32, 0.32, 0.36, 0.9}, corner_radius = 4,
+    draggable = true, visible = true, body = "",
+}
+local CLK_FILL_ON = {0.20, 0.26, 0.20, 0.92}
+local CLK_FILL_OFF = {0.05, 0.05, 0.07, 0.72}
+local CLK_LOW = {1.0, 0.45, 0.35, 1}
+local CLK_OK = {0.95, 0.95, 0.92, 1}
+local CLK_W = {fill = CLK_FILL_OFF, text_color = CLK_OK}
+local CLK_B = {fill = CLK_FILL_OFF, text_color = CLK_OK}
+local ROUND6 = {corner_radius = 6}
+local OFF_MSG = {align_h = "left", fill = ZERO, font_scale = 1.0}
+local OFF_YES = {fill = {0.16, 0.34, 0.20, 0.95}, border = {0.35, 0.65, 0.40, 1}}
+local OFF_NO = {fill = {0.28, 0.14, 0.14, 0.95}, border = {0.60, 0.35, 0.32, 1}}
+local PEER_DOT_ON = {fill = {0.30, 0.80, 0.40, 1}, corner_radius = 6}
+local PEER_DOT_OFF = {fill = {0.40, 0.40, 0.44, 1}, corner_radius = 6}
+local PEER_NAME_ON = {align_h = "left", fill = ZERO, text_color = {0.95, 0.95, 0.92, 1}}
+local PEER_NAME_OFF = {align_h = "left", fill = ZERO, text_color = {0.58, 0.58, 0.62, 1}}
+
+local function clock_opts(tbl, side)
+    local active = not result and #history > 0 and state.turn == side and view_ply == #history
+    tbl.fill = active and CLK_FILL_ON or CLK_FILL_OFF
+    tbl.text_color = K.remaining(clock_k, side) < 30000 and CLK_LOW or CLK_OK
+    return tbl
+end
 
 local function draw_moves(w, h)
     local pw = math.max(190, w * 0.15)
@@ -764,7 +830,7 @@ local function draw_moves(w, h)
     list_h = rows * row_h
 
     panel_hot = V.panel("mv_bg", px, py, pw, ph)
-    V.text("mv_head", px, py, pw, head_h, "Moves", {fill = {0, 0, 0, 0}, font_scale = 1.225})
+    V.text("mv_head", px, py, pw, head_h, "Moves", MV_HEAD)
 
     local total = math.ceil(#history / 2) -- full moves
     local max_first = math.max(1, total - rows + 1)
@@ -794,15 +860,11 @@ local function draw_moves(w, h)
             local id = "mv_" .. i .. "_" .. side
             if rec then
                 local current = (ply == view_ply)
-                local label = (side == 0) and string.format("%d.  %s", move_no, rec.san) or rec.san
+                local label = rec.label or rec.san
                 local x = (side == 0) and (px + 8) or (px + 8 + left_w)
                 local tw = ((side == 0) and left_w or right_w) - 2
-                local clicked, hovered = V.button(id, x, y, tw, row_h - 2, label, {
-                        style = "button", align_h = "left",
-                        fill = current and {0.22, 0.34, 0.55, 0.95} or {0, 0, 0, 0},
-                        border = {0, 0, 0, 0}, corner_radius = 4,
-                        text_color = current and {1, 1, 1, 1} or {0.88, 0.88, 0.84, 1},
-                    })
+                local clicked, hovered = V.button(id, x, y, tw, row_h - 2, label,
+                    current and MV_CUR or MV_OLD)
                 if hovered then list_hot = true end
                 if clicked then
                     pause_replay()
@@ -825,13 +887,9 @@ local function draw_moves(w, h)
         local bar_x = px + pw - 6 - bar_w
         local thumb_h = math.max(22, list_h * rows / total)
         if thumb_h > list_h then thumb_h = list_h end
-        runtime_ui.set_quad(V.screen(), "mv_scroll", {
-            x = bar_x, y = list_y, w = bar_w, h = list_h,
-            style = "panel", fill = {0.07, 0.07, 0.09, 0.95}, accent = {0, 0, 0, 0},
-            border = {0.32, 0.32, 0.36, 0.9}, corner_radius = 4,
-            draggable = true, visible = true, body = "",
-        })
-        local st = runtime_ui.get_state(V.screen(), "mv_scroll") or {}
+        MV_SCROLL_Q.x, MV_SCROLL_Q.y, MV_SCROLL_Q.w, MV_SCROLL_Q.h = bar_x, list_y, bar_w, list_h
+        runtime_ui.set_quad(V.screen(), "mv_scroll", MV_SCROLL_Q)
+        local st = runtime_ui.get_state(V.screen(), "mv_scroll") or EMPTY_STATE
         if st.hovered or st.dragging or st.down then list_hot = true end
         if st.down or st.dragging then
             -- Click/drag is the thumb centre, not the top of the track — otherwise a click
@@ -847,7 +905,7 @@ local function draw_moves(w, h)
         -- no_input quads batch onto the background list (behind this track). bring_to_front
         -- keeps a windowed quad so the thumb actually paints on top of the track.
         V.text("mv_thumb", bar_x + 2, list_y + t * (list_h - thumb_h), bar_w - 4, thumb_h, "",
-               {fill = {0.55, 0.58, 0.64, 0.95}, bring_to_front = true})
+               MV_THUMB)
     else
         V.hide("mv_scroll")
         V.hide("mv_thumb")
@@ -874,8 +932,7 @@ local function draw_moves(w, h)
     local fy = py + ph - foot_h * 2 - 12
     if analysis then
         if V.button("mv_eval", px + 8, fy - foot_h - 4, pw - 16, foot_h - 4,
-                    eval_on and "Eval: on" or "Eval: off",
-                    {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.40, 0.40, 0.45, 1}}) then
+                    eval_on and "Eval: on" or "Eval: off", MV_BTN) then
             if S then S.play("click") end
             eval_on = not eval_on
             eval_view = nil
@@ -893,15 +950,13 @@ local function draw_moves(w, h)
         V.hide("mv_start")
         V.hide("mv_end")
     else
-        if V.button("mv_start", px + 8, fy, half, foot_h - 4, "|< Start",
-                    {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.4, 0.4, 0.45, 1}}) then
+        if V.button("mv_start", px + 8, fy, half, foot_h - 4, "|< Start", MV_BTN) then
             pause_replay()
             scroll = 1
             goto_ply(0)
             if replay then replay.wait = wait_for_next() end
         end
-        if V.button("mv_end", px + 12 + half, fy, half, foot_h - 4, "Live >|",
-                    {fill = {0.14, 0.15, 0.18, 0.95}, border = {0.4, 0.4, 0.45, 1}}) then
+        if V.button("mv_end", px + 12 + half, fy, half, foot_h - 4, "Live >|", MV_BTN) then
             pause_replay()
             scroll = nil
             goto_ply(#history)
@@ -910,8 +965,7 @@ local function draw_moves(w, h)
     end
 
     -- Quitting moved behind the pause menu, which also offers the way back to the title.
-    if V.button("mv_quit", px + 8, fy + foot_h + 4, pw - 16, foot_h - 4, "Menu",
-                {fill = {0.28, 0.11, 0.11, 0.95}, border = {0.65, 0.35, 0.30, 1}}) then
+    if V.button("mv_quit", px + 8, fy + foot_h + 4, pw - 16, foot_h - 4, "Menu", MV_QUIT) then
         if S then S.play("click") end
         open_menu("pause")
     end
@@ -936,22 +990,15 @@ local function draw_hud(w, h)
         text = text .. "   (reviewing move " .. view_ply .. "/" .. #history .. ")"
     end
     if hud_note then text = hud_note end
-    V.text("hud", w * 0.5 - w * 0.16, h * 0.02, w * 0.32, bar, text, {font_scale = 1.275})
+    V.text("hud", w * 0.5 - w * 0.16, h * 0.02, w * 0.32, bar, text, HUD_OPTS)
 
     -- Clocks flank the HUD: White left, Black right; the running side is lit.
     if clock_k then
         local cw = math.max(84, w * 0.06)
-        local live = not result and #history > 0
-        local function clock_style(side)
-            local active = live and state.turn == side and view_ply == #history
-            return {fill = active and {0.20, 0.26, 0.20, 0.92} or {0.05, 0.05, 0.07, 0.72},
-                    text_color = K.remaining(clock_k, side) < 30000
-                                 and {1.0, 0.45, 0.35, 1} or {0.95, 0.95, 0.92, 1}}
-        end
         V.text("clk_w", w * 0.5 - w * 0.16 - cw - 10, h * 0.02, cw, bar,
-               "W " .. K.fmt(K.remaining(clock_k, "W")), clock_style("W"))
+               "W " .. K.fmt(K.remaining(clock_k, "W")), clock_opts(CLK_W, "W"))
         V.text("clk_b", w * 0.5 + w * 0.16 + 10, h * 0.02, cw, bar,
-               "B " .. K.fmt(K.remaining(clock_k, "B")), clock_style("B"))
+               "B " .. K.fmt(K.remaining(clock_k, "B")), clock_opts(CLK_B, "B"))
     end
 
     -- A draw or takeback offer is a question, not an interruption. It sits under the opponent's
@@ -962,25 +1009,20 @@ local function draw_hud(w, h)
         local oy = h * 0.02 + bar + 8
         local ow = math.max(210, w * 0.135)
         local rh = bar * 0.82
-        V.text("off_bg", 14, oy, ow, rh * 2 + 14, "", {corner_radius = 6})
+        V.text("off_bg", 14, oy, ow, rh * 2 + 14, "", ROUND6)
         V.text("off_msg", 22, oy + 4, ow - 16, rh,
                (peer_name or "Opponent") ..
                ((offer_in == "draw") and " offers a draw" or " asks to take a move back"),
-               {align_h = "left", fill = {0, 0, 0, 0}, font_scale = 1.0})
+               OFF_MSG)
         local half = (ow - 24) * 0.5
-        if V.button("off_yes", 22, oy + rh + 4, half, rh, "Accept",
-                    {fill = {0.16, 0.34, 0.20, 0.95}, border = {0.35, 0.65, 0.40, 1}}) then
+        if V.button("off_yes", 22, oy + rh + 4, half, rh, "Accept", OFF_YES) then
             answer_offer(true)
         end
-        if V.button("off_no", 30 + half, oy + rh + 4, half, rh, "Decline",
-                    {fill = {0.28, 0.14, 0.14, 0.95}, border = {0.60, 0.35, 0.32, 1}}) then
+        if V.button("off_no", 30 + half, oy + rh + 4, half, rh, "Decline", OFF_NO) then
             answer_offer(false)
         end
     else
-        V.hide("off_bg")
-        V.hide("off_msg")
-        V.hide("off_yes")
-        V.hide("off_no")
+        hide_named(OFFER_IDS)
     end
 
     -- Who you are playing, and whether they are still there. The name outlives the link on
@@ -991,17 +1033,14 @@ local function draw_hud(w, h)
         local dot = math.max(11, bar * 0.24)
         local pad = dot * 0.7
         local bw = math.max(160, w * 0.11)
-        V.text("peer_bg", 14, h * 0.02, bw, bar, "", {corner_radius = 6})
-        V.text("peer_dot", 14 + pad, h * 0.02 + (bar - dot) * 0.5, dot, dot, "",
-               {fill = peer_live and {0.30, 0.80, 0.40, 1} or {0.40, 0.40, 0.44, 1},
-                corner_radius = dot * 0.5})
+        V.text("peer_bg", 14, h * 0.02, bw, bar, "", ROUND6)
+        local dot_opts = peer_live and PEER_DOT_ON or PEER_DOT_OFF
+        dot_opts.corner_radius = dot * 0.5
+        V.text("peer_dot", 14 + pad, h * 0.02 + (bar - dot) * 0.5, dot, dot, "", dot_opts)
         V.text("peer_name", 14 + pad + dot + 8, h * 0.02, bw - pad - dot - 12, bar, peer_name,
-               {align_h = "left", fill = {0, 0, 0, 0},
-                text_color = peer_live and {0.95, 0.95, 0.92, 1} or {0.58, 0.58, 0.62, 1}})
+               peer_live and PEER_NAME_ON or PEER_NAME_OFF)
     else
-        V.hide("peer_bg")
-        V.hide("peer_dot")
-        V.hide("peer_name")
+        hide_named(PEER_IDS)
     end
 
     if promo then
@@ -1009,7 +1048,7 @@ local function draw_hud(w, h)
         local total = bw * 4 + 24 * 3
         local x0, y = w * 0.5 - total * 0.5, h * 0.5 - bh * 0.5
         V.text("promo_lbl", w * 0.5 - w * 0.12, y - bh - 12, w * 0.24, bh, "Promote to:")
-        for i, kind in ipairs({"Q", "R", "B", "N"}) do
+        for i, kind in ipairs(PROMO_KINDS) do
             local bx = x0 + (i - 1) * (bw + 24)
             if V.button("promo_" .. kind, bx, y, bw, bh, KIND_NAME[kind]) then
                 local m = promo.moves[kind]
@@ -1195,8 +1234,7 @@ function answer_offer(yes)
     end
     LAN.offer((what == "draw") and "DRAW_OK" or "TAKEBACK_OK")
     if what == "draw" then
-        flag_result, result = "Draw - agreed", "Draw - agreed"
-        game_over_fx()
+        agree_draw()
     else
         takeback_for((my_color == "W") and "B" or "W")
     end
@@ -1245,8 +1283,7 @@ function lan_tick(delta_ms)
         elseif ev.kind == "draw_accept" then
             offer_sent = nil
             if not result then
-                flag_result, result = "Draw - agreed", "Draw - agreed"
-                game_over_fx()
+                agree_draw()
             end
         elseif ev.kind == "takeback_accept" then
             offer_sent = nil
@@ -1405,11 +1442,7 @@ local function menu_frame(pressed)
             close_menu()
             G.resign()
         elseif action == "menu" then
-            LAN.close()
-            online = nil
-            MENU.hide()
-            MENU.home()
-            menu_mode = "title"
+            back_to_title()
         elseif action == "exit" then
             host_quit()
         end
@@ -1442,11 +1475,7 @@ local function menu_frame(pressed)
             close_menu()
             G.replay()
         elseif action == "menu" then
-            LAN.close()
-            online = nil
-            MENU.hide()
-            MENU.home()
-            menu_mode = "title"
+            back_to_title()
         elseif action == "pgn" then
             if S then S.play("click") end
             G.save_pgn()
@@ -1714,6 +1743,7 @@ function G.update()
 end
 
 function G.destroy()
+    if LAN then LAN.close() end
     if BOT then BOT.shutdown() end
     if GR then GR.destroy() end
     if V then V.clear() end
@@ -1849,11 +1879,13 @@ function G.load_pgn(text)
             break
         end
         local rec_san = apply(m, true)
-        history[#history + 1] = {
+        local ply = #history + 1
+        history[ply] = {
             from_f = m.from_f, from_r = m.from_r, to_f = m.to_f, to_r = m.to_r,
             promo = m.promo, san = rec_san, emt = parsed.emts and parsed.emts[i],
             cap = m.capture and m.capture.kind or nil,
             key = R.position_key(state),
+            label = move_label(ply, rec_san),
         }
     end
     view_ply = #history
@@ -1951,8 +1983,7 @@ end
 function G.offer_draw()
     if result then return false end
     if not bot_on or bot_both or bot_would_accept_draw() then
-        flag_result, result = "Draw - agreed", "Draw - agreed"
-        game_over_fx()
+        agree_draw()
         return true
     end
     hud_note, hud_note_frames = "Bot declines", 180

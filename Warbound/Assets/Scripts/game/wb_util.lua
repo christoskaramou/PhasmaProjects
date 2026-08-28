@@ -4,6 +4,17 @@
 
 local U = {}
 
+U.FACTIONS = { "player", "enemy" }
+
+function U.alive(e) return e and e.alive end
+
+function U.mouse()
+    if input and input.get_mouse_position then
+        local m = input.get_mouse_position()
+        if m and m.x then return m.x, m.y end
+    end
+end
+
 -- ---- scalar math --------------------------------------------------------------
 
 function U.clamp(v, lo, hi)

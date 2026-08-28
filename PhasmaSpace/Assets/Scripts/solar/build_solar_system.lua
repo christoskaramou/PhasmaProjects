@@ -191,7 +191,7 @@ for _, p in ipairs(P.planets) do
         make_ring_surface(p.name .. "_rings_back", tilt, outer_u, back_opts)
     end
 
-    for _, m in ipairs(p.moons or {}) do
+    for _, m in ipairs(p.moons) do
         local morbit = scene.add_empty_node(m.name .. "_orbit")
         morbit:set_parent(tilt)
         local mp = P.moon_local_units(m, EPOCH_JD)

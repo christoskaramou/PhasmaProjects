@@ -1,9 +1,15 @@
--- Run with: local code = assert(fs.read("Scripts/samples/ath_physics2d_sample.lua")); assert(load(code))()
+-- Run with: local code = assert(fs.read("Scripts/samples/ath_physics2d_sample.lua")); assert(load(code))(); ath_physics2d_sample.reset()
+-- Needs ath_shapes2d (Scripts/global/ath_shapes2d.lua) plus physics2d. Sample does not ship that module.
+
+if not sample_boot then
+    assert(load(assert(fs.read("Scripts/samples/sample_boot.lua"))))()
+end
 
 ath_physics2d_sample = ath_physics2d_sample or {}
 
 local M = ath_physics2d_sample
 local UPDATE_ID = "ath_physics2d_sample"
+local TAG = "[ATH2D Sample]"
 
 local colors = {
     floor = vec4(0.18, 0.20, 0.23, 1.0),
@@ -30,14 +36,12 @@ local state = {
 }
 
 local function log(message)
-    if pe_log then
-        pe_log("[ATH2D Sample] " .. message)
-    end
+    sample_boot.log(TAG, message)
 end
 
 local function require_runtime()
     if not ath_shapes2d then
-        log("ath_shapes2d is not loaded")
+        log("ath_shapes2d is not loaded (Scripts/global/ath_shapes2d.lua; not in Sample)")
         return false
     end
 
@@ -61,25 +65,6 @@ local function set_shape_color(shape, color)
             material.set(node, "base_color", color)
         end
     end
-end
-
-local function apply_sample_render_settings()
-    if not settings or not settings.get_render_mode or not settings.set_render_mode then
-        return
-    end
-
-    state.previous_render_mode = settings.get_render_mode()
-    if state.previous_render_mode ~= "raster" then
-        settings.set_render_mode("raster")
-        log("render mode set to raster for the 2D physics sample")
-    end
-end
-
-local function restore_render_settings()
-    if settings and settings.set_render_mode and state.previous_render_mode then
-        settings.set_render_mode(state.previous_render_mode)
-    end
-    state.previous_render_mode = nil
 end
 
 local function dynamic_shape(shape, x, y, vx, vy, spin)
@@ -339,7 +324,7 @@ function M.stop()
     if physics2d then
         physics2d.clear()
     end
-    restore_render_settings()
+    sample_boot.restore_raster(state)
     state.bodies = {}
     state.sensor = nil
     state.sensor_body = 0
@@ -358,7 +343,9 @@ function M.reset()
     physics2d.clear()
     physics2d.set_gravity(0.0, -10.0)
     physics2d.set_paused(false)
-    apply_sample_render_settings()
+    if sample_boot.apply_raster(state) then
+        log("render mode set to raster for the 2D physics sample")
+    end
 
     state.bodies = {}
     state.sensor_overlaps = 0
@@ -376,5 +363,3 @@ function M.reset()
     log("ready; press R while the viewport is focused to reset")
     return true
 end
-
-M.reset()

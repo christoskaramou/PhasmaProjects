@@ -22,7 +22,7 @@ local Camera = WB.camera
 
 local Economy = {}
 
-local FACTIONS = { "player", "enemy" }
+local FACTIONS = U.FACTIONS
 
 -- Harvest tuning: how much a trip yields, how long a chop takes, and how close the
 -- worker must get to the node / drop-off (node radii baked into `reach`).
@@ -39,6 +39,9 @@ local TRAIN = {
     grunt        = { gold = 70,  lumber = 0,  food = 1, time = 8.0,  label = "Train Raider",   letter = "G" },
     wilds_worker = { gold = 50,  lumber = 0,  food = 1, time = 6.0,  label = "Train Ravager",  letter = "F" },
 }
+for _, def in pairs(TRAIN) do
+    def.cost_label = string.format("%dg", def.gold) .. (def.lumber > 0 and string.format(" %dw", def.lumber) or "")
+end
 Economy.TRAIN = TRAIN
 
 -- Accessor: return the econ handle for a faction ("player" or "enemy"), or nil.

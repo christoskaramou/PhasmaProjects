@@ -29,6 +29,7 @@ local state = {
     last_hud_follow = nil,
     picker_options_open = false,
     marker_visible = {},
+    body_radius = {},
     prev_time_scale = 1.0 / 86400.0, -- real time
 }
 
@@ -63,7 +64,7 @@ local function build_body_list(ctx)
     for _, p in ipairs(ctx.planets.planets) do
         state.body_info[p.name] = { kind = "planet" }
         add(p.name)
-        for _, m in ipairs(p.moons or {}) do
+        for _, m in ipairs(p.moons) do
             state.body_info[m.name] = { kind = "moon", parent = p.name }
             if always[m.name] or (m.radius_km and m.radius_km >= 100.0) then
                 add(m.name)
@@ -80,10 +81,6 @@ local function body_label(name)
         return info.parent .. " / " .. name
     end
     return name
-end
-
-local function marker_label(name)
-    return name or ""
 end
 
 local function follow_picker_label(props)
@@ -148,6 +145,7 @@ function M.init(ctx)
     local pick_label = follow_picker_label(ctx.props)
     runtime_ui.set_button(PANEL, "follow_pick", pick_label)
     state.last_pick_label = pick_label
+    state.last_follow = ctx.props.follow
     runtime_ui.show(PANEL)
 
     runtime_ui.clear(HUD)
@@ -162,8 +160,13 @@ function M.init(ctx)
     -- moon -> parent map for marker decluttering (system-scale views would
     -- otherwise stack moon labels on top of their parent planets)
     state.moon_info = {}
+    state.body_radius = {}
+    for _, name in ipairs(M.bodies) do
+        local h = ctx.handles[name]
+        state.body_radius[name] = h and h:get_scale().x or 1.0
+    end
     for _, p in ipairs(ctx.planets.planets) do
-        for _, m in ipairs(p.moons or {}) do
+        for _, m in ipairs(p.moons) do
             state.moon_info[m.name] = {
                 parent = p.name,
                 a_units = ctx.planets.dist_units(m.a_km) * (m.dist_scale or 1.0),
@@ -191,6 +194,7 @@ local MARKER_ACCENT = { 0.05, 0.09, 0.16, 0.0 }
 local MARKER_BORDER = { 0.45, 0.70, 1.00, 0.8 }
 local MARKER_TEXT = { 0.85, 0.93, 1.00, 0.95 }
 local MARKER_HIDDEN = { x = -1000.0, y = -1000.0, width = 8.0, height = 8.0, visible = false }
+local CLIP = vec4(0.0, 0.0, 0.0, 1.0)
 local marker_quad = {
     x = 0.0, y = 0.0, width = 90.0, height = 32.0,
     label = "", font_scale = 1.0, visible = true,
@@ -217,39 +221,49 @@ local function update_markers(ctx)
 
     local vp = cam:get_view_projection()
     local cp = cam:get_position()
+    local cpx, cpy, cpz = cp.x, cp.y, cp.z
+    local positions = ctx.universe_positions
+    local shift = ctx.scene_shift
+    local radii = state.body_radius
+    if not positions or not shift then return end
 
     for i, name in ipairs(M.bodies) do
         local id = M.marker_ids[i]
-        local body = ctx.handles[name]
         local shown = false
-        if state.markers_on and body and name ~= ctx.props.follow then
-            local wp = body:get_world_position()
-            local dx, dy, dz = wp.x - cp.x, wp.y - cp.y, wp.z - cp.z
+        local up = positions[name]
+        if state.markers_on and up and name ~= ctx.props.follow then
+            local wx = up.x + shift.x
+            local wy = up.y + shift.y
+            local wz = up.z + shift.z
+            local dx, dy, dz = wx - cpx, wy - cpy, wz - cpz
             local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
-            local small = dist > 0.0 and (body:get_scale().x / dist) < MARKER_MAX_ANGULAR
+            local radius = radii[name] or 1.0
+            local small = dist > 0.0 and (radius / dist) < MARKER_MAX_ANGULAR
             local moon = state.moon_info[name]
             if small and moon then
-                local parent = ctx.handles[moon.parent]
-                if parent then
-                    local pp = parent:get_world_position()
-                    local pd = math.sqrt((pp.x - cp.x) ^ 2 + (pp.y - cp.y) ^ 2 + (pp.z - cp.z) ^ 2)
+                local pup = positions[moon.parent]
+                if pup then
+                    local pdx = pup.x + shift.x - cpx
+                    local pdy = pup.y + shift.y - cpy
+                    local pdz = pup.z + shift.z - cpz
+                    local pd = math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz)
                     if pd > moon.a_units * 30.0 then small = false end
                 end
             end
             if small then
-                local c = vp * vec4(wp.x, wp.y, wp.z, 1.0)
+                CLIP.x, CLIP.y, CLIP.z = wx, wy, wz
+                local c = vp * CLIP
                 if c.w > 0.0 then -- in front of the camera
                     local nx, ny = c.x / c.w, c.y / c.w
                     if nx > -1.0 and nx < 1.0 and ny > -1.0 and ny < 1.0 then
                         -- engine NDC is y-down: +y maps down the screen
                         local sx = (nx * 0.5 + 0.5) * sw
                         local sy = (ny * 0.5 + 0.5) * sh
-                        local label = marker_label(name)
-                        local width = math.min(170.0, math.max(90.0, #label * 7.5 + 24.0))
+                        local width = math.min(170.0, math.max(90.0, #name * 7.5 + 24.0))
                         marker_quad.x = sx - width * 0.5
                         marker_quad.y = sy + 8.0
                         marker_quad.width = width
-                        marker_quad.label = label
+                        marker_quad.label = name
                         marker_quad.font_scale = marker_font_scale
                         runtime_ui.set_quad(MARKERS, id, marker_quad)
                         shown = true
@@ -331,18 +345,21 @@ function M.tick(ctx)
         end
     end
 
-    local pick_label = follow_picker_label(props)
-    if pick_label ~= state.last_pick_label then
-        runtime_ui.set_button(PANEL, "follow_pick", pick_label)
-        state.last_pick_label = pick_label
-    end
+    local pick_dirty = false
     if state.follow_picker_open ~= state.picker_options_open then
         sync_follow_picker_options()
         state.picker_options_open = state.follow_picker_open
+        pick_dirty = true
     end
     if props.follow ~= state.last_follow then
         runtime_ui.set_text(PANEL, "follow_lbl", "Following", body_label(props.follow))
         state.last_follow = props.follow
+        pick_dirty = true
+    end
+    if pick_dirty then
+        local pick_label = follow_picker_label(props)
+        runtime_ui.set_button(PANEL, "follow_pick", pick_label)
+        state.last_pick_label = pick_label
     end
 
     -- camera speed: panel buttons always work; the wheel zooms the followed body

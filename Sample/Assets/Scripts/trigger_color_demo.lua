@@ -1,3 +1,8 @@
+-- Needs these node names in the current scene. trigger_zones_demo uses
+-- ff_zone/spawn_zone/stream_zone/camfov_zone — do not attach until names match.
+local SENSOR_NAME = "Moving Trigger Mesh"
+local BLOCK_NAMES = { "Collision Mesh A", "Collision Mesh B", "Collision Mesh C" }
+
 local sensor = nil
 local direction = 1.0
 local registered = false
@@ -52,10 +57,10 @@ local function register()
         return
     end
 
-    sensor = scene.find_model("Moving Trigger Mesh")
+    sensor = scene.find_model(SENSOR_NAME)
     if not sensor or not sensor:is_valid() then
         if not missing_logged then
-            pe_log("[TriggerDemo] missing Moving Trigger Mesh")
+            pe_log("[TriggerDemo] missing " .. SENSOR_NAME)
             missing_logged = true
         end
         return
@@ -63,7 +68,7 @@ local function register()
 
     reset_state()
     set_sensor_color()
-    for _, name in ipairs({ "Collision Mesh A", "Collision Mesh B", "Collision Mesh C" }) do
+    for _, name in ipairs(BLOCK_NAMES) do
         set_color(scene.find_model(name), colors.block_idle, false)
     end
 
@@ -78,7 +83,7 @@ local function register()
         _G.trigger_color_demo.overlapping = overlap_count
         set_color(self_trigger, colors.sensor_touching, true)
         set_color(other, colors.block_touching, false)
-        pe_log(string.format("[TriggerDemo] ENTER Moving Trigger Mesh overlapping %s", key))
+        pe_log(string.format("[TriggerDemo] ENTER %s overlapping %s", SENSOR_NAME, key))
     end)
 
     physics.on_trigger_exit(sensor, function(other, self_trigger)
@@ -92,7 +97,7 @@ local function register()
         _G.trigger_color_demo.overlapping = overlap_count
         set_sensor_color()
         set_color(other, colors.block_idle, false)
-        pe_log(string.format("[TriggerDemo] EXIT Moving Trigger Mesh left %s", key))
+        pe_log(string.format("[TriggerDemo] EXIT %s left %s", SENSOR_NAME, key))
     end)
 
     registered = true

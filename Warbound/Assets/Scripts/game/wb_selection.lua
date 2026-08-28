@@ -17,14 +17,6 @@ local PICK_PX = 56.0                 -- single-click pick radius (screen px)
 local prev_down = false
 local press_x, press_y = 0.0, 0.0
 
-local function mouse()
-    if input and input.get_mouse_position then
-        local m = input.get_mouse_position()
-        if m and m.x then return m.x, m.y end
-    end
-    return nil
-end
-
 function Selection.clear()
     for _, u in ipairs(Selection.list) do WB.units.set_selected(u, false) end
     Selection.list = {}
@@ -66,7 +58,7 @@ end
 
 -- Prune dead units from the selection (call when something dies).
 function Selection.prune()
-    U.compact(Selection.list, function(u) return u.alive end)
+    U.compact(Selection.list, U.alive)
 end
 
 -- Nearest live unit in `units` whose on-screen center is within PICK_PX of (sx,sy).
@@ -100,7 +92,7 @@ function Selection.update(player_units, mouse_in_ui, state)
     end
 
     local down = input and input.is_left_mouse_down and input.is_left_mouse_down() == true
-    local mx, my = mouse()
+    local mx, my = U.mouse()
 
     if down and not prev_down then
         -- press

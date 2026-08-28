@@ -24,15 +24,74 @@ local EMPTY = {}
 local NO_INPUT = { no_input = true }
 local BAR_BG = { 0.04, 0.05, 0.06, 0.95 }
 local BAR_BG_OPTS = { border = { 0.2, 0.2, 0.24, 0.95 }, no_input = true }
+local LABEL_OPTS = { label = "", font_scale = 0.95, no_input = true }
+local TEXT_OPTS = { body = "", font_scale = 1.0, no_input = true }
+local BTN_OPTS = { title = "", body = "", font_scale = 1.0 }
+local SET_UI = { body = "", text_color = nil }
+local PORT_FACE_OPTS = { border = U.COLOR.panel_edge, no_input = true }
+local FACE_FILL = { 0, 0, 0, 1 }
 local TRAIN_WHY = { gold = "need gold", lumber = "need lumber", food = "need food", reserve = "no reserve" }
-local FACTIONS = { "player", "enemy" }
+local FACTIONS = U.FACTIONS
+local BUILD_KEYS = { "farm", "barracks", "tower", "town_hall" }
+local MM_BG = { 0.12, 0.16, 0.10, 1.0 }
+local FILL_STOP = { 0.15, 0.13, 0.13, 0.95 }
+local FILL_HOLD = { 0.13, 0.15, 0.13, 0.95 }
+local FILL_BTN = { 0.12, 0.14, 0.18, 0.95 }
+local FILL_TRAIN_OK = { 0.16, 0.2, 0.16, 0.95 }
+local FILL_TRAIN_NO = { 0.12, 0.12, 0.14, 0.95 }
+local FILL_BLD_OK = { 0.14, 0.18, 0.14, 0.95 }
+local FILL_MOVE = { 0.10, 0.12, 0.16, 0.9 }
+local FILL_ATK = { 0.16, 0.11, 0.11, 0.9 }
+local FILL_AB_OK = { 0.16, 0.14, 0.22, 0.95 }
+local FILL_AB_NO = { 0.10, 0.10, 0.12, 0.95 }
+local FILL_PLACE = { 0.05, 0.08, 0.05, 0.92 }
+local PLACE_OPTS = { body = "Left-click to place — right-click to cancel", font_scale = 1.05,
+    align = "center", no_input = true, border = { 0.3, 0.6, 0.3, 0.9 } }
+local OPT_MOVE = { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" }
+local OPT_ATK = { title = "Attack", body = "rt-clk foe", font_scale = 0.85, no_input = true, align = "center" }
+local OPT_EMPTY = { body = "No unit selected", font_scale = 1.1, no_input = true }
+local OPT_HINT = { body = "Select a unit or building\n(left-click / drag)", font_scale = 1.0, no_input = true }
+local HIT_OPTS = { border = CLEAR }
+local RALLY_COL = { 0.2, 0.9, 0.3, 1.0 }
+local RALLY_RING = { 0.2, 0.9, 0.3, 0.85 }
+local RALLY_RING_IDS = {}
+for i = 0, 7 do RALLY_RING_IDS[i] = "rally_ring" .. i end
+local SELBOX_COL = { 0.4, 0.95, 0.5, 0.9 }
+local HP_BG = { 0.02, 0.02, 0.03, 0.9 }
+local HP_BG_B = { 0.02, 0.02, 0.03, 0.92 }
+local XP_COL = { 0.7, 0.5, 0.95 }
+local SITE_COL = { 0.45, 0.70, 0.95 }
+local HEAD_SKIN = { 0.95, 0.92, 0.85, 1.0 }
+local BLD_FACE = { 0.5, 0.52, 0.6, 1.0 }
+-- Engine ReadQuadOptions copies this table into C++ each call; mutating in place is safe
+-- and avoids a payload alloc per widget per frame.
+local PAYLOAD = {
+    x = 0, y = 0, width = 0, height = 0,
+    style = "panel", title = "", body = "",
+    fill = CLEAR, border = CLEAR, accent = CLEAR,
+    text_color = nil, font_scale = 1.0, align_h = "left",
+    no_input = true, selected = nil,
+}
 
 local sw, sh, uiscale = 1920.0, 1080.0, 1.0
 local dyn_now = {}
 local dyn_prev = {}
 local shown = false
+local last_text = {}
 
 local function mark(id) dyn_now[id] = true end
+
+local function face_fill(col)
+    FACE_FILL[1], FACE_FILL[2], FACE_FILL[3] = col[1], col[2], col[3]
+    return FACE_FILL
+end
+
+local function text_opts(body, scale, align)
+    TEXT_OPTS.body = body
+    TEXT_OPTS.font_scale = scale or 1.0
+    TEXT_OPTS.align = align
+    return TEXT_OPTS
+end
 
 local function refresh_surface()
     if runtime_ui and runtime_ui.get_surface_size then
@@ -43,42 +102,32 @@ local function refresh_surface()
 end
 
 -- Immediate quad on the overlay screen (dynamic content drawn over authored panels).
-local function quad(id, x, y, w, h, fill, opts)
-    if not (runtime_ui and runtime_ui.set_quad) then return end
+local function push_quad(id, x, y, w, h, fill, opts, clickable)
     opts = opts or EMPTY
     mark(id)
-    runtime_ui.set_quad(SCREEN, id, {
-        x = x, y = y, width = w, height = h,
-        style = opts.style or "panel",
-        title = U.ascii(opts.title or ""),
-        body = U.ascii(opts.body or opts.label or ""),
-        fill = fill or CLEAR,
-        border = opts.border or CLEAR,
-        accent = CLEAR,
-        text_color = opts.text_color or U.COLOR.ink,
-        font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0),
-        align_h = opts.align or "left",
-        no_input = (opts.no_input ~= false),
-        selected = opts.selected,
-    })
+    PAYLOAD.x, PAYLOAD.y, PAYLOAD.width, PAYLOAD.height = x, y, w, h
+    PAYLOAD.style = opts.style or "panel"
+    PAYLOAD.title = U.ascii(opts.title or "")
+    PAYLOAD.body = U.ascii(opts.body or opts.label or "")
+    PAYLOAD.fill = fill or CLEAR
+    PAYLOAD.border = opts.border or (clickable and U.COLOR.panel_edge or CLEAR)
+    PAYLOAD.accent = CLEAR
+    PAYLOAD.text_color = opts.text_color or U.COLOR.ink
+    PAYLOAD.font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0)
+    PAYLOAD.align_h = opts.align or (clickable and "center" or "left")
+    PAYLOAD.no_input = clickable and false or (opts.no_input ~= false)
+    PAYLOAD.selected = opts.selected
+    runtime_ui.set_quad(SCREEN, id, PAYLOAD)
+end
+
+local function quad(id, x, y, w, h, fill, opts)
+    if not (runtime_ui and runtime_ui.set_quad) then return end
+    push_quad(id, x, y, w, h, fill, opts, false)
 end
 
 local function button(id, x, y, w, h, fill, opts)
-    opts = opts or EMPTY
     if not (runtime_ui and runtime_ui.set_quad) then return false end
-    mark(id)
-    runtime_ui.set_quad(SCREEN, id, {
-        x = x, y = y, width = w, height = h,
-        style = "panel",
-        title = U.ascii(opts.title or ""),
-        body = U.ascii(opts.body or ""),
-        fill = fill, border = opts.border or U.COLOR.panel_edge,
-        accent = CLEAR,
-        text_color = opts.text_color or U.COLOR.ink,
-        font_scale = (opts.font_scale or 1.0) / (uiscale or 1.0),
-        align_h = "center",
-        no_input = false,
-    })
+    push_quad(id, x, y, w, h, fill, opts, true)
     local st = runtime_ui.get_state and runtime_ui.get_state(SCREEN, id) or nil
     return st and st.clicked == true, st
 end
@@ -88,7 +137,8 @@ local function bar(id, x, y, w, h, pct, color, label)
     quad(id .. "_bg", x, y, w, h, BAR_BG, BAR_BG_OPTS)
     quad(id .. "_fg", x, y, math.max(0.0, w * pct), h, color, NO_INPUT)
     if label then
-        quad(id .. "_tx", x, y - h * 0.15, w, h, CLEAR, { label = label, font_scale = 0.95, no_input = true })
+        LABEL_OPTS.label = label
+        quad(id .. "_tx", x, y - h * 0.15, w, h, CLEAR, LABEL_OPTS)
     end
 end
 
@@ -131,7 +181,12 @@ end
 -- Update an authored text panel's content (and register its rect).
 local function drive_text(key, body, text_color, fx, fy, fw, fh)
     local n = nodes and nodes[key]
-    if n and n.set_ui then n:set_ui({ body = U.ascii(body), text_color = text_color }) end
+    if n and n.set_ui and last_text[key] ~= body then
+        last_text[key] = body
+        SET_UI.body = U.ascii(body)
+        SET_UI.text_color = text_color
+        n:set_ui(SET_UI)
+    end
     panel_rect(key, fx, fy, fw, fh)
 end
 
@@ -148,46 +203,46 @@ end
 
 -- ---- minimap (dots drawn inside the authored HUD_Minimap panel) ----------------
 
+local mm_x, mm_y, mm_w, mm_h, mm_b, mm_rx, mm_rz = 0, 0, 1, 1, World.bounds, 1, 1
+local function plot(id, wx, wz, col, size)
+    local px = mm_x + ((wx - mm_b.min_x) / mm_rx) * mm_w
+    local py = mm_y + ((wz - mm_b.min_z) / mm_rz) * mm_h
+    quad(id, px - size * 0.5, py - size * 0.5, size, size, col, NO_INPUT)
+end
+
 local function draw_minimap(state)
     local M = 20.0
     local x, y, w, h = panel_rect("Minimap", M, sh - M - 300, 300, 300)
     local pad = w * 0.05
-    local mx, my, mw, mh = x + pad, y + pad, w - pad * 2, h - pad * 2
-    quad("mm_bg", mx, my, mw, mh, { 0.12, 0.16, 0.10, 1.0 }, { no_input = true })
+    mm_x, mm_y, mm_w, mm_h = x + pad, y + pad, w - pad * 2, h - pad * 2
+    quad("mm_bg", mm_x, mm_y, mm_w, mm_h, MM_BG, NO_INPUT)
 
-    local b = World.bounds
-    local rx, rz = (b.max_x - b.min_x), (b.max_z - b.min_z)
-    local function plot(id, wx, wz, col, size)
-        local px = mx + ((wx - b.min_x) / rx) * mw
-        local py = my + ((wz - b.min_z) / rz) * mh
-        quad(id, px - size * 0.5, py - size * 0.5, size, size, col, { no_input = true })
-    end
+    mm_b = World.bounds
+    mm_rx, mm_rz = (mm_b.max_x - mm_b.min_x), (mm_b.max_z - mm_b.min_z)
     plot("mm_mine", World.mine.x, World.mine.z, U.COLOR.gold, 7)
     if World.forest then plot("mm_forest", World.forest.x, World.forest.z, U.COLOR.tree_leaf, 7) end
     local PE_b = state.econ and state.econ.player
     for _, b in ipairs(PE_b and PE_b.buildings or {}) do
-        if b.alive then plot("mm_b" .. (b.id or 0), b.x, b.z, U.COLOR.player_trim, 9) end
+        if b.alive then plot(b.hud_mm or ("mm_b" .. (b.id or 0)), b.x, b.z, U.COLOR.player_trim, 9) end
     end
     local EE_b = state.econ and state.econ.enemy
     for _, b in ipairs(EE_b and EE_b.buildings or {}) do
-        if b.alive then plot("mm_eb" .. (b.id or 0), b.x, b.z, U.COLOR.enemy, 9) end
+        if b.alive then plot(b.hud_mm or ("mm_eb" .. (b.id or 0)), b.x, b.z, U.COLOR.enemy, 9) end
     end
     for _, e in ipairs(state.enemy_units) do
-        if e.alive then plot("mm_e" .. e.id, e.x, e.z, U.COLOR.enemy, 5) end
+        if e.alive then plot(e.hud_mm or ("mm_e" .. e.id), e.x, e.z, U.COLOR.enemy, 5) end
     end
     for _, u in ipairs(state.player_units) do
-        if u.alive then plot("mm_p" .. u.id, u.x, u.z, u.is_hero and U.COLOR.hero_trim or U.COLOR.player, u.is_hero and 7 or 5) end
+        if u.alive then plot(u.hud_mm or ("mm_p" .. u.id), u.x, u.z, u.is_hero and U.COLOR.hero_trim or U.COLOR.player, u.is_hero and 7 or 5) end
     end
 
-    -- click-to-recenter hit area
-    mark("mm_click")
-    runtime_ui.set_quad(SCREEN, "mm_click", { x = mx, y = my, width = mw, height = mh,
-        style = "panel", fill = CLEAR, border = CLEAR, accent = CLEAR, no_input = false })
+    -- click-to-recenter hit area (clear fill/border so it doesn't paint over dots)
+    push_quad("mm_click", mm_x, mm_y, mm_w, mm_h, CLEAR, HIT_OPTS, true)
     local st = runtime_ui.get_state and runtime_ui.get_state(SCREEN, "mm_click")
     if st and st.clicked and st.mouse_x then
-        local u = U.clamp((st.mouse_x - mx) / mw, 0.0, 1.0)
-        local v = U.clamp((st.mouse_y - my) / mh, 0.0, 1.0)
-        Camera.center_on(b.min_x + u * rx, b.min_z + v * rz)
+        local u = U.clamp((st.mouse_x - mm_x) / mm_w, 0.0, 1.0)
+        local v = U.clamp((st.mouse_y - mm_y) / mm_h, 0.0, 1.0)
+        Camera.center_on(mm_b.min_x + u * mm_rx, mm_b.min_z + v * mm_rz)
     end
 end
 
@@ -205,55 +260,51 @@ local function draw_portrait(state)
         local label = (nsel.kind == "gold") and "Gold Mine" or "Lumber Grove"
         local col = (nsel.kind == "gold") and U.COLOR.gold or U.COLOR.tree_leaf
         local face = h * 0.42
-        quad("port_face", x + pad, y + pad, face, face, { col[1], col[2], col[3], 1.0 },
-            { border = U.COLOR.panel_edge, no_input = true })
+        quad("port_face", x + pad, y + pad, face, face, face_fill(col), PORT_FACE_OPTS)
         local tx = x + pad + face + 14.0
         local tw = w - pad - (tx - x)
         quad("port_name", tx, y + pad, tw, 30.0, CLEAR,
-            { body = label .. "  (" .. (nsel.faction == "player" and "yours" or "Wilds") .. ")",
-              font_scale = 1.2, no_input = true })
+            text_opts(label .. "  (" .. (nsel.faction == "player" and "yours" or "Wilds") .. ")", 1.2))
         local pct = (nsel.max > 0) and (nsel.amount / nsel.max) or 0.0
         bar("port_node", tx, y + pad + 44.0, tw, 30.0, pct, col,
             string.format("%d / %d left", math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)))
         quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR,
-            { body = (nsel.amount <= 0) and "Depleted" or "", font_scale = 1.0, no_input = true })
+            text_opts((nsel.amount <= 0) and "Depleted" or "", 1.0))
         return
     end
 
     local bsel = WB.selection.building
     if bsel then
         local face = h * 0.42
-        quad("port_face", x + pad, y + pad, face, face, { 0.5, 0.52, 0.6, 1.0 }, { border = U.COLOR.panel_edge, no_input = true })
-        quad("port_head", x + pad + face * 0.22, y + pad + face * 0.5, face * 0.56, face * 0.3, U.COLOR.roof, { no_input = true })
+        quad("port_face", x + pad, y + pad, face, face, BLD_FACE, PORT_FACE_OPTS)
+        quad("port_head", x + pad + face * 0.22, y + pad + face * 0.5, face * 0.56, face * 0.3, U.COLOR.roof, NO_INPUT)
         local tx = x + pad + face + 14.0
         local tw = w - pad - (tx - x)
-        quad("port_name", tx, y + pad, tw, 30.0, CLEAR, { body = bsel.display, font_scale = 1.2, no_input = true })
+        quad("port_name", tx, y + pad, tw, 30.0, CLEAR, text_opts(bsel.display, 1.2))
         local hp_pct = (bsel.hp or 1) / (bsel.hp_max or 1)
         bar("port_hp", tx, y + pad + 44.0, tw, 30.0, hp_pct, U.COLOR.hp_good,
             string.format("%d / %d", math.floor((bsel.hp or 0) + 0.5), math.floor((bsel.hp_max or 0) + 0.5)))
         local foodtxt = (bsel.food_cap or 0) > 0 and string.format("Supplies %d food", bsel.food_cap) or ""
-        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR,
-            { body = foodtxt, font_scale = 1.0, no_input = true })
+        quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR, text_opts(foodtxt, 1.0))
         return
     end
 
     if #sel == 0 then
-        quad("port_empty", x + pad, y + pad, w - pad * 2, h * 0.18, CLEAR,
-            { body = "No unit selected", font_scale = 1.1, no_input = true })
+        quad("port_empty", x + pad, y + pad, w - pad * 2, h * 0.18, CLEAR, OPT_EMPTY)
         return
     end
 
     local u = sel[1]
     local face = h * 0.42
     local col = u.is_hero and U.COLOR.hero or (u.faction == "player" and U.COLOR.player or U.COLOR.enemy)
-    quad("port_face", x + pad, y + pad, face, face, { col[1], col[2], col[3], 1.0 }, { border = U.COLOR.panel_edge, no_input = true })
-    quad("port_head", x + pad + face * 0.3, y + pad + face * 0.22, face * 0.4, face * 0.4, { 0.95, 0.92, 0.85, 1.0 }, { no_input = true })
+    quad("port_face", x + pad, y + pad, face, face, face_fill(col), PORT_FACE_OPTS)
+    quad("port_head", x + pad + face * 0.3, y + pad + face * 0.22, face * 0.4, face * 0.4, HEAD_SKIN, NO_INPUT)
 
     local tx = x + pad + face + 14.0
     local tw = w - pad - (tx - x)
     local namestr = u.display .. (u.is_hero and ("  Lv " .. (u.level or 1)) or "")
     if #sel > 1 then namestr = namestr .. "   (+" .. (#sel - 1) .. ")" end
-    quad("port_name", tx, y + pad, tw, 30.0, CLEAR, { body = namestr, font_scale = 1.2, no_input = true })
+    quad("port_name", tx, y + pad, tw, 30.0, CLEAR, text_opts(namestr, 1.2))
 
     local by = y + pad + 44.0
     local hp_pct = u.hp / u.hp_max
@@ -263,14 +314,26 @@ local function draw_portrait(state)
     if u.is_hero then
         bar("port_mp", tx, by + 42.0, tw, 24.0, (u.mana or 0) / (u.mana_max or 1), U.COLOR.mana,
             string.format("Mana %d / %d", math.floor(u.mana or 0), math.floor(u.mana_max or 0)))
-        bar("port_xp", tx, by + 78.0, tw, 16.0, (u.xp or 0) / (u.xp_to_level or 1), { 0.7, 0.5, 0.95 }, nil)
+        bar("port_xp", tx, by + 78.0, tw, 16.0, (u.xp or 0) / (u.xp_to_level or 1), XP_COL, nil)
     end
     quad("port_stats", x + pad, y + h - 38.0, w - pad * 2, 30.0, CLEAR,
-        { body = string.format("Damage %d    Armor %d%%", math.floor(u.dps + 0.5), math.floor((u.armor or 0) * 100 + 0.5)),
-          font_scale = 1.0, no_input = true })
+        text_opts(string.format("Damage %d    Armor %d%%", math.floor(u.dps + 0.5), math.floor((u.armor or 0) * 100 + 0.5)), 1.0))
 end
 
 -- ---- command card (buttons inside the authored HUD_Command panel) --------------
+
+local cc_x, cc_y, cc_bw, cc_bh, cc_pad = 0, 0, 1, 1, 0
+local CC_ID = {}
+local function slot(c, r)
+    return cc_x + cc_pad + c * (cc_bw + cc_pad), cc_y + cc_pad + r * (cc_bh + cc_pad)
+end
+local function btn(c, r, id, label, sub, fill)
+    local bx, by = slot(c, r)
+    local wid = CC_ID[id]
+    if not wid then wid = "cc_" .. id; CC_ID[id] = wid end
+    BTN_OPTS.title, BTN_OPTS.body = label, sub or ""
+    return button(wid, bx, by, cc_bw, cc_bh, fill or FILL_BTN, BTN_OPTS)
+end
 
 local function draw_command_card(state)
     local M = 20.0
@@ -278,24 +341,18 @@ local function draw_command_card(state)
     local sel = WB.selection.list
 
     local cols, rows = 4, 3
-    local pad = w * 0.02
-    local bw = (w - pad * (cols + 1)) / cols
-    local bh = (h - pad * (rows + 1)) / rows
-    local function slot(c, r) return x + pad + c * (bw + pad), y + pad + r * (bh + pad) end
-    local function btn(c, r, id, label, sub, fill)
-        local bx, by = slot(c, r)
-        return button("cc_" .. id, bx, by, bw, bh, fill or { 0.12, 0.14, 0.18, 0.95 },
-            { title = label, body = sub or "", font_scale = 1.0 })
-    end
+    cc_pad = w * 0.02
+    cc_bw = (w - cc_pad * (cols + 1)) / cols
+    cc_bh = (h - cc_pad * (rows + 1)) / rows
+    cc_x, cc_y = x, y
 
     -- Resource node selected: no commands, just the remaining amount (portrait shows the bar).
     local nsel = WB.selection.node
     if nsel then
-        quad("cc_node", x + pad, y + pad, w - pad * 2, h - pad * 2, CLEAR,
-            { body = string.format("%s\n%d / %d left",
+        quad("cc_node", x + cc_pad, y + cc_pad, w - cc_pad * 2, h - cc_pad * 2, CLEAR,
+            text_opts(string.format("%s\n%d / %d left",
                 (nsel.kind == "gold") and "Gold Mine" or "Lumber Grove",
-                math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)),
-              font_scale = 1.1, no_input = true, align = "center" })
+                math.floor(nsel.amount + 0.5), math.floor(nsel.max + 0.5)), 1.1, "center"))
         return
     end
 
@@ -307,7 +364,7 @@ local function draw_command_card(state)
         if bsel.state == "site" and bsel.build_total and bsel.build_total > 0 then
             local pct = U.clamp(1.0 - (bsel.build_t or 0) / bsel.build_total, 0.0, 1.0)
             local bx, by = slot(0, 0)
-            bar("cc_site", bx, by + bh * 0.1, w - pad * 2, bh * 0.6, pct, U.COLOR.player,
+            bar("cc_site", bx, by + cc_bh * 0.1, w - cc_pad * 2, cc_bh * 0.6, pct, U.COLOR.player,
                 string.format("Building... %d%%", math.floor(pct * 100 + 0.5)))
             return
         end
@@ -316,48 +373,44 @@ local function draw_command_card(state)
         if def then
             local PE = state.econ and state.econ.player
             local status = WB.economy.train_status(state, PE, bsel)
-            local fill = (status == "ok") and { 0.16, 0.2, 0.16, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
-            local cost = string.format("%dg", def.gold) .. (def.lumber > 0 and string.format(" %dw", def.lumber) or "")
-            if btn(0, 0, "train", def.label, cost, fill) then WB.economy.try_train(state, PE, bsel) end
+            local fill = (status == "ok") and FILL_TRAIN_OK or FILL_TRAIN_NO
+            if btn(0, 0, "train", def.label, def.cost_label or "", fill) then WB.economy.try_train(state, PE, bsel) end
             local why = TRAIN_WHY[status]
             if why then
-                quad("cc_why", select(1, slot(1, 0)), select(2, slot(1, 0)), bw, bh, CLEAR,
-                    { body = why, font_scale = 0.9, no_input = true, align = "center" })
+                local wx, wy = slot(1, 0)
+                quad("cc_why", wx, wy, cc_bw, cc_bh, CLEAR, text_opts(why, 0.9, "center"))
             end
             if bsel.queue and #bsel.queue > 0 then
                 local j = bsel.queue[1]
                 local pct = 1.0 - U.clamp((j.t or 0) / (j.total or 1), 0.0, 1.0)
                 local bx, by = slot(0, 2)
-                bar("cc_q", bx, by + bh * 0.2, w - pad * 2, bh * 0.5, pct, U.COLOR.player,
+                bar("cc_q", bx, by + cc_bh * 0.2, w - cc_pad * 2, cc_bh * 0.5, pct, U.COLOR.player,
                     string.format("Training... %d%%   (%d in queue)", math.floor(pct * 100 + 0.5), #bsel.queue))
             end
         else
-            quad("cc_bhint", x + pad, y + pad, w - pad * 2, h - pad * 2, CLEAR,
-                { body = bsel.display, font_scale = 1.1, no_input = true, align = "center" })
+            quad("cc_bhint", x + cc_pad, y + cc_pad, w - cc_pad * 2, h - cc_pad * 2, CLEAR,
+                text_opts(bsel.display, 1.1, "center"))
         end
         return
     end
 
     if #sel == 0 then
-        quad("cc_hint", x + pad, y + pad, w - pad * 2, h - pad * 2, CLEAR,
-            { body = "Select a unit or building\n(left-click / drag)", font_scale = 1.0, no_input = true })
+        quad("cc_hint", x + cc_pad, y + cc_pad, w - cc_pad * 2, h - cc_pad * 2, CLEAR, OPT_HINT)
         return
     end
 
-    if btn(0, 0, "stop", "Stop", "S", { 0.15, 0.13, 0.13, 0.95 }) then WB.orders.stop(sel) end
-    if btn(1, 0, "hold", "Hold", "H", { 0.13, 0.15, 0.13, 0.95 }) then WB.orders.hold(sel) end
-    if sel[1] and sel[1].arch == "worker" then
+    if btn(0, 0, "stop", "Stop", "S", FILL_STOP) then WB.orders.stop(sel) end
+    if btn(1, 0, "hold", "Hold", "H", FILL_HOLD) then WB.orders.hold(sel) end
+    if sel[1] and sel[1].arch_is_worker then
         local i = 0
-        for _, key in ipairs({ "farm", "barracks", "tower", "town_hall" }) do
+        for _, key in ipairs(BUILD_KEYS) do
             local def = WB.build and WB.build.DEFS and WB.build.DEFS[key]
             if def then
                 local PE = state.econ and state.econ.player
                 local status = (WB.build.status and WB.build.status(PE, key)) or "ok"
                 local ok = (status == "ok")
-                local fill = ok and { 0.14, 0.18, 0.14, 0.95 } or { 0.12, 0.12, 0.14, 0.95 }
-                -- "none left" when the reserve pool is empty, so the button reads as
-                -- unavailable instead of looking broken when nothing happens on click.
-                local sub = (status == "reserve") and "none left" or string.format("%dg %dw", def.gold, def.lumber)
+                local fill = ok and FILL_BLD_OK or FILL_TRAIN_NO
+                local sub = (status == "reserve") and "none left" or def.cost_label
                 local c, r = i % 4, 1 + math.floor(i / 4)
                 if btn(c, r, "bld_" .. key, def.label, sub, fill) then
                     if ok then WB.build.begin(state, PE, key, sel) end
@@ -366,16 +419,16 @@ local function draw_command_card(state)
             end
         end
     end
-    quad("cc_move", select(1, slot(2, 0)), select(2, slot(2, 0)), bw, bh, { 0.10, 0.12, 0.16, 0.9 },
-        { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" })
-    quad("cc_atk", select(1, slot(3, 0)), select(2, slot(3, 0)), bw, bh, { 0.16, 0.11, 0.11, 0.9 },
-        { title = "Attack", body = "rt-clk foe", font_scale = 0.85, no_input = true, align = "center" })
+    local mx, my = slot(2, 0)
+    quad("cc_move", mx, my, cc_bw, cc_bh, FILL_MOVE, OPT_MOVE)
+    local ax, ay = slot(3, 0)
+    quad("cc_atk", ax, ay, cc_bw, cc_bh, FILL_ATK, OPT_ATK)
 
     local hero = sel[1]
     if hero and hero.is_hero then
         for i, a in ipairs(WB.abilities.LIST) do
             local status, cd = WB.abilities.status(hero, a.id)
-            local fill = (status == "ready") and { 0.16, 0.14, 0.22, 0.95 } or { 0.10, 0.10, 0.12, 0.95 }
+            local fill = (status == "ready") and FILL_AB_OK or FILL_AB_NO
             local sub = a.letter
             if status == "cooldown" then sub = string.format("%.0fs", cd or 0)
             elseif status == "mana" then sub = "no mana" end
@@ -417,24 +470,25 @@ end
 
 -- ---- floating health bars + selection box (screen overlays) --------------------
 
+local function floating_unit_hp(u, always)
+    if not u.alive then return end
+    if not always and u.hp >= u.hp_max then return end
+    local top = (u.is_hero and 2.3) or (u.arch == "wolf" and 1.2 or 1.9)
+    local px, py, depth = Camera.world_to_screen(u.x, top, u.z)
+    if not px or not depth or depth <= 0 then return end
+    if px < -60 or px > sw + 60 or py < -30 or py > sh then return end
+    local w = (u.is_hero and 64 or 42)
+    local pct = u.hp / u.hp_max
+    local col = u.faction == "player" and U.COLOR.hp_good or U.COLOR.hp_low
+    if pct <= 0.3 then col = U.COLOR.hp_low elseif pct <= 0.6 and u.faction == "player" then col = U.COLOR.hp_warn end
+    local bg, fg = u.hud_fh_bg or ("fh" .. u.id .. "_bg"), u.hud_fh_fg or ("fh" .. u.id .. "_fg")
+    quad(bg, px - w * 0.5 - 1, py - 7, w + 2, 7, HP_BG, NO_INPUT)
+    quad(fg, px - w * 0.5, py - 6, w * pct, 5, col, NO_INPUT)
+end
+
 local function draw_floating_hp(state)
-    local function maybe(u, always)
-        if not u.alive then return end
-        if not always and u.hp >= u.hp_max then return end
-        local top = (u.is_hero and 2.3) or (u.arch == "wolf" and 1.2 or 1.9)
-        local px, py, depth = Camera.world_to_screen(u.x, top, u.z)
-        if not px or not depth or depth <= 0 then return end
-        if px < -60 or px > sw + 60 or py < -30 or py > sh then return end
-        local w = (u.is_hero and 64 or 42)
-        local pct = u.hp / u.hp_max
-        local col = u.faction == "player" and U.COLOR.hp_good or U.COLOR.hp_low
-        if pct <= 0.3 then col = U.COLOR.hp_low elseif pct <= 0.6 and u.faction == "player" then col = U.COLOR.hp_warn end
-        local id = "fh" .. u.id
-        quad(id .. "_bg", px - w * 0.5 - 1, py - 7, w + 2, 7, { 0.02, 0.02, 0.03, 0.9 }, { no_input = true })
-        quad(id .. "_fg", px - w * 0.5, py - 6, w * pct, 5, col, { no_input = true })
-    end
-    for _, e in ipairs(state.enemy_units) do maybe(e, true) end
-    for _, u in ipairs(state.player_units) do maybe(u, u.selected) end
+    for _, e in ipairs(state.enemy_units) do floating_unit_hp(e, true) end
+    for _, u in ipairs(state.player_units) do floating_unit_hp(u, u.selected) end
 end
 
 -- Floating HP bar over a building. Buildings live in E.buildings (not *_units), so
@@ -446,36 +500,37 @@ local BUILDING_BAR_TOP = {
     tower = 5.6,     enemy_tower = 5.6,
     farm = 2.2,      enemy_farm = 2.2,
 }
+local function building_hp(b, sel)
+    if not (b.alive and b.hp_max and b.hp_max > 0) then return end
+    local selected = (b == sel)
+    local site = (b.state == "site")
+    local damaged = b.hp < b.hp_max
+    if not (selected or site or damaged) then return end
+    local top = BUILDING_BAR_TOP[b.arch] or ((b.radius or 2.0) + 2.5)
+    local px, py, depth = Camera.world_to_screen(b.x, top, b.z)
+    if not px or not depth or depth <= 0 then return end
+    if px < -80 or px > sw + 80 or py < -30 or py > sh then return end
+    local w = 72
+    local pct, col
+    if site then
+        pct = U.clamp(1.0 - (b.build_t or 0) / (b.build_total or 1), 0.0, 1.0)
+        col = SITE_COL
+    else
+        pct = b.hp / b.hp_max
+        col = (b.faction == "player") and U.COLOR.hp_good or U.COLOR.hp_low
+        if pct <= 0.3 then col = U.COLOR.hp_low
+        elseif pct <= 0.6 and b.faction == "player" then col = U.COLOR.hp_warn end
+    end
+    local bg, fg = b.hud_bh_bg or ("bh" .. (b.id or 0) .. "_bg"), b.hud_bh_fg or ("bh" .. (b.id or 0) .. "_fg")
+    quad(bg, px - w * 0.5 - 1, py - 8, w + 2, 8, HP_BG_B, NO_INPUT)
+    quad(fg, px - w * 0.5, py - 7, math.max(0.0, w * pct), 6, col, NO_INPUT)
+end
+
 local function draw_building_hp(state)
     local sel = WB.selection and WB.selection.building
-    local function maybe(b)
-        if not (b.alive and b.hp_max and b.hp_max > 0) then return end
-        local selected = (b == sel)
-        local site = (b.state == "site")
-        local damaged = b.hp < b.hp_max
-        if not (selected or site or damaged) then return end
-        local top = BUILDING_BAR_TOP[b.arch] or ((b.radius or 2.0) + 2.5)
-        local px, py, depth = Camera.world_to_screen(b.x, top, b.z)
-        if not px or not depth or depth <= 0 then return end
-        if px < -80 or px > sw + 80 or py < -30 or py > sh then return end
-        local w = 72
-        local pct, col
-        if site then
-            pct = U.clamp(1.0 - (b.build_t or 0) / (b.build_total or 1), 0.0, 1.0)
-            col = { 0.45, 0.70, 0.95 } -- construction blue
-        else
-            pct = b.hp / b.hp_max
-            col = (b.faction == "player") and U.COLOR.hp_good or U.COLOR.hp_low
-            if pct <= 0.3 then col = U.COLOR.hp_low
-            elseif pct <= 0.6 and b.faction == "player" then col = U.COLOR.hp_warn end
-        end
-        local id = "bh" .. (b.id or 0)
-        quad(id .. "_bg", px - w * 0.5 - 1, py - 8, w + 2, 8, { 0.02, 0.02, 0.03, 0.92 }, { no_input = true })
-        quad(id .. "_fg", px - w * 0.5, py - 7, math.max(0.0, w * pct), 6, col, { no_input = true })
-    end
     for _, fac in ipairs(FACTIONS) do
         local E = state.econ and state.econ[fac]
-        if E then for _, b in ipairs(E.buildings) do maybe(b) end end
+        if E then for _, b in ipairs(E.buildings) do building_hp(b, sel) end end
     end
 end
 
@@ -484,11 +539,11 @@ local function draw_select_box()
     if b.active then
         local x0, y0 = math.min(b.x0, b.x1), math.min(b.y0, b.y1)
         local w, h = math.abs(b.x1 - b.x0), math.abs(b.y1 - b.y0)
-        local c = { 0.4, 0.95, 0.5, 0.9 }
-        quad("selbox_t", x0, y0, w, 2, c, { no_input = true })
-        quad("selbox_b", x0, y0 + h, w, 2, c, { no_input = true })
-        quad("selbox_l", x0, y0, 2, h, c, { no_input = true })
-        quad("selbox_r", x0 + w, y0, 2, h, c, { no_input = true })
+        local c = SELBOX_COL
+        quad("selbox_t", x0, y0, w, 2, c, NO_INPUT)
+        quad("selbox_b", x0, y0 + h, w, 2, c, NO_INPUT)
+        quad("selbox_l", x0, y0, 2, h, c, NO_INPUT)
+        quad("selbox_r", x0 + w, y0, 2, h, c, NO_INPUT)
     end
 end
 
@@ -497,24 +552,8 @@ end
 local function draw_rally(state)
     local b = WB.selection and WB.selection.building
     if not (b and b.rally_set) then return end
-
-    -- Minimap dot: same coordinate mapping as draw_minimap.
-    local M = 20.0
-    local mx, my, mw, mh
-    do
-        local pad
-        local x, y, w, h = panel_rect("Minimap", M, sh - M - 300, 300, 300)
-        pad = w * 0.05
-        mx, my, mw, mh = x + pad, y + pad, w - pad * 2, h - pad * 2
-    end
-    local bnd = World.bounds
-    local rx_range = bnd.max_x - bnd.min_x
-    local rz_range = bnd.max_z - bnd.min_z
-    if rx_range > 0 and rz_range > 0 then
-        local px = mx + ((b.rally_x - bnd.min_x) / rx_range) * mw
-        local py = my + ((b.rally_z - bnd.min_z) / rz_range) * mh
-        local sz = 8
-        quad("rally_mm", px - sz * 0.5, py - sz * 0.5, sz, sz, { 0.2, 0.9, 0.3, 1.0 }, { no_input = true })
+    if mm_rx > 0 and mm_rz > 0 then
+        plot("rally_mm", b.rally_x, b.rally_z, RALLY_COL, 8)
     end
 
     -- World-projected thin ring: 8-segment approximation around the rally point.
@@ -531,8 +570,7 @@ local function draw_rally(state)
             local dx = math.cos(a1) * R - math.cos(a0) * R
             local dz = math.sin(a1) * R - math.sin(a0) * R
             local seg_len = math.sqrt(dx * dx + dz * dz)
-            quad("rally_ring" .. i, qx, qy, math.max(seg_len, thick), thick,
-                { 0.2, 0.9, 0.3, 0.85 }, { no_input = true })
+            quad(RALLY_RING_IDS[i], qx, qy, math.max(seg_len, thick), thick, RALLY_RING, NO_INPUT)
         end
     end
 end
@@ -548,6 +586,7 @@ function Hud.reset()
     nodes = nil
     dyn_now = {}
     dyn_prev = {}
+    last_text = {}
     panel_n = 0
     for i = #panels, 1, -1 do panels[i] = nil end
 end
@@ -573,11 +612,7 @@ function Hud.update(state)
     -- Placement banner: shown while the player is in build-placement mode.
     if WB.build and WB.build.is_placing and WB.build.is_placing() then
         local bw, bh2 = 540.0, 44.0
-        quad("place_banner", sw * 0.5 - bw * 0.5, sh * 0.5 - 120.0, bw, bh2,
-            { 0.05, 0.08, 0.05, 0.92 },
-            { body = "Left-click to place — right-click to cancel", font_scale = 1.05,
-              align = "center", no_input = true,
-              border = { 0.3, 0.6, 0.3, 0.9 } })
+        quad("place_banner", sw * 0.5 - bw * 0.5, sh * 0.5 - 120.0, bw, bh2, FILL_PLACE, PLACE_OPTS)
     end
     draw_floating_hp(state)
     draw_building_hp(state)

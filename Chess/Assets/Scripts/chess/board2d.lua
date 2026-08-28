@@ -46,13 +46,43 @@ local FONT = 16 / 16
 -- it, which is how the 64 board squares survive a frame without being rewritten.
 local all = {}
 local used = {}
-local layout_key -- squares are only re-issued when the layout or orientation changes
+local cached_x, cached_y, cached_sq, cached_flip
+local labels_cached = false
 local flip = false
 local L -- last computed layout
+local LAYOUT = {w = 0, h = 0, sq = 0, x = 0, y = 0}
+local HIDE_Q = {visible = false, no_input = true}
+local ZERO = {0, 0, 0, 0}
+local GHOST_TINT = {1, 1, 1, 0.28}
+local SOLID_TINT = {1, 1, 1, 1}
+local PLAIN_Q = {
+    x = 0, y = 0, w = 0, h = 0, style = "panel", fill = nil, accent = ZERO, border = ZERO,
+    corner_radius = 0, z = 0, no_input = true, visible = true,
+}
+local LABEL_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "", style = "text", fill = ZERO, accent = ZERO,
+    border = ZERO, text_color = LABEL, align_h = "center", align_v = "middle",
+    font_scale = FONT, z = Z_MARK, no_input = true, visible = true,
+}
+local IMG_Q = {
+    x = 0, y = 0, w = 0, h = 0, image = "", style = "image", fill = ZERO, accent = ZERO,
+    border = ZERO, image_tint = SOLID_TINT, image_whiten = 0,
+    z = Z_PIECE, no_input = true, visible = true,
+}
+local EDGE_Q = {
+    x = 0, y = 0, w = 52, h = 0, body = "", style = "text", fill = ZERO, accent = ZERO,
+    border = ZERO, text_color = {0.85, 0.82, 0.72, 1}, align_h = "left", align_v = "middle",
+    font_scale = FONT + 0.15, z = Z_MARK, no_input = true, visible = true,
+}
+local best = {}
+local dots = {}
+local TRAY_COUNTS = {}
 
 function b2.init(screen, board)
     SCREEN = screen or SCREEN
-    all, used, layout_key, L = {}, {}, nil, nil
+    all, used = {}, {}
+    cached_x, cached_y, cached_sq, cached_flip, labels_cached = nil, nil, nil, nil, false
+    L = nil
     flip = false
     if runtime_ui and runtime_ui.preload_images then
         local paths = {}
@@ -68,7 +98,7 @@ end
 function b2.set_flip(on)
     if flip == (on and true or false) then return end
     flip = on and true or false
-    layout_key = nil
+    cached_x = nil
 end
 
 function b2.flipped() return flip end
@@ -102,11 +132,10 @@ function b2.layout(w, h)
     -- 34 for the file letters under the board, plus a captured-tray band top and bottom.
     local avail_h = h - top - 34 - TRAY * 2
     local sq = math.floor(math.max(24, math.min(avail_w, avail_h) / 8))
-    return {
-        w = w, h = h, sq = sq,
-        x = LEFT + math.floor((avail_w - sq * 8) * 0.5),
-        y = top + TRAY + math.floor((avail_h - sq * 8) * 0.5),
-    }
+    LAYOUT.w, LAYOUT.h, LAYOUT.sq = w, h, sq
+    LAYOUT.x = LEFT + math.floor((avail_w - sq * 8) * 0.5)
+    LAYOUT.y = top + TRAY + math.floor((avail_h - sq * 8) * 0.5)
+    return LAYOUT
 end
 
 -- (file 0..7, rank 1..8) -> the square's top-left pixel. `lay` is a b2.layout result.
@@ -135,21 +164,21 @@ end
 function b2.pick(view)
     local px, py, w, h = view.cursor()
     if not px then return nil end
-    return b2.square_at(b2.layout(w, h), px, py)
+    local lay = (L and L.w == w and L.h == h) and L or b2.layout(w, h)
+    return b2.square_at(lay, px, py)
 end
 
 -- ── drawing ────────────────────────────────────────────────────────────────
 local function plain(id, x, y, w, h, fill, z, radius)
-    q(id, {
-        x = x, y = y, w = w, h = h,
-        style = "panel", fill = fill, accent = {0, 0, 0, 0}, border = {0, 0, 0, 0},
-        corner_radius = radius or 0, z = z, no_input = true, visible = true,
-    })
+    PLAIN_Q.x, PLAIN_Q.y, PLAIN_Q.w, PLAIN_Q.h = x, y, w, h
+    PLAIN_Q.fill = fill
+    PLAIN_Q.z = z
+    PLAIN_Q.corner_radius = radius or 0
+    q(id, PLAIN_Q)
 end
 
 local function squares(lay)
-    local key = lay.x .. ":" .. lay.y .. ":" .. lay.sq .. ":" .. tostring(flip)
-    if layout_key == key then
+    if cached_x == lay.x and cached_y == lay.y and cached_sq == lay.sq and cached_flip == flip then
         -- The layout has not moved, so the 64 squares should still be up from last frame.
         -- "Should" is not good enough: switching to the 3D board runs b2.finish(), which
         -- HIDES them while the layout key stays valid, and opening a menu runs
@@ -163,9 +192,13 @@ local function squares(lay)
                 ok = keep("b2_s" .. file .. rank) and ok
             end
         end
-        if ok then return end
+        if ok then
+            labels_cached = true
+            return
+        end
     end
-    layout_key = key
+    cached_x, cached_y, cached_sq, cached_flip = lay.x, lay.y, lay.sq, flip
+    labels_cached = false
 
     local side = lay.sq * 8
     local rim = math.max(4, math.floor(lay.sq * 0.10))
@@ -180,26 +213,24 @@ local function squares(lay)
 end
 
 local function labels(lay)
+    if labels_cached then
+        local ok = true
+        for file = 0, 7 do ok = keep("b2_lf" .. file) and ok end
+        for rank = 1, 8 do ok = keep("b2_lr" .. rank) and ok end
+        if ok then return end
+    end
     local s = lay.sq
     for file = 0, 7 do
         local x = b2.square_rect(lay, file, 1)
-        q("b2_lf" .. file, {
-            x = x, y = lay.y + s * 8 + 2, w = s, h = 20,
-            body = string.char(97 + file), style = "text", fill = {0, 0, 0, 0},
-            accent = {0, 0, 0, 0}, border = {0, 0, 0, 0}, text_color = LABEL,
-            align_h = "center", align_v = "middle", font_scale = FONT,
-            z = Z_MARK, no_input = true, visible = true,
-        })
+        LABEL_Q.x, LABEL_Q.y, LABEL_Q.w, LABEL_Q.h = x, lay.y + s * 8 + 2, s, 20
+        LABEL_Q.body = string.char(97 + file)
+        q("b2_lf" .. file, LABEL_Q)
     end
     for rank = 1, 8 do
         local _, y = b2.square_rect(lay, 0, rank)
-        q("b2_lr" .. rank, {
-            x = lay.x - 26, y = y, w = 22, h = s,
-            body = tostring(rank), style = "text", fill = {0, 0, 0, 0},
-            accent = {0, 0, 0, 0}, border = {0, 0, 0, 0}, text_color = LABEL,
-            align_h = "center", align_v = "middle", font_scale = FONT,
-            z = Z_MARK, no_input = true, visible = true,
-        })
+        LABEL_Q.x, LABEL_Q.y, LABEL_Q.w, LABEL_Q.h = lay.x - 26, y, 22, s
+        LABEL_Q.body = tostring(rank)
+        q("b2_lr" .. rank, LABEL_Q)
     end
 end
 
@@ -220,7 +251,7 @@ end
 function b2.finish()
     for id, st in pairs(all) do
         if st == "shown" and not used[id] then
-            runtime_ui.set_quad(SCREEN, id, {visible = false, no_input = true})
+            runtime_ui.set_quad(SCREEN, id, HIDE_Q)
             all[id] = "hidden"
         end
     end
@@ -235,7 +266,8 @@ function b2.board(state, marks, hov_f, hov_r, drag)
     squares(L)
     labels(L)
 
-    local best, dots = {}, {}
+    for k in pairs(best) do best[k] = nil end
+    for k in pairs(dots) do dots[k] = nil end
     for _, mk in ipairs(marks or {}) do
         local k = mk.r * 8 + mk.f
         if mk.m == "move" then
@@ -274,16 +306,11 @@ function b2.board(state, marks, hov_f, hov_r, drag)
                 -- The square a carried piece came FROM keeps a ghost of it: the rules never
                 -- moved it, and an empty origin square would claim the move already happened.
                 local ghost = carrying and carrying.file == file and carrying.rank == rank
-                q(id, {
-                    x = x, y = y, w = s, h = s, image = sprite(sq),
-                    style = "image", fill = {0, 0, 0, 0}, accent = {0, 0, 0, 0},
-                    border = {0, 0, 0, 0},
-                    image_tint = ghost and {1, 1, 1, 0.28} or {1, 1, 1, 1},
-                    -- 0, not the default -1: -1 inherits the global element whiten and
-                    -- re-derives a lightened copy of the sprite (RuntimeUi.cpp SetQuad).
-                    image_whiten = 0,
-                    z = Z_PIECE, no_input = true, visible = true,
-                })
+                IMG_Q.x, IMG_Q.y, IMG_Q.w, IMG_Q.h = x, y, s, s
+                IMG_Q.image = sprite(sq)
+                IMG_Q.image_tint = ghost and GHOST_TINT or SOLID_TINT
+                IMG_Q.z = Z_PIECE
+                q(id, IMG_Q)
             end
         end
     end
@@ -292,12 +319,12 @@ function b2.board(state, marks, hov_f, hov_r, drag)
     local held = carrying and state.board[carrying.rank] and state.board[carrying.rank][carrying.file]
     if held then
         local s = L.sq
-        q("b2_drag", {
-            x = carrying.x - s * 0.5, y = carrying.y - s * 0.5, w = s, h = s,
-            image = sprite(held), style = "image",
-            fill = {0, 0, 0, 0}, accent = {0, 0, 0, 0}, border = {0, 0, 0, 0},
-            image_whiten = 0, z = Z_DRAG, no_input = true, visible = true,
-        })
+        IMG_Q.x, IMG_Q.y = carrying.x - s * 0.5, carrying.y - s * 0.5
+        IMG_Q.w, IMG_Q.h = s, s
+        IMG_Q.image = sprite(held)
+        IMG_Q.image_tint = SOLID_TINT
+        IMG_Q.z = Z_DRAG
+        q("b2_drag", IMG_Q)
     end
 end
 
@@ -330,18 +357,18 @@ end
 -- `taken` is the list of piece kinds THIS side has captured, `prefix` the sprite colour of
 -- those men ("w"/"b"), `other_taken` what the opponent has captured (for the material edge).
 function b2.tray(id, x, y, taken, prefix, size, other_taken)
-    local counts = {}
-    for _, k in ipairs(taken or {}) do counts[k] = (counts[k] or 0) + 1 end
+    for k in pairs(TRAY_COUNTS) do TRAY_COUNTS[k] = nil end
+    for _, k in ipairs(taken or {}) do TRAY_COUNTS[k] = (TRAY_COUNTS[k] or 0) + 1 end
 
     local n, step = 0, size * 0.62 -- overlapped: 16 pawns must fit beside an 8-square board
     for _, kind in ipairs(ORDER) do
-        for _ = 1, (counts[kind] or 0) do
-            q(id .. "_" .. n, {
-                x = x + n * step, y = y, w = size, h = size,
-                image = IMG .. prefix .. kind .. ".png", style = "image",
-                fill = {0, 0, 0, 0}, accent = {0, 0, 0, 0}, border = {0, 0, 0, 0},
-                image_whiten = 0, z = Z_MARK, no_input = true, visible = true,
-            })
+        for _ = 1, (TRAY_COUNTS[kind] or 0) do
+            IMG_Q.x, IMG_Q.y = x + n * step, y
+            IMG_Q.w, IMG_Q.h = size, size
+            IMG_Q.image = IMG .. prefix .. kind .. ".png"
+            IMG_Q.image_tint = SOLID_TINT
+            IMG_Q.z = Z_MARK
+            q(id .. "_" .. n, IMG_Q)
             n = n + 1
         end
     end
@@ -352,12 +379,10 @@ function b2.tray(id, x, y, taken, prefix, size, other_taken)
     for _, k in ipairs(other_taken or {}) do theirs = theirs + (VALUE[k] or 0) end
     local edge = mine - theirs
     if edge > 0 then
-        q(id .. "_edge", {
-            x = x + n * step + 10, y = y, w = 52, h = size, body = "+" .. edge,
-            style = "text", fill = {0, 0, 0, 0}, accent = {0, 0, 0, 0}, border = {0, 0, 0, 0},
-            text_color = {0.85, 0.82, 0.72, 1}, align_h = "left", align_v = "middle",
-            font_scale = FONT + 0.15, z = Z_MARK, no_input = true, visible = true,
-        })
+        EDGE_Q.x, EDGE_Q.y = x + n * step + 10, y
+        EDGE_Q.h = size
+        EDGE_Q.body = "+" .. edge
+        q(id .. "_edge", EDGE_Q)
     end
     return n
 end
@@ -365,18 +390,20 @@ end
 -- Forget every id without touching runtime_ui: for after something else wiped the screen
 -- (view.clear -> runtime_ui.clear), where "already shown" would skip re-issuing the squares.
 function b2.reset()
-    all, used, layout_key = {}, {}, nil
+    all, used = {}, {}
+    cached_x, labels_cached = nil, false
 end
 
 -- Idempotent: after the first call every id is already "hidden" and this is a bare loop.
 function b2.hide()
     for id, st in pairs(all) do
         if st == "shown" then
-            runtime_ui.set_quad(SCREEN, id, {visible = false, no_input = true})
+            runtime_ui.set_quad(SCREEN, id, HIDE_Q)
             all[id] = "hidden"
         end
     end
-    used, layout_key = {}, nil
+    used = {}
+    cached_x, labels_cached = nil, false
 end
 
 -- Self-check: every square's centre pixel maps back to that square, in both orientations,

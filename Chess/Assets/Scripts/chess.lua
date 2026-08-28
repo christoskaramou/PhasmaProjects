@@ -53,3 +53,5 @@ _G.chess = api -- convenience for anything sharing this environment
 
 game.init()
 script.on_update("chess", function() game.update() end, "play")
+-- Engine CollectHooks looks for env.destroy; G.destroy was never reached without this.
+function destroy() game.destroy() end
