@@ -53,6 +53,7 @@ function Camera.init(focus_x, focus_z)
     -- re-detects flips against the live camera rather than trusting last session's.
     cam = nil
     Camera._anchor = nil; Camera._p = nil
+    Camera._p_fx, Camera._p_fz, Camera._p_dist = nil, nil, nil
     Camera._calibrated = false; Camera._n = 0; Camera._settle_until = 0
     Camera.flip_x = false; Camera.flip_y = false
     c = get_cam()
@@ -155,9 +156,16 @@ function Camera.refresh_if_needed()
     local w, h = Camera.screen()
     local size_changed = a and (math.floor(w) ~= math.floor(a.w) or math.floor(h) ~= math.floor(a.h))
     if size_changed then Camera._settle_until = Camera._n + 30 end
-    if not a or size_changed or Camera._n <= Camera.SETTLE_FRAMES or Camera._n <= Camera._settle_until then
+    local settling = (not a) or size_changed
+        or Camera._n <= Camera.SETTLE_FRAMES or Camera._n <= Camera._settle_until
+    if settling then
         if not sample_anchor() then return end
         a = Camera._anchor
+    elseif Camera._p
+       and Camera.focus_x == Camera._p_fx
+       and Camera.focus_z == Camera._p_fz
+       and Camera.dist == Camera._p_dist then
+        return
     end
     local ex, ey, ez = cam_eye(Camera.focus_x, Camera.focus_z, Camera.dist)
     local ax, ay, az = cam_eye(a.fx, a.fz, a.dist)
@@ -172,6 +180,7 @@ function Camera.refresh_if_needed()
     p[7], p[8], p[9] = a.c2x, a.c2y, a.c2w
     p[10], p[11], p[12] = c3x, c3y, c3w
     p[13], p[14] = a.w, a.h
+    Camera._p_fx, Camera._p_fz, Camera._p_dist = Camera.focus_x, Camera.focus_z, Camera.dist
 end
 
 -- World point (wx,wy,wz) -> screen pixel. Returns sx, sy, w_clip (w_clip>0 => in front).
@@ -194,7 +203,9 @@ end
 -- pinhole camera is a homography, so a few iterations from the focus converge fast.
 -- Pure scalar math over the cached coefficients (no engine matrix calls).
 function Camera.pick_ground(sx, sy)
-    Camera.refresh_if_needed()
+    -- Camera.update already refreshed this frame. Do not call refresh_if_needed here:
+    -- that re-samples get_view_projection during settle and double-counts _n.
+    if not Camera._p then Camera.refresh_if_needed() end
     local x, z = Camera.focus_x, Camera.focus_z
     local eps = 0.5
     for _ = 1, 8 do
@@ -254,8 +265,9 @@ function Camera.update(dt, mouse_in_ui)
     local c = get_cam()
     if not c then return end
 
-    -- Keep the cached projection coefficients current (cheap: only re-samples the
-    -- matrix when the view actually changed).
+    -- Keep the cached projection coefficients current. Re-samples the real VP only
+    -- during the startup/resize settle window — never look_at / get_view_projection
+    -- on a steady frame (those bindings crash the player if hammered).
     Camera.refresh_if_needed()
     -- Calibrate only once the VP has settled (see refresh_if_needed) so flip detection
     -- doesn't latch onto a stale first-frame matrix.
@@ -286,7 +298,8 @@ function Camera.update(dt, mouse_in_ui)
         -- (cursor over an interactive widget — minimap, command buttons). Ignore it, or
         -- hovering those would read as the top-left corner and edge-scroll up-left.
         if m and m.x and not (m.x == 0 and m.y == 0) then
-            local w, h = Camera.screen()
+            local p = Camera._p
+            local w, h = (p and p[13]) or 1920.0, (p and p[14]) or 1080.0
             local e = Camera.EDGE_PX
             if m.x >= 0 and m.x < w and m.y >= 0 and m.y < h then
                 if m.x <= e then px = px - 1.0 elseif m.x >= w - 1 - e then px = px + 1.0 end

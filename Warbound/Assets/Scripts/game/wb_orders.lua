@@ -8,18 +8,10 @@ local World = WB.world
 
 local Orders = {}
 
-local FACTIONS = { "player", "enemy" }
+local FACTIONS = U.FACTIONS
 
 local prev_right = false
 local buildings = {} -- scratch; rebuilt each locomote()
-
-local function mouse()
-    if input and input.get_mouse_position then
-        local m = input.get_mouse_position()
-        if m and m.x then return m.x, m.y end
-    end
-    return nil
-end
 
 -- ---- command primitives (also called by the HUD command card) -----------------
 
@@ -75,7 +67,7 @@ function Orders.handle_input(sel, enemy_units, mouse_in_ui)
     if WB.selection.building then
         local b = WB.selection.building
         if down and not prev_right and not mouse_in_ui then
-            local mx, my = mouse()
+            local mx, my = U.mouse()
             if mx then
                 local gx, gz = Camera.pick_ground(mx, my)
                 if gx then
@@ -95,7 +87,7 @@ function Orders.handle_input(sel, enemy_units, mouse_in_ui)
     end
 
     if down and not prev_right and not mouse_in_ui and #sel > 0 then
-        local mx, my = mouse()
+        local mx, my = U.mouse()
         if mx then
             -- Right-click a friendly construction site with workers selected: (re)assign them
             -- to build it -- resume a stopped build, or send helpers to finish it faster.

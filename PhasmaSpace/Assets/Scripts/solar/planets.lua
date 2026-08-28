@@ -51,6 +51,12 @@ P.planets = {
       moons = moon_catalog.Pluto },
 }
 
+-- Mercury/Venus have no catalog list; share one empty so tick loops never allocate `or {}`.
+local NO_MOONS = {}
+for _, p in ipairs(P.planets) do
+    p.moons = p.moons or NO_MOONS
+end
+
 P.regions = {
     { name = "Kuiper_Belt_inner", radius_au = 30.0, samples = 720, color = { 0.25, 0.55, 1.0, 0.22 } },
     { name = "Kuiper_Belt_outer", radius_au = 50.0, samples = 720, color = { 0.25, 0.55, 1.0, 0.28 } },

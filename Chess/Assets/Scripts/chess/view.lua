@@ -18,6 +18,60 @@ local SCREEN = "chess"
 -- RuntimeUi bakes at 16px; +2px on the overlay. Face is Fonts/RuntimeUi.ttf (Inter).
 local FONT = 18 / 16
 
+-- set_quad copies into C++ immediately, so these scratch tables are safe to reuse.
+local ZERO = {0, 0, 0, 0}
+local NO_OPTS = {}
+local EMPTY_STATE = {}
+local FILL_PANEL = {0.05, 0.05, 0.07, 0.72}
+local FILL_BTN = {0.16, 0.17, 0.20, 0.96}
+local FILL_DRAG = {0.10, 0.13, 0.18, 0.96}
+local FILL_PANEL_HOVER = {0.04, 0.05, 0.07, 0.78}
+local FILL_VBAR_BG = {0.10, 0.10, 0.12, 0.90}
+local FILL_VBAR = {0.92, 0.92, 0.88, 0.95}
+local BORDER_BTN = {0.75, 0.70, 0.45, 1}
+local BORDER_DRAG = {0.45, 0.55, 0.70, 1}
+local BORDER_PANEL = {0.30, 0.30, 0.34, 0.9}
+local BORDER_VBAR = {0.35, 0.35, 0.38, 0.9}
+local TEXT_BODY = {0.95, 0.95, 0.92, 1}
+local TEXT_BTN = {0.97, 0.95, 0.85, 1}
+local TEXT_DRAG = {0.92, 0.95, 1.0, 1}
+local COORD_OPTS = {style = "text", fill = ZERO, font_scale = FONT,
+                    text_color = {0.95, 0.92, 0.82, 1}}
+local VBAR_LBL = {fill = ZERO, font_scale = FONT - 0.2}
+local HIDE_Q = {visible = false, no_input = true}
+local TEXT_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "",
+    style = "panel", fill = FILL_PANEL, accent = ZERO, border = ZERO,
+    text_color = TEXT_BODY, align_h = "center", align_v = "middle",
+    font_scale = FONT, no_input = true, visible = true,
+    corner_radius = 0, bring_to_front = false,
+}
+local BTN_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "",
+    style = "panel", fill = FILL_BTN, accent = ZERO, border = BORDER_BTN,
+    text_color = TEXT_BTN, align_h = "center", align_v = "middle",
+    corner_radius = 6, font_scale = FONT, no_input = false, visible = true,
+}
+local DRAG_Q = {
+    x = 0, y = 0, w = 0, h = 0, body = "",
+    style = "panel", fill = FILL_DRAG, accent = ZERO, border = BORDER_DRAG,
+    text_color = TEXT_DRAG, align_h = "center", align_v = "middle",
+    corner_radius = 5, font_scale = FONT, draggable = true, visible = true,
+}
+local VBAR_BG_Q = {
+    x = 0, y = 0, w = 0, h = 0, style = "panel", fill = FILL_VBAR_BG, accent = ZERO,
+    border = BORDER_VBAR, corner_radius = 3, no_input = true, visible = true,
+}
+local VBAR_FILL_Q = {
+    x = 0, y = 0, w = 0, h = 0, style = "panel", fill = FILL_VBAR, accent = ZERO,
+    border = ZERO, corner_radius = 2, no_input = true, visible = true,
+}
+local PANEL_Q = {
+    x = 0, y = 0, w = 0, h = 0, style = "panel", fill = FILL_PANEL_HOVER,
+    accent = ZERO, border = BORDER_PANEL, corner_radius = 8, visible = true,
+}
+local LIT = {0, 0, 0, 1}
+
 -- The game only ever runs in play mode (its update is registered "play"), and in play mode
 -- the 3D view fills the window in BOTH hosts — fullscreen in the editor, the whole window in
 -- the player. So the window rect is the one pixel space for both the cursor and the overlay,
@@ -99,8 +153,7 @@ function view.coords(vw, vh)
         local sx, sy = view.project(x, y, z1 - pitch * 0.62, vw, vh)
         if sx then
             view.text("coord_f" .. file, sx - 12, sy - 12, 24, 24, string.char(97 + file),
-                      {style = "text", fill = {0, 0, 0, 0}, font_scale = FONT,
-                       text_color = {0.95, 0.92, 0.82, 1}})
+                      COORD_OPTS)
         else
             view.hide("coord_f" .. file)
         end
@@ -110,8 +163,7 @@ function view.coords(vw, vh)
         local sx, sy = view.project(xa + pitch * 0.62, y, z, vw, vh)
         if sx then
             view.text("coord_r" .. rank, sx - 12, sy - 12, 24, 24, tostring(rank),
-                      {style = "text", fill = {0, 0, 0, 0}, font_scale = FONT,
-                       text_color = {0.95, 0.92, 0.82, 1}})
+                      COORD_OPTS)
         else
             view.hide("coord_r" .. rank)
         end
@@ -211,22 +263,22 @@ end
 -- any camera angle where a screen-space rect only worked from straight above.
 
 function view.hide(id)
-    runtime_ui.set_quad(SCREEN, id, {visible = false, no_input = true})
+    runtime_ui.set_quad(SCREEN, id, HIDE_Q)
 end
 
 function view.text(id, x, y, w, h, body, opts)
-    opts = opts or {}
-    runtime_ui.set_quad(SCREEN, id, {
-        x = x, y = y, w = w, h = h, body = body,
-        style = opts.style or "panel", fill = opts.fill or {0.05, 0.05, 0.07, 0.72},
-        accent = {0, 0, 0, 0}, border = opts.border or {0, 0, 0, 0},
-        text_color = opts.text_color or {0.95, 0.95, 0.92, 1},
-        align_h = opts.align_h or "center", align_v = "middle",
-        font_scale = opts.font_scale or FONT,
-        no_input = opts.no_input ~= false, visible = true,
-        corner_radius = opts.corner_radius or 0,
-        bring_to_front = opts.bring_to_front or false,
-    })
+    opts = opts or NO_OPTS
+    TEXT_Q.x, TEXT_Q.y, TEXT_Q.w, TEXT_Q.h, TEXT_Q.body = x, y, w, h, body
+    TEXT_Q.style = opts.style or "panel"
+    TEXT_Q.fill = opts.fill or FILL_PANEL
+    TEXT_Q.border = opts.border or ZERO
+    TEXT_Q.text_color = opts.text_color or TEXT_BODY
+    TEXT_Q.align_h = opts.align_h or "center"
+    TEXT_Q.font_scale = opts.font_scale or FONT
+    TEXT_Q.no_input = opts.no_input ~= false
+    TEXT_Q.corner_radius = opts.corner_radius or 0
+    TEXT_Q.bring_to_front = opts.bring_to_front or false
+    runtime_ui.set_quad(SCREEN, id, TEXT_Q)
 end
 
 -- Pointer feedback for every in-game button, derived from whatever fill the caller passed
@@ -236,31 +288,33 @@ end
 local HOVER_LIFT, PRESS_SINK = 1.45, 0.62
 
 local function lit(c, k)
-    return {math.min(1.0, c[1] * k), math.min(1.0, c[2] * k), math.min(1.0, c[3] * k),
-            c[4] or 1.0}
+    LIT[1] = math.min(1.0, c[1] * k)
+    LIT[2] = math.min(1.0, c[2] * k)
+    LIT[3] = math.min(1.0, c[3] * k)
+    LIT[4] = c[4] or 1.0
+    return LIT
 end
 
 function view.button(id, x, y, w, h, label, opts)
-    opts = opts or {}
+    opts = opts or NO_OPTS
     -- Last frame's state: it colours this frame and carries this frame's click, so a button
     -- can never light up without also being the one that fired.
-    local st = runtime_ui.get_state(SCREEN, id) or {}
-    local fill = opts.fill or {0.16, 0.17, 0.20, 0.96}
+    local st = runtime_ui.get_state(SCREEN, id) or EMPTY_STATE
+    local fill = opts.fill or FILL_BTN
     if not opts.no_input then
         if st.down then fill = lit(fill, PRESS_SINK)
         elseif st.hovered then fill = lit(fill, HOVER_LIFT) end
     end
-    runtime_ui.set_quad(SCREEN, id, {
-        x = x, y = y, w = w, h = h, body = label,
-        style = opts.style or "panel", fill = fill, accent = {0, 0, 0, 0},
-        border = opts.border or {0.75, 0.70, 0.45, 1},
-        text_color = opts.text_color or {0.97, 0.95, 0.85, 1},
-        align_h = opts.align_h or "center", align_v = "middle",
-        corner_radius = opts.corner_radius or 6,
-        font_scale = opts.font_scale or FONT,
-        no_input = opts.no_input or false,
-        visible = true, -- clickable unless no_input: buttons are the one place input capture is wanted
-    })
+    BTN_Q.x, BTN_Q.y, BTN_Q.w, BTN_Q.h, BTN_Q.body = x, y, w, h, label
+    BTN_Q.style = opts.style or "panel"
+    BTN_Q.fill = fill
+    BTN_Q.border = opts.border or BORDER_BTN
+    BTN_Q.text_color = opts.text_color or TEXT_BTN
+    BTN_Q.align_h = opts.align_h or "center"
+    BTN_Q.corner_radius = opts.corner_radius or 6
+    BTN_Q.font_scale = opts.font_scale or FONT
+    BTN_Q.no_input = opts.no_input or false
+    runtime_ui.set_quad(SCREEN, id, BTN_Q)
     -- `clicked` is the RELEASE, not the press (the backend's InvisibleButton is
     -- PressedOnClickRelease), so sliding off before letting go cancels the action.
     return st.clicked or false, st.hovered or false
@@ -271,35 +325,23 @@ end
 -- widget state; `drag_delta_x` is the TOTAL pixels since the press, not a per-frame delta, so the
 -- caller snapshots the value on drag_started and adds the delta from there.
 function view.drag(id, x, y, w, h, label)
-    runtime_ui.set_quad(SCREEN, id, {
-        x = x, y = y, w = w, h = h, body = label,
-        style = "panel", fill = {0.10, 0.13, 0.18, 0.96}, accent = {0, 0, 0, 0},
-        border = {0.45, 0.55, 0.70, 1}, text_color = {0.92, 0.95, 1.0, 1},
-        align_h = "center", align_v = "middle", corner_radius = 5,
-        font_scale = FONT, draggable = true, visible = true,
-    })
-    return runtime_ui.get_state(SCREEN, id) or {}
+    DRAG_Q.x, DRAG_Q.y, DRAG_Q.w, DRAG_Q.h, DRAG_Q.body = x, y, w, h, label
+    runtime_ui.set_quad(SCREEN, id, DRAG_Q)
+    return runtime_ui.get_state(SCREEN, id) or EMPTY_STATE
 end
 
 -- A vertical two-tone bar: `frac` of the height is filled white from the bottom, the rest
 -- stays dark. Used for the engine eval bar; `label` is drawn under it.
 function view.vbar(id, x, y, w, h, frac, label)
     frac = math.max(0.0, math.min(1.0, frac or 0.5))
-    runtime_ui.set_quad(SCREEN, id .. "_bg", {
-        x = x, y = y, w = w, h = h,
-        style = "panel", fill = {0.10, 0.10, 0.12, 0.90}, accent = {0, 0, 0, 0},
-        border = {0.35, 0.35, 0.38, 0.9}, corner_radius = 3,
-        no_input = true, visible = true,
-    })
+    VBAR_BG_Q.x, VBAR_BG_Q.y, VBAR_BG_Q.w, VBAR_BG_Q.h = x, y, w, h
+    runtime_ui.set_quad(SCREEN, id .. "_bg", VBAR_BG_Q)
     local fh = math.floor(h * frac + 0.5)
-    runtime_ui.set_quad(SCREEN, id .. "_fill", {
-        x = x + 1, y = y + (h - fh) + 1, w = w - 2, h = math.max(0, fh - 2),
-        style = "panel", fill = {0.92, 0.92, 0.88, 0.95}, accent = {0, 0, 0, 0},
-        border = {0, 0, 0, 0}, corner_radius = 2,
-        no_input = true, visible = fh > 2,
-    })
-    view.text(id .. "_lbl", x - 14, y + h + 4, w + 28, 18, label or "",
-              {fill = {0, 0, 0, 0}, font_scale = FONT - 0.2})
+    VBAR_FILL_Q.x, VBAR_FILL_Q.y = x + 1, y + (h - fh) + 1
+    VBAR_FILL_Q.w, VBAR_FILL_Q.h = w - 2, math.max(0, fh - 2)
+    VBAR_FILL_Q.visible = fh > 2
+    runtime_ui.set_quad(SCREEN, id .. "_fill", VBAR_FILL_Q)
+    view.text(id .. "_lbl", x - 14, y + h + 4, w + 28, 18, label or "", VBAR_LBL)
 end
 
 function view.vbar_hide(id)
@@ -311,12 +353,9 @@ end
 -- A plain backdrop that still reports hover, so the caller can tell "the cursor is over
 -- the panel" from "the cursor is over the board" and route the wheel accordingly.
 function view.panel(id, x, y, w, h, fill)
-    runtime_ui.set_quad(SCREEN, id, {
-        x = x, y = y, w = w, h = h,
-        style = "panel", fill = fill or {0.04, 0.05, 0.07, 0.78},
-        accent = {0, 0, 0, 0}, border = {0.30, 0.30, 0.34, 0.9},
-        corner_radius = 8, visible = true,
-    })
+    PANEL_Q.x, PANEL_Q.y, PANEL_Q.w, PANEL_Q.h = x, y, w, h
+    PANEL_Q.fill = fill or FILL_PANEL_HOVER
+    runtime_ui.set_quad(SCREEN, id, PANEL_Q)
     local st = runtime_ui.get_state(SCREEN, id)
     return (st and st.hovered) or false
 end

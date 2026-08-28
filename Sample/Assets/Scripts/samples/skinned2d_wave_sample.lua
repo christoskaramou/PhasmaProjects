@@ -1,11 +1,15 @@
--- Run with: local code = assert(fs.read("Scripts/samples/skinned2d_wave_sample.lua")); assert(load(code))()
+-- Run with: local code = assert(fs.read("Scripts/samples/skinned2d_wave_sample.lua")); assert(load(code))(); skinned2d_wave_sample.reset()
+
+if not sample_boot then
+    assert(load(assert(fs.read("Scripts/samples/sample_boot.lua"))))()
+end
 
 skinned2d_wave_sample = skinned2d_wave_sample or {}
 
 local M = skinned2d_wave_sample
 local UPDATE_ID = "skinned2d_wave_sample"
-
 local WAVE_AMP = math.rad(18.0)
+local TAG = "[Skinned2D Sample]"
 
 local state = {
     strip = nil,
@@ -15,58 +19,12 @@ local state = {
     rotations = {},
 }
 
-local function log(message)
-    if pe_log then
-        pe_log("[Skinned2D Sample] " .. message)
-    end
-end
-
-local function apply_sample_render_settings()
-    if not settings or not settings.get_render_mode or not settings.set_render_mode then
-        return
-    end
-
-    state.previous_render_mode = settings.get_render_mode()
-    if state.previous_render_mode ~= "raster" then
-        settings.set_render_mode("raster")
-        log("render mode set to raster")
-    end
-end
-
-local function restore_render_settings()
-    if settings and settings.set_render_mode and state.previous_render_mode then
-        settings.set_render_mode(state.previous_render_mode)
-    end
-    state.previous_render_mode = nil
-end
-
-local function configure_camera()
-    local cam = scene.get_active_camera()
-    if not cam then
-        cam = scene.add_camera()
-        scene.set_active_camera(cam)
-    end
-
-    cam:set_projection_mode("orthographic")
-    cam:set_orthographic_size(9.5)
-    cam:set_near(0.01)
-    cam:set_far(1000.0)
-    cam:set_position(vec3(0.0, 0.0, 36.0))
-    cam:look_at(vec3(0.0, 0.0, 0.0))
-
-    if scene.add_directional_light then
-        scene.add_directional_light()
-    end
-end
-
 local function update()
     if not state.strip or not state.strip:is_valid() then
         return
     end
 
-    local metrics = engine and engine.get_metrics and engine.get_metrics() or nil
-    local dt = metrics and math.min(metrics.delta_ms / 1000.0, 0.05) or 0.016
-    state.time = state.time + dt
+    state.time = state.time + sample_boot.dt()
 
     local joint_count = state.joint_count
     if joint_count <= 0 then
@@ -86,7 +44,7 @@ function M.stop()
     if script then
         script.remove_update(UPDATE_ID)
     end
-    restore_render_settings()
+    sample_boot.restore_raster(state)
     state.strip = nil
     state.time = 0.0
     state.joint_count = 0
@@ -95,18 +53,20 @@ end
 
 function M.reset()
     if not primitives or not primitives.skinned_strip_2d then
-        log("primitives.skinned_strip_2d is unavailable")
+        sample_boot.log(TAG, "primitives.skinned_strip_2d is unavailable")
         return false
     end
     if not animation or not animation.set_joint_rotations_z then
-        log("procedural animation bindings are unavailable")
+        sample_boot.log(TAG, "procedural animation bindings are unavailable")
         return false
     end
 
     M.stop()
     scene.clear()
-    apply_sample_render_settings()
-    configure_camera()
+    if sample_boot.apply_raster(state) then
+        sample_boot.log(TAG, "render mode set to raster")
+    end
+    sample_boot.ortho_camera()
 
     state.strip = primitives.skinned_strip_2d(8.0, 1.25, 64, 24)
     state.strip:set_name("Skinned2D Procedural Strip")
@@ -119,8 +79,6 @@ function M.reset()
 
     script.on_update(UPDATE_ID, update, "always")
     update()
-    log("ready")
+    sample_boot.log(TAG, "ready")
     return true
 end
-
-M.reset()

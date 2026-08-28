@@ -359,14 +359,6 @@ function Game.restart()
     if pe_log then pe_log("[Warbound] match restarted") end
 end
 
-local function window_size()
-    if engine and engine.get_window_size then
-        local s = engine.get_window_size()
-        if s and s.w and s.w > 0 then return s.w, s.h end
-    end
-    return 1920.0, 1080.0
-end
-
 local function r_pressed()
     local down = input and input.is_key_down and input.is_key_down("r") == true
     local was = prev_r
@@ -382,11 +374,8 @@ function Game.update(dt)
     state.time = state.time + gdt
 
     -- mouse-over-HUD test (suppress world clicks / edge scroll under the bar)
-    local mx, my = nil, nil
-    if input and input.get_mouse_position then
-        local m = input.get_mouse_position(); if m and m.x then mx, my = m.x, m.y end
-    end
-    local ww, wh = window_size()
+    local mx, my = U.mouse()
+    local ww, wh = Camera.screen()
     local mouse_in_ui = WB.hud.point_in_ui(mx or -1, my or -1, ww, wh)
 
     Camera.update(dt, mouse_in_ui)

@@ -9,7 +9,7 @@ local Combat = {}
 local PLAYER_AGGRO = 8.0     -- idle player units defend within this radius
 local ENEMY_AGGRO = 14.0     -- the camp seeks you out within this radius
 local MAX_LEVEL = 10
-local FACTIONS = { "player", "enemy" }
+local FACTIONS = U.FACTIONS
 local HALL_COUNTS = { player = 0, enemy = 0 }
 
 local function nearest(u, foes, radius)
@@ -96,7 +96,7 @@ function Combat.die(target, attacker, state)
         -- can never rebuild that type.
         WB.units.deactivate(target)
         if E then
-            U.compact(E.buildings, function(b) return b.alive end)
+            U.compact(E.buildings, U.alive)
             E.building_reserves[target.arch] = E.building_reserves[target.arch] or {}
             table.insert(E.building_reserves[target.arch], target)
         end
