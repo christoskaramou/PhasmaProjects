@@ -24,7 +24,7 @@ local M = {}
 local data = (function()
     local src = fs.read("Scripts/data.lua")
     if not src then error("[lab] data.lua not found at Scripts/data.lua") end
-    return load(src, "@Scripts/data.lua", "bt", _ENV)()
+    return assert(load(src, "@Scripts/data.lua", "bt", _ENV))()
 end)()
 
 local SCREEN = "ylem"
@@ -77,43 +77,43 @@ local function sfx(path)
 end
 
 -- Palette (all {r,g,b,a}; image_tint multiplies the white sprite) --------------
-local C_BG       = { 0.030, 0.040, 0.060, 1.0 }
-local C_PROTON   = { 1.00, 0.46, 0.32, 1.0 }
-local C_NEUTRON  = { 0.74, 0.78, 0.85, 1.0 }
-local C_NUCGLOW  = { 1.00, 0.52, 0.36, 0.22 }
-local C_ELEC     = { 0.64, 0.87, 1.00, 1.0 }
-local C_ELECGLW  = { 0.40, 0.72, 1.00, 0.20 }
-local C_POSITRON = { 1.00, 0.55, 0.88, 1.0 }
-local C_RING     = { 0.34, 0.55, 0.92, 1.0 }
-local C_LOCK     = { 1.00, 0.82, 0.34, 1.0 }
-local C_SLOT     = { 0.55, 0.78, 1.00, 1.0 }
-local C_UNSTABLE = { 1.00, 0.42, 0.32, 1.0 }
+local PAL = {}
+PAL.BG       = { 0.030, 0.040, 0.060, 1.0 }
+PAL.PROTON   = { 1.00, 0.46, 0.32, 1.0 }
+PAL.NEUTRON  = { 0.74, 0.78, 0.85, 1.0 }
+PAL.NUCGLOW  = { 1.00, 0.52, 0.36, 0.22 }
+PAL.ELEC     = { 0.64, 0.87, 1.00, 1.0 }
+PAL.ELECGLW  = { 0.40, 0.72, 1.00, 0.20 }
+PAL.POSITRON = { 1.00, 0.55, 0.88, 1.0 }
+PAL.RING     = { 0.34, 0.55, 0.92, 1.0 }
+PAL.LOCK     = { 1.00, 0.82, 0.34, 1.0 }
+PAL.SLOT     = { 0.55, 0.78, 1.00, 1.0 }
+PAL.UNSTABLE = { 1.00, 0.42, 0.32, 1.0 }
 local GAMMA_DUR = 0.35  -- gamma de-excitation: an excited daughter nucleus relaxes to ground
-local C_GAMMA = { 0.82, 0.76, 1.0, 1.0 } -- pale violet-white: the emitted gamma EM burst
-local C_HINT     = { 0.66, 0.74, 0.86, 0.55 }
-local C_DIMTEXT  = { 0.55, 0.60, 0.70, 1.0 }
-local C_CLEAR    = { 0, 0, 0, 0 }
-local C_WHITE    = { 1, 1, 1, 1 }
-local C_PANEL    = { 0.05, 0.06, 0.10, 0.98 }
-local C_TIP_TEXT = { 0.92, 0.94, 0.98, 1.0 }
-local C_BTN_ON   = { 0.16, 0.20, 0.10, 0.95 }
-local C_BTN_OFF  = { 0.10, 0.12, 0.16, 0.9 }
-local C_CELL_HIT = { 0.24, 0.18, 0.05, 0.95 }
-local C_CELL_ON  = { 0.10, 0.13, 0.19, 0.92 }
-local C_CELL_OFF = { 0.05, 0.06, 0.09, 0.5 }
-local C_CELL_MOD = { 0.06, 0.07, 0.11, 0.9 }
-local C_BORD_ON  = { 0.40, 0.45, 0.55, 0.6 }
-local C_BORD_OFF = { 0.20, 0.24, 0.30, 0.4 }
-local C_BORD_MOD = { 0.30, 0.34, 0.44, 0.5 }
-local C_TEXT_HIT = { 1.0, 0.90, 0.60, 1.0 }
-local C_TEXT_ON  = { 0.94, 0.88, 0.72, 1.0 }
-local C_TEXT_OFF = { 0.42, 0.46, 0.54, 0.7 }
-local C_TEXT_MOD = { 0.55, 0.60, 0.70, 0.9 }
-local C_ION      = { 0.86, 0.92, 1.0, 0.9 }
-local C_DECAY_H  = { 0.92, 0.86, 0.72, 0.92 }
-local C_BANNER   = { 0.09, 0.11, 0.17, 0.94 }
-local C_BENCH_GO = { 0.10, 0.16, 0.11, 0.95 }
-local C_LOCK_A95, C_ELEC_A90 -- frozen after palettes (see below)
+PAL.GAMMA = { 0.82, 0.76, 1.0, 1.0 } -- pale violet-white: the emitted gamma EM burst
+PAL.HINT     = { 0.66, 0.74, 0.86, 0.55 }
+PAL.DIMTEXT  = { 0.55, 0.60, 0.70, 1.0 }
+PAL.CLEAR    = { 0, 0, 0, 0 }
+PAL.WHITE    = { 1, 1, 1, 1 }
+PAL.PANEL    = { 0.05, 0.06, 0.10, 0.98 }
+PAL.TIP_TEXT = { 0.92, 0.94, 0.98, 1.0 }
+PAL.BTN_ON   = { 0.16, 0.20, 0.10, 0.95 }
+PAL.BTN_OFF  = { 0.10, 0.12, 0.16, 0.9 }
+PAL.CELL_HIT = { 0.24, 0.18, 0.05, 0.95 }
+PAL.CELL_ON  = { 0.10, 0.13, 0.19, 0.92 }
+PAL.CELL_OFF = { 0.05, 0.06, 0.09, 0.5 }
+PAL.CELL_MOD = { 0.06, 0.07, 0.11, 0.9 }
+PAL.BORD_ON  = { 0.40, 0.45, 0.55, 0.6 }
+PAL.BORD_OFF = { 0.20, 0.24, 0.30, 0.4 }
+PAL.BORD_MOD = { 0.30, 0.34, 0.44, 0.5 }
+PAL.TEXT_HIT = { 1.0, 0.90, 0.60, 1.0 }
+PAL.TEXT_ON  = { 0.94, 0.88, 0.72, 1.0 }
+PAL.TEXT_OFF = { 0.42, 0.46, 0.54, 0.7 }
+PAL.TEXT_MOD = { 0.55, 0.60, 0.70, 0.9 }
+PAL.ION      = { 0.86, 0.92, 1.0, 0.9 }
+PAL.DECAY_H  = { 0.92, 0.86, 0.72, 0.92 }
+PAL.BANNER   = { 0.09, 0.11, 0.17, 0.94 }
+PAL.BENCH_GO = { 0.10, 0.16, 0.11, 0.95 }
 local RING_PEAK  = 0.78
 local NUC_MAX_DOTS = 28  -- past this a heavy nucleus draws a solid core + a scatter of dots
 -- CPK-ish atom colours for the molecule (ball-and-stick) view, lightened so they read on the
@@ -128,20 +128,20 @@ local E_GLOW_MAX = 18     -- drop the per-electron soft glow once the atom has m
 -- "last radiation fired": a persistent readout (bottom-right) naming the most recent
 -- emission, with a hover legend explaining what that radiation actually is.
 local RAD_INFO = {
-    alpha   = { name = "alpha", c = C_PROTON, desc = "A helium-4 nucleus (2p+2n). Heavy and charged - a sheet of paper stops it." },
-    betam   = { name = "beta-", c = C_ELEC, desc = "An electron flung out as a neutron becomes a proton. Millimetres of aluminium stop it." },
-    betap   = { name = "beta+", c = C_POSITRON, desc = "A positron - antimatter. It meets an electron and annihilates into gamma rays; that is a PET scan." },
-    ec      = { name = "e- capture", c = C_ELEC, desc = "The nucleus swallows one of its own inner electrons; a proton becomes a neutron and an X-ray follows." },
-    n       = { name = "neutron", c = C_NEUTRON, desc = "A free neutron - no charge, deeply penetrating, and it can make other atoms radioactive." },
-    gamma   = { name = "gamma", c = C_GAMMA, desc = "A high-energy photon shed by an excited nucleus. It takes lead or thick concrete to stop." },
-    fission = { name = "fission", c = C_UNSTABLE, desc = "The nucleus tears into two fragments plus free neutrons - the energy source of reactors." },
+    alpha   = { name = "alpha", c = PAL.PROTON, desc = "A helium-4 nucleus (2p+2n). Heavy and charged - a sheet of paper stops it." },
+    betam   = { name = "beta-", c = PAL.ELEC, desc = "An electron flung out as a neutron becomes a proton. Millimetres of aluminium stop it." },
+    betap   = { name = "beta+", c = PAL.POSITRON, desc = "A positron - antimatter. It meets an electron and annihilates into gamma rays; that is a PET scan." },
+    ec      = { name = "e- capture", c = PAL.ELEC, desc = "The nucleus swallows one of its own inner electrons; a proton becomes a neutron and an X-ray follows." },
+    n       = { name = "neutron", c = PAL.NEUTRON, desc = "A free neutron - no charge, deeply penetrating, and it can make other atoms radioactive." },
+    gamma   = { name = "gamma", c = PAL.GAMMA, desc = "A high-energy photon shed by an excited nucleus. It takes lead or thick concrete to stop." },
+    fission = { name = "fission", c = PAL.UNSTABLE, desc = "The nucleus tears into two fragments plus free neutrons - the energy source of reactors." },
 }
 local function set_lastrad(key, note) M.lastrad = { key = key, note = note } end
 local CATALYSTS = { "spark", "heat", "pressure", "Fe", "Ni", "Pt", "V2O5" } -- the lab's real helpers (toggle chips)
 local STEPPERS = { -- the left-hand assembly atom's manual controls
-    { kind = "p", plus = "st_p_plus", minus = "st_p_minus", lbl = "protons", c = C_PROTON },
-    { kind = "n", plus = "st_n_plus", minus = "st_n_minus", lbl = "neutrons", c = C_NEUTRON },
-    { kind = "e", plus = "st_e_plus", minus = "st_e_minus", lbl = "electrons", c = C_ELEC },
+    { kind = "p", plus = "st_p_plus", minus = "st_p_minus", lbl = "protons", c = PAL.PROTON },
+    { kind = "n", plus = "st_n_plus", minus = "st_n_minus", lbl = "neutrons", c = PAL.NEUTRON },
+    { kind = "e", plus = "st_e_plus", minus = "st_e_minus", lbl = "electrons", c = PAL.ELEC },
 }
 -- atom representation modes (dropdown). Bohr = the classic gameplay rings; the other three
 -- read the real Madelung electron configuration (see data.config): a written readout, true
@@ -178,9 +178,9 @@ end
 local function same4(a, b)
     return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3] and a[4] == b[4]
 end
-C_LOCK_A95 = { C_LOCK[1], C_LOCK[2], C_LOCK[3], 0.95 }
-C_ELEC_A90 = { C_ELEC[1], C_ELEC[2], C_ELEC[3], 0.9 }
-local C_ELEC_A92 = { C_ELEC[1], C_ELEC[2], C_ELEC[3], 0.92 }
+PAL.LOCK_A95 = { PAL.LOCK[1], PAL.LOCK[2], PAL.LOCK[3], 0.95 }
+PAL.ELEC_A90 = { PAL.ELEC[1], PAL.ELEC[2], PAL.ELEC[3], 0.9 }
+PAL.ELEC_A92 = { PAL.ELEC[1], PAL.ELEC[2], PAL.ELEC[3], 0.92 }
 -- pulse alpha cached + quantised so unstable/decay labels don't re-set_quad every frame.
 local function pulse_a(key, rate, lo, hi, period)
     period = period or 4
@@ -583,7 +583,7 @@ local function sprite(id, x, y, d, c, z, path, zdef)
     local opts = {
         x = ox, y = oy, width = d, height = d, z = z,
         style = "image", path = path, image_tint = freeze_col(c),
-        fill = C_CLEAR, border = C_CLEAR, no_input = true,
+        fill = PAL.CLEAR, border = PAL.CLEAR, no_input = true,
     }
     M._opt[id] = opts
     runtime_ui.set_quad(SCREEN, id, opts)
@@ -606,7 +606,7 @@ local function label(id, x, y, w, h, text, c, fs, z)
     local opts = {
         x = ox, y = y, width = w, height = h, z = z,
         style = "text", body = text, text_color = freeze_col(c),
-        fill = C_CLEAR, border = C_CLEAR,
+        fill = PAL.CLEAR, border = PAL.CLEAR,
         align_h = "center", align_v = "middle", font_scale = fs, no_input = true,
     }
     M._opt[id] = opts
@@ -618,15 +618,15 @@ local function tip_panel(id, x, y, w, h, label_s, title, body, footer, border, f
         x = x, y = y, width = w, height = h, z = 63.0, style = "panel",
         font_scale = fs or 1.7, bring_to_front = true, no_input = true,
         label = label_s, title = title, body = body, footer = footer,
-        fill = C_PANEL, border = border or C_LOCK, accent = C_LOCK, text_color = C_TIP_TEXT,
+        fill = PAL.PANEL, border = border or PAL.LOCK, accent = PAL.LOCK, text_color = PAL.TIP_TEXT,
     })
 end
 
 local function cell_look(hit, disc, modal)
-    if hit then return C_CELL_HIT, C_LOCK_A95, C_TEXT_HIT end
-    if disc then return C_CELL_ON, modal and C_BORD_MOD or C_BORD_ON, C_TEXT_ON end
-    if modal then return C_CELL_MOD, C_BORD_MOD, C_TEXT_MOD end
-    return C_CELL_OFF, C_BORD_OFF, C_TEXT_OFF
+    if hit then return PAL.CELL_HIT, PAL.LOCK_A95, PAL.TEXT_HIT end
+    if disc then return PAL.CELL_ON, modal and PAL.BORD_MOD or PAL.BORD_ON, PAL.TEXT_ON end
+    if modal then return PAL.CELL_MOD, PAL.BORD_MOD, PAL.TEXT_MOD end
+    return PAL.CELL_OFF, PAL.BORD_OFF, PAL.TEXT_OFF
 end
 
 local function toast_banner(id, y, z, msg, age, fill, border_c, tc)
@@ -1369,9 +1369,9 @@ local function draw_nucleus(idp, x, y, protons, neutrons, al, cap, ballcol)
         dot(idp .. "b", x, y, nucR * 2.0, col(ballcol, al), 22.0)
         return nucR
     end
-    dot(idp .. "g", x, y, nucR * 3.0, col(C_NUCGLOW, C_NUCGLOW[4] * al), 18.0)
+    dot(idp .. "g", x, y, nucR * 3.0, col(PAL.NUCGLOW, PAL.NUCGLOW[4] * al), 18.0)
     local shown = math.min(total, cap)
-    if total > cap then dot(idp .. "core", x, y, nucR * 1.7, col(C_PROTON, 0.5 * al), 21.0) end
+    if total > cap then dot(idp .. "core", x, y, nucR * 1.7, col(PAL.PROTON, 0.5 * al), 21.0) end
     for i = 1, shown do
         local a = i * 2.399963
         -- pack from the CENTRE out: nucleon 1 sits dead centre, each new one accretes onto
@@ -1379,7 +1379,7 @@ local function draw_nucleus(idp, x, y, protons, neutrons, al, cap, ballcol)
         -- empty — a lone proton drew at the rim).
         local rr = nucR * 0.82 * math.sqrt((i - 1) / math.max(1, shown - 1))
         dot(idp .. i, x + math.cos(a) * rr, y + math.sin(a) * rr, g.dp,
-            col((i / shown) <= (protons / math.max(1, total)) and C_PROTON or C_NEUTRON, al), 22.0)
+            col((i / shown) <= (protons / math.max(1, total)) and PAL.PROTON or PAL.NEUTRON, al), 22.0)
     end
     return nucR
 end
@@ -1397,8 +1397,8 @@ local function draw_orbital(idp, x, y, e, R, alpha_mul)
     local frac = clamp01(val.e / (2 * (2 * l + 1)))
     quad(idp, { x = x - side * 0.5, y = y - side * 0.5, width = side, height = side, z = 13.0,
         style = "image", path = "orbital_" .. val.n .. data.L_CHAR[l] .. "_m" .. math.abs(m) .. ".png",
-        image_tint = col(C_WHITE, math.min(1.0, (0.55 + 0.45 * frac) * alpha_mul)),
-        fill = C_CLEAR, border = C_CLEAR, no_input = true })
+        image_tint = col(PAL.WHITE, math.min(1.0, (0.55 + 0.45 * frac) * alpha_mul)),
+        fill = PAL.CLEAR, border = PAL.CLEAR, no_input = true })
 end
 
 -- a complete atom in the SELECTED view (Bohr rings+electrons OR the orbital cloud) plus its
@@ -1414,14 +1414,14 @@ local function mini_atom(idp, x, y, p, n, e, R, al)
         local nr = math.max(1, #esh)
         local r0 = R * 0.33
         local step = nr > 1 and (R - r0) / (nr - 1) or 0
-        for i = 1, nr do ring(idp .. "ring" .. i, x, y, r0 + (i - 1) * step, col(C_RING, al * 0.7), 12.0) end
+        for i = 1, nr do ring(idp .. "ring" .. i, x, y, r0 + (i - 1) * step, col(PAL.RING, al * 0.7), 12.0) end
         for si = 1, nr do
             local cnt = esh[si] or 0
             for k = 1, math.min(cnt, E_MAX_PER_RING) do
                 local ang = M.clock * 0.6 + (k - 1) / math.max(1, cnt) * TAU + si
                 local rr = r0 + (si - 1) * step
                 dot(idp .. "e" .. si .. "_" .. k, x + math.cos(ang) * rr, y + math.sin(ang) * rr,
-                    g.de, col(C_ELEC, math.min(1.0, al + 0.35)), 30.0)
+                    g.de, col(PAL.ELEC, math.min(1.0, al + 0.35)), 30.0)
             end
         end
     end
@@ -1432,12 +1432,12 @@ end
 -- with one orbiting electron. `s` scales it.
 local function draw_partner_ghost(idp, x, y, s, z, sym)
     local g = M.g
-    local c = CPK[sym or "H"] or C_PROTON
+    local c = CPK[sym or "H"] or PAL.PROTON
     dot(idp .. "g", x, y, g.de * 2.4 * s, col(c, 0.20), z)
     dot(idp .. "p", x, y, g.dp * 1.4 * s, c, z + 1.0)
     local a = M.clock * 2.2
     dot(idp .. "e", x + math.cos(a) * g.de * 1.5 * s, y + math.sin(a) * g.de * 1.5 * s,
-        g.de * 0.7 * s, C_ELEC, z + 2.0)
+        g.de * 0.7 * s, PAL.ELEC, z + 2.0)
 end
 
 -- protons + principal neutrons for a partner/core atom named by symbol.
@@ -1468,8 +1468,8 @@ local function draw_molecule()
         -- a:b ratio (1:1 = rock-salt checkerboard), anions bigger, cations smaller.
         local tt = M.bonding and clamp01(M.bonding.t) or 1.0
         local XFER = 0.42
-        local ccol = CPK[m.cation] or C_PROTON
-        local acol = CPK[m.anion] or C_NEUTRON
+        local ccol = CPK[m.cation] or PAL.PROTON
+        local acol = CPK[m.anion] or PAL.NEUTRON
         if M.bonding and tt < XFER then
             local et = ease_out(tt / XFER)
             local ax = cx + lerp(g.unit * 0.52, g.unit * 0.17, et) -- the anion glides in
@@ -1481,12 +1481,12 @@ local function draw_molecule()
                 local ek = clamp01((et - (k - 1) * 0.12) / 0.82)
                 local ex = lerp(cx, ax, ek)
                 local ey = cy - math.sin(ek * math.pi) * g.unit * 0.055 - (k - 1) * g.unit * 0.012
-                dot("latxeh" .. k, ex, ey, g.de * 2.0, col(C_ELECGLW, 0.22), 29.0)
-                dot("latxe" .. k, ex, ey, g.de, C_ELEC, 30.0)
+                dot("latxeh" .. k, ex, ey, g.de * 2.0, col(PAL.ELECGLW, 0.22), 29.0)
+                dot("latxe" .. k, ex, ey, g.de, PAL.ELEC, 30.0)
             end
             label("latxlbl", cx, cy + g.unit * 0.10, g.unit * 0.7, g.unit * 0.035,
                 string.format("%s gives %d electron%s  ->  %s", m.cation, m.chg,
-                    m.chg > 1 and "s" or "", m.anion), C_DIMTEXT, 1.5, 41.0)
+                    m.chg > 1 and "s" or "", m.anion), PAL.DIMTEXT, 1.5, 41.0)
         else
             local prog2 = M.bonding and ease_out(clamp01((tt - XFER) / (1.0 - XFER))) or 1.0
             local cols, rows = 4, 3
@@ -1508,7 +1508,7 @@ local function draw_molecule()
             end
             label("lat_legend", cx, y0 + rows * pitch + g.unit * 0.005, g.unit * 0.6, g.unit * 0.04,
                 string.format("%s%s / %s%s   ionic lattice", m.cation, string.rep("+", m.chg),
-                    m.anion, string.rep("-", m.achg)), C_DIMTEXT, 1.5, 41.0)
+                    m.anion, string.rep("-", m.achg)), PAL.DIMTEXT, 1.5, 41.0)
         end
     elseif m.render == "diatomic" then
         local pz, pn = partner_pn(m.core)
@@ -1518,20 +1518,20 @@ local function draw_molecule()
         local mid = (lx + rx) * 0.5
         local jlx, jly = jit(0.0)
         local jrx, jry = jit(3.1)
-        dot("bondglow", mid, cy, g.nucR * 2.8, col(C_ELEC, 0.10 + 0.24 * prog), 19.0)
-        local ccol = CPK[m.core] or C_PROTON
+        dot("bondglow", mid, cy, g.nucR * 2.8, col(PAL.ELEC, 0.10 + 0.24 * prog), 19.0)
+        local ccol = CPK[m.core] or PAL.PROTON
         draw_nucleus("molL", lx + jlx, cy + jly, pz, pn, nil, nil, ccol)
         draw_nucleus("molR", rx + jrx, cy + jry, pz, pn, nil, nil, ccol)
         for i = 0, 1 do
             local ang = M.clock * 1.3 + i * math.pi
             local ex = mid + math.cos(ang) * (bd + g.de * 1.6)
             local ey = cy + math.sin(ang) * g.radii[1] * 0.85
-            dot("mole" .. i, ex, ey, g.de, C_ELEC, 30.0)
+            dot("mole" .. i, ex, ey, g.de, PAL.ELEC, 30.0)
         end
     elseif m.render == "central" and m.partners then -- core + partners; acids have no render
         local dCP = g.unit * 0.135
         local jcx, jcy = jit(0.0)
-        local cR = draw_nucleus("molC", cx + jcx, cy + jcy, M.atom.protons, M.atom.neutrons, nil, nil, CPK[m.core] or C_PROTON)
+        local cR = draw_nucleus("molC", cx + jcx, cy + jcy, M.atom.protons, M.atom.neutrons, nil, nil, CPK[m.core] or PAL.PROTON)
         for idx, pa in ipairs(m.partners) do
             local sym, a = pa[1], pa[2]
             local pz, pn = partner_pn(sym)
@@ -1539,8 +1539,8 @@ local function draw_molecule()
             local jx, jy = jit(idx * 2.0)
             local hx, hy = cx + math.cos(a) * r + jx, cy + math.sin(a) * r + jy
             dot("molbond" .. idx, cx + math.cos(a) * dCP * 0.55, cy + math.sin(a) * dCP * 0.55,
-                g.de * 2.2, col(C_ELEC, 0.12 + 0.2 * prog), 19.0) -- shared bonding pair
-            draw_nucleus("molP" .. idx, hx, hy, pz, pn, nil, nil, CPK[sym] or C_PROTON)
+                g.de * 2.2, col(PAL.ELEC, 0.12 + 0.2 * prog), 19.0) -- shared bonding pair
+            draw_nucleus("molP" .. idx, hx, hy, pz, pn, nil, nil, CPK[sym] or PAL.PROTON)
         end
         -- lone pairs on the core sit OPPOSITE the bonds - they're what bend the molecule. Tuck
         -- them tight against the nucleus as dim little pairs, not free-drifting electrons.
@@ -1556,17 +1556,17 @@ local function draw_molecule()
                 local perp = ang + math.pi * 0.5
                 for _, s in ipairs({ -1, 1 }) do
                     dot("mololp" .. p .. "_" .. (s + 1), px + math.cos(perp) * g.de * s * 0.45,
-                        py + math.sin(perp) * g.de * s * 0.45, g.de * 0.55, col(C_ELEC, 0.45), 19.0)
+                        py + math.sin(perp) * g.de * s * 0.45, g.de * 0.55, col(PAL.ELEC, 0.45), 19.0)
                 end
             end
         end
     end
 
     label("mol_sym", g.cx, g.iy, g.unit * 0.5, g.unit * 0.09,
-        m.sym, col(C_LOCK, math.min(1.0, 0.9 * g.bright)), 3.6, 41.0)
+        m.sym, col(PAL.LOCK, math.min(1.0, 0.9 * g.bright)), 3.6, 41.0)
     if M.molecule then
         label("mol_sub", g.cx, g.iy + g.unit * 0.075, g.unit * 0.7, g.unit * 0.045,
-            string.lower(m.name), C_DIMTEXT, 1.7, 41.0)
+            string.lower(m.name), PAL.DIMTEXT, 1.7, 41.0)
     end
 end
 
@@ -1578,7 +1578,7 @@ local function draw_stage()
     local x, y = g.sx, g.sy
     local FA = 0.40 -- faint alpha for the "not yet real" staging atom
 
-    label("st_hdr", x, y - g.unit * 0.185, g.unit * 0.30, g.unit * 0.04, "ASSEMBLE", col(C_HINT, 0.75), 1.6, 41.0)
+    label("st_hdr", x, y - g.unit * 0.185, g.unit * 0.30, g.unit * 0.04, "ASSEMBLE", col(PAL.HINT, 0.75), 1.6, 41.0)
 
     -- the assembly atom in the currently-selected representation (Bohr or orbital cloud).
     local nr = math.max(1, #stage_shells(s.e))
@@ -1589,17 +1589,17 @@ local function draw_stage()
         local onm = M.held_id == r.minus
         quad(r.minus, { x = x - g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
             width = g.stbtn, height = g.stbtn, z = 46.0, style = "button", title = "-", font_scale = 2.2,
-            fill = onm and C_BTN_ON or C_BTN_OFF,
+            fill = onm and PAL.BTN_ON or PAL.BTN_OFF,
             border = col(r.c, onm and 0.95 or 0.5), accent = col(r.c, onm and 0.9 or 0.7),
-            text_color = C_TIP_TEXT })
+            text_color = PAL.TIP_TEXT })
         label("st_" .. r.kind .. "_v", x, ry - g.unit * 0.020, g.unit * 0.14, g.unit * 0.05, tostring(s[r.kind]), col(r.c, 1.0), 2.6, 41.0)
-        label("st_" .. r.kind .. "_l", x, ry + g.unit * 0.020, g.unit * 0.18, g.unit * 0.03, r.lbl, C_DIMTEXT, 1.2, 41.0)
+        label("st_" .. r.kind .. "_l", x, ry + g.unit * 0.020, g.unit * 0.18, g.unit * 0.03, r.lbl, PAL.DIMTEXT, 1.2, 41.0)
         local on = M.held_id == r.plus
         quad(r.plus, { x = x + g.stgap - g.stbtn * 0.5, y = ry - g.stbtn * 0.5,
             width = g.stbtn, height = g.stbtn, z = 46.0, style = "button", title = "+", font_scale = 2.2,
-            fill = on and C_BTN_ON or C_BTN_OFF,
+            fill = on and PAL.BTN_ON or PAL.BTN_OFF,
             border = col(r.c, on and 0.95 or 0.6), accent = col(r.c, 0.9),
-            text_color = C_TIP_TEXT })
+            text_color = PAL.TIP_TEXT })
     end
 
     -- MERGE + a live preview of the isotope the chunk will make (gold when it hits the target).
@@ -1611,13 +1611,13 @@ local function draw_stage()
     local hit = M.target and M.target.kind == "el" and M.target.z == rp and re == rp
     quad("merge", { x = x - g.mergew * 0.5, y = g.mergey, width = g.mergew, height = g.mergeh, z = 46.0,
         style = "button", title = "MERGE", font_scale = 2.0,
-        fill = any and C_BENCH_GO or { 0.08, 0.09, 0.12, 0.7 },
-        border = hit and C_LOCK or col(C_ELEC, any and 0.7 or 0.3), accent = col(C_LOCK, 0.85),
+        fill = any and PAL.BENCH_GO or { 0.08, 0.09, 0.12, 0.7 },
+        border = hit and PAL.LOCK or col(PAL.ELEC, any and 0.7 or 0.3), accent = col(PAL.LOCK, 0.85),
         text_color = any and { 0.90, 0.96, 0.90, 1.0 } or { 0.6, 0.65, 0.72, 0.8 } })
     if any and rel then
         label("merge_pv", x, g.mergey + g.mergeh + g.unit * 0.012, g.unit * 0.42, g.unit * 0.036,
             string.format("makes  %s-%d  %s", rel.sym, rp + rn, (re == rp) and "neutral" or (re < rp and "ion+" or "ion-")),
-            hit and C_LOCK_A95 or C_DIMTEXT, 1.4, 41.0)
+            hit and PAL.LOCK_A95 or PAL.DIMTEXT, 1.4, 41.0)
     end
 end
 
@@ -1644,7 +1644,7 @@ local function draw_element_tip(z, mx, my)
     -- before); the atomic number lives in the corner label and the lore wraps in the body.
     tip_panel("eltip", tx, ty, tw, th, "Atomic number " .. e.z, e.name .. "   (" .. e.sym .. ")",
         (CAT_NAME[e.cat] or "Element") .. ".   " .. e.lore,
-        string.format("%s-%d   -   %s", e.sym, mass0, stable), C_LOCK, 1.8)
+        string.format("%s-%d   -   %s", e.sym, mass0, stable), PAL.LOCK, 1.8)
 end
 
 -- what each condition chip does + when to use it (real chemistry + the fusion gate).
@@ -1685,7 +1685,7 @@ local function draw_view_bg(acx, acy, bright)
         for si = 1, math.max(1, nmax) do
             local frac = (occ[si] or 0) / (2 * si * si)
             ring("ring" .. si, acx, acy, g.radii[si],
-                col(C_RING, math.min(1.0, (0.24 + 0.66 * frac) * bright)), 12.0)
+                col(PAL.RING, math.min(1.0, (0.24 + 0.66 * frac) * bright)), 12.0)
         end
     else -- bohr
         for si, sh in ipairs(M.atom.shells) do
@@ -1693,7 +1693,7 @@ local function draw_view_bg(acx, acy, bright)
                 local base = sh.locked and 0.95 or (#sh.e > 0 and 0.55 or 0.28)
                 local a = math.min(1.0, (base + sh.flare * 0.55) * bright)
                 ring("ring" .. si, acx, acy, g.radii[si] * (1.0 + sh.flare * 0.03),
-                    col(sh.locked and C_LOCK or C_RING, a), 12.0)
+                    col(sh.locked and PAL.LOCK or PAL.RING, a), 12.0)
             end
         end
     end
@@ -1719,8 +1719,8 @@ local function draw_view_fg(ecx, ecy, bright)
             if glow then M._live["eh" .. si .. "_" .. i] = true end
         else
             M._eang[id] = px
-            if glow then dot("eh" .. si .. "_" .. i, ex, ey, g.de * 2.1, col(C_ELECGLW, math.min(1.0, C_ELECGLW[4] * bright)), 29.0) end
-            dot(id, ex, ey, g.de, C_ELEC, 30.0)
+            if glow then dot("eh" .. si .. "_" .. i, ex, ey, g.de * 2.1, col(PAL.ELECGLW, math.min(1.0, PAL.ELECGLW[4] * bright)), 29.0) end
+            dot(id, ex, ey, g.de, PAL.ELEC, 30.0)
         end
     end
     if M.view == "shells" then
@@ -1754,16 +1754,16 @@ local function draw()
     if electrons() <= E_GLOW_MAX then ecx, ecy = acx, acy end
 
     quad("bg", { x = 0, y = 0, width = g.w, height = g.h, z = 0.0,
-        style = "panel", fill = C_BG, border = C_CLEAR, no_input = true })
+        style = "panel", fill = PAL.BG, border = PAL.CLEAR, no_input = true })
 
-    if M.sw then ring("shock", ecx, ecy, M.sw.r, col(C_LOCK, M.sw.alpha), 15.0) end
+    if M.sw then ring("shock", ecx, ecy, M.sw.r, col(PAL.LOCK, M.sw.alpha), 15.0) end
     if M.gamma then -- gamma photon: a fast violet EM burst as the nucleus sheds excitation energy
         local gt = clamp01(M.gamma.t)
         local a = 1.0 - gt
-        ring("gamma1", ncx, ncy, g.nucR * (1.0 + gt * 7.0), col(C_GAMMA, a * 0.85), 16.0)
-        ring("gamma2", ncx, ncy, g.nucR * (1.0 + gt * 4.0), col(C_GAMMA, a * 0.55), 16.0)
+        ring("gamma1", ncx, ncy, g.nucR * (1.0 + gt * 7.0), col(PAL.GAMMA, a * 0.85), 16.0)
+        ring("gamma2", ncx, ncy, g.nucR * (1.0 + gt * 4.0), col(PAL.GAMMA, a * 0.55), 16.0)
         if M.gamma.tag then
-            label("gammatag", ncx, ncy - g.rmax - g.unit * 0.03, g.unit * 0.2, g.unit * 0.04, "gamma", col(C_GAMMA, a), 1.6, 41.0)
+            label("gammatag", ncx, ncy - g.rmax - g.unit * 0.03, g.unit * 0.2, g.unit * 0.04, "gamma", col(PAL.GAMMA, a), 1.6, 41.0)
         end
     end
 
@@ -1781,7 +1781,7 @@ local function draw()
         if frac ~= M._drfq then
             M._drfq = frac
             local pr = nucR * (1.35 + 1.3 * frac)
-            ring("decayring", ncx, ncy, pr, col(C_UNSTABLE, 0.35 + 0.45 * (1.0 - frac)), 17.0)
+            ring("decayring", ncx, ncy, pr, col(PAL.UNSTABLE, 0.35 + 0.45 * (1.0 - frac)), 17.0)
         else
             M._live["decayring"] = true
         end
@@ -1797,13 +1797,13 @@ local function draw()
         for i = 1, shown do M._live["nuc" .. i] = true end
     else
         M._nqx, M._nqy, M._nfq = nqx, nqy, fq
-        dot("nucglow", ncx, ncy, nucR * (3.0 + M.flash * 1.6), col(C_NUCGLOW, math.min(0.7, 0.22 + M.flash * 0.5)), 18.0)
-        if total > NUC_MAX_DOTS then dot("nuccore", ncx, ncy, nucR * 1.7, col(C_PROTON, 0.5), 21.0) end
+        dot("nucglow", ncx, ncy, nucR * (3.0 + M.flash * 1.6), col(PAL.NUCGLOW, math.min(0.7, 0.22 + M.flash * 0.5)), 18.0)
+        if total > NUC_MAX_DOTS then dot("nuccore", ncx, ncy, nucR * 1.7, col(PAL.PROTON, 0.5), 21.0) end
         for i = 1, shown do
             local a = i * 2.399963
             -- centre-out packing (see draw_nucleus): first nucleon dead centre, newest on the rim
             local rr = nucR * 0.82 * math.sqrt((i - 1) / math.max(1, shown - 1))
-            local c = (i / shown) <= (M.atom.protons / math.max(1, total)) and C_PROTON or C_NEUTRON
+            local c = (i / shown) <= (M.atom.protons / math.max(1, total)) and PAL.PROTON or PAL.NEUTRON
             dot("nuc" .. i, ncx + math.cos(a) * rr, ncy + math.sin(a) * rr, g.dp, c, 22.0)
         end
     end
@@ -1811,8 +1811,8 @@ local function draw()
     draw_view_fg(ecx, ecy, bright)
 
     if M.emit then
-        local c = M.emit.kind == "e" and C_ELEC
-            or (M.emit.kind == "p" and C_POSITRON or (M.emit.kind == "a" and C_PROTON or C_NEUTRON))
+        local c = M.emit.kind == "e" and PAL.ELEC
+            or (M.emit.kind == "p" and PAL.POSITRON or (M.emit.kind == "a" and PAL.PROTON or PAL.NEUTRON))
         local a = clamp01(M.emit.life)
         dot("emith", M.emit.x, M.emit.y, g.de * 2.2, col(c, 0.18 * a), 51.0)
         dot("emit", M.emit.x, M.emit.y, g.de * 0.9, col(c, a), 52.0)
@@ -1822,7 +1822,7 @@ local function draw()
         if M.fly.kind == "bond" then
             draw_partner_ghost("fly", M.fly.x, M.fly.y, 1.15, 50.0, M.fly.psym)
         else
-            local c = M.fly.kind == "e" and C_ELEC or (M.fly.kind == "p" and C_PROTON or C_NEUTRON)
+            local c = M.fly.kind == "e" and PAL.ELEC or (M.fly.kind == "p" and PAL.PROTON or PAL.NEUTRON)
             dot("flyh", M.fly.x, M.fly.y, g.de * 2.6, col(c, 0.22), 49.0)
             dot("fly", M.fly.x, M.fly.y, g.de * (M.fly.kind == "e" and 1.15 or 1.0), c, 50.0)
         end
@@ -1835,27 +1835,27 @@ local function draw()
         local fx, fy = lerp(g.sx, acx, er), lerp(g.sy, acy, er)
         local nm = math.max(1, #stage_shells(M.fusing.e))
         local R_m = g.sr0 + (nm - 1) * g.srstep
-        dot("fuseglow", fx, fy, R_m * 1.5, col(C_LOCK, 0.20 + 0.30 * M.fusing.t), 11.0)
+        dot("fuseglow", fx, fy, R_m * 1.5, col(PAL.LOCK, 0.20 + 0.30 * M.fusing.t), 11.0)
         mini_atom("fuse", fx, fy, M.fusing.p, M.fusing.n, M.fusing.e, R_m, math.min(1.0, 0.6 + 0.4 * M.fusing.t))
     end
 
     -- FISSION: the fired neutron (phase "in"), then fragments + free neutrons (phase "out").
     if M.fission then
         if M.fission.phase == "in" then
-            dot("fissnh", M.fission.nx, M.fission.ny, g.de * 2.0, col(C_NEUTRON, 0.25), 49.0)
-            dot("fissn", M.fission.nx, M.fission.ny, g.de, C_NEUTRON, 50.0)
+            dot("fissnh", M.fission.nx, M.fission.ny, g.de * 2.0, col(PAL.NEUTRON, 0.25), 49.0)
+            dot("fissn", M.fission.nx, M.fission.ny, g.de, PAL.NEUTRON, 50.0)
         else
             for i, p in ipairs(M.fission.parts) do
                 local a = clamp01(p.life)
                 if p.kind == "n" then
-                    dot("fp" .. i .. "h", p.x, p.y, g.de * 1.8, col(C_NEUTRON, 0.20 * a), 51.0)
-                    dot("fp" .. i, p.x, p.y, g.de * 0.9, col(C_NEUTRON, a), 52.0)
+                    dot("fp" .. i .. "h", p.x, p.y, g.de * 1.8, col(PAL.NEUTRON, 0.20 * a), 51.0)
+                    dot("fp" .. i, p.x, p.y, g.de * 0.9, col(PAL.NEUTRON, a), 52.0)
                 else
-                    dot("fp" .. i .. "h", p.x, p.y, g.nucR * 2.0, col(C_PROTON, 0.30 * a), 51.0)
-                    dot("fp" .. i, p.x, p.y, g.nucR, col(C_PROTON, a), 52.0)
+                    dot("fp" .. i .. "h", p.x, p.y, g.nucR * 2.0, col(PAL.PROTON, 0.30 * a), 51.0)
+                    dot("fp" .. i, p.x, p.y, g.nucR, col(PAL.PROTON, a), 52.0)
                     local le = data.get(p.z)
                     if le then label("fpl" .. i, p.x, p.y - g.nucR * 1.7, g.unit * 0.14, g.unit * 0.04,
-                        le.sym, col(C_WHITE, a), 1.8, 53.0) end
+                        le.sym, col(PAL.WHITE, a), 1.8, 53.0) end
                 end
             end
         end
@@ -1865,13 +1865,13 @@ local function draw()
     local el = element()
     if el then
         local unstable = instability() > 0
-        local sym_c = is_neutral() and col(C_LOCK, math.min(1.0, 0.9 * bright)) or C_ION
+        local sym_c = is_neutral() and col(PAL.LOCK, math.min(1.0, 0.9 * bright)) or PAL.ION
         label("ident_sym", g.cx, g.iy, g.unit * 0.4, g.unit * 0.10, el.sym, sym_c, 4.0, 41.0)
-        local iso_c = unstable and col(C_UNSTABLE, pulse_a("iso", 6.0, 0.7, 1.0)) or C_DIMTEXT
+        local iso_c = unstable and col(PAL.UNSTABLE, pulse_a("iso", 6.0, 0.7, 1.0)) or PAL.DIMTEXT
         label("ident_iso", g.cx, g.iy + g.unit * 0.085, g.unit * 0.6, g.unit * 0.045,
             iso_name() .. (unstable and "   unstable" or ""), iso_c, 2.0, 41.0)
         label("ident_sub", g.cx, g.iy + g.unit * 0.125, g.unit * 0.6, g.unit * 0.038,
-            string.format("%dp %dn / %de", M.atom.protons, M.atom.neutrons, electrons()), C_DIMTEXT, 1.5, 41.0)
+            string.format("%dp %dn / %de", M.atom.protons, M.atom.neutrons, electrons()), PAL.DIMTEXT, 1.5, 41.0)
         if M.view == "cloud" then
             local cfg = data.config(electrons())
             local val = cfg[#cfg]
@@ -1879,14 +1879,14 @@ local function draw()
                 local m = -val.l + ((val.e - 1) % (2 * val.l + 1))
                 label("ident_orb", g.cx, g.iy + g.unit * 0.170, g.unit * 0.6, g.unit * 0.05,
                     string.format("outer  %d%s  (%d, %d, %d)", val.n, data.L_CHAR[val.l], val.n, val.l, m),
-                    C_ELEC_A92, 1.7, 41.0)
+                    PAL.ELEC_A92, 1.7, 41.0)
             end
         elseif M.view == "shells" then
             local occ, nmax = n_shell_occ(electrons())
             local parts = {}
             for i = 1, nmax do parts[i] = tostring(occ[i] or 0) end
             label("ident_orb", g.cx, g.iy + g.unit * 0.170, g.unit * 0.6, g.unit * 0.05,
-                "shells  " .. table.concat(parts, " . "), C_ELEC_A92, 1.7, 41.0)
+                "shells  " .. table.concat(parts, " . "), PAL.ELEC_A92, 1.7, 41.0)
         end
     end
 
@@ -1898,15 +1898,15 @@ local function draw()
         -- period-7 atoms are huge: clamp so the 3-line block never spills into the strip
         local py = math.min(g.cy + g.rmax + g.unit * 0.04, g.msY - g.unit * 0.155)
         label("decay_hdr", g.cx, py, g.unit * 0.6, g.unit * 0.05, "UNSTABLE  -  DECAYING",
-            col(C_UNSTABLE, pulse_a("decay", 7.0, 0.55, 1.0)), 2.2, 43.0)
+            col(PAL.UNSTABLE, pulse_a("decay", 7.0, 0.55, 1.0)), 2.2, 43.0)
         local hint = (stabilizes("n") and "MERGE +1 neutron to stabilize")
             or (stabilizes("p") and "MERGE +1 proton to stabilize")
             or "no stable route - let it decay"
         label("decay_hint", g.cx, py + g.unit * 0.052, g.unit * 0.75, g.unit * 0.04, hint,
-            C_DECAY_H, 1.6, 43.0)
+            PAL.DECAY_H, 1.6, 43.0)
         if M.decay.hl then
             label("decay_hl", g.cx, py + g.unit * 0.092, g.unit * 0.6, g.unit * 0.036,
-                "real half-life  " .. M.decay.hl, C_DIMTEXT, 1.4, 43.0)
+                "real half-life  " .. M.decay.hl, PAL.DIMTEXT, 1.4, 43.0)
         end
     end
 
@@ -1918,7 +1918,7 @@ local function draw()
     if rx and not M.card and not M.fusing and not M.fission and (not M.fly or bdrag) then
         local met = reqs_met(rx)
         local bx, by = g.cx + g.unit * 0.40, g.cy
-        local pc = CPK[rx.partner] or C_NEUTRON
+        local pc = CPK[rx.partner] or PAL.NEUTRON
         if not bdrag then
             local pulse = 1.0 + 0.10 * math.sin(M.clock * 3.0)
             ring("bond_ring", bx, by, g.td * 0.60 * (met and pulse or 1.0), col(pc, met and 0.5 or 0.18), 39.0)
@@ -1929,13 +1929,13 @@ local function draw()
             local q = reqs_of(rx)
             if not met and #q > 0 then
                 label("bond_need", bx, by + g.td * 0.62 + g.unit * 0.04, g.unit * 0.5, g.unit * 0.034,
-                    "needs: " .. table.concat(q, " + "), col(C_UNSTABLE, 0.9), 1.3, 40.0)
+                    "needs: " .. table.concat(q, " + "), col(PAL.UNSTABLE, 0.9), 1.3, 40.0)
             end
         end
         quad("bond_src", { x = bx - g.dp * 1.1, y = by - g.dp * 1.1, width = g.dp * 2.2, height = g.dp * 2.2,
             z = 40.0, style = "image", path = "dot.png",
             image_tint = col(pc, bdrag and 0.28 or (met and 1.0 or 0.4)),
-            fill = C_CLEAR, border = C_CLEAR, draggable = met, bring_to_front = true })
+            fill = PAL.CLEAR, border = PAL.CLEAR, draggable = met, bring_to_front = true })
     end
 
     -- catalyst / condition chips (top-right, under Restart): the lab's real helpers. Toggle
@@ -1956,9 +1956,9 @@ local function draw()
             local on = M.cat[c]
             quad("cat_" .. c, { x = x0, y = y0 + (i - 1) * (chh + g.unit * 0.012),
                 width = cw, height = chh, z = 46.0, style = "button", title = c, font_scale = 1.4,
-                fill = on and C_BTN_ON or C_BTN_OFF,
-                border = on and C_LOCK or (need[c] and col(C_UNSTABLE, 0.85) or { 0.4, 0.45, 0.55, 0.55 }),
-                accent = on and col(C_LOCK, 0.9) or col(C_ELEC, 0.5),
+                fill = on and PAL.BTN_ON or PAL.BTN_OFF,
+                border = on and PAL.LOCK or (need[c] and col(PAL.UNSTABLE, 0.85) or { 0.4, 0.45, 0.55, 0.55 }),
+                accent = on and col(PAL.LOCK, 0.9) or col(PAL.ELEC, 0.5),
                 text_color = on and { 0.95, 0.9, 0.6, 1.0 } or { 0.8, 0.85, 0.92, 0.9 } })
         end
     end
@@ -1981,7 +1981,7 @@ local function draw()
             local fill, border, tc = cell_look(
                 M.target and M.target.kind == "el" and M.target.z == z, M.discovered[z])
             if M.discovered[z] and M.atom.protons == z and not (M.target and M.target.kind == "el" and M.target.z == z) then
-                border = C_ELEC_A90
+                border = PAL.ELEC_A90
             end
             quad(PT_IDS[z], { x = x + g.cell * 0.06, y = y + g.cell * 0.06,
                 width = g.cell * 0.88, height = g.cell * 0.88, z = 44.0,
@@ -1998,7 +1998,7 @@ local function draw()
         local prev = M._opt["pthit"]
         if not prev or prev.x ~= g.boardX or prev.y ~= g.boardY or prev.width ~= g.boardW or prev.height ~= bh then
             quad("pthit", { x = g.boardX, y = g.boardY, width = g.boardW, height = bh,
-                z = 44.5, style = "panel", fill = C_CLEAR, border = C_CLEAR })
+                z = 44.5, style = "panel", fill = PAL.CLEAR, border = PAL.CLEAR })
         end
         local st = runtime_ui.get_state(SCREEN, "pthit")
         if st and st.hovered then
@@ -2028,9 +2028,9 @@ local function draw()
             quad("bench" .. i, { x = g.unit * 0.015, y = by0, width = bw, height = bh, z = 46.0,
                 style = "button", font_scale = 1.3,
                 title = "REACT:  " .. s.eq .. (met and "" or ("    needs " .. table.concat(reqs_of(s), "+"))),
-                fill = met and C_BENCH_GO or C_BTN_OFF,
-                border = met and col(C_LOCK, 0.9) or col(C_UNSTABLE, 0.7),
-                accent = col(C_LOCK, 0.8),
+                fill = met and PAL.BENCH_GO or PAL.BTN_OFF,
+                border = met and col(PAL.LOCK, 0.9) or col(PAL.UNSTABLE, 0.7),
+                accent = col(PAL.LOCK, 0.8),
                 text_color = met and { 0.92, 0.96, 0.90, 1.0 } or { 0.75, 0.78, 0.85, 0.9 } })
         end
     end
@@ -2069,7 +2069,7 @@ local function draw()
             local prev = M._opt["mshit"]
             if not prev or prev.x ~= g.msX or prev.y ~= g.msY or prev.width ~= g.msW or prev.height ~= msHtot then
                 quad("mshit", { x = g.msX, y = g.msY, width = g.msW, height = msHtot, z = 45.0,
-                    style = "panel", fill = C_CLEAR, border = C_CLEAR })
+                    style = "panel", fill = PAL.CLEAR, border = PAL.CLEAR })
             end
             local st = runtime_ui.get_state(SCREEN, "mshit")
             if st and st.hovered then
@@ -2124,12 +2124,12 @@ local function draw()
     do
         local tx, ty = g.unit * 0.02, g.unit * 0.025
         local tc = (M.won or M.goalflash > 0.0)
-            and col(C_LOCK, 0.85 + 0.15 * (M.goalflash > 0.0 and M.goalflash or 1.0))
+            and col(PAL.LOCK, 0.85 + 0.15 * (M.goalflash > 0.0 and M.goalflash or 1.0))
             or { 0.86, 0.92, 1.0, 0.96 }
         quad("target_btn", { x = tx, y = ty, width = g.unit * 0.32, height = g.unit * 0.065, z = 46.0,
             style = "button", title = M.won and "DONE!  tap for next" or ("TARGET:  " .. target_label()),
-            font_scale = 1.8, fill = C_BANNER,
-            border = M.won and C_LOCK or col(C_ELEC, 0.6), accent = col(C_LOCK, 0.8), text_color = tc })
+            font_scale = 1.8, fill = PAL.BANNER,
+            border = M.won and PAL.LOCK or col(PAL.ELEC, 0.6), accent = col(PAL.LOCK, 0.8), text_color = tc })
         quad("target_sub", { x = tx, y = ty + g.unit * 0.072, width = g.unit * 0.36, height = g.unit * 0.03,
             z = 46.0, style = "text",
             body = M.won and "click for a new target"
@@ -2137,7 +2137,7 @@ local function draw()
                 and "made on the BENCH  -  react shelf molecules (bottom-left)"
                 or "synthesize this  -  assemble on the left, then MERGE",
             align_h = "left", align_v = "middle", font_scale = 1.2,
-            fill = C_CLEAR, border = C_CLEAR, text_color = C_DIMTEXT, no_input = true })
+            fill = PAL.CLEAR, border = PAL.CLEAR, text_color = PAL.DIMTEXT, no_input = true })
     end
 
     -- QUESTS: pick any element or molecule as the next target; the TARGET button above
@@ -2146,8 +2146,8 @@ local function draw()
         local qx, qy, qw, qh, px, py2, gx0, gy0, ec, erows, my0, mgy0, mcw, mch, mrows = quest_layout()
         quad("questbtn", { x = qx, y = qy, width = qw, height = qh, z = 47.0, style = "button",
             title = "QUESTS  " .. (M.questOpen and "^" or "v"), font_scale = 1.4,
-            fill = C_BANNER, border = col(C_LOCK, 0.55),
-            accent = col(C_LOCK, 0.7), text_color = { 0.92, 0.90, 0.80, 0.96 } })
+            fill = PAL.BANNER, border = col(PAL.LOCK, 0.55),
+            accent = col(PAL.LOCK, 0.7), text_color = { 0.92, 0.90, 0.80, 0.96 } })
         if M.questOpen then
             local pw = math.max(Q_ECOLS * ec, Q_MCOLS * mcw) + g.unit * 0.024
             local ph = erows * ec + mrows * mch + g.unit * 0.096
@@ -2166,9 +2166,9 @@ local function draw()
                 M._qsig = qsig
                 quad("questpanel", { x = px, y = py2, width = pw, height = ph, z = 61.0,
                     style = "panel", bring_to_front = true, no_input = true,
-                    fill = { 0.04, 0.05, 0.09, 0.98 }, border = col(C_LOCK, 0.6),
-                    accent = col(C_LOCK, 0.7), text_color = { 0.9, 0.9, 0.9, 1.0 } })
-                label("quest_he", px + pw * 0.5, py2 + g.unit * 0.006, pw, g.unit * 0.024, "ELEMENTS", C_HINT, 1.2, 62.0)
+                    fill = { 0.04, 0.05, 0.09, 0.98 }, border = col(PAL.LOCK, 0.6),
+                    accent = col(PAL.LOCK, 0.7), text_color = { 0.9, 0.9, 0.9, 1.0 } })
+                label("quest_he", px + pw * 0.5, py2 + g.unit * 0.006, pw, g.unit * 0.024, "ELEMENTS", PAL.HINT, 1.2, 62.0)
                 for z = 1, data.MAX_Z do
                     local r0 = math.floor((z - 1) / Q_ECOLS)
                     local c0 = (z - 1) % Q_ECOLS
@@ -2180,7 +2180,7 @@ local function draw()
                         body = e.sym, align_h = "center", align_v = "middle", font_scale = 0.9,
                         fill = fill, border = border, text_color = tc, no_input = true })
                 end
-                label("quest_hm", px + pw * 0.5, my0, pw, g.unit * 0.024, "MOLECULES", C_HINT, 1.2, 62.0)
+                label("quest_hm", px + pw * 0.5, my0, pw, g.unit * 0.024, "MOLECULES", PAL.HINT, 1.2, 62.0)
                 for i, key in ipairs(data.mol_list) do
                     local r0 = math.floor((i - 1) / Q_MCOLS)
                     local c0 = (i - 1) % Q_MCOLS
@@ -2193,7 +2193,7 @@ local function draw()
                 end
                 quad("questhit", { x = gx0, y = gy0, width = math.max(Q_ECOLS * ec, Q_MCOLS * mcw),
                     height = (mgy0 + mrows * mch) - gy0, z = 63.0, style = "panel",
-                    fill = C_CLEAR, border = C_CLEAR, bring_to_front = true })
+                    fill = PAL.CLEAR, border = PAL.CLEAR, bring_to_front = true })
             end
         else
             M._qsig = nil
@@ -2206,16 +2206,16 @@ local function draw()
         draw_stage()
         if not M.acted and #(M.chain or {}) <= 1 then -- the chain breadcrumb owns this line
             label("hint", g.cx, g.msY - g.unit * 0.052, g.unit * 0.8, g.unit * 0.045,
-                "assemble an atom on the left  -  HOLD + to pour  -  then MERGE it in", C_HINT, 2.0, 42.0)
+                "assemble an atom on the left  -  HOLD + to pour  -  then MERGE it in", PAL.HINT, 2.0, 42.0)
         end
     end
 
     -- decay toast (mid)
     if M.toast then
-        toast_banner("toast", g.h * 0.30, 58.0, M.toast.msg, M.toast.age, { 0.06, 0.05, 0.04, 1 }, C_UNSTABLE, { 1.0, 0.86, 0.7, 1 })
+        toast_banner("toast", g.h * 0.30, 58.0, M.toast.msg, M.toast.age, { 0.06, 0.05, 0.04, 1 }, PAL.UNSTABLE, { 1.0, 0.86, 0.7, 1 })
     end
     if M.gtoast then
-        toast_banner("gtoast", g.h * 0.36, 59.0, M.gtoast.msg, M.gtoast.age, { 0.05, 0.06, 0.04, 1 }, C_LOCK, { 1.0, 0.92, 0.72, 1 })
+        toast_banner("gtoast", g.h * 0.36, 59.0, M.gtoast.msg, M.gtoast.age, { 0.05, 0.06, 0.04, 1 }, PAL.LOCK, { 1.0, 0.92, 0.72, 1 })
     end
 
     -- birth card
@@ -2238,8 +2238,8 @@ local function draw()
                 style = "panel", font_scale = 2.2, bring_to_front = true,
                 label = e.eq or (e.sym .. (e.z and ("  -  Z " .. e.z) or "")), title = string.upper(e.name), body = e.lore,
                 footer = "click to continue",
-                fill = C_PANEL, border = C_LOCK,
-                accent = C_LOCK, text_color = C_TIP_TEXT,
+                fill = PAL.PANEL, border = PAL.LOCK,
+                accent = PAL.LOCK, text_color = PAL.TIP_TEXT,
             })
             end
         end
@@ -2251,7 +2251,7 @@ local function draw()
         local pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(M.clock * 3.0))
         quad("fission", { x = g.cx - g.unit * 0.15, y = g.h * 0.78, width = g.unit * 0.30, height = g.unit * 0.06, z = 46.0,
             style = "button", title = "FISSION  -  fire neutron", font_scale = 1.6,
-            fill = { 0.20, 0.10, 0.10, 0.95 }, border = col(C_UNSTABLE, pulse), accent = col(C_NEUTRON, 0.9),
+            fill = { 0.20, 0.10, 0.10, 0.95 }, border = col(PAL.UNSTABLE, pulse), accent = col(PAL.NEUTRON, 0.9),
             text_color = { 1.0, 0.86, 0.80, 1.0 } })
     end
 
@@ -2261,24 +2261,24 @@ local function draw()
         local vw, vh = g.unit * 0.24, g.unit * 0.05
         quad("viewbtn", { x = vx, y = vy, width = vw, height = vh, z = 47.0, style = "button",
             title = "View:  " .. view_name(M.view) .. (M.viewOpen and "  ^" or "  v"), font_scale = 1.4,
-            fill = C_BANNER, border = col(C_ELEC, 0.6),
-            accent = col(C_ELEC, 0.7), text_color = { 0.86, 0.92, 1.0, 0.96 } })
+            fill = PAL.BANNER, border = col(PAL.ELEC, 0.6),
+            accent = col(PAL.ELEC, 0.7), text_color = { 0.86, 0.92, 1.0, 0.96 } })
         if M.viewOpen then
             for i, v in ipairs(VIEWS) do
                 local sel = M.view == v.key
                 quad("view_" .. v.key, { x = vx, y = vy + vh + (i - 1) * (vh * 0.92), width = vw, height = vh * 0.86,
                     z = 47.0, style = "button", title = v.name, font_scale = 1.3, bring_to_front = true,
-                    fill = sel and C_BTN_ON or { 0.07, 0.09, 0.13, 0.97 },
-                    border = sel and C_LOCK or C_BORD_ON,
-                    accent = col(C_ELEC, 0.6), text_color = { 0.86, 0.9, 0.96, 1.0 } })
+                    fill = sel and PAL.BTN_ON or { 0.07, 0.09, 0.13, 0.97 },
+                    border = sel and PAL.LOCK or PAL.BORD_ON,
+                    accent = col(PAL.ELEC, 0.6), text_color = { 0.86, 0.9, 0.96, 1.0 } })
             end
         end
     end
 
     quad("reset", { x = g.w - 150.0, y = 26.0, width = 122.0, height = 44.0, z = 45.0,
         style = "button", title = "Restart", font_scale = 1.7,
-        fill = C_BTN_OFF, border = { 0.4, 0.5, 0.62, 0.7 },
-        accent = C_RING, text_color = C_TIP_TEXT })
+        fill = PAL.BTN_OFF, border = { 0.4, 0.5, 0.62, 0.7 },
+        accent = PAL.RING, text_color = PAL.TIP_TEXT })
 end
 
 local function reconcile()
