@@ -45,6 +45,11 @@ local PANEL_Q = {
     style = "panel", fill = PANEL_FILL, accent = ZERO, border = PANEL_BORDER,
     corner_radius = 10, visible = true,
 }
+local BACK_Q = {
+    x = 0, y = 0, w = 0, h = 0,
+    style = "panel", fill = BACKDROP_FILL, accent = ZERO, border = ZERO,
+    visible = true,
+}
 local DRAG_Q = {
     x = 0, y = 0, w = 0, h = 0, body = "",
     style = "panel", fill = BTN_FILL, accent = ZERO, border = BTN_BORDER,

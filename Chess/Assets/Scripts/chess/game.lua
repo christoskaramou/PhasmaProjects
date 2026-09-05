@@ -1484,31 +1484,9 @@ local function menu_frame(pressed)
 end
 
 -- ── lifecycle ──────────────────────────────────────────────────────────────
-function G.init()
-    drop_clones()
-    B = load_module("Scripts/chess/board.lua")
-    R = load_module("Scripts/chess/rules.lua")
-    V = load_module("Scripts/chess/view.lua")
-    C = load_module("Scripts/chess/camera.lua")
-    GR = load_module("Scripts/chess/grid.lua")
-    BOT = load_module("Scripts/chess/bot.lua")
-    S = load_module("Scripts/chess/sounds.lua")
-    MENU = load_module("Scripts/chess/menu.lua")
-    PGN = load_module("Scripts/chess/pgn.lua")
-    K = load_module("Scripts/chess/clock.lua")
-    B2 = load_module("Scripts/chess/board2d.lua")
-
-    pieces = B.reset()
-    state = R.new(pieces)
-
-    -- Pristine identity per registry slot. A promotion swaps meshes between two entries,
-    -- so rewinding needs the original mapping back before the board can be re-laid.
-    snapshots = {}
-    for i, p in ipairs(pieces) do
-        snapshots[i] = {node = p.node, name = p.name, kind = p.kind, color = p.color,
-                        y = p.y, radius = p.radius, base_y = p.base_y, height = p.height}
-    end
-
+-- G.init sat at LuaJIT's 60-upvalue cap (one more module-level local and game.lua stops
+-- loading), so the per-game state reset lives in its own function.
+local function reset_state()
     selected, targets = nil, nil
     parked, park_seq = {}, 0
     history, view_ply, scroll, panel_hot = {}, 0, nil, false
@@ -1539,6 +1517,34 @@ function G.init()
     pgn_saved, end_wait, flag_result = false, nil, nil
     clones, hud_note, hud_note_frames = {}, nil, nil
     replay, ply_ms = nil, 0
+end
+
+function G.init()
+    drop_clones()
+    B = load_module("Scripts/chess/board.lua")
+    R = load_module("Scripts/chess/rules.lua")
+    V = load_module("Scripts/chess/view.lua")
+    C = load_module("Scripts/chess/camera.lua")
+    GR = load_module("Scripts/chess/grid.lua")
+    BOT = load_module("Scripts/chess/bot.lua")
+    S = load_module("Scripts/chess/sounds.lua")
+    MENU = load_module("Scripts/chess/menu.lua")
+    PGN = load_module("Scripts/chess/pgn.lua")
+    K = load_module("Scripts/chess/clock.lua")
+    B2 = load_module("Scripts/chess/board2d.lua")
+
+    pieces = B.reset()
+    state = R.new(pieces)
+
+    -- Pristine identity per registry slot. A promotion swaps meshes between two entries,
+    -- so rewinding needs the original mapping back before the board can be re-laid.
+    snapshots = {}
+    for i, p in ipairs(pieces) do
+        snapshots[i] = {node = p.node, name = p.name, kind = p.kind, color = p.color,
+                        y = p.y, radius = p.radius, base_y = p.base_y, height = p.height}
+    end
+
+    reset_state()
     base_key = R.position_key(state)
 
     V.init(B)

@@ -15,7 +15,7 @@ local game = (function()
     local path = "Scripts/chess/game.lua"
     local src = fs.read(path)
     if not src then error("[chess] game module not found at " .. path) end
-    return load(src, "@" .. path, "bt", _ENV)()
+    return assert(load(src, "@" .. path, "bt", _ENV))()
 end)()
 
 -- Exposed so a session can drive moves without a mouse, from the editor console or MCP:
