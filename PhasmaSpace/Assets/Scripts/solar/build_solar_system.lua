@@ -73,7 +73,6 @@ settings.set("shadow_filter_radius", 0.75)
 settings.set("shadow_debug_mode", 0)
 settings.set_depth_bias(0.0, 0.0, -6.2)
 settings.set("time_scale", 1.0)
-settings.set("lights_intensity", 1.0)
 settings.set("frustum_culling", true)
 settings.set("freeze_frustum_culling", false)
 settings.set("draw_aabbs", false)
@@ -137,7 +136,7 @@ if #pls == 0 then
 end
 -- Physical falloff: intensity = luminance * distance^2, anchored so Earth (1 AU =
 -- 14,960 u) peaks around ~2.2 — properly exposed, day side not clipped. The
--- director's auto-exposure (lights_intensity = (d/AU)^2 for the followed body)
+-- director's auto-exposure (sun intensity x (d/AU)^2 for the followed body)
 -- keeps outer planets readable, camera-style. Range 5e6 keeps the cutoff window
 -- ~1.0 across all planets (Neptune d/r = 0.09).
 lights.set_point_light(0, vec3(0, 0, 0), vec3(1.0, 0.96, 0.9), 4.9e8, 5.0e6)

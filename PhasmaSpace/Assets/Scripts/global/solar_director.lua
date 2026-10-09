@@ -89,6 +89,7 @@ local root = nil    -- the SolarSystem node (found by name as a global script, o
 local bound = false -- true once the tree is indexed and orbit lines are built
 local sun_light_node = nil
 local sun_light_cached = nil
+local sun_exposure = 1.0 -- auto-exposure scale on the sun light's own intensity
 local scene_shift = zero_pos()
 local universe_positions = {} -- body name -> heliocentric world position before root rebase
 local moon_locals = {}        -- moon name -> local orbit position before parent planet tilt
@@ -197,7 +198,6 @@ local ORBIT_SAGITTA_RADIUS_FRACTION = 0.2
 local MOON_ORBIT_SEGMENT_TARGET = 0.75
 local MOON_ORBIT_LINE_LIMIT = 4
 local MANUAL_ORBIT_PASS_NAME = "SolarManualOrbitLines"
-local MANUAL_ORBIT_PASS_ORDER = 721
 local MANUAL_ORBIT_COLOR = { x = 1.0, y = 1.0, z = 1.0, w = 1.0 }
 local SELECTED_ORBIT_COLOR = { x = 1.0, y = 0.82, z = 0.05, w = 1.0 }
 local FREE_REBASE_DISTANCE = 1000.0
@@ -403,7 +403,8 @@ local function register_manual_orbit_pass()
         ensure_manual_orbit_pipeline(target, depth)
     end
 
-    render_graph.add_pass(MANUAL_ORBIT_PASS_NAME, MANUAL_ORBIT_PASS_ORDER, function(cmd)
+    render_graph.add_pass({ name = MANUAL_ORBIT_PASS_NAME, order = 721, -- after Lines
+                            writes = { "viewport", "depthStencil" }, fn = function(cmd)
         local orbits = handles["Orbits"]
         if not orbits or not orbits:is_valid() then return end
         if orbits.is_enabled and not orbits:is_enabled() then return end
@@ -445,7 +446,7 @@ local function register_manual_orbit_pass()
         end
 
         cmd:end_pass()
-    end)
+    end })
     manual_orbit_lines.registered = true
 end
 
@@ -517,7 +518,7 @@ local function sync_sun_light(world_pos)
     end
     lights.set_point_light(sun_light_cached.index, VEC3,
                            sun_light_cached.color,
-                           sun_light_cached.intensity,
+                           sun_light_cached.intensity * sun_exposure,
                            sun_light_cached.radius)
 end
 
@@ -570,7 +571,7 @@ local function build_orbit_lines(jd)
 end
 
 -- Photographic auto-exposure: sunlight falls off physically (1/d^2), so expose for
--- the followed body by scaling the global light multiplier with its solar distance
+-- the followed body by scaling the sun light's intensity with its solar distance
 -- squared (1.0 at 1 AU). Earth, Mercury, and Neptune all read correctly exposed,
 -- like a camera metering its subject.
 local function apply_exposure(target)
@@ -579,7 +580,8 @@ local function apply_exposure(target)
     local f = d2 / (P.AU_UNITS * P.AU_UNITS)
     if f < 0.02 then f = 0.02 end
     if f > 2000.0 then f = 2000.0 end
-    settings.set("lights_intensity", f)
+    sun_exposure = f
+    sync_sun_light(scene_shift)
 end
 
 local function set_editor_fly_camera_blocked(blocked)
