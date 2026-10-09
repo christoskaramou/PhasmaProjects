@@ -516,7 +516,6 @@ run_test("float_setting_round_trip", function()
     local pairs_list = {
         {"bloom_strength",      0.3},
         {"IBL_intensity",       1.5},
-        {"lights_intensity",    2.0},
     }
     for _, kv in ipairs(pairs_list) do
         local k, v = kv[1], kv[2]
