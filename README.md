@@ -17,4 +17,5 @@ can make real things quickly.
 | [Warbound](./Warbound/README.md) | An original real-time strategy prototype in the classic 3D-RTS mold — angled command camera, hero + squad combat, base-building economy, an AI opponent, and a command-card HUD. |
 | [VoxelCraft](./VoxelCraft/README.md) | A Minecraft-style voxel playground: first-person movement, jumping, block outline, and break/place controls over PhasmaEngine's voxel runtime. |
 | [Ylem](./Ylem/README.md) | A tactile physics sandbox about coalescing matter — Lab builds real atoms (full table) from protons, neutrons, and electrons; Cosmos is planned later. |
+| [PRISM Tetris](./PrismTetris/README.md) | A crystal-aurora 3D Tetris with guideline speed, hold and a five-piece preview, plus a side-by-side race against the Jev model on identical pieces. Its launcher needs a PhasmaEngine checkout beside this repo. |
 | [Sample](./Sample/) | The engine's default project: a content/lighting showcase (a neon "Las Vegas" scene) that the editor and launcher open out of the box. |
