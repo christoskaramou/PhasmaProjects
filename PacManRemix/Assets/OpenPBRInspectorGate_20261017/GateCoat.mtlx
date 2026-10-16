@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<materialx version="1.39">
+  <multiply name="gate_tint" type="color3">
+    <input name="in1" type="color3" value="1.0, 0.6, 0.2" />
+    <input name="in2" type="float" value="0.5" />
+  </multiply>
+  <multiply name="gate_glow" type="color3">
+    <input name="in1" type="color3" value="0.2, 0.4, 1.0" />
+    <input name="in2" type="float" value="0.25" />
+  </multiply>
+  <switch name="gate_pick" type="color3">
+    <input name="in1" type="color3" nodename="gate_glow" />
+    <input name="in2" type="color3" nodename="gate_tint" />
+    <input name="which" type="integer" value="1" />
+  </switch>
+  <open_pbr_surface name="gate_surface" type="surfaceshader">
+    <input name="base_color" type="color3" value="0.7, 0.25, 0.1" />
+    <input name="base_metalness" type="float" value="0.2" />
+    <input name="specular_roughness" type="float" value="0.35" />
+    <input name="specular_ior" type="float" value="1.6" />
+    <input name="coat_weight" type="float" value="1.0" />
+    <input name="coat_roughness" type="float" value="0.1" />
+    <input name="emission_luminance" type="float" value="0.4" />
+    <input name="emission_color" type="color3" nodename="gate_pick" />
+  </open_pbr_surface>
+  <surfacematerial name="GateCoat" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="gate_surface" />
+  </surfacematerial>
+</materialx>
