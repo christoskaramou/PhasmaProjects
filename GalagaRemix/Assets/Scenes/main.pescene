@@ -1,0 +1,2711 @@
+{
+ "sources": [
+  {
+   "path": "../Objects/fighter_body.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_metal.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_accent.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_glass.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_glow.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_body.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_metal.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_accent.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_glass.pemesh"
+  },
+  {
+   "path": "../Objects/fighter_glow.pemesh"
+  },
+  {
+   "path": "../Objects/bee_body.pemesh"
+  },
+  {
+   "path": "../Objects/bee_accent.pemesh"
+  },
+  {
+   "path": "../Objects/bee_eye.pemesh"
+  },
+  {
+   "path": "../Objects/bee_wing.pemesh"
+  },
+  {
+   "path": "../Objects/bee_wingR.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_body.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_accent.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_eye.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_wing.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_wingR.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_wingtrim.pemesh"
+  },
+  {
+   "path": "../Objects/bfly_wingtrimR.pemesh"
+  },
+  {
+   "path": "../Objects/boss_body.pemesh"
+  },
+  {
+   "path": "../Objects/boss_accent.pemesh"
+  },
+  {
+   "path": "../Objects/boss_eye.pemesh"
+  },
+  {
+   "path": "../Objects/boss_wing.pemesh"
+  },
+  {
+   "path": "../Objects/boss_wingR.pemesh"
+  },
+  {
+   "path": "../Objects/boss_body.pemesh"
+  },
+  {
+   "path": "../Objects/boss_accent.pemesh"
+  },
+  {
+   "path": "../Objects/boss_eye.pemesh"
+  },
+  {
+   "path": "../Objects/boss_wing.pemesh"
+  },
+  {
+   "path": "../Objects/boss_wingR.pemesh"
+  },
+  {
+   "path": "../Objects/bolt.pemesh"
+  },
+  {
+   "path": "../Objects/ebolt.pemesh"
+  },
+  {
+   "path": "../Objects/beam.pemesh"
+  },
+  {
+   "path": "../Objects/beam2.pemesh"
+  },
+  {
+   "path": "../Objects/planet.pemesh"
+  },
+  {
+   "path": "../Objects/planetring.pemesh"
+  },
+  {
+   "path": "../Objects/badge_pole.pemesh"
+  },
+  {
+   "path": "../Objects/beamring.pemesh"
+  },
+  {
+   "path": "../Objects/beamring.pemesh"
+  },
+  {
+   "path": "../Objects/beamring.pemesh"
+  },
+  {
+   "path": "../Objects/beamring.pemesh"
+  },
+  {
+   "path": "../Objects/beamring.pemesh"
+  },
+  {
+   "path": "../Objects/beamring.pemesh"
+  },
+  {
+   "path": "../Objects/star.pemesh"
+  },
+  {
+   "path": "../Objects/star.pemesh"
+  },
+  {
+   "path": "../Objects/star.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/ring.pemesh"
+  },
+  {
+   "path": "../Objects/orb.pemesh"
+  },
+  {
+   "path": "../Objects/orb.pemesh"
+  },
+  {
+   "path": "../Objects/orb.pemesh"
+  },
+  {
+   "path": "../Objects/orb.pemesh"
+  },
+  {
+   "path": "../Objects/orb.pemesh"
+  },
+  {
+   "path": "../Objects/orb.pemesh"
+  },
+  {
+   "path": "../Objects/badge_flag.pemesh"
+  },
+  {
+   "path": "../Objects/badge_stripe.pemesh"
+  },
+  {
+   "path": "../Objects/badge_flag.pemesh"
+  },
+  {
+   "path": "../Objects/badge_stripe.pemesh"
+  },
+  {
+   "path": "../Objects/badge_flag.pemesh"
+  },
+  {
+   "path": "../Objects/badge_stripe.pemesh"
+  },
+  {
+   "path": "../Objects/badge_flag.pemesh"
+  },
+  {
+   "path": "../Objects/badge_stripe.pemesh"
+  },
+  {
+   "path": "../Objects/badge_flag.pemesh"
+  },
+  {
+   "path": "../Objects/badge_stripe.pemesh"
+  },
+  {
+   "path": "../Objects/badge_flag.pemesh"
+  },
+  {
+   "path": "../Objects/badge_stripe.pemesh"
+  }
+ ],
+ "meshes": [
+  {
+   "source": 0,
+   "source_mesh": 0
+  },
+  {
+   "source": 1,
+   "source_mesh": 0
+  },
+  {
+   "source": 2,
+   "source_mesh": 0
+  },
+  {
+   "source": 3,
+   "source_mesh": 0
+  },
+  {
+   "source": 4,
+   "source_mesh": 0
+  },
+  {
+   "source": 5,
+   "source_mesh": 0
+  },
+  {
+   "source": 6,
+   "source_mesh": 0
+  },
+  {
+   "source": 7,
+   "source_mesh": 0
+  },
+  {
+   "source": 8,
+   "source_mesh": 0
+  },
+  {
+   "source": 9,
+   "source_mesh": 0
+  },
+  {
+   "source": 10,
+   "source_mesh": 0
+  },
+  {
+   "source": 11,
+   "source_mesh": 0
+  },
+  {
+   "source": 12,
+   "source_mesh": 0
+  },
+  {
+   "source": 13,
+   "source_mesh": 0
+  },
+  {
+   "source": 14,
+   "source_mesh": 0
+  },
+  {
+   "source": 15,
+   "source_mesh": 0
+  },
+  {
+   "source": 16,
+   "source_mesh": 0
+  },
+  {
+   "source": 17,
+   "source_mesh": 0
+  },
+  {
+   "source": 18,
+   "source_mesh": 0
+  },
+  {
+   "source": 19,
+   "source_mesh": 0
+  },
+  {
+   "source": 20,
+   "source_mesh": 0
+  },
+  {
+   "source": 21,
+   "source_mesh": 0
+  },
+  {
+   "source": 22,
+   "source_mesh": 0
+  },
+  {
+   "source": 23,
+   "source_mesh": 0
+  },
+  {
+   "source": 24,
+   "source_mesh": 0
+  },
+  {
+   "source": 25,
+   "source_mesh": 0
+  },
+  {
+   "source": 26,
+   "source_mesh": 0
+  },
+  {
+   "source": 27,
+   "source_mesh": 0
+  },
+  {
+   "source": 28,
+   "source_mesh": 0
+  },
+  {
+   "source": 29,
+   "source_mesh": 0
+  },
+  {
+   "source": 30,
+   "source_mesh": 0
+  },
+  {
+   "source": 31,
+   "source_mesh": 0
+  },
+  {
+   "source": 32,
+   "source_mesh": 0
+  },
+  {
+   "source": 33,
+   "source_mesh": 0
+  },
+  {
+   "source": 34,
+   "source_mesh": 0
+  },
+  {
+   "source": 35,
+   "source_mesh": 0
+  },
+  {
+   "source": 36,
+   "source_mesh": 0
+  },
+  {
+   "source": 37,
+   "source_mesh": 0
+  },
+  {
+   "source": 38,
+   "source_mesh": 0
+  },
+  {
+   "source": 39,
+   "source_mesh": 0
+  },
+  {
+   "source": 40,
+   "source_mesh": 0
+  },
+  {
+   "source": 41,
+   "source_mesh": 0
+  },
+  {
+   "source": 42,
+   "source_mesh": 0
+  },
+  {
+   "source": 43,
+   "source_mesh": 0
+  },
+  {
+   "source": 44,
+   "source_mesh": 0
+  },
+  {
+   "source": 45,
+   "source_mesh": 0
+  },
+  {
+   "source": 46,
+   "source_mesh": 0
+  },
+  {
+   "source": 47,
+   "source_mesh": 0
+  },
+  {
+   "source": 48,
+   "source_mesh": 0
+  },
+  {
+   "source": 49,
+   "source_mesh": 0
+  },
+  {
+   "source": 50,
+   "source_mesh": 0
+  },
+  {
+   "source": 51,
+   "source_mesh": 0
+  },
+  {
+   "source": 52,
+   "source_mesh": 0
+  },
+  {
+   "source": 53,
+   "source_mesh": 0
+  },
+  {
+   "source": 54,
+   "source_mesh": 0
+  },
+  {
+   "source": 55,
+   "source_mesh": 0
+  },
+  {
+   "source": 56,
+   "source_mesh": 0
+  },
+  {
+   "source": 57,
+   "source_mesh": 0
+  },
+  {
+   "source": 58,
+   "source_mesh": 0
+  },
+  {
+   "source": 59,
+   "source_mesh": 0
+  },
+  {
+   "source": 60,
+   "source_mesh": 0
+  },
+  {
+   "source": 61,
+   "source_mesh": 0
+  },
+  {
+   "source": 62,
+   "source_mesh": 0
+  },
+  {
+   "source": 63,
+   "source_mesh": 0
+  },
+  {
+   "source": 64,
+   "source_mesh": 0
+  },
+  {
+   "source": 65,
+   "source_mesh": 0
+  },
+  {
+   "source": 66,
+   "source_mesh": 0
+  },
+  {
+   "source": 67,
+   "source_mesh": 0
+  },
+  {
+   "source": 68,
+   "source_mesh": 0
+  },
+  {
+   "source": 69,
+   "source_mesh": 0
+  },
+  {
+   "source": 70,
+   "source_mesh": 0
+  },
+  {
+   "source": 71,
+   "source_mesh": 0
+  },
+  {
+   "source": 72,
+   "source_mesh": 0
+  },
+  {
+   "source": 73,
+   "source_mesh": 0
+  },
+  {
+   "source": 74,
+   "source_mesh": 0
+  },
+  {
+   "source": 75,
+   "source_mesh": 0
+  },
+  {
+   "source": 76,
+   "source_mesh": 0
+  },
+  {
+   "source": 77,
+   "source_mesh": 0
+  },
+  {
+   "source": 78,
+   "source_mesh": 0
+  },
+  {
+   "source": 79,
+   "source_mesh": 0
+  }
+ ],
+ "nodes": [
+  {
+   "name": "Camera_0",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    70,
+    1
+   ],
+   "component_flags": 8,
+   "camera": {
+    "projection": "perspective",
+    "fovx": 0.9,
+    "near_plane": 0.5,
+    "far_plane": 900.0,
+    "speed": 3.5,
+    "euler": [
+     0.0,
+     3.14159,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "T_fighter_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    0
+   ]
+  },
+  {
+   "name": "T_fighter_metal",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    1
+   ]
+  },
+  {
+   "name": "T_fighter_accent",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    2
+   ]
+  },
+  {
+   "name": "T_fighter_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    3
+   ]
+  },
+  {
+   "name": "T_fighter_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    4
+   ]
+  },
+  {
+   "name": "T_cap_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    5
+   ]
+  },
+  {
+   "name": "T_cap_metal",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    6
+   ]
+  },
+  {
+   "name": "T_cap_accent",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    7
+   ]
+  },
+  {
+   "name": "T_cap_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    8
+   ]
+  },
+  {
+   "name": "T_cap_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    9
+   ]
+  },
+  {
+   "name": "T_bee_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    10
+   ]
+  },
+  {
+   "name": "T_bee_accent",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    11
+   ]
+  },
+  {
+   "name": "T_bee_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    12
+   ]
+  },
+  {
+   "name": "T_bee_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    13
+   ]
+  },
+  {
+   "name": "T_bee_wingR",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    14
+   ]
+  },
+  {
+   "name": "T_bfly_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    15
+   ]
+  },
+  {
+   "name": "T_bfly_accent",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    16
+   ]
+  },
+  {
+   "name": "T_bfly_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    17
+   ]
+  },
+  {
+   "name": "T_bfly_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    18
+   ]
+  },
+  {
+   "name": "T_bfly_wingR",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    19
+   ]
+  },
+  {
+   "name": "T_bfly_wingtrim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    20
+   ]
+  },
+  {
+   "name": "T_bfly_wingtrimR",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    21
+   ]
+  },
+  {
+   "name": "T_boss_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    22
+   ]
+  },
+  {
+   "name": "T_boss_accent",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    23
+   ]
+  },
+  {
+   "name": "T_boss_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    24
+   ]
+  },
+  {
+   "name": "T_boss_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    25
+   ]
+  },
+  {
+   "name": "T_boss_wingR",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    26
+   ]
+  },
+  {
+   "name": "T_boss2_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    27
+   ]
+  },
+  {
+   "name": "T_boss2_accent",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    28
+   ]
+  },
+  {
+   "name": "T_boss2_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    29
+   ]
+  },
+  {
+   "name": "T_boss2_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    30
+   ]
+  },
+  {
+   "name": "T_boss2_wingR",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    31
+   ]
+  },
+  {
+   "name": "T_bolt",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    32
+   ]
+  },
+  {
+   "name": "T_ebolt",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    33
+   ]
+  },
+  {
+   "name": "T_beam",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    34
+   ]
+  },
+  {
+   "name": "T_beam2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    35
+   ]
+  },
+  {
+   "name": "T_planet",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    36
+   ]
+  },
+  {
+   "name": "T_planetring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    37
+   ]
+  },
+  {
+   "name": "T_badge_pole",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    38
+   ]
+  },
+  {
+   "name": "T_beamring_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    39
+   ]
+  },
+  {
+   "name": "T_beamring_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    40
+   ]
+  },
+  {
+   "name": "T_beamring_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    41
+   ]
+  },
+  {
+   "name": "T_beamring_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    42
+   ]
+  },
+  {
+   "name": "T_beamring_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    43
+   ]
+  },
+  {
+   "name": "T_beamring_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    44
+   ]
+  },
+  {
+   "name": "T_star_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    45
+   ]
+  },
+  {
+   "name": "T_star_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    46
+   ]
+  },
+  {
+   "name": "T_star_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    47
+   ]
+  },
+  {
+   "name": "T_shard_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    48
+   ]
+  },
+  {
+   "name": "T_shard_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    49
+   ]
+  },
+  {
+   "name": "T_shard_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    50
+   ]
+  },
+  {
+   "name": "T_shard_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    51
+   ]
+  },
+  {
+   "name": "T_shard_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    52
+   ]
+  },
+  {
+   "name": "T_shard_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    53
+   ]
+  },
+  {
+   "name": "T_ring_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    54
+   ]
+  },
+  {
+   "name": "T_ring_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    55
+   ]
+  },
+  {
+   "name": "T_ring_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    56
+   ]
+  },
+  {
+   "name": "T_ring_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    57
+   ]
+  },
+  {
+   "name": "T_ring_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    58
+   ]
+  },
+  {
+   "name": "T_ring_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    59
+   ]
+  },
+  {
+   "name": "T_ring_6",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    60
+   ]
+  },
+  {
+   "name": "T_ring_7",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    61
+   ]
+  },
+  {
+   "name": "T_orb_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    62
+   ]
+  },
+  {
+   "name": "T_orb_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    63
+   ]
+  },
+  {
+   "name": "T_orb_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    64
+   ]
+  },
+  {
+   "name": "T_orb_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    65
+   ]
+  },
+  {
+   "name": "T_orb_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    66
+   ]
+  },
+  {
+   "name": "T_orb_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    67
+   ]
+  },
+  {
+   "name": "T_flag_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    68
+   ]
+  },
+  {
+   "name": "T_stripe_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    69
+   ]
+  },
+  {
+   "name": "T_flag_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    70
+   ]
+  },
+  {
+   "name": "T_stripe_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    71
+   ]
+  },
+  {
+   "name": "T_flag_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    72
+   ]
+  },
+  {
+   "name": "T_stripe_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    73
+   ]
+  },
+  {
+   "name": "T_flag_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    74
+   ]
+  },
+  {
+   "name": "T_stripe_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    75
+   ]
+  },
+  {
+   "name": "T_flag_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    76
+   ]
+  },
+  {
+   "name": "T_stripe_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    77
+   ]
+  },
+  {
+   "name": "T_flag_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    78
+   ]
+  },
+  {
+   "name": "T_stripe_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    79
+   ]
+  }
+ ],
+ "lights": [],
+ "cameras": [
+  {
+   "name": "Camera_0",
+   "position": [
+    0,
+    0,
+    70
+   ],
+   "euler": [
+    0.0,
+    3.14159,
+    0.0
+   ],
+   "fovx": 0.9,
+   "projection": "perspective",
+   "near_plane": 0.5,
+   "far_plane": 900.0,
+   "speed": 3.5,
+   "node_index": 0
+  }
+ ],
+ "active_camera": 0,
+ "scene_scripts": {
+  "on_play": [
+   "Assets/Scripts/game.lua"
+  ]
+ }
+}

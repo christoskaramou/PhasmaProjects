@@ -1,0 +1,1060 @@
+{
+ "sources": [
+  {
+   "path": "../Objects/canopy.pemesh"
+  },
+  {
+   "path": "../Objects/croc_body.pemesh"
+  },
+  {
+   "path": "../Objects/croc_jaw.pemesh"
+  },
+  {
+   "path": "../Objects/croc_teeth.pemesh"
+  },
+  {
+   "path": "../Objects/fern.pemesh"
+  },
+  {
+   "path": "../Objects/grass.pemesh"
+  },
+  {
+   "path": "../Objects/h_belt.pemesh"
+  },
+  {
+   "path": "../Objects/h_boot.pemesh"
+  },
+  {
+   "path": "../Objects/h_collar.pemesh"
+  },
+  {
+   "path": "../Objects/h_eyes.pemesh"
+  },
+  {
+   "path": "../Objects/h_forearm.pemesh"
+  },
+  {
+   "path": "../Objects/h_hair.pemesh"
+  },
+  {
+   "path": "../Objects/h_hand.pemesh"
+  },
+  {
+   "path": "../Objects/h_hat.pemesh"
+  },
+  {
+   "path": "../Objects/h_hatband.pemesh"
+  },
+  {
+   "path": "../Objects/h_head.pemesh"
+  },
+  {
+   "path": "../Objects/h_hips.pemesh"
+  },
+  {
+   "path": "../Objects/h_shin.pemesh"
+  },
+  {
+   "path": "../Objects/h_thigh.pemesh"
+  },
+  {
+   "path": "../Objects/h_torso.pemesh"
+  },
+  {
+   "path": "../Objects/h_upperarm.pemesh"
+  },
+  {
+   "path": "../Objects/liana.pemesh"
+  },
+  {
+   "path": "../Objects/log.pemesh"
+  },
+  {
+   "path": "../Objects/logends.pemesh"
+  },
+  {
+   "path": "../Objects/rock.pemesh"
+  },
+  {
+   "path": "../Objects/scorpion.pemesh"
+  },
+  {
+   "path": "../Objects/trunk.pemesh"
+  },
+  {
+   "path": "../Objects/vine_leaves.pemesh"
+  },
+  {
+   "path": "../Objects/vine_rope.pemesh"
+  }
+ ],
+ "meshes": [
+  {
+   "source": 0,
+   "source_mesh": 0
+  },
+  {
+   "source": 1,
+   "source_mesh": 0
+  },
+  {
+   "source": 2,
+   "source_mesh": 0
+  },
+  {
+   "source": 3,
+   "source_mesh": 0
+  },
+  {
+   "source": 4,
+   "source_mesh": 0
+  },
+  {
+   "source": 5,
+   "source_mesh": 0
+  },
+  {
+   "source": 6,
+   "source_mesh": 0
+  },
+  {
+   "source": 7,
+   "source_mesh": 0
+  },
+  {
+   "source": 8,
+   "source_mesh": 0
+  },
+  {
+   "source": 9,
+   "source_mesh": 0
+  },
+  {
+   "source": 10,
+   "source_mesh": 0
+  },
+  {
+   "source": 11,
+   "source_mesh": 0
+  },
+  {
+   "source": 12,
+   "source_mesh": 0
+  },
+  {
+   "source": 13,
+   "source_mesh": 0
+  },
+  {
+   "source": 14,
+   "source_mesh": 0
+  },
+  {
+   "source": 15,
+   "source_mesh": 0
+  },
+  {
+   "source": 16,
+   "source_mesh": 0
+  },
+  {
+   "source": 17,
+   "source_mesh": 0
+  },
+  {
+   "source": 18,
+   "source_mesh": 0
+  },
+  {
+   "source": 19,
+   "source_mesh": 0
+  },
+  {
+   "source": 20,
+   "source_mesh": 0
+  },
+  {
+   "source": 21,
+   "source_mesh": 0
+  },
+  {
+   "source": 22,
+   "source_mesh": 0
+  },
+  {
+   "source": 23,
+   "source_mesh": 0
+  },
+  {
+   "source": 24,
+   "source_mesh": 0
+  },
+  {
+   "source": 25,
+   "source_mesh": 0
+  },
+  {
+   "source": 26,
+   "source_mesh": 0
+  },
+  {
+   "source": 27,
+   "source_mesh": 0
+  },
+  {
+   "source": 28,
+   "source_mesh": 0
+  }
+ ],
+ "nodes": [
+  {
+   "name": "Camera_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    3.0,
+    8.0,
+    1.0
+   ],
+   "component_flags": 8,
+   "camera": {
+    "projection": "perspective",
+    "fovx": 1.2,
+    "near_plane": 0.1,
+    "far_plane": 1000.0,
+    "speed": 3.5,
+    "euler": [
+     0.3,
+     3.14159,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "Sun",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -0.001745,
+    -0.999997,
+    0.0,
+    0.0,
+    0.999997,
+    -0.001745,
+    0.0,
+    0.0,
+    30.0,
+    0.0,
+    1.0
+   ],
+   "component_flags": 2,
+   "light": {
+    "type": "directional",
+    "color": [
+     1.0,
+     0.97,
+     0.9,
+     2.6
+    ]
+   }
+  },
+  {
+   "name": "M_canopy",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    0
+   ]
+  },
+  {
+   "name": "M_croc_body",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    1
+   ]
+  },
+  {
+   "name": "M_croc_jaw",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    2
+   ]
+  },
+  {
+   "name": "M_croc_teeth",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    3
+   ]
+  },
+  {
+   "name": "M_fern",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    4
+   ]
+  },
+  {
+   "name": "M_grass",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    5
+   ]
+  },
+  {
+   "name": "M_h_belt",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    6
+   ]
+  },
+  {
+   "name": "M_h_boot",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    7
+   ]
+  },
+  {
+   "name": "M_h_collar",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    8
+   ]
+  },
+  {
+   "name": "M_h_eyes",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    9
+   ]
+  },
+  {
+   "name": "M_h_forearm",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    10
+   ]
+  },
+  {
+   "name": "M_h_hair",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    11
+   ]
+  },
+  {
+   "name": "M_h_hand",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    12
+   ]
+  },
+  {
+   "name": "M_h_hat",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    13
+   ]
+  },
+  {
+   "name": "M_h_hatband",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    14
+   ]
+  },
+  {
+   "name": "M_h_head",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    15
+   ]
+  },
+  {
+   "name": "M_h_hips",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    16
+   ]
+  },
+  {
+   "name": "M_h_shin",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    17
+   ]
+  },
+  {
+   "name": "M_h_thigh",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    18
+   ]
+  },
+  {
+   "name": "M_h_torso",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    19
+   ]
+  },
+  {
+   "name": "M_h_upperarm",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    20
+   ]
+  },
+  {
+   "name": "M_liana",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    21
+   ]
+  },
+  {
+   "name": "M_log",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    22
+   ]
+  },
+  {
+   "name": "M_logends",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    23
+   ]
+  },
+  {
+   "name": "M_rock",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    24
+   ]
+  },
+  {
+   "name": "M_scorpion",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    25
+   ]
+  },
+  {
+   "name": "M_trunk",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    26
+   ]
+  },
+  {
+   "name": "M_vine_leaves",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    27
+   ]
+  },
+  {
+   "name": "M_vine_rope",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    -1000,
+    0,
+    1
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    28
+   ]
+  }
+ ],
+ "lights": [],
+ "cameras": [
+  {
+   "name": "Camera_0",
+   "position": [
+    0.0,
+    3.0,
+    8.0
+   ],
+   "euler": [
+    0.3,
+    3.14159,
+    0.0
+   ],
+   "fovx": 1.2,
+   "projection": "perspective",
+   "near_plane": 0.1,
+   "far_plane": 1000.0,
+   "speed": 3.5,
+   "node_index": 0
+  }
+ ],
+ "active_camera": 0,
+ "scene_scripts": {
+  "on_play": [
+   "Assets/Scripts/game.lua"
+  ]
+ }
+}

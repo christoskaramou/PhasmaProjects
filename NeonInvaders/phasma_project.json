@@ -1,0 +1,6 @@
+{
+    "version": 1,
+    "name": "SpaceInvaders",
+    "assets": "Assets",
+    "startup_scene": "Assets/Scenes/main.pescene"
+}

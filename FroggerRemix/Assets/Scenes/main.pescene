@@ -1,0 +1,2381 @@
+{
+ "sources": [
+  {
+   "path": "../Objects/frog_body.pemesh"
+  },
+  {
+   "path": "../Objects/frog_belly.pemesh"
+  },
+  {
+   "path": "../Objects/frog_eye.pemesh"
+  },
+  {
+   "path": "../Objects/frog_pupil.pemesh"
+  },
+  {
+   "path": "../Objects/frog_spots.pemesh"
+  },
+  {
+   "path": "../Objects/frog_legb.pemesh"
+  },
+  {
+   "path": "../Objects/frog_legf.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_body.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_glass.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_dark.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_chrome.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_head.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_tail.pemesh"
+  },
+  {
+   "path": "../Objects/dozer_body.pemesh"
+  },
+  {
+   "path": "../Objects/dozer_glass.pemesh"
+  },
+  {
+   "path": "../Objects/dozer_dark.pemesh"
+  },
+  {
+   "path": "../Objects/dozer_chrome.pemesh"
+  },
+  {
+   "path": "../Objects/dozer_head.pemesh"
+  },
+  {
+   "path": "../Objects/dozer_tail.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_body.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_glass.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_dark.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_chrome.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_head.pemesh"
+  },
+  {
+   "path": "../Objects/sedan_tail.pemesh"
+  },
+  {
+   "path": "../Objects/racer_body.pemesh"
+  },
+  {
+   "path": "../Objects/racer_glass.pemesh"
+  },
+  {
+   "path": "../Objects/racer_dark.pemesh"
+  },
+  {
+   "path": "../Objects/racer_chrome.pemesh"
+  },
+  {
+   "path": "../Objects/racer_head.pemesh"
+  },
+  {
+   "path": "../Objects/racer_tail.pemesh"
+  },
+  {
+   "path": "../Objects/truck_body.pemesh"
+  },
+  {
+   "path": "../Objects/truck_glass.pemesh"
+  },
+  {
+   "path": "../Objects/truck_dark.pemesh"
+  },
+  {
+   "path": "../Objects/truck_chrome.pemesh"
+  },
+  {
+   "path": "../Objects/truck_head.pemesh"
+  },
+  {
+   "path": "../Objects/truck_tail.pemesh"
+  },
+  {
+   "path": "../Objects/truck_trailer.pemesh"
+  },
+  {
+   "path": "../Objects/log_s.pemesh"
+  },
+  {
+   "path": "../Objects/log_s_end.pemesh"
+  },
+  {
+   "path": "../Objects/log_m.pemesh"
+  },
+  {
+   "path": "../Objects/log_m_end.pemesh"
+  },
+  {
+   "path": "../Objects/log_l.pemesh"
+  },
+  {
+   "path": "../Objects/log_l_end.pemesh"
+  },
+  {
+   "path": "../Objects/turtle_shell.pemesh"
+  },
+  {
+   "path": "../Objects/turtle_rim.pemesh"
+  },
+  {
+   "path": "../Objects/turtle_body.pemesh"
+  },
+  {
+   "path": "../Objects/turtle_eye.pemesh"
+  },
+  {
+   "path": "../Objects/lily_pad.pemesh"
+  },
+  {
+   "path": "../Objects/lotus.pemesh"
+  },
+  {
+   "path": "../Objects/lotus_core.pemesh"
+  },
+  {
+   "path": "../Objects/fly_body.pemesh"
+  },
+  {
+   "path": "../Objects/fly_wing.pemesh"
+  },
+  {
+   "path": "../Objects/road.pemesh"
+  },
+  {
+   "path": "../Objects/walk.pemesh"
+  },
+  {
+   "path": "../Objects/water.pemesh"
+  },
+  {
+   "path": "../Objects/riverbed.pemesh"
+  },
+  {
+   "path": "../Objects/grass.pemesh"
+  },
+  {
+   "path": "../Objects/curb.pemesh"
+  },
+  {
+   "path": "../Objects/bank_wall.pemesh"
+  },
+  {
+   "path": "../Objects/hedge.pemesh"
+  },
+  {
+   "path": "../Objects/bay_stone.pemesh"
+  },
+  {
+   "path": "../Objects/lamp_pole.pemesh"
+  },
+  {
+   "path": "../Objects/lamp_bulb.pemesh"
+  },
+  {
+   "path": "../Objects/tuft.pemesh"
+  },
+  {
+   "path": "../Objects/bldg.pemesh"
+  },
+  {
+   "path": "../Objects/bldg.pemesh"
+  },
+  {
+   "path": "../Objects/bldg.pemesh"
+  },
+  {
+   "path": "../Objects/refl_lamp.pemesh"
+  },
+  {
+   "path": "../Objects/refl_moon.pemesh"
+  }
+ ],
+ "meshes": [
+  {
+   "source": 0,
+   "source_mesh": 0
+  },
+  {
+   "source": 1,
+   "source_mesh": 0
+  },
+  {
+   "source": 2,
+   "source_mesh": 0
+  },
+  {
+   "source": 3,
+   "source_mesh": 0
+  },
+  {
+   "source": 4,
+   "source_mesh": 0
+  },
+  {
+   "source": 5,
+   "source_mesh": 0
+  },
+  {
+   "source": 6,
+   "source_mesh": 0
+  },
+  {
+   "source": 7,
+   "source_mesh": 0
+  },
+  {
+   "source": 8,
+   "source_mesh": 0
+  },
+  {
+   "source": 9,
+   "source_mesh": 0
+  },
+  {
+   "source": 10,
+   "source_mesh": 0
+  },
+  {
+   "source": 11,
+   "source_mesh": 0
+  },
+  {
+   "source": 12,
+   "source_mesh": 0
+  },
+  {
+   "source": 13,
+   "source_mesh": 0
+  },
+  {
+   "source": 14,
+   "source_mesh": 0
+  },
+  {
+   "source": 15,
+   "source_mesh": 0
+  },
+  {
+   "source": 16,
+   "source_mesh": 0
+  },
+  {
+   "source": 17,
+   "source_mesh": 0
+  },
+  {
+   "source": 18,
+   "source_mesh": 0
+  },
+  {
+   "source": 19,
+   "source_mesh": 0
+  },
+  {
+   "source": 20,
+   "source_mesh": 0
+  },
+  {
+   "source": 21,
+   "source_mesh": 0
+  },
+  {
+   "source": 22,
+   "source_mesh": 0
+  },
+  {
+   "source": 23,
+   "source_mesh": 0
+  },
+  {
+   "source": 24,
+   "source_mesh": 0
+  },
+  {
+   "source": 25,
+   "source_mesh": 0
+  },
+  {
+   "source": 26,
+   "source_mesh": 0
+  },
+  {
+   "source": 27,
+   "source_mesh": 0
+  },
+  {
+   "source": 28,
+   "source_mesh": 0
+  },
+  {
+   "source": 29,
+   "source_mesh": 0
+  },
+  {
+   "source": 30,
+   "source_mesh": 0
+  },
+  {
+   "source": 31,
+   "source_mesh": 0
+  },
+  {
+   "source": 32,
+   "source_mesh": 0
+  },
+  {
+   "source": 33,
+   "source_mesh": 0
+  },
+  {
+   "source": 34,
+   "source_mesh": 0
+  },
+  {
+   "source": 35,
+   "source_mesh": 0
+  },
+  {
+   "source": 36,
+   "source_mesh": 0
+  },
+  {
+   "source": 37,
+   "source_mesh": 0
+  },
+  {
+   "source": 38,
+   "source_mesh": 0
+  },
+  {
+   "source": 39,
+   "source_mesh": 0
+  },
+  {
+   "source": 40,
+   "source_mesh": 0
+  },
+  {
+   "source": 41,
+   "source_mesh": 0
+  },
+  {
+   "source": 42,
+   "source_mesh": 0
+  },
+  {
+   "source": 43,
+   "source_mesh": 0
+  },
+  {
+   "source": 44,
+   "source_mesh": 0
+  },
+  {
+   "source": 45,
+   "source_mesh": 0
+  },
+  {
+   "source": 46,
+   "source_mesh": 0
+  },
+  {
+   "source": 47,
+   "source_mesh": 0
+  },
+  {
+   "source": 48,
+   "source_mesh": 0
+  },
+  {
+   "source": 49,
+   "source_mesh": 0
+  },
+  {
+   "source": 50,
+   "source_mesh": 0
+  },
+  {
+   "source": 51,
+   "source_mesh": 0
+  },
+  {
+   "source": 52,
+   "source_mesh": 0
+  },
+  {
+   "source": 53,
+   "source_mesh": 0
+  },
+  {
+   "source": 54,
+   "source_mesh": 0
+  },
+  {
+   "source": 55,
+   "source_mesh": 0
+  },
+  {
+   "source": 56,
+   "source_mesh": 0
+  },
+  {
+   "source": 57,
+   "source_mesh": 0
+  },
+  {
+   "source": 58,
+   "source_mesh": 0
+  },
+  {
+   "source": 59,
+   "source_mesh": 0
+  },
+  {
+   "source": 60,
+   "source_mesh": 0
+  },
+  {
+   "source": 61,
+   "source_mesh": 0
+  },
+  {
+   "source": 62,
+   "source_mesh": 0
+  },
+  {
+   "source": 63,
+   "source_mesh": 0
+  },
+  {
+   "source": 64,
+   "source_mesh": 0
+  },
+  {
+   "source": 65,
+   "source_mesh": 0
+  },
+  {
+   "source": 66,
+   "source_mesh": 0
+  },
+  {
+   "source": 67,
+   "source_mesh": 0
+  },
+  {
+   "source": 68,
+   "source_mesh": 0
+  },
+  {
+   "source": 69,
+   "source_mesh": 0
+  }
+ ],
+ "nodes": [
+  {
+   "name": "Camera_0",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    14,
+    8,
+    1
+   ],
+   "component_flags": 8,
+   "camera": {
+    "projection": "perspective",
+    "fovx": 1.0,
+    "near_plane": 0.3,
+    "far_plane": 300.0,
+    "speed": 3.5,
+    "euler": [
+     0.0,
+     3.14159,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "T_frog_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    0
+   ]
+  },
+  {
+   "name": "T_frog_belly",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    1
+   ]
+  },
+  {
+   "name": "T_frog_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    2
+   ]
+  },
+  {
+   "name": "T_frog_pupil",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    3
+   ]
+  },
+  {
+   "name": "T_frog_spots",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    4
+   ]
+  },
+  {
+   "name": "T_frog_legb",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    5
+   ]
+  },
+  {
+   "name": "T_frog_legf",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    6
+   ]
+  },
+  {
+   "name": "T_L1_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    7
+   ]
+  },
+  {
+   "name": "T_L1_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    8
+   ]
+  },
+  {
+   "name": "T_L1_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    9
+   ]
+  },
+  {
+   "name": "T_L1_chrome",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    10
+   ]
+  },
+  {
+   "name": "T_L1_head",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    11
+   ]
+  },
+  {
+   "name": "T_L1_tail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    12
+   ]
+  },
+  {
+   "name": "T_L2_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    13
+   ]
+  },
+  {
+   "name": "T_L2_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    14
+   ]
+  },
+  {
+   "name": "T_L2_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    15
+   ]
+  },
+  {
+   "name": "T_L2_chrome",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    16
+   ]
+  },
+  {
+   "name": "T_L2_head",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    17
+   ]
+  },
+  {
+   "name": "T_L2_tail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    18
+   ]
+  },
+  {
+   "name": "T_L3_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    19
+   ]
+  },
+  {
+   "name": "T_L3_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    20
+   ]
+  },
+  {
+   "name": "T_L3_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    21
+   ]
+  },
+  {
+   "name": "T_L3_chrome",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    22
+   ]
+  },
+  {
+   "name": "T_L3_head",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    23
+   ]
+  },
+  {
+   "name": "T_L3_tail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    24
+   ]
+  },
+  {
+   "name": "T_L4_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    25
+   ]
+  },
+  {
+   "name": "T_L4_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    26
+   ]
+  },
+  {
+   "name": "T_L4_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    27
+   ]
+  },
+  {
+   "name": "T_L4_chrome",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    28
+   ]
+  },
+  {
+   "name": "T_L4_head",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    29
+   ]
+  },
+  {
+   "name": "T_L4_tail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    30
+   ]
+  },
+  {
+   "name": "T_L5_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    31
+   ]
+  },
+  {
+   "name": "T_L5_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    32
+   ]
+  },
+  {
+   "name": "T_L5_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    33
+   ]
+  },
+  {
+   "name": "T_L5_chrome",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    34
+   ]
+  },
+  {
+   "name": "T_L5_head",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    35
+   ]
+  },
+  {
+   "name": "T_L5_tail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    36
+   ]
+  },
+  {
+   "name": "T_L5_trailer",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    37
+   ]
+  },
+  {
+   "name": "T_log_s",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    38
+   ]
+  },
+  {
+   "name": "T_log_s_end",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    39
+   ]
+  },
+  {
+   "name": "T_log_m",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    40
+   ]
+  },
+  {
+   "name": "T_log_m_end",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    41
+   ]
+  },
+  {
+   "name": "T_log_l",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    42
+   ]
+  },
+  {
+   "name": "T_log_l_end",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    43
+   ]
+  },
+  {
+   "name": "T_turtle_shell",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    44
+   ]
+  },
+  {
+   "name": "T_turtle_rim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    45
+   ]
+  },
+  {
+   "name": "T_turtle_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    46
+   ]
+  },
+  {
+   "name": "T_turtle_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    47
+   ]
+  },
+  {
+   "name": "T_lily_pad",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    48
+   ]
+  },
+  {
+   "name": "T_lotus",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    49
+   ]
+  },
+  {
+   "name": "T_lotus_core",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    50
+   ]
+  },
+  {
+   "name": "T_fly_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    51
+   ]
+  },
+  {
+   "name": "T_fly_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    52
+   ]
+  },
+  {
+   "name": "T_road",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    53
+   ]
+  },
+  {
+   "name": "T_walk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    54
+   ]
+  },
+  {
+   "name": "T_water",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    55
+   ]
+  },
+  {
+   "name": "T_riverbed",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    56
+   ]
+  },
+  {
+   "name": "T_grass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    57
+   ]
+  },
+  {
+   "name": "T_curb",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    58
+   ]
+  },
+  {
+   "name": "T_bank_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    59
+   ]
+  },
+  {
+   "name": "T_hedge",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    60
+   ]
+  },
+  {
+   "name": "T_bay_stone",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    61
+   ]
+  },
+  {
+   "name": "T_lamp_pole",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    62
+   ]
+  },
+  {
+   "name": "T_lamp_bulb",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    63
+   ]
+  },
+  {
+   "name": "T_tuft",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    64
+   ]
+  },
+  {
+   "name": "T_bldg_a",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    65
+   ]
+  },
+  {
+   "name": "T_bldg_b",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    66
+   ]
+  },
+  {
+   "name": "T_bldg_c",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    67
+   ]
+  },
+  {
+   "name": "T_refl_lamp",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    68
+   ]
+  },
+  {
+   "name": "T_refl_moon",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    69
+   ]
+  }
+ ],
+ "lights": [],
+ "cameras": [
+  {
+   "name": "Camera_0",
+   "position": [
+    0,
+    14,
+    8
+   ],
+   "node_index": 0,
+   "projection": "perspective",
+   "fovx": 1.0,
+   "near_plane": 0.3,
+   "far_plane": 300.0,
+   "speed": 3.5,
+   "euler": [
+    0.0,
+    3.14159,
+    0.0
+   ]
+  }
+ ],
+ "active_camera": 0,
+ "scene_scripts": {
+  "on_play": [
+   "Assets/Scripts/game.lua"
+  ]
+ }
+}

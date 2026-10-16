@@ -1,0 +1,1358 @@
+{
+ "sources": [
+  {
+   "path": "../Objects/cube_body.pemesh"
+  },
+  {
+   "path": "../Objects/cube_rim.pemesh"
+  },
+  {
+   "path": "../Objects/cube_top.pemesh"
+  },
+  {
+   "path": "../Objects/cube_top.pemesh"
+  },
+  {
+   "path": "../Objects/cube_top.pemesh"
+  },
+  {
+   "path": "../Objects/cube_body.pemesh"
+  },
+  {
+   "path": "../Objects/cube_top.pemesh"
+  },
+  {
+   "path": "../Objects/qb_body.pemesh"
+  },
+  {
+   "path": "../Objects/qb_eye.pemesh"
+  },
+  {
+   "path": "../Objects/qb_dark.pemesh"
+  },
+  {
+   "path": "../Objects/qb_feet.pemesh"
+  },
+  {
+   "path": "../Objects/ball.pemesh"
+  },
+  {
+   "path": "../Objects/ball_small.pemesh"
+  },
+  {
+   "path": "../Objects/egg.pemesh"
+  },
+  {
+   "path": "../Objects/coily_spring.pemesh"
+  },
+  {
+   "path": "../Objects/coily_head.pemesh"
+  },
+  {
+   "path": "../Objects/coily_eye.pemesh"
+  },
+  {
+   "path": "../Objects/coily_dark.pemesh"
+  },
+  {
+   "path": "../Objects/sam_body.pemesh"
+  },
+  {
+   "path": "../Objects/sam_body.pemesh"
+  },
+  {
+   "path": "../Objects/sam_shades.pemesh"
+  },
+  {
+   "path": "../Objects/disc_ring.pemesh"
+  },
+  {
+   "path": "../Objects/disc_core.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shock.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/shard.pemesh"
+  },
+  {
+   "path": "../Objects/star.pemesh"
+  },
+  {
+   "path": "../Objects/star.pemesh"
+  },
+  {
+   "path": "../Objects/star.pemesh"
+  }
+ ],
+ "meshes": [
+  {
+   "source": 0,
+   "source_mesh": 0
+  },
+  {
+   "source": 1,
+   "source_mesh": 0
+  },
+  {
+   "source": 2,
+   "source_mesh": 0
+  },
+  {
+   "source": 3,
+   "source_mesh": 0
+  },
+  {
+   "source": 4,
+   "source_mesh": 0
+  },
+  {
+   "source": 5,
+   "source_mesh": 0
+  },
+  {
+   "source": 6,
+   "source_mesh": 0
+  },
+  {
+   "source": 7,
+   "source_mesh": 0
+  },
+  {
+   "source": 8,
+   "source_mesh": 0
+  },
+  {
+   "source": 9,
+   "source_mesh": 0
+  },
+  {
+   "source": 10,
+   "source_mesh": 0
+  },
+  {
+   "source": 11,
+   "source_mesh": 0
+  },
+  {
+   "source": 12,
+   "source_mesh": 0
+  },
+  {
+   "source": 13,
+   "source_mesh": 0
+  },
+  {
+   "source": 14,
+   "source_mesh": 0
+  },
+  {
+   "source": 15,
+   "source_mesh": 0
+  },
+  {
+   "source": 16,
+   "source_mesh": 0
+  },
+  {
+   "source": 17,
+   "source_mesh": 0
+  },
+  {
+   "source": 18,
+   "source_mesh": 0
+  },
+  {
+   "source": 19,
+   "source_mesh": 0
+  },
+  {
+   "source": 20,
+   "source_mesh": 0
+  },
+  {
+   "source": 21,
+   "source_mesh": 0
+  },
+  {
+   "source": 22,
+   "source_mesh": 0
+  },
+  {
+   "source": 23,
+   "source_mesh": 0
+  },
+  {
+   "source": 24,
+   "source_mesh": 0
+  },
+  {
+   "source": 25,
+   "source_mesh": 0
+  },
+  {
+   "source": 26,
+   "source_mesh": 0
+  },
+  {
+   "source": 27,
+   "source_mesh": 0
+  },
+  {
+   "source": 28,
+   "source_mesh": 0
+  },
+  {
+   "source": 29,
+   "source_mesh": 0
+  },
+  {
+   "source": 30,
+   "source_mesh": 0
+  },
+  {
+   "source": 31,
+   "source_mesh": 0
+  },
+  {
+   "source": 32,
+   "source_mesh": 0
+  },
+  {
+   "source": 33,
+   "source_mesh": 0
+  },
+  {
+   "source": 34,
+   "source_mesh": 0
+  },
+  {
+   "source": 35,
+   "source_mesh": 0
+  },
+  {
+   "source": 36,
+   "source_mesh": 0
+  },
+  {
+   "source": 37,
+   "source_mesh": 0
+  },
+  {
+   "source": 38,
+   "source_mesh": 0
+  }
+ ],
+ "nodes": [
+  {
+   "name": "Camera_0",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    20,
+    20,
+    20,
+    1
+   ],
+   "component_flags": 8,
+   "camera": {
+    "projection": "perspective",
+    "fovx": 0.6,
+    "near_plane": 0.5,
+    "far_plane": 900.0,
+    "speed": 3.5,
+    "euler": [
+     0.0,
+     3.14159,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "T_cube_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    0
+   ]
+  },
+  {
+   "name": "T_cube_rim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    1
+   ]
+  },
+  {
+   "name": "T_top_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    2
+   ]
+  },
+  {
+   "name": "T_top_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    3
+   ]
+  },
+  {
+   "name": "T_top_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    4
+   ]
+  },
+  {
+   "name": "T_deco_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    5
+   ]
+  },
+  {
+   "name": "T_deco_top",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    6
+   ]
+  },
+  {
+   "name": "T_qb_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    7
+   ]
+  },
+  {
+   "name": "T_qb_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    8
+   ]
+  },
+  {
+   "name": "T_qb_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    9
+   ]
+  },
+  {
+   "name": "T_qb_feet",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    10
+   ]
+  },
+  {
+   "name": "T_ball_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    11
+   ]
+  },
+  {
+   "name": "T_ball_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    12
+   ]
+  },
+  {
+   "name": "T_egg",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    13
+   ]
+  },
+  {
+   "name": "T_coily_spring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    14
+   ]
+  },
+  {
+   "name": "T_coily_head",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    15
+   ]
+  },
+  {
+   "name": "T_coily_eye",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    16
+   ]
+  },
+  {
+   "name": "T_coily_dark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    17
+   ]
+  },
+  {
+   "name": "T_slick_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    18
+   ]
+  },
+  {
+   "name": "T_sam_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    19
+   ]
+  },
+  {
+   "name": "T_shades",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    20
+   ]
+  },
+  {
+   "name": "T_disc_ring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    21
+   ]
+  },
+  {
+   "name": "T_disc_core",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    22
+   ]
+  },
+  {
+   "name": "T_shock_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    23
+   ]
+  },
+  {
+   "name": "T_shock_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    24
+   ]
+  },
+  {
+   "name": "T_shock_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    25
+   ]
+  },
+  {
+   "name": "T_shock_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    26
+   ]
+  },
+  {
+   "name": "T_shock_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    27
+   ]
+  },
+  {
+   "name": "T_shock_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    28
+   ]
+  },
+  {
+   "name": "T_shock_6",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    29
+   ]
+  },
+  {
+   "name": "T_shock_7",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    30
+   ]
+  },
+  {
+   "name": "T_shard_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    31
+   ]
+  },
+  {
+   "name": "T_shard_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    32
+   ]
+  },
+  {
+   "name": "T_shard_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    33
+   ]
+  },
+  {
+   "name": "T_shard_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    34
+   ]
+  },
+  {
+   "name": "T_shard_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    35
+   ]
+  },
+  {
+   "name": "T_star_0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    36
+   ]
+  },
+  {
+   "name": "T_star_1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    37
+   ]
+  },
+  {
+   "name": "T_star_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    38
+   ]
+  }
+ ],
+ "lights": [],
+ "cameras": [
+  {
+   "name": "Camera_0",
+   "position": [
+    20,
+    20,
+    20
+   ],
+   "euler": [
+    0.0,
+    3.14159,
+    0.0
+   ],
+   "fovx": 0.6,
+   "projection": "perspective",
+   "near_plane": 0.5,
+   "far_plane": 900.0,
+   "speed": 3.5,
+   "node_index": 0
+  }
+ ],
+ "active_camera": 0,
+ "scene_scripts": {
+  "on_play": [
+   "Assets/Scripts/game.lua"
+  ]
+ }
+}

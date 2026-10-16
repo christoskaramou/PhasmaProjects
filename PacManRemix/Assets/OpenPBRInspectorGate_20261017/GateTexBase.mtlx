@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<materialx version="1.39">
+  <image name="gate_albedo" type="color3">
+    <input name="file" type="filename" value="gate_color.png" colorspace="srgb_texture" />
+  </image>
+  <image name="gate_rough" type="float">
+    <input name="file" type="filename" value="gate_rough.png" />
+  </image>
+  <open_pbr_surface name="gate_surface" type="surfaceshader">
+    <input name="base_color" type="color3" nodename="gate_albedo" />
+    <input name="specular_roughness" type="float" nodename="gate_rough" />
+  </open_pbr_surface>
+  <surfacematerial name="GateTexBase" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="gate_surface" />
+  </surfacematerial>
+</materialx>
