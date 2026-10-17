@@ -12,15 +12,15 @@ can make real things quickly.
 | <img src="docs/images/warbound.png" width="160" alt="Warbound"> | [Warbound](./Warbound/README.md) | An original real-time strategy prototype in the classic 3D-RTS mold - angled command camera, hero + squad combat, base-building economy, an AI opponent, and a command-card HUD. |
 | <img src="docs/images/voxelcraft.png" width="160" alt="VoxelCraft"> | [VoxelCraft](./VoxelCraft/README.md) | A Minecraft-style voxel playground: first-person movement, jumping, block outline, and break/place controls over PhasmaEngine's voxel runtime. |
 | <img src="docs/images/ylem.png" width="160" alt="Ylem"> | [Ylem](./Ylem/README.md) | A tactile physics sandbox about coalescing matter - Lab builds real atoms (full table) from protons, neutrons, and electrons; Cosmos is planned later. |
-| <img src="docs/images/prismtetris.png" width="160" alt="Prism Tetris"> | [Prism Tetris](./PrismTetris/README.md) | A crystal-aurora 3D Tetris with guideline speed, hold and a five-piece preview, plus a side-by-side race against the Jev model on identical pieces. Its launcher needs a PhasmaEngine checkout beside this repo. |
 | | [Sample](./Sample/) | The engine's default project: a content/lighting showcase (a neon "Las Vegas" scene) that the editor and launcher open out of the box. |
 
 ## Arcade
 
-Twenty modern remakes of classic arcade and Atari games, in [`Arcade/`](./Arcade/). Each one has its own README, screenshots and a Windows `run.cmd`.
+Modern remakes of classic arcade and Atari games, in [`Arcade/`](./Arcade/). Each one has its own README, screenshots and a Windows `run.cmd`.
 
 | | Game | What it is |
 |---|---|---|
+| <img src="docs/images/prismtetris.png" width="160" alt="Prism Tetris"> | [Prism Tetris](./Arcade/PrismTetris/README.md) | A crystal-aurora 3D Tetris with guideline speed, hold and a five-piece preview, plus a side-by-side race against the Jev model on identical pieces. Its launcher needs a PhasmaEngine checkout beside this repo. |
 | <img src="docs/images/pacmanremix.png" width="160" alt="Pac-Man Remix"> | [Pac-Man Remix](./Arcade/PacManRemix/README.md) | A 3D Pac-Man remake - maze chases, frightened ghosts, and particles everywhere. |
 | <img src="docs/images/pitfallremastered.png" width="160" alt="Pitfall! Remastered"> | [Pitfall! Remastered](./Arcade/PitfallRemastered/README.md) | Pitfall! rebuilt in 3D: vine swings over the swamp, crocodiles, and treasure tunnels. |
 | <img src="docs/images/neoninvaders.png" width="160" alt="Neon Invaders"> | [Neon Invaders](./Arcade/NeonInvaders/README.md) | A modern Space Invaders remake with glowing alien waves, explosions, and the UFO. |
@@ -94,7 +94,7 @@ and friends. That is the exact build Prism Tetris's launcher expects.
 
 Keep the two checkouts side by side. The arcade games' `run.cmd` / `run.ps1` scripts walk up from their
 own folder and use the first `PhasmaEngine` checkout they find beside a parent folder (set `PHASMA_ENGINE`
-to override). Prism Tetris finds the engine at `..\..\PhasmaEngine` and refuses to start without it.
+to override). Prism Tetris (`Arcade\PrismTetris`) uses the same upward search, needs the `build-ninja-physics` Release build and refuses to start without it.
 
 ```mermaid
 graph TD
@@ -119,7 +119,7 @@ repos/
         Assets/Scenes/main.pescene
         run.cmd
         run.ps1
-    PrismTetris/, Warbound/, ...
+    Warbound/, VoxelCraft/, ...
 ```
 
 ### 4. Run a project
@@ -158,7 +158,7 @@ beside it. It copies it to a private runtime folder at `%LOCALAPPDATA%\PhasmaGam
 copy's own `phasma_settings.json`, and launches it. This way your editor's settings are never touched.
 The log goes to `PhasmaEngine.log` in that folder.
 
-**Prism Tetris.** `PrismTetris\run.cmd` (or `run.ps1 -Port 8876`) needs `PhasmaEngine\build-ninja-physics\Release`.
+**Prism Tetris.** `Arcade\PrismTetris\run.cmd` (or `run.ps1 -Port 8876`) needs `PhasmaEngine\build-ninja-physics\Release`.
 It builds a runtime copy in `PhasmaEngine\build-prism-tetris\player`. To race Jev, it also needs
 `build-game-driver\Release\PhasmaGameDriver.exe` (build it with `Phasma/GameDriver/build.ps1` in the engine).
 In the game, Enter plays solo and V races Jev.

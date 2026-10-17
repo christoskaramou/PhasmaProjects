@@ -6,12 +6,12 @@ synthesized sound effects. No browser, network service or engine rebuild require
 
 ## Play
 
-PRISM needs a PhasmaEngine checkout named `PhasmaEngine` beside this PhasmaProjects
-checkout, with a Release build in `build-ninja-physics`. Run `PrismTetris/run.cmd`, or
+PRISM needs a PhasmaEngine checkout named `PhasmaEngine` beside this PhasmaProjects (its `run.ps1` searches upward for it; `PHASMA_ENGINE` overrides)
+checkout, with a Release build in `build-ninja-physics`. Run `Arcade/PrismTetris/run.cmd`, or
 from the PhasmaProjects folder:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File PrismTetris/run.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File Arcade/PrismTetris/run.ps1
 ```
 
 The launcher copies the engine's Release Player from `build-ninja-physics/Release`
@@ -94,10 +94,10 @@ a fresh manual run.
 From the PhasmaProjects folder:
 
 ```powershell
-../PhasmaEngine/build-ninja-physics/Release/luajit.exe PrismTetris/tests/rules_test.lua
-../PhasmaEngine/build-ninja-physics/Release/luajit.exe PrismTetris/tests/entry_test.lua
-../PhasmaEngine/build-ninja-physics/Release/luajit.exe PrismTetris/tests/agent_test.lua
-../PhasmaEngine/build-ninja-physics/Release/luajit.exe PrismTetris/tests/render_test.lua
+../PhasmaEngine/build-ninja-physics/Release/luajit.exe Arcade/PrismTetris/tests/rules_test.lua
+../PhasmaEngine/build-ninja-physics/Release/luajit.exe Arcade/PrismTetris/tests/entry_test.lua
+../PhasmaEngine/build-ninja-physics/Release/luajit.exe Arcade/PrismTetris/tests/agent_test.lua
+../PhasmaEngine/build-ninja-physics/Release/luajit.exe Arcade/PrismTetris/tests/render_test.lua
 ```
 
 Tests cover rules, controls, pause, score persistence, reduced effects, resizing

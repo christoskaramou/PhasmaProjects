@@ -5,10 +5,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# The engine checkout sits beside PhasmaProjects, as the engine's CMake expects PhasmaProjects beside it.
-$engineRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../PhasmaEngine'))
-if (-not (Test-Path -LiteralPath $engineRoot)) {
-    throw "Missing PhasmaEngine checkout: expected $engineRoot beside PhasmaProjects"
+# Find the PhasmaEngine checkout: walk up from this folder and use the first sibling 'PhasmaEngine'
+# with a build-ninja-physics Release Player (works from PhasmaProjects\Arcade\PrismTetris).
+# Override with $env:PHASMA_ENGINE.
+$engineRoot = $env:PHASMA_ENGINE
+if (-not $engineRoot) {
+    $dir = Get-Item -LiteralPath $PSScriptRoot
+    while ($dir) {
+        $cand = Join-Path $dir.FullName 'PhasmaEngine'
+        if (Test-Path -LiteralPath (Join-Path $cand 'build-ninja-physics/Release/PhasmaPlayer.exe')) { $engineRoot = $cand; break }
+        $dir = $dir.Parent
+    }
+}
+if (-not $engineRoot -or -not (Test-Path -LiteralPath $engineRoot)) {
+    throw "Missing PhasmaEngine checkout with build-ninja-physics/Release above $PSScriptRoot (set PHASMA_ENGINE)"
 }
 
 $source = Join-Path $engineRoot 'build-ninja-physics/Release'
