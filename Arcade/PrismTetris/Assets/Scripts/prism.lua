@@ -12,10 +12,15 @@ local Driver = module("Scripts/gamekit/driver.lua")
 Driver._json = module("Scripts/gamekit/json.lua")
 local Agent = module("Scripts/tetris_agent.lua")
 
--- Races connect the driver to this game's MCP port, which the launcher writes into the runtime copy.
+-- Races connect the driver to this game's own MCP port: Agent/agent_config.json with "mcp": true and an explicit
+-- "mcp_port" (run.ps1 writes 8876 into both the runtime copy and this source folder, so PhasmaLauncher works too).
+-- No default: the engine's 8765 belongs to the editor, and a race must never drive another program.
 local function mcp_port()
     local config = fs.read("Agent/agent_config.json") or ""
-    return tonumber(config:match('"mcp_port"%s*:%s*(%d+)')) or 8765
+    if not config:match('"mcp"%s*:%s*true') then
+        return nil
+    end
+    return tonumber(config:match('"mcp_port"%s*:%s*(%d+)'))
 end
 
 local seed = math.floor(engine.get_metrics().delta_ms * 1000000) + 731

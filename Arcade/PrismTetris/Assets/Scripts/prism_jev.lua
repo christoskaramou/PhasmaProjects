@@ -6,6 +6,15 @@ Jev.__index = Jev
 local DRIVER = "Bots/PhasmaGameDriver.exe"
 local COST_PER_TOKEN = 0.042 / 1000000
 local STOP_GRACE = 3
+
+-- proc.start only runs programs under Assets/, so the driver is a copy of the engine build that run.ps1 places
+-- in Assets/Bots (of the runtime copy and of this source folder).
+local function MISSING_HINT(message)
+    if tostring(message):find("not found", 1, true) then
+        return " (build it with Phasma/GameDriver/build.ps1 in PhasmaEngine, then start PRISM once with run.cmd, which copies it into Assets/Bots)"
+    end
+    return ""
+end
 local KEY_FLAGS = {
     status = "--key-status",
     save = "--save-key-from-clipboard",
@@ -37,6 +46,10 @@ function Jev:start()
     end
 
     self:clear()
+    if not self.port then
+        self.error = "Races need this game's MCP server: Assets/Agent/agent_config.json needs \"mcp\": true and \"mcp_port\": 8876 (run.cmd writes it). Restart PRISM afterwards."
+        return false
+    end
     local ok, message = proc.start(DRIVER, {
         "--url",
         "http://127.0.0.1:" .. self.port .. "/mcp",
@@ -48,7 +61,7 @@ function Jev:start()
         "10000",
     })
     if not ok then
-        self.error = "Jev could not start: " .. tostring(message)
+        self.error = "Jev could not start: " .. tostring(message) .. MISSING_HINT(message)
         return false
     end
 
@@ -70,7 +83,7 @@ function Jev:key(command)
     local ok, message = proc.start(DRIVER, { KEY_FLAGS[command] })
     if not ok then
         self.answer = "error"
-        self.key_error = "Jev's driver could not start: " .. tostring(message)
+        self.key_error = "Jev's driver could not start: " .. tostring(message) .. MISSING_HINT(message)
         return false
     end
 
@@ -116,6 +129,10 @@ function Jev:parse(line)
 
     local failure = line:match("^Game driver failed: (.+)")
     if failure then
+        if failure:find("12029", 1, true) or failure:find("12007", 1, true) then
+            failure = "Jev could not reach this game on port " .. tostring(self.port)
+                .. " (its MCP server is not running). Close other PRISM windows, then restart PRISM."
+        end
         self.error = failure
     end
     return false
