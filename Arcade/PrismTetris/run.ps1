@@ -79,15 +79,36 @@ foreach ($folder in @('Audio', 'Scenes', 'Scripts', 'Textures')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Assets/$folder") -Destination $assets -Recurse
 }
 
-# Races start the driver from inside the game, which may only run programs under its Assets folder.
+# Races start the driver from inside the game, which may only run programs under its Assets folder (proc.start
+# refuses anything else). Copy it into the runtime copy and into this source folder's Assets/Bots (gitignored),
+# so the game also finds it when opened in place from PhasmaLauncher or the editor.
 if (Test-Path -LiteralPath $driver) {
-    $bots = Join-Path $assets 'Bots'
-    New-Item -ItemType Directory -Path $bots -Force | Out-Null
-    Copy-Item -LiteralPath $driver -Destination $bots -Force
+    foreach ($bots in @((Join-Path $assets 'Bots'), (Join-Path $PSScriptRoot 'Assets/Bots'))) {
+        New-Item -ItemType Directory -Path $bots -Force | Out-Null
+        # A driver still running from an in-place session holds its copy; keep that one rather than fail.
+        try { Copy-Item -LiteralPath $driver -Destination $bots -Force } catch { Write-Warning "Could not refresh $bots/PhasmaGameDriver.exe: $_" }
+    }
 } else {
     Write-Warning "Missing $driver. Run Phasma/GameDriver/build.ps1 in $engineRoot to race Jev."
 }
 
+# Opening PRISM in place (PhasmaLauncher points the Player at this folder) reads this folder's own
+# Assets/Agent/agent_config.json, so enable the same MCP port there; other keys the editor keeps are preserved.
+$sourceAgent = Join-Path $PSScriptRoot 'Assets/Agent'
+$sourceConfig = Join-Path $sourceAgent 'agent_config.json'
+try {
+    $config = if (Test-Path -LiteralPath $sourceConfig) {
+        Get-Content -LiteralPath $sourceConfig -Raw | ConvertFrom-Json
+    } else { [pscustomobject]@{} }
+    if ($config.mcp -ne $true -or $config.mcp_port -ne $Port) {
+        $config | Add-Member -NotePropertyName mcp -NotePropertyValue $true -Force
+        $config | Add-Member -NotePropertyName mcp_port -NotePropertyValue $Port -Force
+        New-Item -ItemType Directory -Path $sourceAgent -Force | Out-Null
+        $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $sourceConfig -Encoding utf8
+    }
+} catch {
+    Write-Warning "Could not enable MCP in $sourceConfig (in-place races need it): $_"
+}
 $agent = Join-Path $assets 'Agent'
 New-Item -ItemType Directory -Path $agent -Force | Out-Null
 @{ mcp = $true; mcp_port = $Port } | ConvertTo-Json |

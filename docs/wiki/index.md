@@ -21,7 +21,7 @@ This index describes the sibling project collection, not the canonical AgainstTh
 Verified 2026-10-16: PhasmaProjects and PhasmaEngine are sibling checkouts. The engine's `CMakeLists.txt`
 pins `../PhasmaProjects/Sample`, `Arcade/PrismTetris/run.ps1` searches upward for a sibling `PhasmaEngine` (Release
 Player in `build-ninja-physics/Release`, race driver in `build-game-driver/Release`), and the engine's
-`Phasma/GameDriver/run-tetris.ps1` copies `../PhasmaProjects/PrismTetris` (not yet updated for the move to `Arcade/`, so the Jev race launcher needs that path fixed). An engine checkout with another
+`Arcade/PrismTetris/run-race.ps1` drives that same Player with the engine's `PhasmaGameDriver.exe` over MCP (`--url http://127.0.0.1:8876/mcp`; the driver takes no project path), replacing the engine's copying `run-tetris.ps1`. An engine checkout with another
 folder name is not found (the Arcade games' `run.ps1` also honours `PHASMA_ENGINE`). Chess's `run_smoke.ps1` uses absolute engine paths instead.
 
 Keep durable project decisions in focused pages here or in the individual project wiki. Use live source for behavior. Do not recreate retired memory or graph databases.

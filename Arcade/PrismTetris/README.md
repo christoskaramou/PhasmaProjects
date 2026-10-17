@@ -6,8 +6,9 @@ synthesized sound effects. No browser, network service or engine rebuild require
 
 ## Play
 
-PRISM needs a PhasmaEngine checkout named `PhasmaEngine` beside this PhasmaProjects (its `run.ps1` searches upward for it; `PHASMA_ENGINE` overrides)
-checkout, with a Release build in `build-ninja-physics`. Run `Arcade/PrismTetris/run.cmd`, or
+PRISM runs the `PhasmaPlayer.exe` from a PhasmaEngine Release build (`build-ninja-physics/Release`).
+`run.ps1` finds it by searching upward from this game folder for a folder named `PhasmaEngine`
+(for example `C:\Users\Christos\repos\PhasmaEngine`), or uses the `PHASMA_ENGINE` environment variable. Run `Arcade/PrismTetris/run.cmd`, or
 from the PhasmaProjects folder:
 
 ```powershell
@@ -19,7 +20,7 @@ into the engine's `build-prism-tetris/player`, with the game's assets, MCP on po
 8876 (`-Port N` changes it) and the race driver (the engine's
 `build-game-driver/Release/PhasmaGameDriver.exe`) in `Assets/Bots`. The best score in
 that copy's `Assets/Save` stays between launches. A second launch reuses the running
-game; the engine's `Phasma/GameDriver/run-tetris.ps1` also uses port 8876, so run one
+game; `run-race.ps1` uses the same Player and port, so run one
 at a time. The window opens on display 1. Enter begins play.
 
 | Key | Action |
@@ -74,12 +75,17 @@ it was. REMOVE deletes the saved key.
 ## Agent play
 
 The engine's `Phasma/GameDriver` contains the separate reusable Windows executable
-and its build instructions. Its launcher opens PRISM (from this folder) in a private
-Player on port 8876; run it from the PhasmaEngine folder:
+and its build instructions. It has no project argument: it attaches to a running Player over
+MCP. `run-race.ps1` starts (or reuses) PRISM with `run.ps1`, then runs the driver against it:
 
 ```powershell
-./Phasma/GameDriver/run-tetris.ps1 -Policy local -Steps 50 -Seed 42
+./Arcade/PrismTetris/run-race.ps1 -Policy local -Steps 50 -Seed 42
 ```
+
+Equivalent by hand: `run.ps1`, then
+`<PhasmaEngine>/build-game-driver/Release/PhasmaGameDriver.exe --policy local --url http://127.0.0.1:8876/mcp --steps 50 --seed 42`
+(omit `--seed` to attach to the current game without resetting it). Traces go to
+`<PhasmaEngine>/build-prism-tetris/trace-*.jsonl` unless `-Trace` is given; `-UseVault` and `-PaceMs` pass through.
 
 `local` is the offline baseline. Select `-Policy jev` to make paid TypeSafe
 requests using `JEV_API_KEY` or `TYPESAFE_API_KEY` from the environment. The

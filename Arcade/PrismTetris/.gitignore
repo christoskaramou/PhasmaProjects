@@ -7,3 +7,5 @@ Assets/editor_windows.json
 Assets/Cache/
 Assets/ShadersCache/
 __pycache__/
+# PhasmaGameDriver.exe copied from the engine build by run.ps1; never commit it.
+Assets/Bots/
