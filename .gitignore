@@ -44,3 +44,24 @@ __pycache__/
 .cursor/
 ChessExport/
 ChessExport.zip
+# Same per-project rules for the games under Arcade/ (one level deeper).
+Arcade/*/Assets/editor_config.json
+Arcade/*/Assets/editor_windows.json
+Arcade/*/Assets/imgui.ini
+Arcade/*/Assets/Save/
+Arcade/*/Assets/VoxelWorlds/
+Arcade/*/docs/
+Arcade/*/Assets/Agent/image_*.png
+Arcade/*/Assets/Agent/image_*.json
+Arcade/*/Assets/Agent/sessions/
+Arcade/*/Assets/Agent/*.log
+Arcade/*/Assets/Agent/*.bin
+Arcade/*/Assets/Agent/ss_*.png
+Arcade/*/PhasmaLauncher.exe
+Arcade/*/PhasmaPlayer.exe
+Arcade/*/PhasmaEditor.exe
+Arcade/*/PhasmaCore.dll
+Arcade/*/PhasmaEditorModule_*.dll
+Arcade/*/PhasmaEngine.log
+Arcade/*/arena_cap_screen*.png
+Arcade/*/arena_probe.png
