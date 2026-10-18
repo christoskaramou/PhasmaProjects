@@ -1,0 +1,1754 @@
+{
+ "sources": [
+  {
+   "path": "../Objects/big_body.pemesh"
+  },
+  {
+   "path": "../Objects/big_glass.pemesh"
+  },
+  {
+   "path": "../Objects/big_prop.pemesh"
+  },
+  {
+   "path": "../Objects/carrier_deck.pemesh"
+  },
+  {
+   "path": "../Objects/carrier_hull.pemesh"
+  },
+  {
+   "path": "../Objects/carrier_island.pemesh"
+  },
+  {
+   "path": "../Objects/cloud0.pemesh"
+  },
+  {
+   "path": "../Objects/cloud1.pemesh"
+  },
+  {
+   "path": "../Objects/cloud2.pemesh"
+  },
+  {
+   "path": "../Objects/ebul.pemesh"
+  },
+  {
+   "path": "../Objects/ebul_core.pemesh"
+  },
+  {
+   "path": "../Objects/ebul_star.pemesh"
+  },
+  {
+   "path": "../Objects/isl_jungle0.pemesh"
+  },
+  {
+   "path": "../Objects/isl_jungle1.pemesh"
+  },
+  {
+   "path": "../Objects/isl_jungle2.pemesh"
+  },
+  {
+   "path": "../Objects/isl_reef0.pemesh"
+  },
+  {
+   "path": "../Objects/isl_reef1.pemesh"
+  },
+  {
+   "path": "../Objects/isl_reef2.pemesh"
+  },
+  {
+   "path": "../Objects/isl_sand0.pemesh"
+  },
+  {
+   "path": "../Objects/isl_sand1.pemesh"
+  },
+  {
+   "path": "../Objects/isl_sand2.pemesh"
+  },
+  {
+   "path": "../Objects/mid_body.pemesh"
+  },
+  {
+   "path": "../Objects/mid_glass.pemesh"
+  },
+  {
+   "path": "../Objects/mid_prop.pemesh"
+  },
+  {
+   "path": "../Objects/ocean.pemesh"
+  },
+  {
+   "path": "../Objects/p38_body.pemesh"
+  },
+  {
+   "path": "../Objects/p38_fin.pemesh"
+  },
+  {
+   "path": "../Objects/p38_glass.pemesh"
+  },
+  {
+   "path": "../Objects/p38_mark.pemesh"
+  },
+  {
+   "path": "../Objects/p38_prop.pemesh"
+  },
+  {
+   "path": "../Objects/palm_leaves.pemesh"
+  },
+  {
+   "path": "../Objects/palm_trunk.pemesh"
+  },
+  {
+   "path": "../Objects/pow_gray.pemesh"
+  },
+  {
+   "path": "../Objects/pow_green.pemesh"
+  },
+  {
+   "path": "../Objects/pow_orange.pemesh"
+  },
+  {
+   "path": "../Objects/pow_red.pemesh"
+  },
+  {
+   "path": "../Objects/pow_white.pemesh"
+  },
+  {
+   "path": "../Objects/pow_yellow.pemesh"
+  },
+  {
+   "path": "../Objects/red_body.pemesh"
+  },
+  {
+   "path": "../Objects/sh_big.pemesh"
+  },
+  {
+   "path": "../Objects/sh_mid.pemesh"
+  },
+  {
+   "path": "../Objects/sh_p38.pemesh"
+  },
+  {
+   "path": "../Objects/sh_zero.pemesh"
+  },
+  {
+   "path": "../Objects/shadow.pemesh"
+  },
+  {
+   "path": "../Objects/shot.pemesh"
+  },
+  {
+   "path": "../Objects/wreck.pemesh"
+  },
+  {
+   "path": "../Objects/zero_body.pemesh"
+  },
+  {
+   "path": "../Objects/zero_cowl.pemesh"
+  },
+  {
+   "path": "../Objects/zero_glass.pemesh"
+  },
+  {
+   "path": "../Objects/zero_mark.pemesh"
+  },
+  {
+   "path": "../Objects/zero_prop.pemesh"
+  }
+ ],
+ "meshes": [
+  {
+   "source": 0,
+   "source_mesh": 0
+  },
+  {
+   "source": 1,
+   "source_mesh": 0
+  },
+  {
+   "source": 2,
+   "source_mesh": 0
+  },
+  {
+   "source": 3,
+   "source_mesh": 0
+  },
+  {
+   "source": 4,
+   "source_mesh": 0
+  },
+  {
+   "source": 5,
+   "source_mesh": 0
+  },
+  {
+   "source": 6,
+   "source_mesh": 0
+  },
+  {
+   "source": 7,
+   "source_mesh": 0
+  },
+  {
+   "source": 8,
+   "source_mesh": 0
+  },
+  {
+   "source": 9,
+   "source_mesh": 0
+  },
+  {
+   "source": 10,
+   "source_mesh": 0
+  },
+  {
+   "source": 11,
+   "source_mesh": 0
+  },
+  {
+   "source": 12,
+   "source_mesh": 0
+  },
+  {
+   "source": 13,
+   "source_mesh": 0
+  },
+  {
+   "source": 14,
+   "source_mesh": 0
+  },
+  {
+   "source": 15,
+   "source_mesh": 0
+  },
+  {
+   "source": 16,
+   "source_mesh": 0
+  },
+  {
+   "source": 17,
+   "source_mesh": 0
+  },
+  {
+   "source": 18,
+   "source_mesh": 0
+  },
+  {
+   "source": 19,
+   "source_mesh": 0
+  },
+  {
+   "source": 20,
+   "source_mesh": 0
+  },
+  {
+   "source": 21,
+   "source_mesh": 0
+  },
+  {
+   "source": 22,
+   "source_mesh": 0
+  },
+  {
+   "source": 23,
+   "source_mesh": 0
+  },
+  {
+   "source": 24,
+   "source_mesh": 0
+  },
+  {
+   "source": 25,
+   "source_mesh": 0
+  },
+  {
+   "source": 26,
+   "source_mesh": 0
+  },
+  {
+   "source": 27,
+   "source_mesh": 0
+  },
+  {
+   "source": 28,
+   "source_mesh": 0
+  },
+  {
+   "source": 29,
+   "source_mesh": 0
+  },
+  {
+   "source": 30,
+   "source_mesh": 0
+  },
+  {
+   "source": 31,
+   "source_mesh": 0
+  },
+  {
+   "source": 32,
+   "source_mesh": 0
+  },
+  {
+   "source": 33,
+   "source_mesh": 0
+  },
+  {
+   "source": 34,
+   "source_mesh": 0
+  },
+  {
+   "source": 35,
+   "source_mesh": 0
+  },
+  {
+   "source": 36,
+   "source_mesh": 0
+  },
+  {
+   "source": 37,
+   "source_mesh": 0
+  },
+  {
+   "source": 38,
+   "source_mesh": 0
+  },
+  {
+   "source": 39,
+   "source_mesh": 0
+  },
+  {
+   "source": 40,
+   "source_mesh": 0
+  },
+  {
+   "source": 41,
+   "source_mesh": 0
+  },
+  {
+   "source": 42,
+   "source_mesh": 0
+  },
+  {
+   "source": 43,
+   "source_mesh": 0
+  },
+  {
+   "source": 44,
+   "source_mesh": 0
+  },
+  {
+   "source": 45,
+   "source_mesh": 0
+  },
+  {
+   "source": 46,
+   "source_mesh": 0
+  },
+  {
+   "source": 47,
+   "source_mesh": 0
+  },
+  {
+   "source": 48,
+   "source_mesh": 0
+  },
+  {
+   "source": 49,
+   "source_mesh": 0
+  },
+  {
+   "source": 50,
+   "source_mesh": 0
+  }
+ ],
+ "nodes": [
+  {
+   "name": "Camera_0",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    60,
+    1
+   ],
+   "component_flags": 8,
+   "camera": {
+    "projection": "perspective",
+    "fovx": 0.9,
+    "near_plane": 0.5,
+    "far_plane": 1500.0,
+    "speed": 3.5,
+    "euler": [
+     0.0,
+     3.14159,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "T_big_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    0
+   ]
+  },
+  {
+   "name": "T_big_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    1
+   ]
+  },
+  {
+   "name": "T_big_prop",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    2
+   ]
+  },
+  {
+   "name": "T_carrier_deck",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    3
+   ]
+  },
+  {
+   "name": "T_carrier_hull",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    4
+   ]
+  },
+  {
+   "name": "T_carrier_island",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    5
+   ]
+  },
+  {
+   "name": "T_cloud0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    6
+   ]
+  },
+  {
+   "name": "T_cloud1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    7
+   ]
+  },
+  {
+   "name": "T_cloud2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    8
+   ]
+  },
+  {
+   "name": "T_ebul",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    9
+   ]
+  },
+  {
+   "name": "T_ebul_core",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    10
+   ]
+  },
+  {
+   "name": "T_ebul_star",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    11
+   ]
+  },
+  {
+   "name": "T_isl_jungle0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    12
+   ]
+  },
+  {
+   "name": "T_isl_jungle1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    13
+   ]
+  },
+  {
+   "name": "T_isl_jungle2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    14
+   ]
+  },
+  {
+   "name": "T_isl_reef0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    15
+   ]
+  },
+  {
+   "name": "T_isl_reef1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    16
+   ]
+  },
+  {
+   "name": "T_isl_reef2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    17
+   ]
+  },
+  {
+   "name": "T_isl_sand0",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    18
+   ]
+  },
+  {
+   "name": "T_isl_sand1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    19
+   ]
+  },
+  {
+   "name": "T_isl_sand2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    20
+   ]
+  },
+  {
+   "name": "T_mid_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    21
+   ]
+  },
+  {
+   "name": "T_mid_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    22
+   ]
+  },
+  {
+   "name": "T_mid_prop",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    23
+   ]
+  },
+  {
+   "name": "T_ocean",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    24
+   ]
+  },
+  {
+   "name": "T_p38_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    25
+   ]
+  },
+  {
+   "name": "T_p38_fin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    26
+   ]
+  },
+  {
+   "name": "T_p38_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    27
+   ]
+  },
+  {
+   "name": "T_p38_mark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    28
+   ]
+  },
+  {
+   "name": "T_p38_prop",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    29
+   ]
+  },
+  {
+   "name": "T_palm_leaves",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    30
+   ]
+  },
+  {
+   "name": "T_palm_trunk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    31
+   ]
+  },
+  {
+   "name": "T_pow_gray",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    32
+   ]
+  },
+  {
+   "name": "T_pow_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    33
+   ]
+  },
+  {
+   "name": "T_pow_orange",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    34
+   ]
+  },
+  {
+   "name": "T_pow_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    35
+   ]
+  },
+  {
+   "name": "T_pow_white",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    36
+   ]
+  },
+  {
+   "name": "T_pow_yellow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    37
+   ]
+  },
+  {
+   "name": "T_red_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    38
+   ]
+  },
+  {
+   "name": "T_sh_big",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    39
+   ]
+  },
+  {
+   "name": "T_sh_mid",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    40
+   ]
+  },
+  {
+   "name": "T_sh_p38",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    41
+   ]
+  },
+  {
+   "name": "T_sh_zero",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    42
+   ]
+  },
+  {
+   "name": "T_shadow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    43
+   ]
+  },
+  {
+   "name": "T_shot",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    44
+   ]
+  },
+  {
+   "name": "T_wreck",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    45
+   ]
+  },
+  {
+   "name": "T_zero_body",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    46
+   ]
+  },
+  {
+   "name": "T_zero_cowl",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    47
+   ]
+  },
+  {
+   "name": "T_zero_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    48
+   ]
+  },
+  {
+   "name": "T_zero_mark",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    49
+   ]
+  },
+  {
+   "name": "T_zero_prop",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    50
+   ]
+  }
+ ],
+ "lights": [],
+ "cameras": [
+  {
+   "name": "Camera_0",
+   "position": [
+    0,
+    0,
+    60
+   ],
+   "euler": [
+    0.0,
+    3.14159,
+    0.0
+   ],
+   "fovx": 0.9,
+   "projection": "perspective",
+   "near_plane": 0.5,
+   "far_plane": 1500.0,
+   "speed": 3.5,
+   "node_index": 0
+  }
+ ],
+ "active_camera": 0,
+ "scene_scripts": {
+  "on_play": [
+   "Assets/Scripts/game.lua"
+  ]
+ }
+}

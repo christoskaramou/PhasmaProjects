@@ -1,0 +1,7859 @@
+{
+ "sources": [
+  {
+   "path": "../Objects/ch_death_arm_l_bone.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_arm_l_death_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_arm_r_bone.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_arm_r_death_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_arm_r_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_arm_r_wood.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_body_bone.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_body_death_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_body_eye_red.pemesh"
+  },
+  {
+   "path": "../Objects/ch_death_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_arm_l_claw.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_arm_l_demon_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_arm_r_claw.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_arm_r_demon_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_body_demon_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_body_eye_yel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_body_horn.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_leg_l_claw.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_leg_l_demon_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_leg_r_claw.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_leg_r_demon_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_wing_l_demon_wing.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_wing_l_horn.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_wing_r_demon_wing.pemesh"
+  },
+  {
+   "path": "../Objects/ch_demon_wing_r_horn.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_l_elf_green.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_l_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_l_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_l_white.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_l_wood.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_r_elf_green.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_arm_r_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_elf_dkgreen.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_elf_green.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_elf_hair.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_feather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_body_wood.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_leg_l_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_leg_l_leather_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_leg_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_elf_leg_r_leather_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_ghost_arm_l_ghost.pemesh"
+  },
+  {
+   "path": "../Objects/ch_ghost_arm_r_ghost.pemesh"
+  },
+  {
+   "path": "../Objects/ch_ghost_body_eye_green.pemesh"
+  },
+  {
+   "path": "../Objects/ch_ghost_body_ghost.pemesh"
+  },
+  {
+   "path": "../Objects/ch_ghost_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_arm_l_grunt_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_arm_l_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_arm_r_grunt_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_arm_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_arm_r_steel_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_arm_r_wood.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_body_bronze.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_body_eye_red.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_body_grunt_cloth.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_body_grunt_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_body_horn.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_body_ivory.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_leg_l_claw.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_leg_l_grunt_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_leg_r_claw.pemesh"
+  },
+  {
+   "path": "../Objects/ch_grunt_leg_r_grunt_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_arm_l_lob_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_arm_r_lob_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_arm_r_rock.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_body_eye_yel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_body_grunt_cloth.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_body_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_body_lob_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_body_sack.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_leg_l_lob_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_lobber_leg_r_lob_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_l_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_l_magic.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_l_skin_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_l_sorc_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_r_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_r_magic.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_r_skin_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_arm_r_sorc_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_body_eye_red.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_body_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_body_sorc_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_sorc_body_sorc_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_l_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_l_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_l_val_armor.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_l_val_blue.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_r_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_r_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_r_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_arm_r_val_armor.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_val_armor.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_val_blue.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_val_hair.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_body_white.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_leg_l_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_leg_l_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_leg_l_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_leg_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_leg_r_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_val_leg_r_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_l_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_l_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_l_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_l_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_l_war_red.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_r_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_r_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_r_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_r_war_red.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_arm_r_wood.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_fur.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_ivory.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_steel.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_war_hair.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_body_war_red.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_leg_l_fur.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_leg_l_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_leg_l_leather_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_leg_r_fur.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_leg_r_leather.pemesh"
+  },
+  {
+   "path": "../Objects/ch_war_leg_r_leather_dk.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_l_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_l_wiz_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_l_wiz_trim.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_r_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_r_orb.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_r_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_r_wiz_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_r_wiz_trim.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_arm_r_wood.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_body_beard.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_body_gold.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_body_skin.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_body_void.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_body_wiz_robe.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_body_wiz_trim.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_leg_l_wiz_trim.pemesh"
+  },
+  {
+   "path": "../Objects/ch_wiz_leg_r_wiz_trim.pemesh"
+  },
+  {
+   "path": "../Objects/chest.pemesh"
+  },
+  {
+   "path": "../Objects/chest_band.pemesh"
+  },
+  {
+   "path": "../Objects/chest_lid.pemesh"
+  },
+  {
+   "path": "../Objects/door.pemesh"
+  },
+  {
+   "path": "../Objects/exit.pemesh"
+  },
+  {
+   "path": "../Objects/exit_rim.pemesh"
+  },
+  {
+   "path": "../Objects/exit_steps.pemesh"
+  },
+  {
+   "path": "../Objects/floor.pemesh"
+  },
+  {
+   "path": "../Objects/food_ham.pemesh"
+  },
+  {
+   "path": "../Objects/food_plate.pemesh"
+  },
+  {
+   "path": "../Objects/gen.pemesh"
+  },
+  {
+   "path": "../Objects/gen_bones.pemesh"
+  },
+  {
+   "path": "../Objects/key.pemesh"
+  },
+  {
+   "path": "../Objects/lv10_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv10_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv11_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv11_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv11_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv12_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv12_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv12_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv13_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv13_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv13_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv14_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv14_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv14_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv15_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv15_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv15_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv16_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv16_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv16_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv17_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv17_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv17_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv18_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv18_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv18_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv19_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv19_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv19_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv1_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv1_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv20_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv20_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv2_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv2_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv3_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv3_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv3_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv4_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv4_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv4_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv5_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv5_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv6_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv6_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv6_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv7_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv7_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv7_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv8_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv8_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv8_wall.pemesh"
+  },
+  {
+   "path": "../Objects/lv9_floor.pemesh"
+  },
+  {
+   "path": "../Objects/lv9_trapw.pemesh"
+  },
+  {
+   "path": "../Objects/lv9_wall.pemesh"
+  },
+  {
+   "path": "../Objects/p_arrow.pemesh"
+  },
+  {
+   "path": "../Objects/p_axe.pemesh"
+  },
+  {
+   "path": "../Objects/p_dfire.pemesh"
+  },
+  {
+   "path": "../Objects/p_fire.pemesh"
+  },
+  {
+   "path": "../Objects/p_rock.pemesh"
+  },
+  {
+   "path": "../Objects/p_sword.pemesh"
+  },
+  {
+   "path": "../Objects/potion.pemesh"
+  },
+  {
+   "path": "../Objects/potion_cork.pemesh"
+  },
+  {
+   "path": "../Objects/shadow.pemesh"
+  },
+  {
+   "path": "../Objects/stun_tile.pemesh"
+  },
+  {
+   "path": "../Objects/trap_tile.pemesh"
+  },
+  {
+   "path": "../Objects/wall.pemesh"
+  }
+ ],
+ "meshes": [
+  {
+   "source": 0,
+   "source_mesh": 0
+  },
+  {
+   "source": 1,
+   "source_mesh": 0
+  },
+  {
+   "source": 2,
+   "source_mesh": 0
+  },
+  {
+   "source": 3,
+   "source_mesh": 0
+  },
+  {
+   "source": 4,
+   "source_mesh": 0
+  },
+  {
+   "source": 5,
+   "source_mesh": 0
+  },
+  {
+   "source": 6,
+   "source_mesh": 0
+  },
+  {
+   "source": 7,
+   "source_mesh": 0
+  },
+  {
+   "source": 8,
+   "source_mesh": 0
+  },
+  {
+   "source": 9,
+   "source_mesh": 0
+  },
+  {
+   "source": 10,
+   "source_mesh": 0
+  },
+  {
+   "source": 11,
+   "source_mesh": 0
+  },
+  {
+   "source": 12,
+   "source_mesh": 0
+  },
+  {
+   "source": 13,
+   "source_mesh": 0
+  },
+  {
+   "source": 14,
+   "source_mesh": 0
+  },
+  {
+   "source": 15,
+   "source_mesh": 0
+  },
+  {
+   "source": 16,
+   "source_mesh": 0
+  },
+  {
+   "source": 17,
+   "source_mesh": 0
+  },
+  {
+   "source": 18,
+   "source_mesh": 0
+  },
+  {
+   "source": 19,
+   "source_mesh": 0
+  },
+  {
+   "source": 20,
+   "source_mesh": 0
+  },
+  {
+   "source": 21,
+   "source_mesh": 0
+  },
+  {
+   "source": 22,
+   "source_mesh": 0
+  },
+  {
+   "source": 23,
+   "source_mesh": 0
+  },
+  {
+   "source": 24,
+   "source_mesh": 0
+  },
+  {
+   "source": 25,
+   "source_mesh": 0
+  },
+  {
+   "source": 26,
+   "source_mesh": 0
+  },
+  {
+   "source": 27,
+   "source_mesh": 0
+  },
+  {
+   "source": 28,
+   "source_mesh": 0
+  },
+  {
+   "source": 29,
+   "source_mesh": 0
+  },
+  {
+   "source": 30,
+   "source_mesh": 0
+  },
+  {
+   "source": 31,
+   "source_mesh": 0
+  },
+  {
+   "source": 32,
+   "source_mesh": 0
+  },
+  {
+   "source": 33,
+   "source_mesh": 0
+  },
+  {
+   "source": 34,
+   "source_mesh": 0
+  },
+  {
+   "source": 35,
+   "source_mesh": 0
+  },
+  {
+   "source": 36,
+   "source_mesh": 0
+  },
+  {
+   "source": 37,
+   "source_mesh": 0
+  },
+  {
+   "source": 38,
+   "source_mesh": 0
+  },
+  {
+   "source": 39,
+   "source_mesh": 0
+  },
+  {
+   "source": 40,
+   "source_mesh": 0
+  },
+  {
+   "source": 41,
+   "source_mesh": 0
+  },
+  {
+   "source": 42,
+   "source_mesh": 0
+  },
+  {
+   "source": 43,
+   "source_mesh": 0
+  },
+  {
+   "source": 44,
+   "source_mesh": 0
+  },
+  {
+   "source": 45,
+   "source_mesh": 0
+  },
+  {
+   "source": 46,
+   "source_mesh": 0
+  },
+  {
+   "source": 47,
+   "source_mesh": 0
+  },
+  {
+   "source": 48,
+   "source_mesh": 0
+  },
+  {
+   "source": 49,
+   "source_mesh": 0
+  },
+  {
+   "source": 50,
+   "source_mesh": 0
+  },
+  {
+   "source": 51,
+   "source_mesh": 0
+  },
+  {
+   "source": 52,
+   "source_mesh": 0
+  },
+  {
+   "source": 53,
+   "source_mesh": 0
+  },
+  {
+   "source": 54,
+   "source_mesh": 0
+  },
+  {
+   "source": 55,
+   "source_mesh": 0
+  },
+  {
+   "source": 56,
+   "source_mesh": 0
+  },
+  {
+   "source": 57,
+   "source_mesh": 0
+  },
+  {
+   "source": 58,
+   "source_mesh": 0
+  },
+  {
+   "source": 59,
+   "source_mesh": 0
+  },
+  {
+   "source": 60,
+   "source_mesh": 0
+  },
+  {
+   "source": 61,
+   "source_mesh": 0
+  },
+  {
+   "source": 62,
+   "source_mesh": 0
+  },
+  {
+   "source": 63,
+   "source_mesh": 0
+  },
+  {
+   "source": 64,
+   "source_mesh": 0
+  },
+  {
+   "source": 65,
+   "source_mesh": 0
+  },
+  {
+   "source": 66,
+   "source_mesh": 0
+  },
+  {
+   "source": 67,
+   "source_mesh": 0
+  },
+  {
+   "source": 68,
+   "source_mesh": 0
+  },
+  {
+   "source": 69,
+   "source_mesh": 0
+  },
+  {
+   "source": 70,
+   "source_mesh": 0
+  },
+  {
+   "source": 71,
+   "source_mesh": 0
+  },
+  {
+   "source": 72,
+   "source_mesh": 0
+  },
+  {
+   "source": 73,
+   "source_mesh": 0
+  },
+  {
+   "source": 74,
+   "source_mesh": 0
+  },
+  {
+   "source": 75,
+   "source_mesh": 0
+  },
+  {
+   "source": 76,
+   "source_mesh": 0
+  },
+  {
+   "source": 77,
+   "source_mesh": 0
+  },
+  {
+   "source": 78,
+   "source_mesh": 0
+  },
+  {
+   "source": 79,
+   "source_mesh": 0
+  },
+  {
+   "source": 80,
+   "source_mesh": 0
+  },
+  {
+   "source": 81,
+   "source_mesh": 0
+  },
+  {
+   "source": 82,
+   "source_mesh": 0
+  },
+  {
+   "source": 83,
+   "source_mesh": 0
+  },
+  {
+   "source": 84,
+   "source_mesh": 0
+  },
+  {
+   "source": 85,
+   "source_mesh": 0
+  },
+  {
+   "source": 86,
+   "source_mesh": 0
+  },
+  {
+   "source": 87,
+   "source_mesh": 0
+  },
+  {
+   "source": 88,
+   "source_mesh": 0
+  },
+  {
+   "source": 89,
+   "source_mesh": 0
+  },
+  {
+   "source": 90,
+   "source_mesh": 0
+  },
+  {
+   "source": 91,
+   "source_mesh": 0
+  },
+  {
+   "source": 92,
+   "source_mesh": 0
+  },
+  {
+   "source": 93,
+   "source_mesh": 0
+  },
+  {
+   "source": 94,
+   "source_mesh": 0
+  },
+  {
+   "source": 95,
+   "source_mesh": 0
+  },
+  {
+   "source": 96,
+   "source_mesh": 0
+  },
+  {
+   "source": 97,
+   "source_mesh": 0
+  },
+  {
+   "source": 98,
+   "source_mesh": 0
+  },
+  {
+   "source": 99,
+   "source_mesh": 0
+  },
+  {
+   "source": 100,
+   "source_mesh": 0
+  },
+  {
+   "source": 101,
+   "source_mesh": 0
+  },
+  {
+   "source": 102,
+   "source_mesh": 0
+  },
+  {
+   "source": 103,
+   "source_mesh": 0
+  },
+  {
+   "source": 104,
+   "source_mesh": 0
+  },
+  {
+   "source": 105,
+   "source_mesh": 0
+  },
+  {
+   "source": 106,
+   "source_mesh": 0
+  },
+  {
+   "source": 107,
+   "source_mesh": 0
+  },
+  {
+   "source": 108,
+   "source_mesh": 0
+  },
+  {
+   "source": 109,
+   "source_mesh": 0
+  },
+  {
+   "source": 110,
+   "source_mesh": 0
+  },
+  {
+   "source": 111,
+   "source_mesh": 0
+  },
+  {
+   "source": 112,
+   "source_mesh": 0
+  },
+  {
+   "source": 113,
+   "source_mesh": 0
+  },
+  {
+   "source": 114,
+   "source_mesh": 0
+  },
+  {
+   "source": 115,
+   "source_mesh": 0
+  },
+  {
+   "source": 116,
+   "source_mesh": 0
+  },
+  {
+   "source": 117,
+   "source_mesh": 0
+  },
+  {
+   "source": 118,
+   "source_mesh": 0
+  },
+  {
+   "source": 119,
+   "source_mesh": 0
+  },
+  {
+   "source": 120,
+   "source_mesh": 0
+  },
+  {
+   "source": 121,
+   "source_mesh": 0
+  },
+  {
+   "source": 122,
+   "source_mesh": 0
+  },
+  {
+   "source": 123,
+   "source_mesh": 0
+  },
+  {
+   "source": 124,
+   "source_mesh": 0
+  },
+  {
+   "source": 125,
+   "source_mesh": 0
+  },
+  {
+   "source": 126,
+   "source_mesh": 0
+  },
+  {
+   "source": 127,
+   "source_mesh": 0
+  },
+  {
+   "source": 128,
+   "source_mesh": 0
+  },
+  {
+   "source": 129,
+   "source_mesh": 0
+  },
+  {
+   "source": 130,
+   "source_mesh": 0
+  },
+  {
+   "source": 131,
+   "source_mesh": 0
+  },
+  {
+   "source": 132,
+   "source_mesh": 0
+  },
+  {
+   "source": 133,
+   "source_mesh": 0
+  },
+  {
+   "source": 134,
+   "source_mesh": 0
+  },
+  {
+   "source": 135,
+   "source_mesh": 0
+  },
+  {
+   "source": 136,
+   "source_mesh": 0
+  },
+  {
+   "source": 137,
+   "source_mesh": 0
+  },
+  {
+   "source": 138,
+   "source_mesh": 0
+  },
+  {
+   "source": 139,
+   "source_mesh": 0
+  },
+  {
+   "source": 140,
+   "source_mesh": 0
+  },
+  {
+   "source": 141,
+   "source_mesh": 0
+  },
+  {
+   "source": 142,
+   "source_mesh": 0
+  },
+  {
+   "source": 143,
+   "source_mesh": 0
+  },
+  {
+   "source": 144,
+   "source_mesh": 0
+  },
+  {
+   "source": 145,
+   "source_mesh": 0
+  },
+  {
+   "source": 146,
+   "source_mesh": 0
+  },
+  {
+   "source": 147,
+   "source_mesh": 0
+  },
+  {
+   "source": 148,
+   "source_mesh": 0
+  },
+  {
+   "source": 149,
+   "source_mesh": 0
+  },
+  {
+   "source": 150,
+   "source_mesh": 0
+  },
+  {
+   "source": 151,
+   "source_mesh": 0
+  },
+  {
+   "source": 152,
+   "source_mesh": 0
+  },
+  {
+   "source": 153,
+   "source_mesh": 0
+  },
+  {
+   "source": 154,
+   "source_mesh": 0
+  },
+  {
+   "source": 155,
+   "source_mesh": 0
+  },
+  {
+   "source": 156,
+   "source_mesh": 0
+  },
+  {
+   "source": 157,
+   "source_mesh": 0
+  },
+  {
+   "source": 158,
+   "source_mesh": 0
+  },
+  {
+   "source": 159,
+   "source_mesh": 0
+  },
+  {
+   "source": 160,
+   "source_mesh": 0
+  },
+  {
+   "source": 161,
+   "source_mesh": 0
+  },
+  {
+   "source": 162,
+   "source_mesh": 0
+  },
+  {
+   "source": 163,
+   "source_mesh": 0
+  },
+  {
+   "source": 164,
+   "source_mesh": 0
+  },
+  {
+   "source": 165,
+   "source_mesh": 0
+  },
+  {
+   "source": 166,
+   "source_mesh": 0
+  },
+  {
+   "source": 167,
+   "source_mesh": 0
+  },
+  {
+   "source": 168,
+   "source_mesh": 0
+  },
+  {
+   "source": 169,
+   "source_mesh": 0
+  },
+  {
+   "source": 170,
+   "source_mesh": 0
+  },
+  {
+   "source": 171,
+   "source_mesh": 0
+  },
+  {
+   "source": 172,
+   "source_mesh": 0
+  },
+  {
+   "source": 173,
+   "source_mesh": 0
+  },
+  {
+   "source": 174,
+   "source_mesh": 0
+  },
+  {
+   "source": 175,
+   "source_mesh": 0
+  },
+  {
+   "source": 176,
+   "source_mesh": 0
+  },
+  {
+   "source": 177,
+   "source_mesh": 0
+  },
+  {
+   "source": 178,
+   "source_mesh": 0
+  },
+  {
+   "source": 179,
+   "source_mesh": 0
+  },
+  {
+   "source": 180,
+   "source_mesh": 0
+  },
+  {
+   "source": 181,
+   "source_mesh": 0
+  },
+  {
+   "source": 182,
+   "source_mesh": 0
+  },
+  {
+   "source": 183,
+   "source_mesh": 0
+  },
+  {
+   "source": 184,
+   "source_mesh": 0
+  },
+  {
+   "source": 185,
+   "source_mesh": 0
+  },
+  {
+   "source": 186,
+   "source_mesh": 0
+  },
+  {
+   "source": 187,
+   "source_mesh": 0
+  },
+  {
+   "source": 188,
+   "source_mesh": 0
+  },
+  {
+   "source": 189,
+   "source_mesh": 0
+  },
+  {
+   "source": 190,
+   "source_mesh": 0
+  },
+  {
+   "source": 191,
+   "source_mesh": 0
+  },
+  {
+   "source": 192,
+   "source_mesh": 0
+  },
+  {
+   "source": 193,
+   "source_mesh": 0
+  },
+  {
+   "source": 194,
+   "source_mesh": 0
+  },
+  {
+   "source": 195,
+   "source_mesh": 0
+  },
+  {
+   "source": 196,
+   "source_mesh": 0
+  },
+  {
+   "source": 197,
+   "source_mesh": 0
+  },
+  {
+   "source": 198,
+   "source_mesh": 0
+  },
+  {
+   "source": 199,
+   "source_mesh": 0
+  },
+  {
+   "source": 200,
+   "source_mesh": 0
+  },
+  {
+   "source": 201,
+   "source_mesh": 0
+  },
+  {
+   "source": 202,
+   "source_mesh": 0
+  },
+  {
+   "source": 203,
+   "source_mesh": 0
+  },
+  {
+   "source": 204,
+   "source_mesh": 0
+  },
+  {
+   "source": 205,
+   "source_mesh": 0
+  },
+  {
+   "source": 206,
+   "source_mesh": 0
+  },
+  {
+   "source": 207,
+   "source_mesh": 0
+  },
+  {
+   "source": 208,
+   "source_mesh": 0
+  },
+  {
+   "source": 209,
+   "source_mesh": 0
+  },
+  {
+   "source": 210,
+   "source_mesh": 0
+  },
+  {
+   "source": 211,
+   "source_mesh": 0
+  },
+  {
+   "source": 212,
+   "source_mesh": 0
+  },
+  {
+   "source": 213,
+   "source_mesh": 0
+  },
+  {
+   "source": 214,
+   "source_mesh": 0
+  },
+  {
+   "source": 215,
+   "source_mesh": 0
+  },
+  {
+   "source": 216,
+   "source_mesh": 0
+  },
+  {
+   "source": 217,
+   "source_mesh": 0
+  },
+  {
+   "source": 218,
+   "source_mesh": 0
+  },
+  {
+   "source": 219,
+   "source_mesh": 0
+  },
+  {
+   "source": 220,
+   "source_mesh": 0
+  },
+  {
+   "source": 221,
+   "source_mesh": 0
+  },
+  {
+   "source": 222,
+   "source_mesh": 0
+  },
+  {
+   "source": 223,
+   "source_mesh": 0
+  },
+  {
+   "source": 224,
+   "source_mesh": 0
+  },
+  {
+   "source": 225,
+   "source_mesh": 0
+  },
+  {
+   "source": 226,
+   "source_mesh": 0
+  },
+  {
+   "source": 227,
+   "source_mesh": 0
+  },
+  {
+   "source": 228,
+   "source_mesh": 0
+  },
+  {
+   "source": 229,
+   "source_mesh": 0
+  },
+  {
+   "source": 230,
+   "source_mesh": 0
+  },
+  {
+   "source": 231,
+   "source_mesh": 0
+  },
+  {
+   "source": 232,
+   "source_mesh": 0
+  },
+  {
+   "source": 233,
+   "source_mesh": 0
+  },
+  {
+   "source": 234,
+   "source_mesh": 0
+  },
+  {
+   "source": 235,
+   "source_mesh": 0
+  }
+ ],
+ "nodes": [
+  {
+   "name": "Camera_0",
+   "parent": -1,
+   "local_matrix": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    60,
+    1
+   ],
+   "component_flags": 8,
+   "camera": {
+    "projection": "perspective",
+    "fovx": 0.9,
+    "near_plane": 0.5,
+    "far_plane": 1500.0,
+    "speed": 3.5,
+    "euler": [
+     0.0,
+     3.14159,
+     0.0
+    ]
+   }
+  },
+  {
+   "name": "T_ch_death_arm_l_bone",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    0
+   ]
+  },
+  {
+   "name": "T_ch_death_arm_l_death_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    1
+   ]
+  },
+  {
+   "name": "T_ch_death_arm_r_bone",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    2
+   ]
+  },
+  {
+   "name": "T_ch_death_arm_r_death_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    3
+   ]
+  },
+  {
+   "name": "T_ch_death_arm_r_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    4
+   ]
+  },
+  {
+   "name": "T_ch_death_arm_r_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    5
+   ]
+  },
+  {
+   "name": "T_ch_death_body_bone",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    6
+   ]
+  },
+  {
+   "name": "T_ch_death_body_death_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    7
+   ]
+  },
+  {
+   "name": "T_ch_death_body_eye_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    8
+   ]
+  },
+  {
+   "name": "T_ch_death_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    9
+   ]
+  },
+  {
+   "name": "T_ch_demon_arm_l_claw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    10
+   ]
+  },
+  {
+   "name": "T_ch_demon_arm_l_demon_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    11
+   ]
+  },
+  {
+   "name": "T_ch_demon_arm_r_claw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    12
+   ]
+  },
+  {
+   "name": "T_ch_demon_arm_r_demon_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    13
+   ]
+  },
+  {
+   "name": "T_ch_demon_body_demon_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    14
+   ]
+  },
+  {
+   "name": "T_ch_demon_body_eye_yel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    15
+   ]
+  },
+  {
+   "name": "T_ch_demon_body_horn",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    16
+   ]
+  },
+  {
+   "name": "T_ch_demon_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    17
+   ]
+  },
+  {
+   "name": "T_ch_demon_leg_l_claw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    18
+   ]
+  },
+  {
+   "name": "T_ch_demon_leg_l_demon_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    19
+   ]
+  },
+  {
+   "name": "T_ch_demon_leg_r_claw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    20
+   ]
+  },
+  {
+   "name": "T_ch_demon_leg_r_demon_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    21
+   ]
+  },
+  {
+   "name": "T_ch_demon_wing_l_demon_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    22
+   ]
+  },
+  {
+   "name": "T_ch_demon_wing_l_horn",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    23
+   ]
+  },
+  {
+   "name": "T_ch_demon_wing_r_demon_wing",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    24
+   ]
+  },
+  {
+   "name": "T_ch_demon_wing_r_horn",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    25
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_l_elf_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    26
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_l_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    27
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_l_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    28
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_l_white",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    29
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_l_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    30
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_r_elf_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    31
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    32
+   ]
+  },
+  {
+   "name": "T_ch_elf_arm_r_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    33
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_elf_dkgreen",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    34
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_elf_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    35
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_elf_hair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    36
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_feather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    37
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    38
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    39
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    40
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    41
+   ]
+  },
+  {
+   "name": "T_ch_elf_body_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    42
+   ]
+  },
+  {
+   "name": "T_ch_elf_leg_l_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    43
+   ]
+  },
+  {
+   "name": "T_ch_elf_leg_l_leather_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    44
+   ]
+  },
+  {
+   "name": "T_ch_elf_leg_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    45
+   ]
+  },
+  {
+   "name": "T_ch_elf_leg_r_leather_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    46
+   ]
+  },
+  {
+   "name": "T_ch_ghost_arm_l_ghost",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    47
+   ]
+  },
+  {
+   "name": "T_ch_ghost_arm_r_ghost",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    48
+   ]
+  },
+  {
+   "name": "T_ch_ghost_body_eye_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    49
+   ]
+  },
+  {
+   "name": "T_ch_ghost_body_ghost",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    50
+   ]
+  },
+  {
+   "name": "T_ch_ghost_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    51
+   ]
+  },
+  {
+   "name": "T_ch_grunt_arm_l_grunt_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    52
+   ]
+  },
+  {
+   "name": "T_ch_grunt_arm_l_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    53
+   ]
+  },
+  {
+   "name": "T_ch_grunt_arm_r_grunt_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    54
+   ]
+  },
+  {
+   "name": "T_ch_grunt_arm_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    55
+   ]
+  },
+  {
+   "name": "T_ch_grunt_arm_r_steel_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    56
+   ]
+  },
+  {
+   "name": "T_ch_grunt_arm_r_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    57
+   ]
+  },
+  {
+   "name": "T_ch_grunt_body_bronze",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    58
+   ]
+  },
+  {
+   "name": "T_ch_grunt_body_eye_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    59
+   ]
+  },
+  {
+   "name": "T_ch_grunt_body_grunt_cloth",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    60
+   ]
+  },
+  {
+   "name": "T_ch_grunt_body_grunt_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    61
+   ]
+  },
+  {
+   "name": "T_ch_grunt_body_horn",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    62
+   ]
+  },
+  {
+   "name": "T_ch_grunt_body_ivory",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    63
+   ]
+  },
+  {
+   "name": "T_ch_grunt_leg_l_claw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    64
+   ]
+  },
+  {
+   "name": "T_ch_grunt_leg_l_grunt_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    65
+   ]
+  },
+  {
+   "name": "T_ch_grunt_leg_r_claw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    66
+   ]
+  },
+  {
+   "name": "T_ch_grunt_leg_r_grunt_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    67
+   ]
+  },
+  {
+   "name": "T_ch_lobber_arm_l_lob_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    68
+   ]
+  },
+  {
+   "name": "T_ch_lobber_arm_r_lob_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    69
+   ]
+  },
+  {
+   "name": "T_ch_lobber_arm_r_rock",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    70
+   ]
+  },
+  {
+   "name": "T_ch_lobber_body_eye_yel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    71
+   ]
+  },
+  {
+   "name": "T_ch_lobber_body_grunt_cloth",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    72
+   ]
+  },
+  {
+   "name": "T_ch_lobber_body_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    73
+   ]
+  },
+  {
+   "name": "T_ch_lobber_body_lob_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    74
+   ]
+  },
+  {
+   "name": "T_ch_lobber_body_sack",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    75
+   ]
+  },
+  {
+   "name": "T_ch_lobber_leg_l_lob_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    76
+   ]
+  },
+  {
+   "name": "T_ch_lobber_leg_r_lob_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    77
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_l_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    78
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_l_magic",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    79
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_l_skin_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    80
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_l_sorc_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    81
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_r_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    82
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_r_magic",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    83
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_r_skin_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    84
+   ]
+  },
+  {
+   "name": "T_ch_sorc_arm_r_sorc_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    85
+   ]
+  },
+  {
+   "name": "T_ch_sorc_body_eye_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    86
+   ]
+  },
+  {
+   "name": "T_ch_sorc_body_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    87
+   ]
+  },
+  {
+   "name": "T_ch_sorc_body_sorc_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    88
+   ]
+  },
+  {
+   "name": "T_ch_sorc_body_sorc_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    89
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_l_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    90
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_l_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    91
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_l_val_armor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    92
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_l_val_blue",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    93
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_r_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    94
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    95
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_r_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    96
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_r_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    97
+   ]
+  },
+  {
+   "name": "T_ch_val_arm_r_val_armor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    98
+   ]
+  },
+  {
+   "name": "T_ch_val_body_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    99
+   ]
+  },
+  {
+   "name": "T_ch_val_body_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    100
+   ]
+  },
+  {
+   "name": "T_ch_val_body_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    101
+   ]
+  },
+  {
+   "name": "T_ch_val_body_val_armor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    102
+   ]
+  },
+  {
+   "name": "T_ch_val_body_val_blue",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    103
+   ]
+  },
+  {
+   "name": "T_ch_val_body_val_hair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    104
+   ]
+  },
+  {
+   "name": "T_ch_val_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    105
+   ]
+  },
+  {
+   "name": "T_ch_val_body_white",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    106
+   ]
+  },
+  {
+   "name": "T_ch_val_leg_l_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    107
+   ]
+  },
+  {
+   "name": "T_ch_val_leg_l_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    108
+   ]
+  },
+  {
+   "name": "T_ch_val_leg_l_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    109
+   ]
+  },
+  {
+   "name": "T_ch_val_leg_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    110
+   ]
+  },
+  {
+   "name": "T_ch_val_leg_r_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    111
+   ]
+  },
+  {
+   "name": "T_ch_val_leg_r_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    112
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_l_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    113
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_l_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    114
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_l_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    115
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_l_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    116
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_l_war_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    117
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_r_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    118
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    119
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_r_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    120
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_r_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    121
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_r_war_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    122
+   ]
+  },
+  {
+   "name": "T_ch_war_arm_r_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    123
+   ]
+  },
+  {
+   "name": "T_ch_war_body_fur",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    124
+   ]
+  },
+  {
+   "name": "T_ch_war_body_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    125
+   ]
+  },
+  {
+   "name": "T_ch_war_body_ivory",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    126
+   ]
+  },
+  {
+   "name": "T_ch_war_body_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    127
+   ]
+  },
+  {
+   "name": "T_ch_war_body_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    128
+   ]
+  },
+  {
+   "name": "T_ch_war_body_steel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    129
+   ]
+  },
+  {
+   "name": "T_ch_war_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    130
+   ]
+  },
+  {
+   "name": "T_ch_war_body_war_hair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    131
+   ]
+  },
+  {
+   "name": "T_ch_war_body_war_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    132
+   ]
+  },
+  {
+   "name": "T_ch_war_leg_l_fur",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    133
+   ]
+  },
+  {
+   "name": "T_ch_war_leg_l_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    134
+   ]
+  },
+  {
+   "name": "T_ch_war_leg_l_leather_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    135
+   ]
+  },
+  {
+   "name": "T_ch_war_leg_r_fur",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    136
+   ]
+  },
+  {
+   "name": "T_ch_war_leg_r_leather",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    137
+   ]
+  },
+  {
+   "name": "T_ch_war_leg_r_leather_dk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    138
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_l_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    139
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_l_wiz_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    140
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_l_wiz_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    141
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_r_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    142
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_r_orb",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    143
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_r_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    144
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_r_wiz_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    145
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_r_wiz_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    146
+   ]
+  },
+  {
+   "name": "T_ch_wiz_arm_r_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    147
+   ]
+  },
+  {
+   "name": "T_ch_wiz_body_beard",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    148
+   ]
+  },
+  {
+   "name": "T_ch_wiz_body_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    149
+   ]
+  },
+  {
+   "name": "T_ch_wiz_body_skin",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    150
+   ]
+  },
+  {
+   "name": "T_ch_wiz_body_void",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    151
+   ]
+  },
+  {
+   "name": "T_ch_wiz_body_wiz_robe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    152
+   ]
+  },
+  {
+   "name": "T_ch_wiz_body_wiz_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    153
+   ]
+  },
+  {
+   "name": "T_ch_wiz_leg_l_wiz_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    154
+   ]
+  },
+  {
+   "name": "T_ch_wiz_leg_r_wiz_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    155
+   ]
+  },
+  {
+   "name": "T_chest",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    156
+   ]
+  },
+  {
+   "name": "T_chest_band",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    157
+   ]
+  },
+  {
+   "name": "T_chest_lid",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    158
+   ]
+  },
+  {
+   "name": "T_door",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    159
+   ]
+  },
+  {
+   "name": "T_exit",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    160
+   ]
+  },
+  {
+   "name": "T_exit_rim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    161
+   ]
+  },
+  {
+   "name": "T_exit_steps",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    162
+   ]
+  },
+  {
+   "name": "T_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    163
+   ]
+  },
+  {
+   "name": "T_food_ham",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    164
+   ]
+  },
+  {
+   "name": "T_food_plate",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    165
+   ]
+  },
+  {
+   "name": "T_gen",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    166
+   ]
+  },
+  {
+   "name": "T_gen_bones",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    167
+   ]
+  },
+  {
+   "name": "T_key",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    168
+   ]
+  },
+  {
+   "name": "T_lv10_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    169
+   ]
+  },
+  {
+   "name": "T_lv10_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    170
+   ]
+  },
+  {
+   "name": "T_lv11_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    171
+   ]
+  },
+  {
+   "name": "T_lv11_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    172
+   ]
+  },
+  {
+   "name": "T_lv11_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    173
+   ]
+  },
+  {
+   "name": "T_lv12_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    174
+   ]
+  },
+  {
+   "name": "T_lv12_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    175
+   ]
+  },
+  {
+   "name": "T_lv12_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    176
+   ]
+  },
+  {
+   "name": "T_lv13_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    177
+   ]
+  },
+  {
+   "name": "T_lv13_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    178
+   ]
+  },
+  {
+   "name": "T_lv13_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    179
+   ]
+  },
+  {
+   "name": "T_lv14_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    180
+   ]
+  },
+  {
+   "name": "T_lv14_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    181
+   ]
+  },
+  {
+   "name": "T_lv14_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    182
+   ]
+  },
+  {
+   "name": "T_lv15_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    183
+   ]
+  },
+  {
+   "name": "T_lv15_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    184
+   ]
+  },
+  {
+   "name": "T_lv15_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    185
+   ]
+  },
+  {
+   "name": "T_lv16_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    186
+   ]
+  },
+  {
+   "name": "T_lv16_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    187
+   ]
+  },
+  {
+   "name": "T_lv16_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    188
+   ]
+  },
+  {
+   "name": "T_lv17_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    189
+   ]
+  },
+  {
+   "name": "T_lv17_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    190
+   ]
+  },
+  {
+   "name": "T_lv17_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    191
+   ]
+  },
+  {
+   "name": "T_lv18_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    192
+   ]
+  },
+  {
+   "name": "T_lv18_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    193
+   ]
+  },
+  {
+   "name": "T_lv18_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    194
+   ]
+  },
+  {
+   "name": "T_lv19_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    195
+   ]
+  },
+  {
+   "name": "T_lv19_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    196
+   ]
+  },
+  {
+   "name": "T_lv19_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    197
+   ]
+  },
+  {
+   "name": "T_lv1_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    198
+   ]
+  },
+  {
+   "name": "T_lv1_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    199
+   ]
+  },
+  {
+   "name": "T_lv20_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    200
+   ]
+  },
+  {
+   "name": "T_lv20_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    201
+   ]
+  },
+  {
+   "name": "T_lv2_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    202
+   ]
+  },
+  {
+   "name": "T_lv2_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    203
+   ]
+  },
+  {
+   "name": "T_lv3_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    204
+   ]
+  },
+  {
+   "name": "T_lv3_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    205
+   ]
+  },
+  {
+   "name": "T_lv3_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    206
+   ]
+  },
+  {
+   "name": "T_lv4_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    207
+   ]
+  },
+  {
+   "name": "T_lv4_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    208
+   ]
+  },
+  {
+   "name": "T_lv4_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    209
+   ]
+  },
+  {
+   "name": "T_lv5_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    210
+   ]
+  },
+  {
+   "name": "T_lv5_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    211
+   ]
+  },
+  {
+   "name": "T_lv6_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    212
+   ]
+  },
+  {
+   "name": "T_lv6_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    213
+   ]
+  },
+  {
+   "name": "T_lv6_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    214
+   ]
+  },
+  {
+   "name": "T_lv7_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    215
+   ]
+  },
+  {
+   "name": "T_lv7_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    216
+   ]
+  },
+  {
+   "name": "T_lv7_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    217
+   ]
+  },
+  {
+   "name": "T_lv8_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    218
+   ]
+  },
+  {
+   "name": "T_lv8_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    219
+   ]
+  },
+  {
+   "name": "T_lv8_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    220
+   ]
+  },
+  {
+   "name": "T_lv9_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    221
+   ]
+  },
+  {
+   "name": "T_lv9_trapw",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    222
+   ]
+  },
+  {
+   "name": "T_lv9_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    223
+   ]
+  },
+  {
+   "name": "T_p_arrow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    224
+   ]
+  },
+  {
+   "name": "T_p_axe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    225
+   ]
+  },
+  {
+   "name": "T_p_dfire",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    226
+   ]
+  },
+  {
+   "name": "T_p_fire",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    227
+   ]
+  },
+  {
+   "name": "T_p_rock",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    228
+   ]
+  },
+  {
+   "name": "T_p_sword",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    229
+   ]
+  },
+  {
+   "name": "T_potion",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    230
+   ]
+  },
+  {
+   "name": "T_potion_cork",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    231
+   ]
+  },
+  {
+   "name": "T_shadow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    232
+   ]
+  },
+  {
+   "name": "T_stun_tile",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    233
+   ]
+  },
+  {
+   "name": "T_trap_tile",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    234
+   ]
+  },
+  {
+   "name": "T_wall",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    235
+   ]
+  }
+ ],
+ "lights": [],
+ "cameras": [
+  {
+   "name": "Camera_0",
+   "position": [
+    0,
+    0,
+    60
+   ],
+   "euler": [
+    0.0,
+    3.14159,
+    0.0
+   ],
+   "fovx": 0.9,
+   "projection": "perspective",
+   "near_plane": 0.5,
+   "far_plane": 1500.0,
+   "speed": 3.5,
+   "node_index": 0
+  }
+ ],
+ "active_camera": 0,
+ "scene_scripts": {
+  "on_play": [
+   "Assets/Scripts/game.lua"
+  ]
+ }
+}
