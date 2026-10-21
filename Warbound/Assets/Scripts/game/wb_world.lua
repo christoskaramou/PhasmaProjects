@@ -95,8 +95,13 @@ function World.build()
 
     local H = World.HALF
     -- Ground: a thin slab (a flat cube — guaranteed horizontal and shadow-catching).
+    -- It must cover the whole view, not just the map: the camera focus may go 6 m past the
+    -- bounds (wb_camera clamp margin -6) and at MAX_DIST 50 / 57 deg pitch / 48 deg vfov the
+    -- screen reaches ~40 m beyond the focus ahead and ~60 m to the sides, so a slab of
+    -- H*2+8 (+-38 m) left the void showing at every map edge. 300 m (+-150 m) covers it.
+    local GROUND_SIZE = 300.0
     U.part({ kind = "cube", name = "Ground", parent = root,
-        pos = { 0.0, -0.25, 0.0 }, scale = { H * 2.0 + 8.0, 0.5, H * 2.0 + 8.0 },
+        pos = { 0.0, -0.25, 0.0 }, scale = { GROUND_SIZE, 0.5, GROUND_SIZE },
         color = U.COLOR.grass, emissive = 0.10 })
     -- A few darker grass patches for texture (flat slabs just above the ground).
     U.part({ kind = "cube", name = "Patch1", parent = root,
