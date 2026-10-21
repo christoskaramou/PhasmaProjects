@@ -121,6 +121,8 @@ local function paint_templates()
         paint(tnode("T_mountain_" .. i), { 0.22, 0.18, 0.14 }, { 0.04, 0.02, 0.01 }, 0.85, 0.05)
         mtex(tnode("T_mountain_" .. i), "base_color", "rock.png")
     end
+    paint(tnode("T_pyramid_5"), { 0.22, 0.18, 0.14 }, { 0.04, 0.02, 0.01 }, 0.85, 0.05)   -- mountain foothills
+    mtex(tnode("T_pyramid_5"), "base_color", "rock.png")
     for i = 0, 7 do
         paint(tnode("T_ground_" .. i), { 0.4, 0.3, 0.18 }, { 0.02, 0.015, 0.008 }, 0.9, 0.0)
         mtex(tnode("T_ground_" .. i), "base_color", "ground.png")
@@ -128,7 +130,7 @@ local function paint_templates()
     for i = 0, 9 do paint(tnode("T_crater_" .. i), { 0.25, 0.2, 0.14 }, { 0.01, 0.008, 0.004 }, 0.95, 0) end
     for i = 0, 11 do paint(tnode("T_rock_" .. i), { 0.3, 0.26, 0.2 }, { 0.02, 0.015, 0.01 }, 0.8, 0.1) end
     for i = 0, 5 do
-        paint(tnode("T_pyramid_" .. i), { 0.35, 0.32, 0.25 }, { 0.03, 0.025, 0.015 }, 0.7, 0.15)
+        if i ~= 5 then paint(tnode("T_pyramid_" .. i), { 0.35, 0.32, 0.25 }, { 0.03, 0.025, 0.015 }, 0.7, 0.15) end
         paint(tnode("T_block_" .. i), { 0.28, 0.3, 0.32 }, { 0.02, 0.025, 0.03 }, 0.55, 0.4)
     end
     local scols = { {1,.6,.1}, {1,.25,.15}, {.3,.7,1}, {.9,.9,.95}, {1,.45,.2}, {.5,1,.4} }
@@ -190,28 +192,74 @@ end
 
 ------------------------------------------------------------------ world props
 local GROUNDS, MOUNTAINS, ROCKS, PYRAMIDS, BLOCKS, CRATERS = {}, {}, {}, {}, {}, {}
+local GROUND_ROOT, MOUNTAIN_ROOT
+local GROUND_TILE, R_MTN = 80, 600          -- ground tile size (ground.pemesh is 80 x 80 m); mountain ring radius
+local EYE = { x = 0, z = 0 }
+local function update_backdrop()
+    -- keep the horizon around the eye: ground snaps to whole tiles (texture stays put), mountains follow exactly
+    if GROUND_ROOT then
+        GROUND_ROOT:set_position(vec3(math.floor(EYE.x / GROUND_TILE + 0.5) * GROUND_TILE, 0,
+                                      math.floor(EYE.z / GROUND_TILE + 0.5) * GROUND_TILE))
+    end
+    if MOUNTAIN_ROOT then MOUNTAIN_ROOT:set_position(vec3(EYE.x, 0, EYE.z)) end
+end
 local function build_world()
-    -- tiled ground around origin
+    -- Ground and mountains are a backdrop that follows the eye (see update_backdrop): the playfield is
+    -- +-WORLD but the camera sees ~600 m to the horizon, so a fixed 3x3 ground patch (+-118 m) ran out
+    -- (hard ground edge with sky under the mountains) and ten loose mountain slabs at 150-190 m left gaps
+    -- and showed their square-cut ends. Now: a 9x9 grid of 80 m tiles snapped to the 80 m grid around the
+    -- eye (+-360 m, world-locked texture) plus a coarse outer apron (+-1080 m), and a closed ring of
+    -- overlapping mountains at R_MTN with tapered foothills over every joint, always R_MTN away like the
+    -- arcade's mountains at infinity. Everything stays inside the 800 m far plane.
+    GROUND_ROOT = scene.add_empty_node("GroundRoot")
     local gi = 0
+    for gx = -4, 4 do
+        for gz = -4, 4 do
+            GROUNDS[#GROUNDS + 1] = clone("T_ground_" .. (gi % 8), vec3(gx * GROUND_TILE, 0, gz * GROUND_TILE), 1.0, GROUND_ROOT)
+            gi = gi + 1
+        end
+    end
+    local far = GROUND_TILE * 9
     for gx = -1, 1 do
         for gz = -1, 1 do
-            if not (gx == 0 and gz == 0) or true then
-                local n = clone("T_ground_" .. (gi % 8), vec3(gx * 78, 0, gz * 78), 1.0)
-                GROUNDS[#GROUNDS + 1] = n; gi = gi + 1
+            if gx ~= 0 or gz ~= 0 then
+                GROUNDS[#GROUNDS + 1] = clone("T_ground_" .. (gi % 8), vec3(gx * far, 0, gz * far), 9.0, GROUND_ROOT)
+                gi = gi + 1
             end
         end
     end
-    -- center tile
-    GROUNDS[#GROUNDS + 1] = clone("T_ground_0", vec3(0, 0, 0), 1.05)
-    -- mountain ring on horizon
-    local mpos = {
-        {0, -180, 0}, {120, -160, 40}, {-130, -150, -20}, {180, -40, 90},
-        {-190, 20, -80}, {140, 140, 180}, {-100, 160, -160}, {40, 175, 30},
-        {-50, -170, 100}, {160, 80, -140},
+    -- mountain ring: per-variant silhouette size (from tools/gen_meshes.py) so every piece spans its arc
+    -- and the foothill at each joint is taller than the two piece ends it covers
+    MOUNTAIN_ROOT = scene.add_empty_node("MountainRoot")
+    local MV = {   -- width, peak, left end, right end (mesh units)
+        [0] = { 50, 13.8, 5.1, 8.0 }, { 58, 16.6, 4.9, 10.1 }, { 66, 21.1, 8.5, 5.9 }, { 74, 28.6, 14.8, 6.4 },
     }
-    for i, p in ipairs(mpos) do
-        local n = clone("T_mountain_" .. ((i - 1) % 4), vec3(p[1], 0, p[2]), 1.2 + (i % 3) * 0.15)
-        n:set_rotation(vec3(0, p[3] or (i * 37), 0))
+    local N = 12
+    local step = TAU / N
+    local span = 2 * R_MTN * math.tan(step / 2) * 1.16          -- chord per piece + overlap
+    local peaks = { 70, 96, 62, 88, 104, 66, 92, 78, 100, 64, 84, 94 }
+    local ends = {}
+    for i = 1, N do
+        local v = (i * 3) % 4
+        local mv = MV[v]
+        local a = (i - 1) * step
+        local flip = (i % 2 == 0)                                  -- 180 deg turn shows the mirrored back face
+        local sx, sy = span / mv[1], peaks[i] / mv[2]
+        local n = clone("T_mountain_" .. v, vec3(sin(a) * R_MTN, 0, cos(a) * R_MTN), vec3(sx, sy, 3.0), MOUNTAIN_ROOT)
+        n:set_rotation(vec3(0, math.deg(a) + (flip and 180 or 0), 0))
+        MOUNTAINS[#MOUNTAINS + 1] = n
+        local l, r = mv[3] * sy, mv[4] * sy
+        if flip then l, r = r, l end
+        -- seen from the centre, +angle runs right-to-left for the -z face; record end heights per joint
+        ends[i] = { lo = r, hi = l }
+    end
+    for i = 1, N do
+        local j = i % N + 1
+        local h = max(ends[i].hi, ends[j].lo, ends[i].lo, ends[j].hi) * 1.35
+        local a = (i - 0.5) * step
+        local r = R_MTN - 14
+        local n = clone("T_pyramid_5", vec3(sin(a) * r, 0, cos(a) * r), vec3(60 / 1.5, h / 3.0, 12), MOUNTAIN_ROOT)
+        n:set_rotation(vec3(0, math.deg(a), 0))
         MOUNTAINS[#MOUNTAINS + 1] = n
     end
     -- scattered rocks / pyramids / blocks / craters
@@ -687,6 +735,7 @@ local function update_camera(dt)
     local bz = ez - cos(P.yaw) * 0.15
     cam:set_position(vec3(bx, ey, bz))
     cam:look_at(vec3(ex + sin(P.yaw) * look_d, ey - 0.5, ez + cos(P.yaw) * look_d))
+    EYE.x, EYE.z = bx, bz; update_backdrop()
     set_point(L.player, vec3(P.x, 1.5, P.z), vec3(0.45, 0.7, 0.4), G.state == "play" and 18 or 8, 14)
 end
 
@@ -966,6 +1015,7 @@ local function update_attract(dt)
     local cx, cz = cos(ATTRACT.yaw) * r, sin(ATTRACT.yaw) * r
     cam:set_position(vec3(cx, ATTRACT.elev, cz))
     cam:look_at(vec3(0, 2, 0))
+    EYE.x, EYE.z = cx, cz; update_backdrop()
     -- showcase player tank at origin
     if P.tank then
         P.tank.alive = true
