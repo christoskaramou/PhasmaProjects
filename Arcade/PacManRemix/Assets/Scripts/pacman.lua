@@ -85,7 +85,12 @@ pcall(function()
   local s = fs.read("Save/hiscore.txt")
   if s then S.hi = tonumber(s) or 0 end
 end)
+local jev
+
 local function saveHi()
+  if jev and jev:assisted() then
+    return
+  end
   pcall(function() fs.write("Save/hiscore.txt", tostring(S.hi)) end)
 end
 
@@ -521,7 +526,7 @@ local function drawHud()
   end
 end
 
-local menuItems = { "START GAME", "SETTINGS", "QUIT" }
+local menuItems = { "START GAME", "Jev", "SETTINGS", "QUIT" }
 local pauseItems = { "RESUME", "RESTART", "SETTINGS", "MAIN MENU" }
 local menuMouseXY = nil
 -- mouse on the title / pause list: hover (after the mouse moves) selects, click activates
@@ -644,7 +649,9 @@ local function addScore(n)
   local before = S.score
   S.score = S.score + n
   if before < 10000 and S.score >= 10000 then S.lives = S.lives + 1; sfx("extralife") end
-  if S.score > S.hi then S.hi = S.score end
+  if S.score > S.hi and not (jev and jev:assisted()) then
+    S.hi = S.score
+  end
 end
 local function popup(text, x, z, col)
   table.insert(S.popups, 1, { text = text, x = x, z = z, t = 1.2, col = col or {1, 1, 1} })
@@ -906,9 +913,199 @@ local function init()
   runtime_ui.show(MENU)
 end
 
+-- ---------------------------------------------------------------- jev
+local HUMAN_KEYS = { "Up", "Down", "Left", "Right", "W", "A", "S", "D" }
+local humanWas = {}
+local VK_DIR = { up = "Up", down = "Down", left = "Left", right = "Right" }
+
+local function matchLive()
+  return S.state == "ready"
+    or S.state == "play"
+    or S.state == "dying"
+    or S.state == "levelclear"
+end
+
+local function humanEdge()
+  local raw = input.is_key_down_raw
+  if type(raw) ~= "function" then
+    return false
+  end
+
+  local live = matchLive()
+  local edge = false
+  for i = 1, #HUMAN_KEYS do
+    local key = HUMAN_KEYS[i]
+    local down = raw(key) and true or false
+    if live and down and not humanWas[key] then
+      edge = true
+    end
+    humanWas[key] = down
+  end
+  return edge
+end
+
+local function tileOf(x, y)
+  local c = math.floor((x or 0) + 0.5) % W
+  local r = math.floor((y or 0) + 0.5)
+  return { c = c, r = r }
+end
+
+local function dirName(dx, dy)
+  if dx == 0 and dy < 0 then
+    return "up"
+  end
+  if dx == 0 and dy > 0 then
+    return "down"
+  end
+  if dx < 0 and dy == 0 then
+    return "left"
+  end
+  if dx > 0 and dy == 0 then
+    return "right"
+  end
+  return "stop"
+end
+
+local function ghostMode(g)
+  if g.state == "eyes" or g.state == "entering" then
+    return "eyes"
+  end
+  if g.fright then
+    return "frightened"
+  end
+  if g.state == "house" or g.state == "leaving" then
+    return g.state
+  end
+
+  local wave = MODES[S.modeIdx]
+  if wave then
+    return wave[1]
+  end
+  return "chase"
+end
+
+local function applyDir(id)
+  if id == "stop" then
+    _G.PACMAN_VK = {}
+    return
+  end
+
+  local key = VK_DIR[id]
+  if not key then
+    return
+  end
+  _G.PACMAN_VK = { [key] = true }
+end
+
+local function clearHold()
+  _G.PACMAN_VK = nil
+end
+
+local jevSource = assert(fs.read("Scripts/jev_auto.lua"), "Missing Jev module: Scripts/jev_auto.lua")
+local JevAuto = assert(load(jevSource, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+  port = 9101,
+  id = "pacman",
+  description = "Pac-Man Remix. The offered action holds the direction toward the nearest pellet, or away from a close ghost.",
+  playing = matchLive,
+  terminal = function()
+    return S.state == "gameover"
+  end,
+  score = function()
+    return S.score or 0
+  end,
+  human_edge = humanEdge,
+  observe = function()
+    local list = {}
+    for i, g in ipairs(ghosts) do
+      list[i] = {
+        name = g.def and g.def.name or ("ghost" .. i),
+        tile = tileOf(g.x, g.y),
+        mode = ghostMode(g),
+      }
+    end
+    return {
+      tile = tileOf(pac.x, pac.y),
+      direction = dirName(pac.dx or 0, pac.dy or 0),
+      ghosts = list,
+      lives = S.lives,
+      score = S.score,
+      pellets_left = math.max(0, (S.totalDots or 0) - (S.dots or 0)),
+    }
+  end,
+  actions = function()
+    local here = tileOf(pac.x, pac.y)
+    local goal_c = here.c
+    local goal_r = here.r
+    local best_d = 1e9
+    for _, p in pairs(nodes.pellets) do
+      if not p.eaten then
+        local dc = math.abs(p.c - here.c)
+        dc = math.min(dc, W - dc)
+        local d = dc + math.abs(p.r - here.r)
+        if d < best_d then
+          best_d = d
+          goal_c = p.c
+          goal_r = p.r
+        end
+      end
+    end
+
+    for _, g in ipairs(ghosts) do
+      if ghostMode(g) ~= "frightened" and ghostMode(g) ~= "eyes" then
+        local gt = tileOf(g.x, g.y)
+        local d = math.abs(gt.c - here.c) + math.abs(gt.r - here.r)
+        if d > 0 and d < 4 then
+          goal_c = here.c - (gt.c - here.c)
+          goal_r = here.r - (gt.r - here.r)
+          break
+        end
+      end
+    end
+
+    local dc = goal_c - here.c
+    if dc > W * 0.5 then
+      dc = dc - W
+    elseif dc < -W * 0.5 then
+      dc = dc + W
+    end
+    local dr = goal_r - here.r
+    local steps = {
+      { id = "up", c = 0, r = -1 },
+      { id = "down", c = 0, r = 1 },
+      { id = "left", c = -1, r = 0 },
+      { id = "right", c = 1, r = 0 },
+    }
+    local best_id = "right"
+    local best = -1e9
+    for i = 1, #steps do
+      local step = steps[i]
+      local nc = (here.c + step.c) % W
+      local nr = here.r + step.r
+      if not blocked(nc, nr, false) then
+        local score = step.c * dc + step.r * dr
+        if score > best then
+          best = score
+          best_id = step.id
+        end
+      end
+    end
+    return { { id = best_id, description = "Hold this direction.", score = best } }
+  end,
+  apply = applyDir,
+  reset = function(seed)
+    if type(seed) == "number" then
+      math.randomseed(seed)
+    end
+    newGame()
+  end,
+  on_human = clearHold,
+})
+
 local function update(dt)
   if not built then return end
   dt = math.min(dt or 0.016, S.maxDt or 0.05)
+  jev:tick(dt)
   S.t = S.t + dt
   local k = readInput()
   local up = held("Up") or held("W")
@@ -928,10 +1125,34 @@ local function update(dt)
     local mclick; S.menuSel, mclick = menuMouse(#menuItems, S.menuSel)
     if mclick then confirm = true end
     drawMenu("PAC-MAN", "~ PHASMA REMIX ~", menuItems, S.menuSel,
-      "HIGH SCORE " .. S.hi .. "   |   ENTER to select")
+      S.banner or ("HIGH SCORE " .. S.hi .. "   |   ENTER to select"))
     if confirm then
       sfx("click")
-      if S.menuSel == 1 then newGame() elseif S.menuSel == 2 then openSettings() else engine.quit() end
+      if S.menuSel == 1 then
+        S.banner = nil
+        jev:begin_human()
+        newGame()
+      elseif S.menuSel == 2 then
+        local ok = jev:start()
+        if ok then
+          S.banner = nil
+        else
+          local err = jev:error() or "Jev failed to start"
+          jev:begin_human()
+          S.banner = err
+          if type(pe_log) == "function" then
+            pe_log("[Pac-Man] " .. err)
+          end
+          S.state = "title"
+          S.menuSel = 2
+          runtime_ui.show(MENU)
+        end
+      elseif S.menuSel == 3 then
+        S.banner = nil
+        openSettings()
+      else
+        engine.quit()
+      end
     end
   elseif S.state == "paused" then
     if k.Up or k.W then S.pauseSel = math.max(1, S.pauseSel - 1); sfx("click") end
@@ -943,9 +1164,17 @@ local function update(dt)
     elseif confirm then
       sfx("click")
       if S.pauseSel == 1 then S.state = S.resumeState; runtime_ui.hide(MENU)
-      elseif S.pauseSel == 2 then saveHi(); newGame()
+      elseif S.pauseSel == 2 then saveHi(); jev:begin_human(); newGame()
       elseif S.pauseSel == 3 then openSettings()
-      else saveHi(); resetPellets(); resetActors(); S.state = "title"; S.menuSel = 1; runtime_ui.show(MENU) end
+      else
+        saveHi()
+        jev:begin_human()
+        resetPellets()
+        resetActors()
+        S.state = "title"
+        S.menuSel = 1
+        runtime_ui.show(MENU)
+      end
     end
   else
     if (k.P or k.Escape) and (S.state == "play" or S.state == "ready") then
@@ -967,6 +1196,12 @@ local function update(dt)
     for i, h in ipairs(held_list) do pac.held[i] = h[1] end
     if pac.held[1] then pac.want = pac.held[1] end
     if S.auto and S.state == "play" then autopilot() end
+    -- An empty virtual hold is stop. A released human key keeps the buffered turn.
+    if _G.PACMAN_VK and not up and not down and not left and not right then
+      pac.held = {}
+      pac.want = nil
+      pac.dx, pac.dy = 0, 0
+    end
 
     S.t0 = (S.t0 or 0) + dt
     if S.state == "ready" then

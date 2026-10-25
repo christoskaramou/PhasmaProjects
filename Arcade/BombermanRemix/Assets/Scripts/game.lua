@@ -1062,7 +1062,8 @@ local function draw_hud(dt, st)
     end
     G.banner.t = (G.banner.t or 0) - dt
     local ba = floor(clamp(G.banner.t / 0.4, 0, 1) * 20) / 20
-    text("ban", G.banner.text or "", 0, SH * 0.42, SW, 80 * US, 2.4, { 1, .85, .5, ba }, "center", st == "play" and not G.set_open and G.banner.t > 0)
+    local ban_on = (G.banner.t or 0) > 0 and not G.set_open and (st == "play" or st == "title" or st == "intro")
+    text("ban", G.banner.text or "", 0, SH * 0.42, SW, 80 * US, 2.4, { 1, .85, .5, ba }, "center", ban_on)
     -- stage card / clear
     local card = st == "intro" and not G.set_open
     -- light veil so the arena shows through, with a soft band behind the stage title
@@ -1095,7 +1096,9 @@ local function draw_hud(dt, st)
     local c = {}
     local hasc = title and (G.cont_stage or 1) > 1
     local yb = SH * 0.36
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb, title); yb = yb + 76 * US
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, yb, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, yb, title)
+    yb = yb + 76 * US
     c.cont = button("b_cont", "Continue Stage " .. tostring(G.cont_stage or 1), SW / 2, yb, hasc); if hasc then yb = yb + 76 * US end
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb, title); yb = yb + 76 * US
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb, title)
@@ -1128,10 +1131,189 @@ local function new_game(n)
     start_stage(n or 1)
 end
 G.new_game = new_game
+
+local JevAuto = assert(load(fs.read("Scripts/jev_auto.lua"), "@Scripts/jev_auto.lua", "t", _ENV))()
+local WALK_KEYS = {
+    left = { "Left", "A" },
+    right = { "Right", "D" },
+    up = { "Up", "W" },
+    down = { "Down", "S" },
+}
+local PULSE_KEYS = { "Z", "J", "X", "K" }
+local HUMAN_KEYS = {
+    "Left", "Right", "Up", "Down", "A", "D", "W", "S", "Space", "Z", "J", "X", "K",
+}
+local human_prev = {}
+
+local function clear_virtual()
+    G.vk = {}
+end
+
+local function clear_walk()
+    if not G.vk then
+        return
+    end
+
+    for _, keys in pairs(WALK_KEYS) do
+        for i = 1, #keys do
+            G.vk[keys[i]] = nil
+        end
+    end
+end
+
+local function apply_jev(id)
+    G.vk = G.vk or {}
+    local walk = WALK_KEYS[id]
+    if walk then
+        clear_walk()
+        for i = 1, #walk do
+            G.vk[walk[i]] = true
+        end
+        G.vk.Z = true
+        G.vk.J = true
+        return
+    end
+
+    if id == "stop" then
+        clear_walk()
+        return
+    end
+
+    if id == "bomb" then
+        G.vk.Z = true
+        G.vk.J = true
+        return
+    end
+
+    if id == "detonate" then
+        G.vk.X = true
+        G.vk.K = true
+    end
+end
+
+local function consume_pulses()
+    if not G.vk then
+        return
+    end
+
+    for i = 1, #PULSE_KEYS do
+        local key = PULSE_KEYS[i]
+        if G.vk[key] then
+            G.vk[key] = nil
+            local raw = false
+            if input.is_key_down_raw then
+                local ok, down = pcall(input.is_key_down_raw, key)
+                raw = ok and down and true or false
+            end
+            if not raw then
+                prev[key] = false
+            end
+        end
+    end
+end
+
+local function human_edge()
+    local hit = false
+    if input.is_key_down_raw then
+        for i = 1, #HUMAN_KEYS do
+            local key = HUMAN_KEYS[i]
+            local ok, down = pcall(input.is_key_down_raw, key)
+            down = ok and down and true or false
+            if down and not human_prev[key] then
+                hit = true
+            end
+            human_prev[key] = down
+        end
+    end
+
+    return G.state == "play" and hit
+end
+
+local function jev_observe()
+    local pc = floor(P.x + 0.5)
+    local pr = floor(P.z + 0.5)
+    local best = nil
+    local best_d = nil
+    for i = 1, #ENEMIES do
+        local enemy = ENEMIES[i]
+        if enemy.alive then
+            local ec = floor(enemy.x + 0.5)
+            local er = floor(enemy.z + 0.5)
+            local dist = abs(ec - pc) + abs(er - pr)
+            if not best_d or dist < best_d then
+                best_d = dist
+                best = { c = ec, r = er }
+            end
+        end
+    end
+
+    return {
+        cell = { c = pc, r = pr },
+        nearest_enemy = best,
+        bombs = P.bombs,
+        lives = G.lives,
+        score = G.score,
+    }
+end
+
+local function jev_actions()
+    local view = jev_observe()
+    local foe = view.nearest_enemy
+    if not foe then
+        return { { id = "right", description = "Walk and drop a bomb.", score = 1 } }
+    end
+    local dc = foe.c - view.cell.c
+    local dr = foe.r - view.cell.r
+    if math.abs(dc) >= math.abs(dr) and dc ~= 0 then
+        if dc > 0 then
+            return { { id = "right", description = "Walk right toward the enemy and drop a bomb.", score = dc } }
+        end
+        return { { id = "left", description = "Walk left toward the enemy and drop a bomb.", score = -dc } }
+    end
+    if dr > 0 then
+        return { { id = "down", description = "Walk down toward the enemy and drop a bomb.", score = dr } }
+    end
+    if dr < 0 then
+        return { { id = "up", description = "Walk up toward the enemy and drop a bomb.", score = -dr } }
+    end
+    return { { id = "right", description = "On the enemy. Walk and drop a bomb.", score = 1 } }
+end
+
+local jev = JevAuto.attach({
+    port = 9134,
+    id = "bomberman_remix",
+    description = "Bomberman Remix. The offered action walks toward the nearest enemy and drops a bomb. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = jev_observe,
+    actions = jev_actions,
+    apply = apply_jev,
+    reset = function(seed)
+        math.randomseed(seed)
+        clear_virtual()
+        new_game(1)
+    end,
+    on_human = clear_virtual,
+})
+
 local function game_over(won)
     G.state = "over"; G.over_t = 0; G.won = won
     music(nil); sfx(won and "clear" or "gameover")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    if not jev:assisted() and G.score > G.hiscore then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
 G.cont_stage = 1
 local acc = 0
@@ -1140,6 +1322,7 @@ local mouse_prev, rmouse_prev = true, true
 local DIRK = { up = { "Up", "W" }, down = { "Down", "S" }, left = { "Left", "A" }, right = { "Right", "D" } }
 local order = {}
 local function update(dt)
+    jev:tick(dt)
     if G.on_frame then G.on_frame(dt) end
     G.fx_update(dt)
     flush_mats()
@@ -1152,6 +1335,7 @@ local function update(dt)
     pcall(function() rd = input.is_right_mouse_down and input.is_right_mouse_down() and true or false end)
     local mclick = md and not mouse_prev; mouse_prev = md
     local rclick = rd and not rmouse_prev; rmouse_prev = rd
+    consume_pulses()
     -- direction press order (newest first) for the "take whichever way is open" rule
     for nm, ks in pairs(DIRK) do
         local h = any(ks[1], ks[2])
@@ -1168,8 +1352,23 @@ local function update(dt)
     if k.m then SET:toggle_mute() end
     if st == "title" then
         G.title_x = 32 + 18 * sin(G.t * 0.12)
-        if k.ret or k.space or c.start then sfx("click"); new_game(1)
-        elseif c.cont then sfx("click"); new_game(G.cont_stage)
+        if c.jev then
+            sfx("click")
+            local ok = jev:start()
+            if not ok then
+                local err = jev:error() or "Jev could not start"
+                G.banner.text = err
+                G.banner.t = 6
+                pe_log("[BM] " .. err)
+            end
+        elseif k.ret or k.space or c.start then
+            sfx("click")
+            jev:begin_human()
+            new_game(1)
+        elseif c.cont then
+            sfx("click")
+            jev:begin_human()
+            new_game(G.cont_stage)
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "intro" then
@@ -1192,7 +1391,10 @@ local function update(dt)
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.2 then
-            if k.ret or k.space or c.again then sfx("click"); new_game(1)
+            if k.ret or k.space or c.again then
+                sfx("click")
+                jev:begin_human()
+                new_game(1)
             elseif k.esc or c.title then to_title() end
         end
     end

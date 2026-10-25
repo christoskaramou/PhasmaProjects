@@ -328,6 +328,7 @@ local thrust_snd_t = 0
 local saucer_snd_t = 0
 local title_t = 0
 local game_over_t = 0
+local jev
 local SAVE = "Save/asteroids_hiscore.txt"
 pcall(function() local s = fs.read(SAVE); if s then hiscore = tonumber(s) or 0 end end)
 local function save_hi() pcall(fs.write, SAVE, tostring(hiscore)) end
@@ -401,8 +402,12 @@ local function draw_hud(dt)
     text("pause2", "P  RESUME      O  SETTINGS      Q  QUIT TO TITLE", 0, SH * 0.37 + 140 * s, SW, 60 * s, 1.3 * s, WHITE, "center", pvis)
     -- game over
     local ovis = state == "over"
+    local over_label = "FINAL SCORE  " .. score
+    if score >= hiscore and score > 0 and not jev:assisted() then
+        over_label = "NEW HIGH SCORE  " .. score
+    end
     text("over", "GAME  OVER", 0, SH * 0.33, SW, 150 * s, 5.0 * s, { 1, 0.35, 0.6, min(1, game_over_t) }, "center", ovis)
-    text("over2", (score >= hiscore and score > 0) and ("NEW HIGH SCORE  " .. score) or ("FINAL SCORE  " .. score), 0, SH * 0.48, SW, 80 * s, 2.0 * s, { 1, 0.85, 0.4, min(1, game_over_t) }, "center", ovis)
+    text("over2", over_label, 0, SH * 0.48, SW, 80 * s, 2.0 * s, { 1, 0.85, 0.4, min(1, game_over_t) }, "center", ovis)
     text("over3", "PRESS ENTER", 0, SH * 0.58, SW, 70 * s, 1.6 * s, { 1, 1, 1, game_over_t > 1.5 and pulse or 0 }, "center", ovis)
 end
 
@@ -433,6 +438,9 @@ local function spawn_ship()
 end
 local function new_game()
     clear_field()
+    ship.hyper = 0
+    ship.respawn = 0
+    wave_delay = 0
     score, lives, wave, next_extra = 0, 3, 0, 10000
     state = "play"
     play("start.wav")
@@ -481,7 +489,7 @@ local function kill_ship()
     lives = lives - 1
     if lives <= 0 then
         state = "over"; game_over_t = 0
-        if score > hiscore then hiscore = score; save_hi() end
+        if score > hiscore and not jev:assisted() then hiscore = score; save_hi() end
     else
         ship.respawn = 2.5
     end
@@ -553,6 +561,44 @@ local function autopilot()
     end
 end
 
+-- Virtual holds sit beside the hardware reads. Hyperspace is a one-shot pulse.
+local hold = { left = false, right = false, thrust = false, fire = false }
+local hyper_pulse = false
+local HUMAN_KEYS = {
+    "A", "D", "Left", "Right",
+    "W", "Up", "Space",
+    "H", "Left Shift", "Right Shift",
+}
+local human_prev = {}
+local human_edge_now = false
+
+local function clear_hold()
+    hold.left = false
+    hold.right = false
+    hold.thrust = false
+    hold.fire = false
+    hyper_pulse = false
+end
+
+local function sample_human()
+    local edge = false
+    local raw = input.is_key_down_raw
+
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local down_now = false
+        if raw then
+            down_now = raw(key) and true or false
+        end
+        if down_now and not human_prev[key] then
+            edge = true
+        end
+        human_prev[key] = down_now
+    end
+
+    human_edge_now = edge
+end
+
 ------------------------------------------------------------------ update
 local shots_taken, run_t = 0, 0
 local flicker = 0
@@ -578,9 +624,9 @@ local function update_ship(dt)
         return
     end
     if AUTOPILOT then autopilot() end
-    local left = down("Left") or down("A") or (AUTOPILOT and demo.turn > 0)
-    local right = down("Right") or down("D") or (AUTOPILOT and demo.turn < 0)
-    local thrust = down("Space") or down("Up") or down("W") or (AUTOPILOT and demo.thrust)
+    local left = down("Left") or down("A") or hold.left or (AUTOPILOT and demo.turn > 0)
+    local right = down("Right") or down("D") or hold.right or (AUTOPILOT and demo.turn < 0)
+    local thrust = down("Space") or down("Up") or down("W") or hold.thrust or (AUTOPILOT and demo.thrust)
     if left then ship.a = ship.a + 4.6 * dt end
     if right then ship.a = ship.a - 4.6 * dt end
     local c, s = cos(ship.a), sin(ship.a)
@@ -598,13 +644,17 @@ local function update_ship(dt)
     -- fire
     local nplayer = 0
     for _, b in ipairs(bullets) do if not b.hostile then nplayer = nplayer + 1 end end
-    if (mouse_click or (AUTOPILOT and demo.fire)) and nplayer < 4 then
+    if (mouse_click or hold.fire or (AUTOPILOT and demo.fire)) and nplayer < 4 then
         fire(ship.x + c * 1.3, ship.y + s * 1.3, ship.vx + c * 30, ship.vy + s * 30, false)
         play("fire.wav")
         flash(ship.x + c * 1.5, ship.y + s * 1.5, vec3(0.6, 0.9, 1), 12, 0.12)
         burst(ship.x + c * 1.3, ship.y + s * 1.3, { c0 = vec4(2, 3, 4, 1), c1 = vec4(0.5, 1, 2, 0), count = 10, spread = 4, vel = { c * 8, s * 8 }, smin = 0.04, smax = 0.1, lmin = 0.08, lmax = 0.2 })
     end
-    if pressed("Left Shift") or pressed("H") or pressed("Right Shift") then hyperspace(); return end
+    if pressed("Left Shift") or pressed("H") or pressed("Right Shift") or hyper_pulse then
+        hyper_pulse = false
+        hyperspace()
+        return
+    end
     if ship.inv > 0 then ship.inv = ship.inv - dt end
     -- visuals
     local deg = math.deg(ship.a) * FX
@@ -734,6 +784,8 @@ end
 local function update(dt)
     flush_mats()
     dt = min(dt, 1 / 20)
+    sample_human()
+    jev:tick(dt)
     run_t = run_t + dt
     title_t = title_t + dt
     update_tweens(dt)
@@ -759,6 +811,7 @@ local function update(dt)
         return st and st.clicked
     end
     local c_start = hudbtn("start_btn", "START  (ENTER)", SW / 2 - 150 * bs, SH * 0.565, state == "title" and not set_open)
+    local c_jev = hudbtn("jev_btn", "JEV", SW / 2 + 170 * bs, SH * 0.565, state == "title" and not set_open)
     local c_resume = hudbtn("resume_btn", "RESUME  (P)", SW / 2 - 480 * bs, SH * 0.62, state == "pause" and not set_open)
     local c_quit = hudbtn("quit_btn", "QUIT TO TITLE  (Q)", SW / 2 + 180 * bs, SH * 0.62, state == "pause" and not set_open)
     local c_over = hudbtn("over_btn", "CONTINUE", SW / 2 - 150 * bs, SH * 0.66, state == "over" and game_over_t > 1.5 and not set_open)
@@ -781,7 +834,21 @@ local function update(dt)
     if pressed("M") then muted = SET:toggle_mute() end
     if state == "title" then
         update_world(dt)
-        if pressed("Return") or pressed("Space") or (AUTOPILOT and run_t > 3) then play("blip.wav"); new_game() end
+        local start_key = pressed("Return") or pressed("Space")
+        if c_jev then
+            play("blip.wav")
+            if not jev:start() then
+                local message = jev:error() or "Jev could not start."
+                pe_log("[asteroids] " .. message)
+                show_banner(message)
+            end
+        elseif start_key or (AUTOPILOT and run_t > 3) then
+            if start_key then
+                jev:begin_human()
+            end
+            play("blip.wav")
+            new_game()
+        end
     elseif state == "play" then
         if pressed("P") or pressed("Escape") then state = "pause"; play("blip.wav")
         else
@@ -818,6 +885,133 @@ local function update(dt)
         if AUTO_QUIT and run_t > 17.5 then engine.quit() end
     end
 end
+
+local function match_score()
+    return score
+end
+
+local function nearest_rock()
+    local best = nil
+    local best_d = math.huge
+
+    for i = 1, #rocks do
+        local rock = rocks[i]
+        local dist2 = wdist2(rock.x, rock.y, ship.x, ship.y)
+        if dist2 < best_d then
+            best = rock
+            best_d = dist2
+        end
+    end
+
+    if not best then
+        return 0, -1
+    end
+
+    local dx = best.x - ship.x
+    local dy = best.y - ship.y
+    if dx > HW then
+        dx = dx - 2 * HW
+    elseif dx < -HW then
+        dx = dx + 2 * HW
+    end
+    if dy > HH then
+        dy = dy - 2 * HH
+    elseif dy < -HH then
+        dy = dy + 2 * HH
+    end
+
+    return math.atan2(dy, dx), sqrt(dx * dx + dy * dy)
+end
+
+local function observe_match()
+    local rock_angle, rock_distance = nearest_rock()
+    local ship_angle = (ship.a + PI) % TAU - PI
+    local speed = sqrt(ship.vx * ship.vx + ship.vy * ship.vy)
+
+    return {
+        ship_angle = ship_angle,
+        speed = speed,
+        nearest_rock_angle = rock_angle,
+        nearest_rock_distance = rock_distance,
+        lives = lives,
+        score = score,
+    }
+end
+
+local function apply_action(id)
+    hold.left = false
+    hold.right = false
+    hold.thrust = false
+    hold.fire = false
+    hyper_pulse = false
+
+    if id == "left" then
+        hold.left = true
+        hold.fire = true
+    elseif id == "right" then
+        hold.right = true
+        hold.fire = true
+    elseif id == "thrust_fire" then
+        hold.thrust = true
+        hold.fire = true
+    end
+end
+
+local function jev_actions()
+    local rock_angle, rock_distance = nearest_rock()
+    if not rock_distance or rock_distance < 0 then
+        return { { id = "thrust_fire", description = "Thrust. The gun keeps firing.", score = 1 } }
+    end
+    local ship_angle = (ship.a + PI) % TAU - PI
+    local err = (rock_angle - ship_angle + PI) % TAU - PI
+    if err > 0.28 then
+        return { { id = "left", description = "Turn left toward the rock. The gun keeps firing.", score = err } }
+    end
+    if err < -0.28 then
+        return { { id = "right", description = "Turn right toward the rock. The gun keeps firing.", score = -err } }
+    end
+    return { { id = "thrust_fire", description = "Facing the rock. Thrust and fire.", score = 1 } }
+end
+
+local jev_src = fs.read("Scripts/jev_auto.lua")
+if not jev_src then
+    error("Missing Scripts/jev_auto.lua")
+end
+
+local jev_loader, jev_err = load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV)
+if not jev_loader then
+    error(jev_err)
+end
+
+local JevAuto = jev_loader()
+
+jev = JevAuto.attach({
+    port = 9105,
+    id = "neon_asteroids",
+    description = "Neon Asteroids. The offered action turns toward the nearest rock or thrusts once lined up, and the gun keeps firing. Prefer the higher action score.",
+    playing = function()
+        return state == "play"
+    end,
+    terminal = function()
+        return state == "over"
+    end,
+    score = match_score,
+    busy = function()
+        return ship.hyper > 0
+    end,
+    human_edge = function()
+        return human_edge_now
+    end,
+    observe = observe_match,
+    actions = jev_actions,
+    apply = apply_action,
+    reset = function(seed)
+        math.randomseed(seed)
+        clear_hold()
+        new_game()
+    end,
+    on_human = clear_hold,
+})
 
 to_title()
 hooks { update = update }

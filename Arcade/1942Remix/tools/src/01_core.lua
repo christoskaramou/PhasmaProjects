@@ -146,11 +146,15 @@ local function set_point(i, pos, col, inten, rad)
     if n then n:set_position(pos) end
 end
 ------------------------------------------------------------------ input
+G.vk = {}
 local prev = {}
 local keyfn = input.is_key_down_raw or input.is_key_pressed
 local function held(k) if G.vk and G.vk[k] then return true end local ok, v = pcall(keyfn, k); return ok and v end
 local function edge(k) local d = held(k); local p = prev[k]; prev[k] = d; return d and not p end
 local function any(...) for _, k in ipairs({ ... }) do if held(k) then return true end end; return false end
+local function arm_edge(k)
+    prev[k] = false
+end
 
 local FR = 1 / 60
 local AL = 1

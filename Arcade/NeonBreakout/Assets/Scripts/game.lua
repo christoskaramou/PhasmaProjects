@@ -453,10 +453,17 @@ local shake = 0
 local function add_shake(a) shake = min(1.0, shake + a) end
 local score_pop = 0
 local banner = { text = "", sub = "", t = 0, dur = 0 }
+local jev
 local function show_banner(t, sub, dur) banner.text, banner.sub, banner.t, banner.dur = t, sub or "", 0, dur or 2.0 end
 local function add_score(p)
-    G.score = G.score + p; score_pop = 1
-    if G.score > G.hiscore then G.hiscore = G.score end
+    G.score = G.score + p
+    score_pop = 1
+    if jev and jev:assisted() then
+        return
+    end
+    if G.score > G.hiscore then
+        G.hiscore = G.score
+    end
 end
 -- speed: Breakout's four speed-ups + a per-wall increase
 local BASE_SPEED = 15.0
@@ -887,6 +894,95 @@ local function pressed(k)
 end
 local WATCH = { "Left", "Right", "A", "D", "Up", "Down", "W", "S", "Space", "Return", "Escape", "P", "M" }
 local function latch() for _, k in ipairs(WATCH) do prev[k] = kdown(k) end end
+
+------------------------------------------------------------------ Jev holds (the player path reads these through kdown)
+local hold_left = false
+local hold_right = false
+local launch_pulse = false
+local jev_space = false
+local HUMAN_KEYS = { "Left", "Right", "A", "D", "Space" }
+local human_down = {}
+local human_hit = false
+
+local function poll_human()
+    human_hit = false
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, down = pcall(input.is_key_down_raw, key)
+        if not ok then
+            down = false
+        end
+        if down and not human_down[key] then
+            human_hit = true
+        end
+        human_down[key] = down and true or false
+    end
+end
+
+local function stamp_holds()
+    if hold_left then
+        G.vkeys.Left = true
+    else
+        G.vkeys.Left = nil
+    end
+    if hold_right then
+        G.vkeys.Right = true
+    else
+        G.vkeys.Right = nil
+    end
+end
+
+local function release_pulse()
+    if not jev_space then
+        return
+    end
+    G.vkeys.Space = nil
+    prev["Space"] = false
+    jev_space = false
+end
+
+local function apply_action(id)
+    if id == "launch" then
+        launch_pulse = true
+        return
+    end
+    if id == "left" then
+        hold_left = true
+        hold_right = false
+    elseif id == "right" then
+        hold_left = false
+        hold_right = true
+    elseif id == "stop" then
+        hold_left = false
+        hold_right = false
+    end
+    stamp_holds()
+end
+
+local function on_human()
+    hold_left = false
+    hold_right = false
+    launch_pulse = false
+    jev_space = false
+    G.vkeys.Left = nil
+    G.vkeys.Right = nil
+    G.vkeys.Space = nil
+    prev["Space"] = false
+end
+
+local function arm_launch()
+    if not launch_pulse or G.autoplay then
+        return
+    end
+    -- Serve ignores Space for the first 0.25s, and pressed() would spend the edge.
+    if G.state == "serve" and (G.serve_t or 0) <= 0.25 then
+        return
+    end
+    G.vkeys.Space = true
+    launch_pulse = false
+    jev_space = true
+end
+
 local mouse_prev_down, mouse_last = false, nil
 local function mouse_clicked()
     local ok, d = pcall(input.is_left_mouse_down); d = ok and d
@@ -935,7 +1031,12 @@ local function new_game(demo)
 end
 local function to_title()
     G.state = "title"
-    set_menu("title", { { label = "PLAY", act = "play" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT", act = "quit" } })
+    set_menu("title", {
+        { label = "PLAY", act = "play" },
+        { label = "Jev", act = "jev" },
+        { label = "SETTINGS", act = "settings" },
+        { label = "QUIT", act = "quit" },
+    })
     G.demo = true
     G.score, G.lives, G.level = 0, 3, 1
     reset_wall(); G.state = "title"
@@ -946,8 +1047,11 @@ local function lose_ball()
     if G.lives <= 0 then
         sfx("gameover")
         G.state = "over"
-        G.newhi = G.score > 0 and G.score >= G.hiscore
-        pcall(fs.write, HISAVE, tostring(G.hiscore))
+        G.newhi = false
+        if not jev or not jev:assisted() then
+            G.newhi = G.score > 0 and G.score >= G.hiscore
+            pcall(fs.write, HISAVE, tostring(G.hiscore))
+        end
         set_menu("over", { { label = "PLAY AGAIN", act = "play" }, { label = "TITLE", act = "title" } })
     else
         G.shrunk = false
@@ -1069,7 +1173,16 @@ end
 local function do_menu_action(act)
     sfx("click")
     if act == "play" then
-        runtime_ui.show(HUD); new_game(false)
+        jev:begin_human()
+        runtime_ui.show(HUD)
+        new_game(false)
+    elseif act == "jev" then
+        local ok = jev:start()
+        if not ok then
+            local err = jev:error() or "Jev could not start"
+            pe_log("[Breakout] " .. err)
+            show_banner("JEV", err, 4.0)
+        end
     elseif act == "resume" then
         G.state = G.paused_from or "play"
     elseif act == "settings" then
@@ -1080,12 +1193,23 @@ local function do_menu_action(act)
     elseif act == "title" then
         to_title()
     elseif act == "quit" then
-        pcall(fs.write, HISAVE, tostring(G.hiscore)); pcall(engine.quit)
+        if not jev or not jev:assisted() then
+            pcall(fs.write, HISAVE, tostring(G.hiscore))
+        end
+        pcall(engine.quit)
     end
 end
 
-local function update(dt)
+local function update(dt, simulated)
     dt = min(dt, 1 / 20)
+    if not simulated then
+        release_pulse()
+        poll_human()
+        if jev then
+            jev:tick(dt)
+        end
+        stamp_holds()
+    end
     G.t = G.t + dt
     local okS, sz = pcall(runtime_ui.get_surface_size)
     if okS and sz and (sz.width or 0) > 0 and (sz.width ~= SW or sz.height ~= SH) then SW, SH = sz.width, sz.height; cache = {} end
@@ -1128,6 +1252,9 @@ local function update(dt)
             G.paused_from = st; G.state = "paused"; sfx("click")
             set_menu("pause", { { label = "RESUME", act = "resume" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT TO TITLE", act = "title" } })
         else
+            if not simulated then
+                arm_launch()
+            end
             play_tick(dt, G.autoplay and "auto" or "player")
             if G.state == "play" and #balls == 0 then lose_ball()
             elseif level_cleared() then
@@ -1155,6 +1282,73 @@ local function update(dt)
     latch()
 end
 
+local function playing()
+    local st = G.state
+    return st == "levelintro" or st == "serve" or st == "play" or st == "clear"
+end
+
+local function observe_ball()
+    local ball = nil
+    for i = 1, #balls do
+        local b = balls[i]
+        if not ball or b.y < ball.y then
+            ball = b
+        end
+    end
+    return ball
+end
+
+local jev_src = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9107,
+    id = "neon-breakout",
+    description = "Neon Breakout. The offered action launches a held ball, or moves the paddle under the ball. Prefer the higher action score.",
+    playing = playing,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score
+    end,
+    human_edge = function()
+        return human_hit and playing()
+    end,
+    observe = function()
+        local ball = observe_ball()
+        return {
+            paddle_x = PAD.x,
+            ball_x = ball and ball.x or 0,
+            ball_y = ball and ball.y or 0,
+            ball_vx = ball and ball.vx or 0,
+            ball_vy = ball and ball.vy or 0,
+            lives = G.lives,
+            score = G.score,
+        }
+    end,
+    actions = function()
+        local ball = observe_ball()
+        local moving = ball and ((ball.vx or 0) ~= 0 or (ball.vy or 0) ~= 0)
+        if not moving then
+            return { { id = "launch", description = "Launch the ball.", score = 1 } }
+        end
+        local dx = ball.x - PAD.x
+        if dx > 0.2 then
+            return { { id = "right", description = "Move the paddle right under the ball.", score = dx } }
+        end
+        if dx < -0.2 then
+            return { { id = "left", description = "Move the paddle left under the ball.", score = -dx } }
+        end
+        return { { id = "stop", description = "The paddle is under the ball.", score = 1 } }
+    end,
+    apply = apply_action,
+    reset = function(seed)
+        math.randomseed(seed)
+        new_game(false)
+    end,
+    on_human = on_human,
+})
+
 local function init()
     build_world(); build_lights(); build_shards(); build_paddle(); build_ball_pool(); build_caps(); build_bolts()
     pcall(audio.set_master_volume, 0.5)
@@ -1166,7 +1360,7 @@ hooks { update = update }
 -- automation helpers (MCP): BO.sim(seconds, keys) steps the game deterministically at 60 Hz
 function G.sim(sec, keys)
     G.vkeys = keys or {}
-    for _ = 1, floor(sec * 60) do update(1 / 60) end
+    for _ = 1, floor(sec * 60) do update(1 / 60, true) end
     G.vkeys = {}
     return G.state .. " score=" .. G.score .. " lives=" .. G.lives .. " bricks=" .. #bricks .. " balls=" .. #balls
 end

@@ -13,6 +13,7 @@ local function lerp(a, b, t) return a + (b - a) * t end
 local function smooth(t) t = clamp(t, 0, 1); return t * t * (3 - 2 * t) end
 local G = { state = "boot", t = 0 }
 _G.FR = G
+local jev
 
 ------------------------------------------------------------------ deferred materials
 -- Engine quirk: material writes in the same frame a node is created are ignored, so every
@@ -59,6 +60,36 @@ local function pressed(...)
     return false
 end
 local function latch_keys() for _, k in ipairs(WATCH) do keys_prev[k] = keys_now[k] end end
+
+-- Hardware edges only. Virtual pulses in G.vkeys must not count as a human takeover.
+local human_hit = false
+local raw_prev = {}
+local HOP_KEYS = { "Up", "Down", "Left", "Right", "W", "A", "S", "D" }
+local function scan_human()
+    human_hit = false
+    for _, k in ipairs(HOP_KEYS) do
+        local ok, v = pcall(input.is_key_down_raw, k)
+        local down = ok and v and true or false
+        if down and not raw_prev[k] then
+            human_hit = true
+        end
+        raw_prev[k] = down
+    end
+end
+
+local function decay_press()
+    if not G.release_in then
+        return
+    end
+
+    G.release_in = G.release_in - 1
+    if G.release_in > 0 then
+        return
+    end
+
+    G.vkeys = {}
+    G.release_in = nil
+end
 
 ------------------------------------------------------------------ playfield constants
 local COLS_HALF = 6          -- columns -6..6
@@ -547,12 +578,17 @@ local function load_hi()
     local ok, s = pcall(fs.read, "Save/hiscore.txt")
     if ok and s then G.hi = tonumber(s:match("%d+")) or 0 end
 end
-local function save_hi() pcall(fs.write, "Save/hiscore.txt", tostring(G.hi)) end
+local function save_hi()
+    if jev and jev:assisted() then
+        return
+    end
+    pcall(fs.write, "Save/hiscore.txt", tostring(G.hi))
+end
 local function add_score(n)
     local before = G.score
     G.score = G.score + n
     if before < 10000 and G.score >= 10000 then G.lives = G.lives + 1; sfx("extra"); show_toast("EXTRA FROG!") end
-    if G.score > G.hi then G.hi = G.score end
+    if G.score > G.hi and not (jev and jev:assisted()) then G.hi = G.score end
 end
 local function flash(r, g, b, a) G.flash_col = { r, g, b }; G.flash = a end
 local function shake(a) G.shake = max(G.shake, a * ((SET and SET.shake_scale) and SET:shake_scale() or 1)) end
@@ -576,6 +612,7 @@ local function respawn()
     F.hop, F.ride, F.land, F.alive, F.max_row, F.dead_t = nil, nil, 0, true, 0, 0
     F.y = 0.03
     queue = nil
+    hop_lock = nil
     G.time = TIME_PER_FROG
     FN.root:set_enabled(true)
     FN.root:set_scale(vec3(1, 1, 1))
@@ -927,8 +964,9 @@ local function draw_menu(kind)
         T("logo_s", sw / 2 - S(500) + S(6), S(90) + S(6), S(1000), S(150), "FROGGER", col(0.0, 0.15, 0.0, 0.85), 7.0 * k)
         T("logo", sw / 2 - S(500), S(90), S(1000), S(150), "FROGGER", col(0.45, 1.0, 0.3), 7.0 * k)
         T("sub", sw / 2 - S(500), S(232), S(1000), S(60), "R  E  M  I  X", col(1.0, 0.45, 0.8), 2.4 * k)
-        B("tb1", 1, sw / 2 - S(200), sh - S(330), S(400), S(56), "PLAY")
-        B("tb2", 2, sw / 2 - S(200), sh - S(262), S(400), S(56), "SETTINGS")
+        B("tb1", 1, sw / 2 - S(200), sh - S(398), S(400), S(56), "PLAY")
+        B("tb_jev", 2, sw / 2 - S(200), sh - S(330), S(400), S(56), "Jev")
+        B("tb2", 3, sw / 2 - S(200), sh - S(262), S(400), S(56), "SETTINGS")
         T("help", sw / 2 - S(560), sh - S(180), S(1120), S(40), "ARROWS / WASD  hop   |   ESC  pause   |   O  settings   |   M  mute", col(0.75, 0.9, 1.0, 0.9), 1.2 * k)
         T("hi", sw / 2 - S(300), sh - S(130), S(600), S(40), string.format("HI-SCORE  %06d", G.hi), col(1.0, 0.8, 0.35), 1.3 * k)
     elseif kind == "pause" then
@@ -945,11 +983,11 @@ local function draw_menu(kind)
         local ty = math.max(S(20), sy - S(125))
         T("otitle", sw / 2 - S(400), ty, S(800), S(110), "GAME OVER", col(1.0, 0.3, 0.35), 5.0 * k)
         T("oscore", sw / 2 - S(400), sy, S(800), S(60), string.format("SCORE  %06d   LEVEL %d", G.score, G.level), col(1, 1, 1), 2.0 * k)
-        T("ohi", sw / 2 - S(400), hy, S(800), S(50), (G.score >= G.hi and G.score > 0) and "NEW HI-SCORE!" or string.format("HI  %06d", G.hi), col(1.0, 0.8, 0.35), 1.6 * k)
+        T("ohi", sw / 2 - S(400), hy, S(800), S(50), (G.score >= G.hi and G.score > 0 and not (jev and jev:assisted())) and "NEW HI-SCORE!" or string.format("HI  %06d", G.hi), col(1.0, 0.8, 0.35), 1.6 * k)
         B("ob1", 1, sw / 2 - S(200), sh - S(290), S(400), S(56), "PLAY AGAIN")
         B("ob2", 2, sw / 2 - S(200), sh - S(222), S(400), S(56), "TITLE")
     end
-    for _, id in ipairs({ "logo_s", "logo", "sub", "tb1", "tb2", "help", "hi", "ptitle", "pi1", "pi2", "pi3", "pi4", "otitle", "oscore", "ohi", "ob1", "ob2" }) do
+    for _, id in ipairs({ "logo_s", "logo", "sub", "tb1", "tb_jev", "tb2", "help", "hi", "ptitle", "pi1", "pi2", "pi3", "pi4", "otitle", "oscore", "ohi", "ob1", "ob2" }) do
         if not vis[id] then pcall(runtime_ui.set_quad, "menu", id, { visible = false, x = 0, y = 0, w = 1, h = 1, style = "text", title = "", fill = NONE, border = NONE, no_input = true }) end
     end
 end
@@ -1014,6 +1052,8 @@ local function update(dt)
     dt = min(dt, 0.05)
     G.t = G.t + dt
     flush_mats()
+    scan_human()
+    jev:tick(dt)
     poll_keys()
     local menu_open = SET and SET:update(dt) or false
     G.flash = max(0, G.flash - dt * 1.8)
@@ -1027,11 +1067,30 @@ local function update(dt)
         if not menu_open then
             draw_menu("title")
             if MENU.tsel == nil then MENU.sel = 1; MENU.tsel = true end
-            local c = menu_click({ "tb1", "tb2" })
-            if pressed("Up", "W", "Down", "S") then MENU.sel = 3 - MENU.sel; sfx("click") end
+            local c = menu_click({ "tb1", "tb_jev", "tb2" })
+            if pressed("Up", "W") then MENU.sel = (MENU.sel - 2) % 3 + 1; sfx("click") end
+            if pressed("Down", "S") then MENU.sel = MENU.sel % 3 + 1; sfx("click") end
             if pressed("Return", "Space") then c = MENU.sel end
-            if c == 1 then sfx("click"); MENU.tsel = nil; new_game()
-            elseif (c == 2 or pressed("O")) and SET then sfx("click"); hide_menu(); SET:open(function() end) end
+            if c == 1 then
+                sfx("click")
+                MENU.tsel = nil
+                jev:begin_human()
+                new_game()
+            elseif c == 2 then
+                sfx("click")
+                MENU.tsel = nil
+                local ok = jev:start()
+                if not ok then
+                    local err = jev:error() or "Jev failed to start"
+                    show_toast(err, 4)
+                    pe_log("[Frogger] " .. err)
+                    jev:begin_human()
+                end
+            elseif (c == 3 or pressed("O")) and SET then
+                sfx("click")
+                hide_menu()
+                SET:open(function() end)
+            end
         end
     elseif G.state == "play" then
         if not menu_open then
@@ -1066,8 +1125,8 @@ local function update(dt)
             if pressed("O") then pick = 2 end
             if pick == 1 then G.state = "play"; hide_menu(); sfx("click")
             elseif pick == 2 and SET then sfx("click"); hide_menu(); SET:open(function() end)
-            elseif pick == 3 then sfx("click"); new_game()
-            elseif pick == 4 then sfx("click"); save_hi(); G.state = "title"; hide_menu(); pcall(runtime_ui.hide, "hud") end
+            elseif pick == 3 then sfx("click"); jev:begin_human(); new_game()
+            elseif pick == 4 then sfx("click"); save_hi(); jev:begin_human(); G.state = "title"; hide_menu(); pcall(runtime_ui.hide, "hud") end
         end
     elseif G.state == "over" then
         update_camera(dt, "play")
@@ -1076,14 +1135,15 @@ local function update(dt)
             local c = menu_click({ "ob1", "ob2" })
             if pressed("Up", "W", "Down", "S") then MENU.sel = (MENU.sel == 1) and 2 or 1; sfx("click") end
             if pressed("Return", "Space") then c = (MENU.sel == 2) and 2 or 1 end
-            if c == 1 then sfx("click"); MENU.sel = 1; new_game()
-            elseif c == 2 or pressed("Escape") then MENU.sel = 1; G.state = "title"; hide_menu(); pcall(runtime_ui.hide, "hud") end
+            if c == 1 then sfx("click"); MENU.sel = 1; jev:begin_human(); new_game()
+            elseif c == 2 or pressed("Escape") then jev:begin_human(); MENU.sel = 1; G.state = "title"; hide_menu(); pcall(runtime_ui.hide, "hud") end
         end
     end
     update_fly(dt, G.state == "play")
     update_frog_visual(dt)
     if G.state ~= "title" then draw_hud() end
     latch_keys()
+    decay_press()
 end
 
 ------------------------------------------------------------------ init
@@ -1127,10 +1187,204 @@ G.F = F; G.LANES = LANES; G.die = die; G.respawn = respawn; G.reach_home = reach
 G.press = function(k, frames) G.vkeys[k] = true; G.release_in = frames or 2 end
 G.sim = function(sec, keys)
     G.vkeys = keys or {}
+    G.release_in = nil
     local n = floor(sec * 60 + 0.5)
     for _ = 1, n do update(1 / 60) end
     G.vkeys = {}
     return string.format("%s row=%d x=%.2f y=%.2f lives=%d score=%d alive=%s", G.state, F.row, F.x, F.y, G.lives, G.score, tostring(F.alive))
 end
+
+------------------------------------------------------------------ Jev
+local HOP_KEY = { up = "Up", down = "Down", left = "Left", right = "Right" }
+
+local function round2(v)
+    return floor(v * 100 + 0.5) / 100
+end
+
+local function covers(o, a, b)
+    if o.kind == "turtle" and o.depth > 0.55 then
+        return false
+    end
+    if o.kind == "log" or o.kind == "turtle" then
+        return F.x >= a - 0.12 and F.x <= b + 0.12
+    end
+    return F.x + 0.26 > a and F.x - 0.26 < b
+end
+
+local function nearest_mover(row)
+    local spot = { row = row, kind = "none" }
+    local L = LANE_BY_ROW[row]
+    if not L or not L.objs then
+        return spot
+    end
+
+    local best, best_d, best_on, best_a, best_b
+    for _, o in ipairs(L.objs) do
+        local a, b = extents(o)
+        local on = covers(o, a, b)
+        local d = abs(o.x - F.x)
+        if not best or (on and not best_on) or (on == best_on and d < best_d) then
+            best, best_d, best_on, best_a, best_b = o, d, on, a, b
+        end
+    end
+    if not best then
+        return spot
+    end
+
+    local pad = 0.26
+    if best.kind == "log" or best.kind == "turtle" then
+        pad = 0.12
+    end
+    spot.kind = best.kind
+    spot.dx = round2(best.x - F.x)
+    spot.vx = round2(best.lane.v or (best.lane.dir * best.lane.speed * G.mult))
+    spot.left = round2(best_a - pad)
+    spot.right = round2(best_b + pad)
+    spot.on = best_on
+    if best.kind == "turtle" and best.depth > 0.55 then
+        spot.diving = true
+    end
+    return spot
+end
+
+local function hop_open(id)
+    local D = DIRS[id]
+    if not D then
+        return false
+    end
+    local r1 = F.row + D[2]
+    local x1 = F.x + D[1]
+    if r1 < 0 or r1 > ROW_HOME then
+        return false
+    end
+    if abs(x1) > COLS_HALF + 0.01 then
+        return false
+    end
+    return true
+end
+
+local function reset_traffic(seed)
+    if seed ~= nil then
+        math.randomseed(seed)
+    end
+    for _, L in ipairs(LANES) do
+        if L.objs then
+            for i, o in ipairs(L.objs) do
+                o.x = L.xs[i]
+                o.phase = rand() * 10
+                if o.kind == "turtle" then
+                    o.dive_t = rand() * 7
+                    o.depth = 0
+                    o.dives = (L.dive and L.dive[i]) and true or false
+                end
+            end
+        end
+    end
+end
+
+local function reset_match(seed)
+    if not FN then
+        return
+    end
+    G.vkeys = {}
+    G.release_in = nil
+    hop_lock = nil
+    reset_traffic(seed)
+    new_game()
+end
+
+local jev_src = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9109,
+    id = "frogger-remix",
+    description = "Frogger Remix. One press hops up, down, left, or right. Cars, logs, and turtles keep moving. Fill all five homes.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return F.hop ~= nil
+    end,
+    human_edge = function()
+        return human_hit
+    end,
+    on_human = function()
+        G.vkeys = {}
+        G.release_in = nil
+        hop_lock = nil
+    end,
+    observe = function()
+        return {
+            cell = { row = F.row, x = round2(F.x) },
+            hopping = F.hop ~= nil,
+            here = nearest_mover(F.row),
+            next = nearest_mover(F.row + 1),
+            lives = G.lives,
+            score = G.score,
+            time_left = round2(math.max(0, G.time or 0)),
+        }
+    end,
+    actions = function()
+        if F.hop or G.state ~= "play" then
+            return {}
+        end
+        local function offer(id, text)
+            if not hop_open(id) then
+                return nil
+            end
+            return { { id = id, description = text, score = 1 } }
+        end
+        local ahead = nearest_mover(F.row + 1)
+        local ride = ahead.kind == "log" or ahead.kind == "turtle"
+        local traffic = ahead.kind == "sedan" or ahead.kind == "dozer"
+            or ahead.kind == "racer" or ahead.kind == "truck"
+        if ride then
+            if ahead.diving then
+                local side = (ahead.dx or 0) >= 0 and "left" or "right"
+                return offer(side, "Sidestep off a diving turtle.")
+                    or offer("down", "Hop back.")
+                    or {}
+            end
+            if ahead.on then
+                return offer("up", "Hop onto the ride, toward the homes.")
+                    or offer("left", "Sidestep.")
+                    or offer("right", "Sidestep.")
+                    or {}
+            end
+            if (ahead.dx or 0) > 0 then
+                return offer("right", "Hop toward the ride.") or offer("up", "Hop.") or {}
+            end
+            return offer("left", "Hop toward the ride.") or offer("up", "Hop.") or {}
+        end
+        if traffic and ahead.on then
+            local side = (ahead.dx or 0) >= 0 and "left" or "right"
+            return offer(side, "Sidestep away from the traffic.")
+                or offer("down", "Hop back.")
+                or {}
+        end
+        return offer("up", "Hop toward the homes.")
+            or offer("left", "Sidestep.")
+            or offer("right", "Sidestep.")
+            or offer("down", "Hop back.")
+            or {}
+    end,
+    apply = function(id)
+        local key = HOP_KEY[id]
+        if not key then
+            return
+        end
+        G.vkeys = {}
+        G.press(key)
+    end,
+    reset = function(seed)
+        reset_match(seed)
+    end,
+})
 
 hooks { init = init, update = update }

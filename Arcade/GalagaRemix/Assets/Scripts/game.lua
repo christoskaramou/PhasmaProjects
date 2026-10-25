@@ -766,7 +766,7 @@ local function add_score(n)
     local before = G.score
     G.score = G.score + n
     score_pop = 1
-    if G.score > G.hiscore then G.hiscore = G.score end
+    if G.score > G.hiscore and not (G.jev and G.jev:assisted()) then G.hiscore = G.score end
     -- extra fighters at 20000, 70000, then every 70000
     local nxt = G.next_extra or 20000
     if before < nxt and G.score >= nxt then
@@ -1477,21 +1477,33 @@ end
 local function to_title()
     reset_actors()
     G.state = "title"; P.state = "none"; G.stage = 0
-    set_menu({ { label = "PLAY", act = "play" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT", act = "quit" } })
+    set_menu({ { label = "PLAY", act = "play" }, { label = "Jev", act = "jev" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT", act = "quit" } })
 end
 local function game_over()
     G.state = "over"; sfx("gameover")
-    G.newhi = G.score > 0 and G.score >= G.hiscore
-    pcall(fs.write, KK.HISAVE, tostring(G.hiscore))
+    local assisted = G.jev and G.jev:assisted()
+    G.newhi = not assisted and G.score > 0 and G.score >= G.hiscore
+    if not assisted then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)) end
     set_menu({ { label = "PLAY AGAIN", act = "play" }, { label = "TITLE", act = "title" } })
 end
 local function do_menu_action(act)
     sfx("click")
-    if act == "play" then new_game()
+    if act == "play" then
+        G.jev:begin_human()
+        new_game()
+    elseif act == "jev" then
+        if not G.jev:start() then
+            local err = G.jev:error() or "Jev failed to start"
+            pe_log("[Galaga] " .. err)
+            show_banner("JEV", err, 4)
+        end
     elseif act == "resume" then G.state = G.paused_from or "play"
     elseif act == "settings" then if SET then G.in_settings = true; SET:open(function() G.in_settings = false end) end
     elseif act == "title" then to_title()
-    elseif act == "quit" then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)); pcall(engine.quit) end
+    elseif act == "quit" then
+        if not (G.jev and G.jev:assisted()) then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)) end
+        pcall(engine.quit)
+    end
 end
 
 local function update_enemies(dt)
@@ -1635,6 +1647,146 @@ local function update(dt)
     latch()
 end
 
+------------------------------------------------------------------ Jev (holds Left / Right / Space in G.vkeys; attract stays on control == "auto")
+(function()
+    local source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Jev module: Scripts/jev_auto.lua")
+    local JevAuto = assert(load(source, "@Scripts/jev_auto.lua", "t", _ENV))()
+    local reseed = false
+    local prev = {}
+    local keys = { "Left", "Right", "A", "D", "Space" }
+
+    local function set_hold(left, right, fire)
+        if type(G.vkeys) ~= "table" then
+            G.vkeys = {}
+        end
+        G.vkeys.Left = left and true or nil
+        G.vkeys.Right = right and true or nil
+        G.vkeys.Space = fire and true or nil
+    end
+
+    local function nearest_diver()
+        local best_x, best_y, best_d
+        for _, e in ipairs(enemies) do
+            if e.alive and e.diving and e.state ~= "attached" then
+                local ox = e.x - P.x
+                local oy = e.y - PLAYER_Y
+                local d = ox * ox + oy * oy
+                if not best_d or d < best_d then
+                    best_d = d
+                    best_x = e.x
+                    best_y = e.y
+                end
+            end
+        end
+        return best_x, best_y, best_d ~= nil
+    end
+
+    local function human_edge()
+        local skip = reseed
+        reseed = false
+        local edge = false
+        for i = 1, #keys do
+            local key = keys[i]
+            local ok, down = pcall(input.is_key_down_raw, key)
+            down = ok and down and true or false
+            if down and not skip and not prev[key] then
+                edge = true
+            end
+            prev[key] = down
+        end
+        return edge
+    end
+
+    local holds = {
+        left = { left = true, fire = true },
+        right = { right = true, fire = true },
+        stop = { fire = true },
+    }
+
+    local function aim_dx()
+        local px = P.x or 0
+        local ax = px
+        local best = 1e18
+        for _, e in ipairs(enemies) do
+            if e.alive and e.x then
+                local y = e.y or 0
+                if e.diving then
+                    y = y - 100
+                end
+                if y < best then
+                    best = y
+                    ax = e.x
+                end
+            end
+        end
+        return ax - px
+    end
+
+    local function jev_actions()
+        local dx = aim_dx()
+        if dx > 0.35 then
+            return { { id = "right", description = "Fly right. The guns keep firing.", score = dx } }
+        end
+        if dx < -0.35 then
+            return { { id = "left", description = "Fly left. The guns keep firing.", score = -dx } }
+        end
+        return { { id = "stop", description = "Lined up. The guns keep firing.", score = 1 } }
+    end
+
+    G.jev = JevAuto.attach({
+        port = 9143,
+        id = "galaga-remix",
+        description = "Galaga Remix. The offered action is the steer, and the guns keep firing. Prefer the higher action score.",
+        playing = function()
+            local s = G.state
+            return s == "intro" or s == "play" or s == "clear" or s == "chal_result"
+        end,
+        terminal = function()
+            return G.state == "over"
+        end,
+        score = function()
+            return G.score or 0
+        end,
+        busy = function()
+            return false
+        end,
+        human_edge = human_edge,
+        on_human = function()
+            set_hold(false, false, false)
+        end,
+        observe = function()
+            local diver_x, diver_y, found = nearest_diver()
+            local captured = P.state == "captured" or P.state == "lost" or G.captive_exists == true
+            local observation = {
+                player_x = P.x or 0,
+                captured = captured,
+                lives = G.lives or 0,
+                score = G.score or 0,
+            }
+            if found then
+                observation.nearest_diver_x = diver_x
+                observation.nearest_diver_y = diver_y
+            end
+            return observation
+        end,
+        actions = jev_actions,
+        apply = function(id)
+            local h = holds[id]
+            if not h then
+                return
+            end
+            set_hold(h.left, h.right, h.fire)
+        end,
+        reset = function(seed)
+            reseed = true
+            math.randomseed(seed)
+            set_hold(false, false, false)
+            G.use_mouse = false
+            new_game()
+        end,
+    })
+end)()
+
 local function init()
     build_lights(); build_space(); build_debris(); build_rings(); build_pools(); build_trails(); build_player(); build_bolts()
     build_beam(); build_badges(); build_showcase()
@@ -1643,7 +1795,10 @@ local function init()
     G.state = "boot"
 end
 init()
-hooks { update = update }
+hooks { update = function(dt)
+    G.jev:tick(dt)
+    update(dt)
+end }
 
 -- automation helpers (MCP): GA.sim(seconds, keys) steps the game deterministically at 60 Hz
 function G.sim(sec, keys)

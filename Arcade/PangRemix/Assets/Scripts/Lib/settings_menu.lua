@@ -107,6 +107,7 @@ function M:build_rows()
   add({ id = "particles", label = "PARTICLES", kind = "cycle", values = PARTICLES })
   add({ id = "shake", label = "SCREEN SHAKE", kind = "toggle", section = "GAMEPLAY" })
   add({ id = "show_fps", label = "SHOW FPS", kind = "toggle" })
+  for _, row in ipairs(self.opts.extra or {}) do add(row) end
   add({ id = "reset", label = "RESET TO DEFAULTS", kind = "button" })
   add({ id = "back", label = "BACK", kind = "button" })
   self.rows = r
@@ -256,8 +257,9 @@ end
 function M:after_change(id)
   if id == "mute" then self:apply_audio()
   elseif id == "show_fps" then self:show_fps_overlay(self.cfg.show_fps)
-  elseif id == "shake" then -- read by the game through shake_scale()
-  else self:apply_graphics() end
+  elseif id == "quality" or id == "bloom" or id == "ssao" or id == "particles" then self:apply_graphics()
+  end
+  -- shake and game rows (Jev) are read by the match. They must not reload the renderer.
   if self.opts.on_change then pcall(self.opts.on_change, id, self.cfg[id], self.cfg) end
 end
 

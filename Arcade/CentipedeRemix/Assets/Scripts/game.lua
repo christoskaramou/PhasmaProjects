@@ -1089,6 +1089,180 @@ local function mouse_clicked()
 end
 local function mouse_down() local ok, d = pcall(input.is_left_mouse_down); return (ok and d) or G.vkeys.Click end
 
+------------------------------------------------------------------ Jev
+-- Holds land in G.vkeys, which kdown already treats as a held key.
+-- Attract mode stays on control == "auto" and never reads this hold.
+local jev
+local jev_hold = false
+local HUMAN_KEYS = { "Left", "Right", "A", "D", "Up", "Down", "W", "S", "Space" }
+local human_prev = {}
+local DIR_KEYS = {
+    n = { "Up" },
+    s = { "Down" },
+    e = { "Right" },
+    w = { "Left" },
+    ne = { "Up", "Right" },
+    nw = { "Up", "Left" },
+    se = { "Down", "Right" },
+    sw = { "Down", "Left" },
+    stop = {},
+}
+local DIR_TEXT = {
+    n = "north",
+    s = "south",
+    e = "east",
+    w = "west",
+    ne = "northeast",
+    nw = "northwest",
+    se = "southeast",
+    sw = "southwest",
+}
+local ACTION_DIRS = { "n", "s", "e", "w", "ne", "nw", "se", "sw", "stop" }
+
+local function human_down(k)
+    local ok, down = pcall(input.is_key_down_raw, k)
+    return ok and down or false
+end
+
+local function snapshot_human()
+    for i = 1, #HUMAN_KEYS do
+        local k = HUMAN_KEYS[i]
+        human_prev[k] = human_down(k)
+    end
+end
+
+local function human_edge()
+    local edge = false
+    for i = 1, #HUMAN_KEYS do
+        local k = HUMAN_KEYS[i]
+        local down = human_down(k)
+        if down and not human_prev[k] then
+            edge = true
+        end
+        human_prev[k] = down
+    end
+    return edge
+end
+
+local function clear_hold()
+    jev_hold = false
+    G.vkeys = {}
+end
+
+local function apply_hold(id)
+    if type(id) ~= "string" then
+        return
+    end
+
+    local fire = false
+    local dir = id
+    if id:sub(-5) == "_fire" then
+        fire = true
+        dir = id:sub(1, -6)
+    end
+
+    local keys = DIR_KEYS[dir]
+    if not keys then
+        return
+    end
+
+    local next_hold = {}
+    for i = 1, #keys do
+        next_hold[keys[i]] = true
+    end
+    if fire then
+        next_hold.Space = true
+    end
+    G.vkeys = next_hold
+    jev_hold = true
+end
+
+local function nearest_segment(bc, br)
+    local sc, sr = -1, -1
+    local best = nil
+    for wi = 1, #worms do
+        local segs = worms[wi].segs
+        for si = 1, #segs do
+            local seg = segs[si]
+            local dc = seg.c - bc
+            local dr = seg.r - br
+            local dist = dc * dc + dr * dr
+            if best == nil or dist < best then
+                best = dist
+                sc = seg.c
+                sr = seg.r
+            end
+        end
+    end
+    return sc, sr
+end
+
+local function observe_match()
+    local bc, br = world_to_cell(PL.x, PL.y)
+    local sc, sr = nearest_segment(bc, br)
+    return {
+        blaster = { c = bc, r = br },
+        segment = { c = sc, r = sr },
+        lives = G.lives,
+        score = G.score,
+    }
+end
+
+local function action_text(id, fire)
+    if id == "stop" then
+        if fire then
+            return "Hold still and fire"
+        end
+        return "Hold still"
+    end
+
+    local name = DIR_TEXT[id]
+    if fire then
+        return "Hold " .. name .. " and fire"
+    end
+    return "Hold " .. name
+end
+
+local function jev_actions()
+    local bc, br = world_to_cell(PL.x, PL.y)
+    local sc, sr = nearest_segment(bc, br)
+    if sc < 0 then
+        return { { id = "stop_fire", description = "Hold still and fire.", score = 1 } }
+    end
+    local dc = sc - bc
+    local dr = sr - br
+    local vert = ""
+    if dr < 0 then
+        vert = "n"
+    elseif dr > 0 then
+        vert = "s"
+    end
+    local horiz = ""
+    if dc > 0 then
+        horiz = "e"
+    elseif dc < 0 then
+        horiz = "w"
+    end
+    local id = "stop"
+    if vert ~= "" and horiz ~= "" then
+        id = vert .. horiz
+    elseif vert ~= "" then
+        id = vert
+    elseif horiz ~= "" then
+        id = horiz
+    end
+    return { { id = id .. "_fire", description = "Move toward the centipede and fire.", score = math.abs(dc) + math.abs(dr) + 1 } }
+end
+
+local function jev_playing()
+    local st = G.state
+    return st == "levelintro" or st == "play" or st == "dying" or st == "clear"
+end
+
+local function jev_over()
+    return G.state == "over"
+end
+
 -- screen mouse -> world on the playfield plane (z=0), perspective-correct
 local function mouse_world(mx, my)
     local C = cam:get_position()
@@ -1114,7 +1288,14 @@ do
     if ok and data then G.hiscore = tonumber(data) or 0 end
 end
 local function save_hi()
-    if G.score > G.hiscore then G.hiscore = G.score; G.newhi = true end
+    if jev and jev:assisted() then
+        return
+    end
+
+    if G.score > G.hiscore then
+        G.hiscore = G.score
+        G.newhi = true
+    end
     pcall(fs.write, HISAVE, tostring(G.hiscore))
 end
 
@@ -1135,7 +1316,7 @@ local function reset_wave(full_seed)
 end
 
 local function new_game()
-    G.score, G.lives, G.level, G.newhi = 0, 3, 1, false
+    G.score, G.lives, G.level, G.newhi, G.extra_given = 0, 3, 1, false, false
     clear_mushrooms()
     reset_wave(true)
     G.state = "levelintro"; G.intro_t = 0
@@ -1143,7 +1324,12 @@ end
 
 local function to_title()
     G.state = "title"
-    set_menu("title", { { label = "PLAY", act = "play" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT", act = "quit" } })
+    set_menu("title", {
+        { label = "PLAY", act = "play" },
+        { label = "Jev", act = "jev" },
+        { label = "SETTINGS", act = "settings" },
+        { label = "QUIT", act = "quit" },
+    })
     G.demo = true
     clear_bullets(); clear_worms(); clear_enemies()
     if count_mush_in_player_area() + 1 == 1 then end  -- noop keep linter quiet
@@ -1173,7 +1359,11 @@ local function after_death()
     G.lives = G.lives - 1
     restore_damaged_mushrooms()
     if G.lives <= 0 then
-        sfx("gameover"); save_hi()
+        sfx("gameover")
+        save_hi()
+        if jev_hold then
+            clear_hold()
+        end
         G.state = "over"
         set_menu("over", { { label = "PLAY AGAIN", act = "play" }, { label = "TITLE", act = "title" } })
     else
@@ -1223,6 +1413,9 @@ local function update_player(dt, control)
         if ok and mp and mp.x then
             if mouse_last and (abs(mp.x - mouse_last.x) + abs(mp.y - mouse_last.y)) > 0.5 then G.use_mouse = true end
             mouse_last = { x = mp.x, y = mp.y }
+            if jev_hold then
+                G.use_mouse = false
+            end
             if G.use_mouse then
                 local wx, wy = mouse_world(mp.x, mp.y)
                 -- trackball feel: smooth chase toward mouse world pos
@@ -1273,7 +1466,9 @@ local function update_visuals(dt)
     cam:set_position(vec3(CAM_BASE.x + G.cam_px + ox, CAM_BASE.y + G.cam_py + oy, CAM_BASE.z))
     cam:look_at(vec3(CAM_LOOK.x + G.cam_px * 0.5, CAM_LOOK.y + G.cam_py * 0.4, CAM_LOOK.z))
     banner.t = banner.t + dt
-    if G.score > G.hiscore then G.hiscore = G.score end
+    if G.score > G.hiscore and not (jev and jev:assisted()) then
+        G.hiscore = G.score
+    end
 end
 
 local function play_tick_one(dt, control)
@@ -1295,7 +1490,19 @@ end
 local function do_menu_action(act)
     sfx("click")
     if act == "play" then
-        runtime_ui.show(HUD); new_game()
+        jev:begin_human()
+        runtime_ui.show(HUD)
+        new_game()
+    elseif act == "jev" then
+        snapshot_human()
+        local started = jev:start()
+        if not started then
+            local err = jev:error() or "Jev failed to start"
+            jev:begin_human()
+            to_title()
+            show_banner("Jev", err, 3.2)
+            pe_log("[Centipede] " .. err)
+        end
     elseif act == "resume" then
         G.state = G.paused_from or "play"
     elseif act == "settings" then
@@ -1313,6 +1520,7 @@ end
 local function update(dt)
     dt = min(dt, 0.25)
     G.t = G.t + dt
+    jev:tick(dt)
     local okS, sz = pcall(runtime_ui.get_surface_size)
     if okS and sz and (sz.width or 0) > 0 and (sz.width ~= SW or sz.height ~= SH) then SW, SH = sz.width, sz.height; cache = {}; CAM_BASE = vec3(0, -0.3, fit_dist()) end
     flush_mats()
@@ -1398,6 +1606,35 @@ local function update(dt)
     draw_hud(dt)
     latch()
 end
+
+local jev_src = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9122,
+    id = "centipede_remix",
+    description = "Centipede Remix. The offered action moves the blaster toward the nearest segment and fires. Prefer the higher action score.",
+    playing = jev_playing,
+    terminal = jev_over,
+    score = function()
+        return G.score
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = observe_match,
+    actions = jev_actions,
+    apply = apply_hold,
+    reset = function(seed)
+        if type(seed) == "number" then
+            math.randomseed(math.floor(seed))
+        end
+
+        G.use_mouse = false
+        new_game()
+    end,
+    on_human = clear_hold,
+})
 
 local function init()
     build_world(); build_lights(); build_player()

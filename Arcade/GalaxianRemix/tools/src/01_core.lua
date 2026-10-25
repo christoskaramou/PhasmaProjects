@@ -147,6 +147,7 @@ end
 ------------------------------------------------------------------ input
 local prev = {}
 local keyfn = input.is_key_down_raw or input.is_key_pressed
+G.vk = {}
 local function held(k) if G.vk and G.vk[k] then return true end local ok, v = pcall(keyfn, k); return ok and v end
 local function edge(k) local d = held(k); local p = prev[k]; prev[k] = d; return d and not p end
 local function any(...) for _, k in ipairs({ ... }) do if held(k) then return true end end; return false end

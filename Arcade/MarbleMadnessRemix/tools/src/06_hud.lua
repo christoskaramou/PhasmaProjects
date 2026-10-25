@@ -71,7 +71,8 @@ local function draw_hud(dt, st)
     text("o_s", "Score " .. tostring(G.score), 0, SH * 0.24 + 140 * US, SW, 44 * US, 1.4, WHITE, "center", over)
     local c = {}
     local yb = SH * 0.3
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb, title)
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, yb, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, yb, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.42, pause)
@@ -83,11 +84,184 @@ local function draw_hud(dt, st)
     return c
 end
 
+------------------------------------------------------------------ Jev
+-- Compass holds land in G.vk. held() already treats that table like a key that is down.
+local jev
+local RAW_MOVE = { "W", "A", "S", "D", "Up", "Down", "Left", "Right" }
+local raw_prev = {}
+local PUSH = {
+    n = { "W", "Up" },
+    s = { "S", "Down" },
+    e = { "D", "Right" },
+    w = { "A", "Left" },
+    ne = { "W", "Up", "D", "Right" },
+    nw = { "W", "Up", "A", "Left" },
+    se = { "S", "Down", "D", "Right" },
+    sw = { "S", "Down", "A", "Left" },
+    stop = {},
+}
+local ACTION_TEXT = {
+    n = "Hold up the screen (W). World push about x+0.57 z+0.82.",
+    s = "Hold down the screen (S), toward the goal. World push about x-0.57 z-0.82.",
+    e = "Hold right (D). World push about x-0.82 z+0.57.",
+    w = "Hold left (A). World push about x+0.82 z-0.57.",
+    ne = "Hold up and right. World push about x-0.17 z+0.98, nearly +Z.",
+    nw = "Hold up and left. World push about x+0.98 z+0.17, nearly +X.",
+    se = "Hold down and right. World push about x-0.98 z-0.17, nearly -X.",
+    sw = "Hold down and left. World push about x+0.17 z-0.98, nearly -Z, down the course.",
+    stop = "Release the push.",
+}
+local ACTION_IDS = { "n", "s", "e", "w", "ne", "nw", "se", "sw", "stop" }
+local ACTIONS = {}
+for i = 1, #ACTION_IDS do
+    local id = ACTION_IDS[i]
+    ACTIONS[i] = { id = id, description = ACTION_TEXT[id] }
+end
+
+local source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Jev module: Scripts/jev_auto.lua")
+local JevAuto = assert(load(source, "@Scripts/jev_auto.lua", "t", _ENV))()
+
+local function mcp_port()
+    local text = fs.read("Agent/agent_config.json") or ""
+    return tonumber(text:match('"mcp_port"%s*:%s*(%d+)')) or 9137
+end
+
+local function rnd(v)
+    local sign = 1
+    if v < 0 then
+        sign = -1
+        v = -v
+    end
+    return sign * floor(v * 100 + 0.5) / 100
+end
+
+local function raw_down(key)
+    if not input.is_key_down_raw then
+        return false
+    end
+
+    local ok, down = pcall(input.is_key_down_raw, key)
+    if ok and down then
+        return true
+    end
+    return false
+end
+
+local function snapshot_raw()
+    for i = 1, #RAW_MOVE do
+        local key = RAW_MOVE[i]
+        raw_prev[key] = raw_down(key)
+    end
+end
+
+local function human_edge()
+    local hit = false
+    for i = 1, #RAW_MOVE do
+        local key = RAW_MOVE[i]
+        local down = raw_down(key)
+        if down and not raw_prev[key] then
+            hit = true
+        end
+        raw_prev[key] = down
+    end
+    return hit
+end
+
+local function set_hold(id)
+    local keys = PUSH[id]
+    if not keys then
+        return
+    end
+
+    if #keys == 0 then
+        G.vk = nil
+        return
+    end
+
+    local vk = {}
+    for i = 1, #keys do
+        vk[keys[i]] = true
+    end
+    G.vk = vk
+end
+
+local function clear_hold()
+    G.vk = nil
+    G.jev_drive = false
+end
+
+local function nearest_hazard()
+    local M = G.M
+    local best_d = 1e9
+    local best = nil
+    for _, e in ipairs(G.EN or {}) do
+        local ex = e.x or 0
+        local ez = e.z or 0
+        local dx = ex - M.x
+        local dz = ez - M.z
+        local d = sqrt(dx * dx + dz * dz)
+        if d < best_d then
+            best_d = d
+            best = { kind = e.k, x = ex, z = ez, dist = d }
+        end
+    end
+
+    if G.CUR and G.hgt then
+        for dz = -8, 8 do
+            for dx = -8, 8 do
+                if dx ~= 0 or dz ~= 0 then
+                    local d = sqrt(dx * dx + dz * dz)
+                    local closer = d < best_d
+                    local void = closer and not G.hgt(M.x + dx, M.z + dz)
+                    if void then
+                        best_d = d
+                        best = {
+                            kind = "edge",
+                            x = M.x + dx,
+                            z = M.z + dz,
+                            dist = d,
+                        }
+                    end
+                end
+            end
+        end
+    end
+
+    if not best then
+        return nil
+    end
+
+    return {
+        kind = best.kind,
+        x = rnd(best.x),
+        z = rnd(best.z),
+        dist = rnd(best.dist),
+    }
+end
+
+local function observe()
+    local M = G.M
+    return {
+        x = rnd(M.x),
+        z = rnd(M.z),
+        vx = rnd(M.vx),
+        vz = rnd(M.vz),
+        phase = G.phase or "",
+        hazard = nearest_hazard(),
+        score = G.score or 0,
+    }
+end
+
 ------------------------------------------------------------------ flow
 function G.music_race() music("race" .. tostring(((G.ci or 1) - 1) % 3 + 1)) end
 local function to_title()
-    G.state = "title"; G.won = false
-    G.new_game_sim(); G.reset_world()
+    if jev then
+        jev:begin_human()
+    end
+    G.state = "title"
+    G.won = false
+    G.new_game_sim()
+    G.reset_world()
     music("title")
 end
 G.to_title = to_title
@@ -97,17 +271,98 @@ local function new_game()
     music(nil)
 end
 G.new_game = new_game
+
+local ABOUT = "Roll the marble down six races from high z to low z before time runs out. "
+    .. "Actions n, s, e, w, ne, nw, se, sw hold a screen-relative push; stop releases it. "
+    .. "Observation x, z, vx, vz are the marble. phase is ready, race, goal, or timeup. "
+    .. "hazard is the nearest steelie, muncher, acid, hammer, or edge."
+jev = JevAuto.attach({
+    port = mcp_port(),
+    id = "marble_madness_remix",
+    description = ABOUT,
+    playing = function()
+        if G.set_open then
+            return false
+        end
+        return G.state == "play" or G.state == "pause"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    human_edge = human_edge,
+    observe = observe,
+    actions = function()
+        local world = {
+            n = { 0.57, 0.82 },
+            s = { -0.57, -0.82 },
+            e = { -0.82, 0.57 },
+            w = { 0.82, -0.57 },
+            ne = { -0.17, 0.98 },
+            nw = { 0.98, 0.17 },
+            se = { -0.98, -0.17 },
+            sw = { 0.17, -0.98 },
+        }
+        local ax = -0.57
+        local az = -0.82
+        local hazard = nearest_hazard()
+        if hazard and hazard.dist and hazard.dist < 5 and G.M then
+            local scale = (5 - hazard.dist) / 5
+            ax = ax + (G.M.x - hazard.x) * scale
+            az = az + (G.M.z - hazard.z) * scale
+        end
+        local best_id = "s"
+        local best = -1e9
+        for id, push in pairs(world) do
+            local score = push[1] * ax + push[2] * az
+            if score > best then
+                best = score
+                best_id = id
+            end
+        end
+        return { { id = best_id, description = "Push down the course, away from a close edge.", score = best } }
+    end,
+    apply = function(id)
+        set_hold(id)
+    end,
+    reset = function(seed)
+        seed = tonumber(seed)
+        if seed then
+            math.randomseed(seed)
+        end
+        G.jev_drive = true
+        G.vk = nil
+        new_game()
+        snapshot_raw()
+    end,
+    on_human = function()
+        clear_hold()
+    end,
+})
+
 local function game_over()
-    G.state = "over"; G.over_t = 0
-    music(G.won and "ending" or nil); sfx(G.won and "goal" or "timeup")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    G.state = "over"
+    G.over_t = 0
+    music(G.won and "ending" or nil)
+    sfx(G.won and "goal" or "timeup")
+    if jev:assisted() then
+        return
+    end
+    if G.score > G.hiscore then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
+
 local acc = 0
 local mprev = { x = 0, y = 0 }
 local macc = { x = 0, y = 0 }
 local function update(dt)
     flush_mats()
     dt = clamp(dt, 0, 0.1)   -- a negative frame time (timer hitch) would make every damp() explode
+    jev:tick(dt)
     G.t = G.t + dt; G.dt = dt
     local k = { ret = edge("Return"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), qk = edge("Q"), f3 = edge("F3"), space = edge("Space") }
     if k.f3 then G.DBG.on = not G.DBG.on end
@@ -118,9 +373,24 @@ local function update(dt)
     local function open_settings() sfx("click"); SET:open(); G.set_open = true end
     if k.m then SET:toggle_mute() end
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game()
-        elseif k.o or c.set_t then open_settings()
-        elseif c.quit_app then engine.quit() end
+        if k.ret or k.space or c.start then
+            sfx("click")
+            jev:begin_human()
+            new_game()
+        elseif c.jev then
+            sfx("click")
+            if not jev:start() then
+                G.jev_drive = false
+                G.vk = nil
+                local err = jev:error() or "Jev could not start"
+                G.banner_set(err, 5)
+                pe_log("[MM] " .. err)
+            end
+        elseif k.o or c.set_t then
+            open_settings()
+        elseif c.quit_app then
+            engine.quit()
+        end
     elseif st == "play" then
         if k.p or k.esc then G.state = "pause"; sfx("click") end
     elseif st == "pause" then
@@ -130,8 +400,13 @@ local function update(dt)
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.2 then
-            if k.ret or k.space or c.again then sfx("click"); new_game()
-            elseif k.esc or c.title then to_title() end
+            if k.ret or k.space or c.again then
+                sfx("click")
+                jev:begin_human()
+                new_game()
+            elseif k.esc or c.title then
+                to_title()
+            end
         end
     end
     st = G.state
@@ -145,7 +420,13 @@ local function update(dt)
         mprev.x, mprev.y = mx, my
         if mx ~= 0 and my ~= 0 then mx, my = mx * 0.7071, my * 0.7071 end
         -- mouse flicks add a short impulse spread over the next frames
-        macc.x = clamp(macc.x + mdx * 0.02, -3, 3); macc.y = clamp(macc.y - mdy * 0.02, -3, 3)
+        if G.jev_drive then
+            macc.x = 0
+            macc.y = 0
+        else
+            macc.x = clamp(macc.x + mdx * 0.02, -3, 3)
+            macc.y = clamp(macc.y - mdy * 0.02, -3, 3)
+        end
         mx, my = mx + macc.x, my + macc.y
         macc.x, macc.y = macc.x * math.exp(-10 * dt), macc.y * math.exp(-10 * dt)
         if G.autoplay then mx, my = G.autoplay_fn() end

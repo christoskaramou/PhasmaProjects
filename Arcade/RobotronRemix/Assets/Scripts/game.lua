@@ -456,7 +456,9 @@ G.banner = { text = "", sub = "", t = 9, dur = 0 }
 local function add_score(n)
     local before = G.score
     G.score = G.score + n; score_pop = 1
-    if G.score > G.hiscore then G.hiscore = G.score end
+    if not (G.jev and G.jev:assisted()) and G.score > G.hiscore then
+        G.hiscore = G.score
+    end
     if floor(before / 25000) < floor(G.score / 25000) then
         G.lives = min(9, G.lives + 1); sfx("extra"); show_banner("Extra Life", "", 1.6)
     end
@@ -793,7 +795,7 @@ local function update_hero(dt, control)
         -- (mouse ray projected onto the play plane), left click fires (hold = auto-fire)
         mx = ((kdown("D") or kdown("Right")) and 1 or 0) - ((kdown("A") or kdown("Left")) and 1 or 0)
         my = ((kdown("W") or kdown("Up")) and 1 or 0) - ((kdown("S") or kdown("Down")) and 1 or 0)
-        if G.mx then
+        if G.mx and not G.aim_lock then
             local wx, wy = screen_to_floor(G.mx, G.my, 1.0)
             local ax, ay = wx - P.x, wy - P.y
             if ax * ax + ay * ay > 0.04 then G.aim_x, G.aim_y = ax, ay end
@@ -1037,21 +1039,51 @@ end
 local function to_title()
     clear_ents(); clear_shots()
     G.state = "title"; P.state = "none"; G.wave = 0
-    set_menu({ { label = "Play", act = "play" }, { label = "Settings", act = "settings" }, { label = "Quit", act = "quit" } })
+    set_menu({
+        { label = "Play", act = "play" },
+        { label = "Jev", act = "jev" },
+        { label = "Settings", act = "settings" },
+        { label = "Quit", act = "quit" },
+    })
 end
 local function game_over()
     G.state = "over"; sfx("gameover")
-    G.newhi = G.score > 0 and G.score >= G.hiscore
-    pcall(fs.write, KK.HISAVE, tostring(G.hiscore))
+    local assisted = G.jev and G.jev:assisted()
+    G.newhi = not assisted and G.score > 0 and G.score >= G.hiscore
+    if not assisted then
+        pcall(fs.write, KK.HISAVE, tostring(G.hiscore))
+    end
     set_menu({ { label = "Play Again", act = "play" }, { label = "Title", act = "title" } })
 end
 local function do_menu_action(act)
     sfx("click")
-    if act == "play" then new_game()
-    elseif act == "resume" then G.state = G.paused_from or "play"
-    elseif act == "settings" then if SET then G.in_settings = true; SET:open(function() G.in_settings = false end) end
-    elseif act == "title" then to_title()
-    elseif act == "quit" then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)); pcall(engine.quit) end
+    if act == "play" then
+        if G.jev then
+            G.jev:begin_human()
+        end
+        new_game()
+    elseif act == "resume" then
+        G.state = G.paused_from or "play"
+    elseif act == "settings" then
+        if SET then
+            G.in_settings = true
+            SET:open(function() G.in_settings = false end)
+        end
+    elseif act == "title" then
+        to_title()
+    elseif act == "jev" then
+        local ok = G.jev and G.jev:start()
+        if not ok then
+            local message = (G.jev and G.jev:error()) or "Jev could not start"
+            show_banner(message, "", 4)
+            pe_log("[Robotron] " .. message)
+        end
+    elseif act == "quit" then
+        if not (G.jev and G.jev:assisted()) then
+            pcall(fs.write, KK.HISAVE, tostring(G.hiscore))
+        end
+        pcall(engine.quit)
+    end
 end
 local function play_tick(dt, control)
     G.wave_t = G.wave_t + dt
@@ -1094,6 +1126,9 @@ end
 ------------------------------------------------------------------ main update
 local function update(dt)
     dt = min(dt, 1 / 20)
+    if G.jev and not G.simming then
+        G.jev:tick(dt)
+    end
     G.t = G.t + dt
     local okS, sz = pcall(runtime_ui.get_surface_size)
     if okS and sz and (sz.width or 0) > 0 and (sz.width ~= SW or sz.height ~= SH) then SW, SH = sz.width, sz.height; cache = {}; fit_camera() end
@@ -1150,6 +1185,214 @@ local function update(dt)
     latch()
 end
 
+local function attach_jev()
+    local source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Jev module: Scripts/jev_auto.lua")
+    local JevAuto = assert(load(source, "@Scripts/jev_auto.lua", "t", _ENV))()
+    local diag = 0.7071067811865476
+    local dirs = {
+        n = { x = 0, y = 1, keys = { "W" } },
+        ne = { x = diag, y = diag, keys = { "W", "D" } },
+        e = { x = 1, y = 0, keys = { "D" } },
+        se = { x = diag, y = -diag, keys = { "S", "D" } },
+        s = { x = 0, y = -1, keys = { "S" } },
+        sw = { x = -diag, y = -diag, keys = { "S", "A" } },
+        w = { x = -1, y = 0, keys = { "A" } },
+        nw = { x = -diag, y = diag, keys = { "W", "A" } },
+    }
+    local dir_order = { "n", "ne", "e", "se", "s", "sw", "w", "nw" }
+    local dir_text = {
+        n = "Hold W. Move and aim +Y",
+        ne = "Hold W and D. Move and aim +X +Y",
+        e = "Hold D. Move and aim +X",
+        se = "Hold S and D. Move and aim +X -Y",
+        s = "Hold S. Move and aim -Y",
+        sw = "Hold S and A. Move and aim -X -Y",
+        w = "Hold A. Move and aim -X",
+        nw = "Hold W and A. Move and aim -X +Y",
+    }
+    local raw_keys = { "W", "A", "S", "D", "Up", "Down", "Left", "Right", "Space" }
+    local raw_prev = {}
+
+    local function raw_down(key)
+        local ok, down = pcall(input.is_key_down_raw, key)
+        return ok and down == true
+    end
+
+    local function prime_raw()
+        for i = 1, #raw_keys do
+            local key = raw_keys[i]
+            raw_prev[key] = raw_down(key)
+        end
+    end
+
+    local function human_edge()
+        local edge = false
+        for i = 1, #raw_keys do
+            local key = raw_keys[i]
+            local down = raw_down(key)
+            if down and not raw_prev[key] then
+                edge = true
+            end
+            raw_prev[key] = down
+        end
+        return edge
+    end
+
+    local function clear_hold()
+        G.vkeys = {}
+        G.aim_lock = false
+    end
+
+    local function nearest_hostile()
+        local best = nil
+        local best_d = 1e9
+        for i = 1, #ENTS do
+            local ent = ENTS[i]
+            if ent.alive and not ent.info.human then
+                local d = dist2(P.x, P.y, ent.x, ent.y)
+                if d < best_d then
+                    best = ent
+                    best_d = d
+                end
+            end
+        end
+        return best
+    end
+
+    local function apply_action(id)
+        if id == "stop" then
+            G.vkeys = {}
+            return
+        end
+
+        if id == "fire_nearest" then
+            local ent = nearest_hostile()
+            if not ent then
+                G.vkeys = {}
+                return
+            end
+
+            local dx = ent.x - P.x
+            local dy = ent.y - P.y
+            local len = sqrt(dx * dx + dy * dy)
+            if len <= 1e-6 then
+                G.vkeys = {}
+                return
+            end
+
+            G.aim_x = dx / len
+            G.aim_y = dy / len
+            G.aim_lock = true
+            G.vkeys = { Space = true }
+            return
+        end
+
+        local dir = dirs[id]
+        if not dir then
+            G.vkeys = {}
+            return
+        end
+
+        local hold = {}
+        for i = 1, #dir.keys do
+            hold[dir.keys[i]] = true
+        end
+        hold.Space = true
+        G.vkeys = hold
+        local ent = nearest_hostile()
+        if ent then
+            local ax = ent.x - P.x
+            local ay = ent.y - P.y
+            local alen = sqrt(ax * ax + ay * ay)
+            if alen > 1e-6 then
+                G.aim_x = ax / alen
+                G.aim_y = ay / alen
+            else
+                G.aim_x = dir.x
+                G.aim_y = dir.y
+            end
+        else
+            G.aim_x = dir.x
+            G.aim_y = dir.y
+        end
+        G.aim_lock = true
+    end
+
+    local function best_dir()
+        local ent = nearest_hostile()
+        local dx, dy = 0, 1
+        if ent then
+            dx = ent.x - P.x
+            dy = ent.y - P.y
+            local dist = sqrt(dx * dx + dy * dy)
+            if dist < 1.6 then
+                dx = -dx
+                dy = -dy
+            end
+        end
+        local best_id = "n"
+        local best = -1e18
+        for i = 1, #dir_order do
+            local id = dir_order[i]
+            local dir = dirs[id]
+            local dot = dir.x * dx + dir.y * dy
+            if dot > best then
+                best = dot
+                best_id = id
+            end
+        end
+        return best_id, best
+    end
+
+    local function actions()
+        local id, score = best_dir()
+        return { { id = id, description = "Move and shoot. Back away when a hostile is on top of you.", score = score + 1 } }
+    end
+
+    prime_raw()
+    G.jev = JevAuto.attach({
+        port = 9128,
+        id = "robotron-remix",
+        description = "Twin-stick arena shooter. The offered action moves and shoots. It steps away when a hostile is close. Prefer the higher action score.",
+        playing = function()
+            local st = G.state
+            return st == "intro" or st == "play" or st == "clear"
+        end,
+        terminal = function()
+            return G.state == "over"
+        end,
+        score = function()
+            return G.score or 0
+        end,
+        busy = function()
+            return false
+        end,
+        human_edge = human_edge,
+        observe = function()
+            local ent = nearest_hostile()
+            return {
+                hero_x = P.x,
+                hero_y = P.y,
+                nearest_x = ent and ent.x or 0,
+                nearest_y = ent and ent.y or 0,
+                lives = G.lives or 0,
+                score = G.score or 0,
+            }
+        end,
+        actions = actions,
+        apply = apply_action,
+        reset = function(seed)
+            math.randomseed(seed)
+            clear_hold()
+            prime_raw()
+            new_game()
+        end,
+        on_human = clear_hold,
+    })
+end
+
+attach_jev()
+
 local function init()
     build_lights(); build_arena(); build_debris(); build_rings(); build_pools(); build_hero(); build_showcase()
     paint_templates()
@@ -1162,7 +1405,9 @@ hooks { update = update }
 -- automation helpers (MCP): RR.sim(seconds, keys) steps the game deterministically at 60 Hz
 function G.sim(sec, keys)
     G.vkeys = keys or {}
+    G.simming = true
     for _ = 1, floor(sec * 60) do update(1 / 60) end
+    G.simming = false
     G.vkeys = {}
 end
 G.new_game = new_game

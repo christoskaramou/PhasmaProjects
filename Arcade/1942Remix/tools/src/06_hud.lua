@@ -82,7 +82,8 @@ local function draw_hud(dt, st)
     text("o_s", "Score " .. tostring(G.score), 0, SH * 0.24 + 140 * US, SW, 44 * US, 1.4, WHITE, "center", over)
     local c = {}
     local yb = SH * 0.3
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb, title)
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, yb, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, yb, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.42, pause)
@@ -95,6 +96,8 @@ local function draw_hud(dt, st)
 end
 
 ------------------------------------------------------------------ flow
+local jev
+
 local function to_title()
     G.state = "title"; G.won = false
     G.new_game_sim(); G.phase = "title"; G.carrier.on = false
@@ -112,8 +115,200 @@ G.new_game = new_game
 local function game_over()
     G.state = "over"; G.over_t = 0
     music(nil); sfx(G.won and "clear" or "gameover")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    if G.score > G.hiscore and not (jev and jev:assisted()) then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
+
+local DIR_KEYS = { "Up", "Down", "Left", "Right" }
+local DIRS = {
+    up = { Up = true },
+    up_right = { Up = true, Right = true },
+    right = { Right = true },
+    down_right = { Down = true, Right = true },
+    down = { Down = true },
+    down_left = { Down = true, Left = true },
+    left = { Left = true },
+    up_left = { Up = true, Left = true },
+    stop = {},
+}
+local DIR_STEP = {
+    up = { 0, 1 },
+    up_right = { 0.7071, 0.7071 },
+    right = { 1, 0 },
+    down_right = { 0.7071, -0.7071 },
+    down = { 0, -1 },
+    down_left = { -0.7071, -0.7071 },
+    left = { -1, 0 },
+    up_left = { -0.7071, 0.7071 },
+}
+local DIR_ORDER = {
+    "up", "up_right", "right", "down_right",
+    "down", "down_left", "left", "up_left",
+    "stop",
+}
+local DIR_TEXT = {
+    up = "Fly up. Guns keep firing while this is held.",
+    up_right = "Fly up-right. Guns keep firing while this is held.",
+    right = "Fly right. Guns keep firing while this is held.",
+    down_right = "Fly down-right. Guns keep firing while this is held.",
+    down = "Fly down. Guns keep firing while this is held.",
+    down_left = "Fly down-left. Guns keep firing while this is held.",
+    left = "Fly left. Guns keep firing while this is held.",
+    up_left = "Fly up-left. Guns keep firing while this is held.",
+    stop = "Stop. Guns stop until the next direction.",
+}
+local PULSES = { loop = "X" }
+local pulse = {}
+local driving = false
+local HUMAN_KEYS = {
+    "W", "A", "S", "D",
+    "Up", "Down", "Left", "Right",
+    "Space", "Z", "J",
+    "X", "K", "LeftShift", "RightShift",
+}
+local human_down = {}
+local human_ready = false
+local human_hit = false
+
+local function clear_hold()
+    for _, key in ipairs(DIR_KEYS) do
+        G.vk[key] = nil
+    end
+    for _, key in pairs(PULSES) do
+        G.vk[key] = nil
+        pulse[key] = nil
+    end
+end
+
+local function apply_action(id)
+    local dir = DIRS[id]
+    if dir then
+        for _, key in ipairs(DIR_KEYS) do
+            G.vk[key] = dir[key]
+        end
+        return
+    end
+
+    local key = PULSES[id]
+    if not key then
+        return
+    end
+
+    G.vk[key] = true
+    arm_edge(key)
+    pulse[key] = "down"
+end
+
+local function release_pulses()
+    for key, state in pairs(pulse) do
+        if state == "up_next" then
+            G.vk[key] = nil
+            pulse[key] = nil
+        end
+    end
+end
+
+local function latch_pulses()
+    for key, state in pairs(pulse) do
+        if state == "down" then
+            pulse[key] = "up_next"
+        end
+    end
+end
+
+local function poll_human()
+    local raw = input.is_key_down_raw
+    if not raw then
+        return false
+    end
+
+    local hit = false
+    for _, key in ipairs(HUMAN_KEYS) do
+        local down = false
+        local ok, value = pcall(raw, key)
+        if ok and value then
+            down = true
+        end
+        if human_ready and down and not human_down[key] then
+            hit = true
+        end
+        human_down[key] = down
+    end
+    human_ready = true
+    return hit
+end
+
+local function human_edge()
+    return human_hit
+end
+
+local function nearest_enemy()
+    local best = nil
+    local best_d = nil
+    for _, e in ipairs(G.EN or {}) do
+        if not e.dead then
+            local dx = e.x - P.x
+            local dy = e.y - P.y
+            local d = dx * dx + dy * dy
+            if not best_d or d < best_d then
+                best = e
+                best_d = d
+            end
+        end
+    end
+    return best
+end
+
+-- Positive aim_dx means the target is to the right. A close bullet pushes the aim off itself.
+local function aim_offset()
+    local ax, ay = 0, 5
+    local enemy = nearest_enemy()
+    if enemy and enemy.y > P.y - 1 then
+        ax, ay = enemy.x, enemy.y
+    end
+
+    local dx = ax - P.x
+    local dy = ay - P.y
+    for _, b in ipairs(G.BUL or {}) do
+        local bx = b.x - P.x
+        local by = b.y - P.y
+        if by > -0.5 and by < 5 and abs(bx) < 2.2 then
+            local side = bx > 0 and 1 or -1
+            dx = dx - side * (2.2 - abs(bx))
+        end
+    end
+    return dx, dy
+end
+
+local function jev_actions()
+    local dx, dy = aim_offset()
+    if P.rolls > 0 and P.roll <= 0 then
+        for _, b in ipairs(G.BUL or {}) do
+            local bx = b.x - P.x
+            local by = b.y - P.y
+            if by > -0.5 and by < 4 and abs(bx) < 1.6 then
+                return { { id = "loop", description = "Loop once to dodge a close shot.", score = 12 } }
+            end
+        end
+    end
+
+    local best_id = "up"
+    local best = -1e9
+    for _, id in ipairs(DIR_ORDER) do
+        local step = DIR_STEP[id]
+        if step then
+            local score = step[1] * dx + step[2] * dy
+            if score > best then
+                best = score
+                best_id = id
+            end
+        end
+    end
+    return { { id = best_id, description = DIR_TEXT[best_id], score = best } }
+end
+
 local acc = 0
 local rmouse_prev, lmouse_prev = true, true
 local q = { fire = false, roll = false }
@@ -122,8 +317,12 @@ local function update(dt)
     flush_mats()
     dt = min(dt, 0.1)
     G.t = G.t + dt; G.dt = dt
+    human_hit = poll_human()
+    jev:tick(dt)
+    release_pulses()
     local k = { ret = edge("Return"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), qk = edge("Q"), f3 = edge("F3"),
         space = edge("Space"), z = edge("Z"), j = edge("J"), x = edge("X"), kk = edge("K"), sh = edge("LeftShift"), sh2 = edge("RightShift") }
+    latch_pulses()
     local rd, ld = false, false
     pcall(function() rd = input.is_right_mouse_down and input.is_right_mouse_down() and true or false end)
     pcall(function() ld = input.is_left_mouse_down and input.is_left_mouse_down() and true or false end)
@@ -137,7 +336,22 @@ local function update(dt)
     local function open_settings() sfx("click"); SET:open(); G.set_open = true end
     if k.m then SET:toggle_mute() end
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game()
+        if k.ret or k.space or c.start then
+            sfx("click")
+            jev:begin_human()
+            new_game()
+        elseif c.jev then
+            sfx("click")
+            local started = jev:start()
+            if not started then
+                jev:begin_human()
+                local err = jev:error()
+                if not err or err == "" then
+                    err = "Jev failed to start"
+                end
+                pe_log("[AF] " .. err)
+                G.banner_set(err, 4)
+            end
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "play" then
@@ -145,15 +359,24 @@ local function update(dt)
         else
             if k.space or k.z or k.j or lclick then q.fire = true end
             if k.x or k.kk or k.sh or k.sh2 or rclick then q.roll = true end
+            if driving and (any("Left", "A") or any("Right", "D") or any("Up", "W") or any("Down", "S")) then
+                q.fire = true
+            end
         end
     elseif st == "pause" then
         if k.p or k.esc or k.ret or c.resume then G.state = "play"; sfx("click")
         elseif k.o or c.set_p then open_settings()
-        elseif k.qk or c.quit then to_title() end
+        elseif k.qk or c.quit then
+            jev:begin_human()
+            to_title()
+        end
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.2 then
-            if k.ret or k.space or c.again then sfx("click"); new_game()
+            if k.ret or k.space or c.again then
+                sfx("click")
+                jev:begin_human()
+                new_game()
             elseif k.esc or c.title then to_title() end
         end
     end
@@ -209,6 +432,52 @@ function G.autoplay_fn()
 end
 
 ------------------------------------------------------------------ boot
+local JevAuto = assert(load(assert(fs.read("Scripts/jev_auto.lua")), "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9136,
+    id = "1942remix",
+    description = "1942 Remix. Fly the P-38 and shoot the formation. A direction is a hold: the plane keeps "
+        .. "flying that way and the guns keep firing until the next direction. aim_dx positive means the target is "
+        .. "to the right. aim_dy positive means it is up the screen. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return P.alive and P.roll > 0
+    end,
+    human_edge = human_edge,
+    observe = function()
+        local dx, dy = aim_offset()
+        return {
+            player_x = P.x,
+            player_y = P.y,
+            aim_dx = dx,
+            aim_dy = dy,
+            lives = G.lives or 0,
+            loops = P.rolls or 0,
+            score = G.score or 0,
+        }
+    end,
+    actions = jev_actions,
+    apply = apply_action,
+    reset = function(seed)
+        math.randomseed(seed)
+        clear_hold()
+        driving = true
+        new_game()
+    end,
+    on_human = function()
+        driving = false
+        clear_hold()
+    end,
+})
+
 build_lights()
 paint_templates()
 build_world()

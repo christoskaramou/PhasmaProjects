@@ -384,27 +384,30 @@ local function draw_ball(dt)
 end
 
 ------------------------------------------------------------------ AI
-local function ai_target()
-    -- predict ball Y at right paddle x, with wall bounces
-    if BALL.stuck or BALL.vx <= 0 then
-        return lerp(PAD.R.y, 0, 0.02)  -- idle toward centre
+local function predict_y(at_x)
+    if BALL.stuck or (at_x - BALL.x) * BALL.vx <= 0 then
+        return BALL.y
     end
     local x, y, vx, vy = BALL.x, BALL.y, BALL.vx, BALL.vy
     local guard = 0
-    while x < PADDLE_X - 0.4 and guard < 40 do
-        local dt = (PADDLE_X - 0.4 - x) / vx
-        if dt < 0 then break end
-        -- step in smaller chunks for wall hits
-        local step = min(dt, 0.05)
+    while (at_x - x) * vx > 0 and guard < 80 do
+        local step = min((at_x - x) / vx, 0.05)
         x = x + vx * step; y = y + vy * step
         if y > HALF_H - BALL_R then y = (HALF_H - BALL_R) * 2 - y; vy = -vy end
         if y < -HALF_H + BALL_R then y = (-HALF_H + BALL_R) * 2 - y; vy = -vy end
         guard = guard + 1
     end
-    -- skill: slight error + reaction lag feel
-    local err = (1.1 - min(1.0, G.t * 0.02)) * rr(-0.6, 0.6)
+    return y
+end
+
+local function ai_target()
+    if BALL.stuck or BALL.vx <= 0 then
+        return lerp(PAD.R.y, 0, 0.02)
+    end
+    local y = predict_y(PADDLE_X)
     local skill = G.ai_skill or 0.82
-    return y * skill + err * (1 - skill) + sin(G.t * 2.1) * 0.15
+    local slack = (1 - skill) * (PADDLE_H * 0.25)
+    return y + rr(-slack, slack)
 end
 
 ------------------------------------------------------------------ physics
@@ -453,6 +456,8 @@ local function paddle_bounce(side)
     add_shake(0.12)
 end
 
+local jev
+
 local function score_point(scorer)
     G.score[scorer] = G.score[scorer] + 1
     local c = (scorer == 1) and COL_L or COL_R
@@ -473,7 +478,11 @@ local function score_point(scorer)
     if G.score[scorer] >= WIN_SCORE and abs(G.score[1] - G.score[2]) >= 2 then
         G.state = "over"
         G.winner = scorer
-        if G.score[1] + G.score[2] > G.hiscore then G.hiscore = G.score[1] + G.score[2]; pcall(fs.write, "Save/hiscore.txt", tostring(G.hiscore)) end
+        local total = G.score[1] + G.score[2]
+        if total > G.hiscore and not (jev and jev:assisted()) then
+            G.hiscore = total
+            pcall(fs.write, "Save/hiscore.txt", tostring(G.hiscore))
+        end
         sfx(scorer == 1 and "win" or "lose")
         set_menu_over()
     else
@@ -497,13 +506,19 @@ local function update_ball(dt)
     local function hit_pad(side)
         local p = PAD[side]
         local px = p.x
-        local hw, hh = PADDLE_W * 0.5 + BALL_R, p.h * 0.5 + BALL_R * 0.15
-        if abs(BALL.x - px) < hw and abs(BALL.y - p.y) < hh then
-            -- only if moving toward paddle
-            if (side == "L" and BALL.vx < 0) or (side == "R" and BALL.vx > 0) then
-                paddle_bounce(side)
-                return true
-            end
+        local hw = PADDLE_W * 0.5 + BALL_R
+        local hh = p.h * 0.5 + BALL_R
+        local x0, y0 = BALL.x - BALL.vx * dt, BALL.y - BALL.vy * dt
+        local x1, y1 = BALL.x, BALL.y
+        local lo, hi = min(x0, x1), max(x0, x1)
+        if hi <= px - hw or lo >= px + hw then return false end
+        local t = 0
+        if abs(x1 - x0) > 1e-8 then t = clamp((px - x0) / (x1 - x0), 0, 1) end
+        local y = y0 + (y1 - y0) * t
+        if (abs(y - p.y) < hh or abs(y1 - p.y) < hh)
+            and ((side == "L" and BALL.vx < 0) or (side == "R" and BALL.vx > 0)) then
+            paddle_bounce(side)
+            return true
         end
         return false
     end
@@ -515,7 +530,7 @@ end
 
 local function update_paddle_side(side, dt, control)
     local p = PAD[side]
-    local lim = HALF_H - p.h * 0.5 - 0.05
+    local lim = HALF_H - p.h * 0.5
     local speed = 22.0
     if control == "ai" then
         p.target = ai_target()
@@ -714,9 +729,11 @@ local function new_game(mode)
 end
 
 local function to_title()
+    jev:begin_human()
     G.state = "title"
     set_menu("title", {
         { label = "1P  vs  AI", act = "1p" },
+        { label = "Jev", act = "jev" },
         { label = "LOCAL  2P", act = "2p" },
         { label = "SETTINGS", act = "settings" },
         { label = "QUIT", act = "quit" },
@@ -726,16 +743,209 @@ local function to_title()
     G.attract = true
 end
 
+------------------------------------------------------------------ jev
+local jev_keys = false
+local pulse_arm = false
+local pulse_live = false
+local human_prev = {}
+local HUMAN_KEYS = { "W", "S", "Up", "Down", "Space" }
+local SERVE_STEP = 0.5
+
+local function clear_hold()
+    pulse_arm = false
+    pulse_live = false
+    if not G.vkeys then
+        return
+    end
+
+    G.vkeys.W = nil
+    G.vkeys.S = nil
+    G.vkeys.Space = nil
+end
+
+local function sample_human_keys()
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, down = pcall(input.is_key_down_raw, key)
+        human_prev[key] = ok and down and true or false
+    end
+end
+
+local function human_edge()
+    local edge = false
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, down = pcall(input.is_key_down_raw, key)
+        down = ok and down and true or false
+        if down and not human_prev[key] then
+            edge = true
+        end
+        human_prev[key] = down
+    end
+    return edge
+end
+
+local function arm_pulse_frame(dt)
+    if not pulse_arm then
+        return
+    end
+    if G.state ~= "serve" or not G.vkeys then
+        pulse_arm = false
+        return
+    end
+    if (G.serve_t or 0) + dt <= 0.2 then
+        return
+    end
+
+    G.vkeys.Space = true
+    pulse_arm = false
+    pulse_live = true
+end
+
+local function settle_input()
+    if G.state ~= "play" and G.state ~= "serve" then
+        pulse_arm = false
+        if G.vkeys then
+            G.vkeys.W = nil
+            G.vkeys.S = nil
+        end
+    end
+    if pulse_live and G.vkeys then
+        G.vkeys.Space = nil
+        pulse_live = false
+    end
+end
+
+local function toward_score(gap, dir)
+    return -abs(gap - dir * SERVE_STEP)
+end
+
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9129,
+    id = "pong_remix",
+    description = "Pong Remix. The offered action moves the left paddle onto the ball, or serves when the ball is stuck. The right paddle is the AI. First to 11, win by 2.",
+    playing = function()
+        return G.state == "play" or G.state == "serve"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score[1] or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = function()
+        return {
+            paddle_y = PAD.L.y,
+            ball_x = BALL.x,
+            ball_y = BALL.y,
+            ball_vx = BALL.vx,
+            ball_vy = BALL.vy,
+            score_left = G.score[1] or 0,
+            score_right = G.score[2] or 0,
+        }
+    end,
+    actions = function()
+        local gap = predict_y(-PADDLE_X) - PAD.L.y
+        if BALL.stuck and abs(gap) <= SERVE_STEP then
+            return { { id = "serve", description = "Serve the ball.", score = 1 } }
+        end
+        if gap > 0.15 then
+            return { { id = "up", description = "Move the paddle up toward the ball.", score = gap } }
+        end
+        if gap < -0.15 then
+            return { { id = "down", description = "Move the paddle down toward the ball.", score = -gap } }
+        end
+        if BALL.stuck then
+            return { { id = "serve", description = "Serve the ball.", score = 1 } }
+        end
+        return { { id = "stop", description = "The paddle is on the ball.", score = 1 } }
+    end,
+    apply = function(id)
+        if id == "serve" then
+            if BALL.stuck then
+                G.vkeys.W = nil
+                G.vkeys.S = nil
+                if pulse_live then
+                    G.vkeys.Space = nil
+                    pulse_live = false
+                end
+                pulse_arm = true
+            end
+            return
+        end
+
+        pulse_arm = false
+        if pulse_live then
+            G.vkeys.Space = nil
+            pulse_live = false
+        end
+        if id == "up" then
+            G.vkeys.W = true
+            G.vkeys.S = nil
+        elseif id == "down" then
+            G.vkeys.W = nil
+            G.vkeys.S = true
+        elseif id == "stop" then
+            G.vkeys.W = nil
+            G.vkeys.S = nil
+        end
+    end,
+    reset = function(seed)
+        jev_keys = true
+        clear_hold()
+        math.randomseed(seed)
+        rand()
+        new_game("1p")
+        sample_human_keys()
+    end,
+    on_human = function()
+        jev_keys = false
+        clear_hold()
+    end,
+})
+
 local function do_menu_action(act)
     sfx("click")
-    if act == "1p" then runtime_ui.show(HUD); new_game("1p")
-    elseif act == "2p" then runtime_ui.show(HUD); new_game("2p")
-    elseif act == "again" then new_game(G.mode)
-    elseif act == "resume" then G.state = G.paused_from or "play"
+    if act == "1p" then
+        jev:begin_human()
+        runtime_ui.show(HUD)
+        new_game("1p")
+    elseif act == "2p" then
+        jev:begin_human()
+        runtime_ui.show(HUD)
+        new_game("2p")
+    elseif act == "again" then
+        jev:begin_human()
+        new_game(G.mode)
+    elseif act == "resume" then
+        G.state = G.paused_from or "play"
     elseif act == "settings" then
-        if SET then G.in_settings = true; SET:open(function() G.in_settings = false end) end
-    elseif act == "title" then to_title()
-    elseif act == "quit" then pcall(engine.quit)
+        if SET then
+            G.in_settings = true
+            SET:open(function() G.in_settings = false end)
+        end
+    elseif act == "title" then
+        to_title()
+    elseif act == "quit" then
+        pcall(engine.quit)
+    elseif act == "jev" then
+        runtime_ui.show(HUD)
+        local started = jev:start()
+        if not started then
+            local err = jev:error()
+            jev:begin_human()
+            if not err or err == "" then
+                err = "Jev failed to start"
+            end
+            pe_log("[Pong] " .. err)
+            G.banner = { text = err, sub = "", t = 0, dur = 4 }
+        end
     end
 end
 
@@ -799,6 +1009,8 @@ end
 
 local function update(dt)
     dt = min(dt, 1 / 20)
+    arm_pulse_frame(dt)
+    jev:tick(dt)
     G.t = G.t + dt
     local okS, sz = pcall(runtime_ui.get_surface_size)
     if okS and sz and (sz.width or 0) > 0 and (sz.width ~= SW or sz.height ~= SH) then SW, SH = sz.width, sz.height; cache = {} end
@@ -811,11 +1023,19 @@ local function update(dt)
             to_title()
             pe_log("[Pong] ready")
         end
+        settle_input()
         return
     end
     if SET then
         PSCALE = SET:particle_scale() or 1; SHAKE_SCALE = SET:shake_scale() or 1
-        if SET:update(dt) then latch(); mouse_clicked(); update_visuals(dt); draw_hud(dt); return end
+        if SET:update(dt) then
+            settle_input()
+            latch()
+            mouse_clicked()
+            update_visuals(dt)
+            draw_hud(dt)
+            return
+        end
     end
     local ok, mp = pcall(input.get_mouse_position)
     G.mouse_moved = ok and mp and G._mx and (abs(mp.x - G._mx) + abs(mp.y - G._my) > 1) or false
@@ -825,6 +1045,9 @@ local function update(dt)
         G._mx, G._my = mp.x, mp.y
     end
     if kdown("W") or kdown("S") or kdown("Up") or kdown("Down") then G.use_mouse = false end
+    if jev_keys then
+        G.use_mouse = false
+    end
     G.click = mouse_clicked()
     if pressed("M") then if SET then SET:toggle_mute() end end
     local st = G.state
@@ -848,6 +1071,7 @@ local function update(dt)
     end
     update_visuals(dt)
     draw_hud(dt)
+    settle_input()
     latch()
 end
 

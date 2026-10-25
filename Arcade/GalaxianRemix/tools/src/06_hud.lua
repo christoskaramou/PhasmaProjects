@@ -50,6 +50,19 @@ local function draw_hud(dt, st)
     local bon = G.banner.t > 0
     if G.phase == "start" and G.pt < 2.0 then btxt, ba, bon = "Player One", 1, true end
     text("ban", btxt, 0, SH * 0.42, SW, 80 * US, 2.2, { 1, .88, .45, ba }, "center", play and bon)
+    G.jev_err_t = (G.jev_err_t or 0) - dt
+    local show_err = play and G.jev_err ~= nil and G.jev_err_t > 0
+    text(
+        "jev_err",
+        G.jev_err or "",
+        SW * 0.08,
+        SH * 0.5,
+        SW * 0.84,
+        48 * US,
+        0.85,
+        { 1, .4, .32, 1 },
+        "center",
+        show_err)
     -- diving-flagship score popups
     for i = 1, 4 do
         local p = G.POPS[i]
@@ -81,7 +94,8 @@ local function draw_hud(dt, st)
     text("o_s", "Score " .. tostring(G.score), 0, SH * 0.24 + 140 * US, SW, 44 * US, 1.4, WHITE, "center", over)
     local c = {}
     local yb = SH * 0.25
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb, title)
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, yb, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, yb, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.42, pause)
@@ -94,24 +108,200 @@ local function draw_hud(dt, st)
 end
 
 ------------------------------------------------------------------ flow
+local jev
+local RAW_HELD = { "Left", "Right", "A", "D", "Space", "J" }
+local raw_prev = {}
+local raw_ready = false
+
+local function clear_move()
+    G.vk.Left = nil
+    G.vk.A = nil
+    G.vk.Right = nil
+    G.vk.D = nil
+end
+
+local function clear_hold()
+    clear_move()
+    G.vk.Space = nil
+    G.vk.J = nil
+end
+
+local function hold_dir(dir)
+    clear_move()
+    if dir < 0 then
+        G.vk.Left = true
+        G.vk.A = true
+    elseif dir > 0 then
+        G.vk.Right = true
+        G.vk.D = true
+    end
+end
+
+local function pulse_fire()
+    G.vk.Space = true
+end
+
+local driving = false
+
+local function aim_dx()
+    local px = G.P.x
+    local ax = px
+    local best = 1e18
+    for _, a in ipairs(G.A) do
+        if a.alive then
+            local y = a.y
+            if DIVE_STATES[a.st] then
+                y = y - 100
+            end
+            if y < best then
+                best = y
+                ax = a.x
+            end
+        end
+    end
+    return ax - px
+end
+
+local function jev_actions()
+    local dx = aim_dx()
+    if dx > 0.35 then
+        return { { id = "right", description = "Fly right. The guns keep firing.", score = dx } }
+    end
+    if dx < -0.35 then
+        return { { id = "left", description = "Fly left. The guns keep firing.", score = -dx } }
+    end
+    return { { id = "stop", description = "Lined up. The guns keep firing.", score = 1 } }
+end
+
+local function apply_action(id)
+    if id == "left" or id == "left_fire" then
+        hold_dir(-1)
+    elseif id == "right" or id == "right_fire" then
+        hold_dir(1)
+    elseif id == "stop" then
+        hold_dir(0)
+    end
+end
+
+local function prime_raw()
+    raw_ready = true
+    if not input.is_key_down_raw then
+        return
+    end
+
+    for i = 1, #RAW_HELD do
+        local key = RAW_HELD[i]
+        local ok, down = pcall(input.is_key_down_raw, key)
+        raw_prev[key] = ok and down and true or false
+    end
+end
+
+local function human_edge()
+    if not input.is_key_down_raw then
+        return false
+    end
+
+    local hit = false
+    for i = 1, #RAW_HELD do
+        local key = RAW_HELD[i]
+        local ok, down = pcall(input.is_key_down_raw, key)
+        local pressed = ok and down and true or false
+        if raw_ready and pressed and not raw_prev[key] then
+            hit = true
+        end
+        raw_prev[key] = pressed
+    end
+    raw_ready = true
+    return hit
+end
+
+local function nearest_diver()
+    local px = G.P.x
+    local py = G.P.y
+    local best = 1e18
+    local bx = 0
+    local by = 0
+    local found = false
+    for _, a in ipairs(G.A) do
+        if a.alive and DIVE_STATES[a.st] then
+            local dx = a.x - px
+            local dy = a.y - py
+            local d2 = dx * dx + dy * dy
+            if d2 < best then
+                best = d2
+                bx = a.x
+                by = a.y
+                found = true
+            end
+        end
+    end
+    return bx, by, found
+end
+
+local function observe()
+    local dx, dy, diving = nearest_diver()
+    local lives = G.ships
+    if G.P.alive then
+        lives = lives + 1
+    end
+    return {
+        player_x = G.P.x,
+        diver_x = dx,
+        diver_y = dy,
+        diving = diving,
+        lives = lives,
+        score = G.score,
+    }
+end
+
+local function reset_match(seed)
+    if seed ~= nil then
+        math.randomseed(seed)
+    end
+    clear_hold()
+    G.jev_err = nil
+    G.jev_err_t = 0
+    SET:close()
+    G.set_open = false
+    G.reset_world()
+    G.new_game_sim()
+    G.state = "play"
+    music("swarm")
+    sfx("start")
+    prime_raw()
+end
+
 local function to_title()
+    jev:begin_human()
+    G.jev_err = nil
+    G.jev_err_t = 0
     G.state = "title"
     G.new_game_sim(); G.reset_world()
     G.P.alive = false; G.phase = "attract"; G.dive_t = 2
     music("title")
 end
 G.to_title = to_title
+
 local function new_game()
-    G.reset_world(); G.new_game_sim()
-    G.state = "play"
-    music("swarm"); sfx("start")
+    jev:begin_human()
+    reset_match(nil)
 end
 G.new_game = new_game
+
 local function game_over()
-    G.state = "over"; G.over_t = 0
-    music(nil); sfx("gameover")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    G.state = "over"
+    G.over_t = 0
+    music(nil)
+    sfx("gameover")
+    if jev:assisted() then
+        return
+    end
+    if G.score > G.hiscore then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
+
 local acc = 0
 local mprev = 0
 local q = { fire = false }
@@ -119,10 +309,13 @@ local lmouse_prev = true
 local function update(dt)
     flush_mats()
     if G.on_frame then G.on_frame(dt) end
+    jev:tick(dt)
     dt = min(dt, 0.1)
     G.t = G.t + dt; G.dt = dt
     local k = { ret = edge("Return"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), qk = edge("Q"), f3 = edge("F3"),
         space = edge("Space"), j = edge("J") }
+    G.vk.Space = nil
+    G.vk.J = nil
     local ld = false
     pcall(function() ld = input.is_left_mouse_down and input.is_left_mouse_down() and true or false end)
     local lclick = ld and not lmouse_prev; lmouse_prev = ld
@@ -136,12 +329,23 @@ local function update(dt)
     local function open_settings() sfx("click"); SET:open(); G.set_open = true end
     if k.m then SET:toggle_mute() end
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game()
+        if c.jev then
+            sfx("click")
+            local ok = jev:start()
+            if not ok then
+                local err = jev:error() or "Jev failed to start"
+                jev:begin_human()
+                G.jev_err = tostring(err)
+                G.jev_err_t = 8
+                pe_log("[GX] " .. G.jev_err)
+            end
+        elseif k.ret or k.space or c.start then sfx("click"); new_game()
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "play" then
         if k.p or k.esc then G.state = "pause"; sfx("click")
         elseif k.space or k.j or lclick then q.fire = true end
+        if driving then q.fire = true end
     elseif st == "pause" then
         if k.p or k.esc or k.ret or c.resume then G.state = "play"; sfx("click")
         elseif k.o or c.set_p then open_settings()
@@ -207,6 +411,37 @@ build_lights()
 build_trails()
 paint_templates()
 build_world()
+local JevAuto = assert(load(assert(fs.read("Scripts/jev_auto.lua")), "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9141,
+    id = "galaxian_remix",
+    description = "Galaxian Remix. The offered action is the steer, and the guns fire while Jev is playing. "
+        .. "Prefer the higher action score.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = observe,
+    actions = jev_actions,
+    apply = apply_action,
+    reset = function(seed)
+        driving = true
+        reset_match(seed)
+    end,
+    on_human = function()
+        driving = false
+        clear_hold()
+    end,
+})
 to_title()
 G.update = update; G.SET = SET
 hooks { update = update }

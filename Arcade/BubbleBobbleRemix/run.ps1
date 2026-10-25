@@ -28,5 +28,17 @@ Get-ChildItem $src -Filter '*.dll' -File | Where-Object { $_.Name -notmatch '_li
 foreach ($f in 'RuntimeAssets','MaterialX') { if (Test-Path (Join-Path $src $f)) { Copy-Item (Join-Path $src $f) $runtime -Recurse -Force } }
 @{ project_path = (Join-Path $PSScriptRoot 'Assets'); project_manifest = ''; startup_scene = 'Scenes/main.pescene'; graphics_api = $Api; live_profiler = $false } |
     ConvertTo-Json | Set-Content (Join-Path $runtime 'phasma_settings.json') -Encoding utf8
+# Races start the driver from inside the game, which may only run programs under its Assets folder (proc.start
+# refuses anything else). Copy it into the runtime copy and into this source folder's Assets/Bots (gitignored),
+# so the game also finds it when opened in place from PhasmaLauncher or the editor.
+$driver = Join-Path $engineRoot 'build-game-driver/Release/PhasmaGameDriver.exe'
+if (Test-Path -LiteralPath $driver) {
+    foreach ($bots in @((Join-Path $runtime 'Assets/Bots'), (Join-Path $PSScriptRoot 'Assets/Bots'))) {
+        New-Item -ItemType Directory -Path $bots -Force | Out-Null
+        try { Copy-Item -LiteralPath $driver -Destination $bots -Force } catch { Write-Warning "Could not refresh $bots/PhasmaGameDriver.exe: $_" }
+    }
+} else {
+    Write-Warning "Missing $driver. Run Phasma/GameDriver/build.ps1 in $engineRoot to race Jev."
+}
 Start-Process (Join-Path $runtime 'PhasmaPlayer.exe') -ArgumentList '--api', $Api, '--display', $Display -WorkingDirectory $runtime
 Write-Host "$game launched from $runtime (player: $src). Log: $runtime\PhasmaEngine.log"

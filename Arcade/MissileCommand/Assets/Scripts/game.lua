@@ -68,6 +68,9 @@ local flyer = nil
 local W, H = 1280, 720
 local ui = { tally = nil }
 local mouse_prev, keys_prev = false, {}
+local jev
+local jev_error
+local jev_error_t = 0
 local wave_plan = nil
 
 local function multiplier(w) return min(6, floor((w + 1) / 2)) end
@@ -866,6 +869,63 @@ local function rmouse_edge()
     return e
 end
 
+local human_down = {}
+local human_hit = false
+local human_sampled = false
+
+local function raw_down(name)
+    local reader = input and input.is_key_down_raw
+    if not reader then
+        return false
+    end
+
+    local ok, down = pcall(reader, name)
+    return ok and down == true
+end
+
+local function human_edge()
+    if human_sampled then
+        return human_hit
+    end
+
+    human_sampled = true
+    local hit = false
+
+    local function pressed(name)
+        local down = raw_down(name)
+        local was = human_down[name] == true
+        human_down[name] = down
+        return down and not was
+    end
+
+    if pressed("Space") then
+        hit = true
+    end
+    if pressed("A") then
+        hit = true
+    end
+    if pressed("S") then
+        hit = true
+    end
+    if pressed("D") then
+        hit = true
+    end
+
+    local click = false
+    if input and input.is_left_mouse_down then
+        local ok, down = pcall(input.is_left_mouse_down)
+        click = ok and down == true
+    end
+    local was_click = human_down.mouse == true
+    human_down.mouse = click
+    if click and not was_click then
+        hit = true
+    end
+
+    human_hit = hit
+    return human_hit
+end
+
 ------------------------------------------------------------------ screens
 local function save_hi()
     pcall(fs.write, PROJECT .. "highscore.txt", tostring(S.hi))
@@ -873,6 +933,44 @@ end
 local function load_hi()
     local ok, s = pcall(fs.read, PROJECT .. "highscore.txt")
     if ok and s then S.hi = tonumber(s) or 0 end
+end
+
+local function clear_jev_error()
+    jev_error = nil
+    jev_error_t = 0
+    hud_hide("jev_err")
+end
+
+local function note_jev_error(message)
+    jev_error = tostring(message)
+    jev_error_t = 8
+    pe_log("[MC] " .. jev_error)
+end
+
+local function draw_jev_error(dt)
+    if jev_error_t <= 0 then
+        return
+    end
+
+    jev_error_t = jev_error_t - dt
+    if jev_error_t <= 0 then
+        clear_jev_error()
+        return
+    end
+
+    local sw, sh = surface()
+    T("jev_err", sw * 0.08, sh * 0.78, sw * 0.84, sh * 0.045, jev_error or "", 0.95, { 1, 0.4, 0.45, 1 }, "center", 26)
+end
+
+local function commit_hi()
+    if jev and jev:assisted() then
+        return
+    end
+
+    if S.score > S.hi then
+        S.hi = S.score
+        save_hi()
+    end
 end
 
 local function clear_actors()
@@ -967,9 +1065,23 @@ local function update_title(dt)
     S.t_title = (S.t_title or 0) + dt
     local sw, sh = surface()
     local a = 0.55 + 0.45 * sin(S.t * 4)
-    local bw, bh = sw * 0.17, sh * 0.065
-    local go = button("menu_b_start", sw * 0.5 - bw - 10, sh * 0.65, bw, bh, "START GAME", { 1.0, 0.45, 0.5 })
-    if button("menu_b_set", sw * 0.5 + 10, sh * 0.65, bw, bh, "SETTINGS", { 0.4, 0.9, 1.0 }) then want_settings = true end
+    local bw, bh = sw * 0.16, sh * 0.065
+    local gap = 10
+    local x0 = (sw - (bw * 3 + gap * 2)) * 0.5
+    local go = button("menu_b_start", x0, sh * 0.65, bw, bh, "START GAME", { 1.0, 0.45, 0.5 })
+    local jev_go = button("menu_b_jev", x0 + bw + gap, sh * 0.65, bw, bh, "Jev", { 0.72, 0.45, 1.0 })
+    local set_go = button(
+        "menu_b_set",
+        x0 + (bw + gap) * 2,
+        sh * 0.65,
+        bw,
+        bh,
+        "SETTINGS",
+        { 0.4, 0.9, 1.0 }
+    )
+    if set_go then
+        want_settings = true
+    end
     T("menu_start", sw * 0.2, sh * 0.725, sw * 0.6, sh * 0.04, "ENTER: start    O: settings", 1.0, { 1, 1, 1, a * 0.7 }, "center", 21)
     -- attract mode: missiles rain and get intercepted automatically
     demo_t = demo_t - dt
@@ -988,8 +1100,17 @@ local function update_title(dt)
     -- in attract mode cities are immortal
     for _, e in ipairs(enemies) do e.target = { kind = "none" } end
     mouse_edge()
-    if go or key_edge("Return") or key_edge("Space") then
-        if S.t_title > 0.5 then new_game() end
+    if jev_go then
+        clear_jev_error()
+        local ok, err = jev:start()
+        if not ok then
+            note_jev_error(err or jev:error() or "Jev failed to start")
+        end
+    elseif go or key_edge("Return") or key_edge("Space") then
+        if S.t_title > 0.5 then
+            jev:begin_human()
+            new_game()
+        end
     end
 end
 
@@ -1039,7 +1160,7 @@ local function update_tally(dt)
         for _, c in ipairs(cities) do if c.alive then any = true end end
         if not any and S.bonus_cities <= 0 then
             S.mode = "gameover"; S.go_t = 0; sfx("gameover")
-            if S.score > S.hi then S.hi = S.score; save_hi() end
+            commit_hi()
         else
             begin_wave()
         end
@@ -1102,12 +1223,16 @@ local function update_gameover(dt)
         local again = button("menu_b_again", sw * 0.5 - bw - 10, sh * 0.55, bw, bh, "PLAY AGAIN", { 1.0, 0.45, 0.5 })
         local totitle = button("menu_b_title", sw * 0.5 + 10, sh * 0.55, bw, bh, "TITLE SCREEN", { 0.4, 0.9, 1.0 })
         mouse_edge()
-        if again then hud_hide("menu_"); new_game()
+        if again then
+            hud_hide("menu_")
+            jev:begin_human()
+            new_game()
         elseif totitle or key_edge("Return") then
             hud_hide("menu_")
             for _, c in ipairs(cities) do restore_city(c) end
             for _, b in ipairs(bases) do b.alive = true; b.ammo = 10; refresh_stock(b); glow(b.ring, 0.2, 1.6, 2.4) end
             S.score = 0; S.wave = 0; S.mult = 1
+            jev:begin_human()
             title_screen()
         end
     else mouse_edge() end
@@ -1118,6 +1243,11 @@ local function update(dt)
     if dt > 0.1 then dt = 0.1 end
     S.t = S.t + dt
     frame_no = frame_no + 1
+    human_sampled = false
+    human_edge()
+    if jev then
+        jev:tick(dt)
+    end
     if frame_no == 3 then for _, fn in ipairs(deferred_mats) do pcall(fn) end end
     -- edges are sampled every frame (even while settings is open) so the ESC that closes it is not re-seen
     local k_p, k_esc, k_o, k_tab = key_edge("P"), key_edge("Escape"), key_edge("O"), key_edge("Tab")
@@ -1138,7 +1268,8 @@ local function update(dt)
     if S.quit_req then S.quit_req = false; k_esc = true end
     if k_esc and S.mode ~= "title" then
         clear_actors(); hud_hide("menu_"); S.paused = false
-        if S.score > S.hi then S.hi = S.score; save_hi() end
+        commit_hi()
+        jev:begin_human()
         S.score = 0; S.wave = 0; S.mult = 1
         for _, c in ipairs(cities) do restore_city(c) end
         title_screen()
@@ -1185,11 +1316,177 @@ local function update(dt)
     end
     if S.mode ~= "play" then hud_hide("pbtn") end
     if S.mode ~= "title" then draw_hud() else hud_hide("score"); hud_hide("hi"); hud_hide("wave"); hud_hide("ammo"); hud_hide("top_") end
+    draw_jev_error(dt)
 end
 
 -- debug/automation hook for MCP screenshots
 _G.MC = { S = S, fire = fire, new_game = new_game, aim = function(x, y) aimx, aimy = x, y end,
     spawn = function(x, y, s) spawn_enemy(x, y, s or 3, false) end, boom = spawn_boom,
     city = destroy_city, tally = function() wave_plan.spawned = wave_plan.total; clear_actors(); start_tally() end, over = function() for _, c in ipairs(cities) do destroy_city(c) end; hud_hide('menu_'); S.mode = 'gameover'; S.go_t = 0 end, cities = cities, title = title_screen, set_mode = function(m) S.mode = m end, pause = function(p) S.paused = p end }
+
+
+local JEV_COLS = 4
+local JEV_ROWS = 3
+local JEV_Y0 = 2.6
+local JEV_Y1 = 21
+
+local function jev_cell_at(x, y)
+    local span_x = HW * 2
+    local span_y = JEV_Y1 - JEV_Y0
+    local u = (x + HW) / span_x
+    local v = (y - JEV_Y0) / span_y
+    if u < 0 then
+        u = 0
+    elseif u > 0.999999 then
+        u = 0.999999
+    end
+    if v < 0 then
+        v = 0
+    elseif v > 0.999999 then
+        v = 0.999999
+    end
+    return floor(u * JEV_COLS) + 1, floor(v * JEV_ROWS) + 1
+end
+
+local function jev_cell_center(col, row)
+    local span_x = HW * 2
+    local span_y = JEV_Y1 - JEV_Y0
+    local x = -HW + (col - 0.5) * (span_x / JEV_COLS)
+    local y = JEV_Y0 + (row - 0.5) * (span_y / JEV_ROWS)
+    return x, y
+end
+
+-- An interceptor still in flight is this battery's reload.
+local function battery_reloading(bi)
+    local b = bases[bi]
+    if not b then
+        return true
+    end
+
+    for i = 1, #shots do
+        local shot = shots[i]
+        if shot.sx == b.x and shot.sy == b.y then
+            return true
+        end
+    end
+    return false
+end
+
+local function battery_ready(bi)
+    local b = bases[bi]
+    if not b or not b.alive or b.ammo <= 0 then
+        return false
+    end
+    return not battery_reloading(bi)
+end
+
+local function jev_observe()
+    local warheads = {}
+    for i = 1, #enemies do
+        local e = enemies[i]
+        local col, row = jev_cell_at(e.x, e.y)
+        warheads[#warheads + 1] = string.format("c%d_r%d", col, row)
+    end
+
+    local batteries = {}
+    for bi = 1, #bases do
+        batteries[bi] = battery_ready(bi)
+    end
+
+    local alive = {}
+    for ci = 1, #cities do
+        alive[ci] = cities[ci].alive == true
+    end
+
+    return {
+        warheads = warheads,
+        batteries = batteries,
+        cities = alive,
+        score = S.score or 0,
+    }
+end
+
+local function jev_actions()
+    local list = {}
+    for bi = 1, #bases do
+        if battery_ready(bi) then
+            for col = 1, JEV_COLS do
+                for row = 1, JEV_ROWS do
+                    list[#list + 1] = {
+                        id = string.format("b%d_c%d_r%d", bi, col, row),
+                        description = string.format(
+                            "Fire battery %d (1 left) at column %d of 4 (1 left), row %d of 3 (1 low)",
+                            bi,
+                            col,
+                            row
+                        ),
+                    }
+                end
+            end
+        end
+    end
+    return list
+end
+
+local function jev_apply(id)
+    local btext, ctext, rtext = string.match(id, "^b(%d)_c(%d)_r(%d)$")
+    local bi = tonumber(btext)
+    local col = tonumber(ctext)
+    local row = tonumber(rtext)
+    if not bi or not col or not row then
+        return
+    end
+    if bi < 1 or bi > #bases or col < 1 or col > JEV_COLS or row < 1 or row > JEV_ROWS then
+        return
+    end
+    if not battery_ready(bi) then
+        return
+    end
+
+    local x, y = jev_cell_center(col, row)
+    local old_x, old_y = aimx, aimy
+    aimx = x
+    aimy = y
+    fire(bi)
+    aimx = old_x
+    aimy = old_y
+end
+
+local function jev_reset(seed)
+    S.paused = false
+    math.randomseed(seed)
+    new_game()
+end
+
+local jev_source = fs.read("Scripts/jev_auto.lua")
+if not jev_source then
+    error("Missing Scripts/jev_auto.lua")
+end
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9104,
+    id = "missile_command",
+    description = "Missile Command. Fire one ready battery at one cell of a 4 column by 3 row sky. Incoming warheads keep flying while you decide.",
+    playing = function()
+        return (S.mode == "play" or S.mode == "wavestart") and not S.paused
+    end,
+    terminal = function()
+        return S.mode == "gameover"
+    end,
+    score = function()
+        return S.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = jev_observe,
+    actions = jev_actions,
+    apply = jev_apply,
+    reset = jev_reset,
+    on_human = function()
+        clear_jev_error()
+    end,
+})
 
 hooks { init = init, update = update }

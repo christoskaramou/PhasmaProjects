@@ -19,6 +19,25 @@ local function key(k) local ok, v = pcall(input.is_key_down_raw, k); return ok a
 local VK = {}                       -- virtual keys (automation / tests)
 local function down(k) return VK[k] or key(k) end
 local prevk = {}
+local jev_hold = {}
+local P1_HOLD = { "A", "D", "Space", "W", "S", "F" }
+local function clear_p1_holds()
+    for i = 1, #P1_HOLD do
+        local k = P1_HOLD[i]
+        if jev_hold[k] then
+            jev_hold[k] = nil
+            VK[k] = nil
+            if not key(k) then
+                prevk[k] = false
+            end
+        end
+    end
+end
+local function hold_p1(k)
+    jev_hold[k] = true
+    VK[k] = true
+    prevk[k] = true
+end
 -- left mouse button (fire); VK.LMB lets automation click
 local function lmb()
     if VK.LMB then return true end
@@ -796,6 +815,7 @@ end
 ------------------------------------------------------------------ menus / HUD
 local MENU = {
     { id = "start1", label = function() return "1 PLAYER  vs  AI" end },
+    { id = "jev", label = function() return "Jev" end },
     { id = "start2", label = function() return "2 PLAYERS  (LOCAL)" end },
     { id = "arena", label = function() return "ARENA :  < " .. ARENA_STYLE[AR.arenas[S.arena].name].label .. " >" end },
     { id = "bounce", label = function() return "BOUNCING SHOTS :  " .. (S.bounce and "ON" or "OFF") end },
@@ -815,7 +835,7 @@ local function draw_title()
     txt("m_t2", cx - w / 2, sh * 0.245, w, sh * 0.04, "ARMORED  ARENA  DUEL", 1.15, { 1.0, 0.35, 0.7, 1 }, "center", 21)
     for i, m in ipairs(MENU) do
         local sel = (i == S.menu_i)
-        local y = sh * (0.32 + (i - 1) * 0.058)
+        local y = sh * (0.305 + (i - 1) * 0.048)
         if sel then panel("m_sel", cx - w * 0.42, y - sh * 0.004, w * 0.84, sh * 0.05, { 0.1, 0.6, 1.0, 0.18 + 0.08 * sin(S.t * 6) }, { 0.3, 0.9, 1.0, 0.9 }, 21, 8) end
         local st, hov = hit("m_k" .. i, cx - w * 0.42, y - sh * 0.004, w * 0.84, sh * 0.05)
         if hov then S.menu_i = i end
@@ -873,11 +893,139 @@ local function start_match(players)
     S.mode = "countdown"; S.countdown = 2.4; S.paused = false
     sfx("start")
 end
+local jev
 local function to_title()
+    jev:begin_human()
     S.mode = "title"; S.paused = false
     hud_hide("h_"); hud_hide("p_"); hud_hide("w_"); hud_hide("c_")
     for k = 1, 2 do shells[k].alive = false end
 end
+
+local JevAuto = assert(load(assert(fs.read("Scripts/jev_auto.lua")), "@Scripts/jev_auto.lua", "t", _ENV))()
+local human_prev = {}
+local human_seen = false
+local HUMAN_KEYS = {
+    "A", "D", "W", "S", "Space", "F", "Left Shift",
+    "Up", "Down", "Left", "Right", "Return", "Right Ctrl",
+}
+local function human_edge()
+    local hit = false
+    for i = 1, #HUMAN_KEYS do
+        local name = HUMAN_KEYS[i]
+        local held = key(name) and true or false
+        if human_seen and held and not human_prev[name] then
+            hit = true
+        end
+        human_prev[name] = held
+    end
+    local ok_m, mouse = pcall(input.is_left_mouse_down)
+    local mouse_down = ok_m and mouse and true or false
+    if human_seen and mouse_down and not human_prev.LMB then
+        hit = true
+    end
+    human_prev.LMB = mouse_down
+    human_seen = true
+    return hit
+end
+local function apply_jev(id)
+    clear_p1_holds()
+    if id == "left" then
+        hold_p1("A")
+    elseif id == "right" then
+        hold_p1("D")
+    elseif id == "thrust" then
+        hold_p1("Space")
+        hold_p1("W")
+    elseif id == "reverse" then
+        hold_p1("S")
+    elseif id == "fire" then
+        -- F is read with down() every frame; fire() repeats after its cooldown.
+        hold_p1("F")
+    elseif id == "thrust_fire" then
+        hold_p1("Space")
+        hold_p1("W")
+        hold_p1("F")
+    end
+end
+local function tank_view(t)
+    if not t then
+        return { x = 0, z = 0, yaw = 0 }
+    end
+    return { x = t.x, z = t.z, yaw = wrapdeg(t.yaw) }
+end
+local function jev_observe()
+    local a = tanks[1]
+    local b = tanks[2]
+    local seen = false
+    if a and b then
+        seen = los(a.x, a.z, b.x, b.z) and true or false
+    end
+    local p1_score = 0
+    local p2_score = 0
+    if a then
+        p1_score = a.score
+    end
+    if b then
+        p2_score = b.score
+    end
+    return {
+        p1 = tank_view(a),
+        p2 = tank_view(b),
+        los = seen,
+        score = { p1 = p1_score, p2 = p2_score },
+    }
+end
+jev = JevAuto.attach({
+    port = 9106,
+    id = "neon_combat",
+    description = "Neon Combat tank duel. Jev drives player 1. The offered action turns toward the other tank, or drives and fires once lined up. Prefer the higher action score.",
+    playing = function()
+        return S.mode == "play" or S.mode == "countdown"
+    end,
+    terminal = function()
+        return S.mode == "win"
+    end,
+    score = function()
+        local a = tanks[1]
+        if not a then
+            return 0
+        end
+        return a.score
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = jev_observe,
+    actions = function()
+        local a = tanks[1]
+        local b = tanks[2]
+        if not a or not b or not a.alive or not b.alive then
+            return { { id = "thrust_fire", description = "Drive and fire.", score = 1 } }
+        end
+        local dx = b.x - a.x
+        local dz = b.z - a.z
+        local want = math.deg(math.atan2(-dz, dx))
+        local err = wrapdeg(want - a.yaw)
+        if err > 8 then
+            return { { id = "left", description = "Turn left toward the other tank.", score = err } }
+        end
+        if err < -8 then
+            return { { id = "right", description = "Turn right toward the other tank.", score = -err } }
+        end
+        return { { id = "thrust_fire", description = "Facing the other tank. Drive and fire.", score = 1 } }
+    end,
+    apply = apply_jev,
+    reset = function(seed)
+        if not tanks[1] or not tanks[2] then
+            return
+        end
+        math.randomseed(seed)
+        clear_p1_holds()
+        start_match(1)
+    end,
+    on_human = clear_p1_holds,
+})
 
 local function menu_input()
     local n = #MENU
@@ -896,8 +1044,21 @@ local function menu_input()
         j = (j - 1 + (d == 0 and 1 or d)) % #opts + 1; S.target = opts[j]; sfx("click")
     elseif id == "ai" and (d ~= 0 or ok) then S.ai_level = (S.ai_level - 1 + (d == 0 and 1 or d)) % 3 + 1; sfx("click")
     elseif ok then
-        if id == "start1" then start_match(1)
-        elseif id == "start2" then start_match(2)
+        if id == "start1" then
+            jev:begin_human()
+            start_match(1)
+        elseif id == "start2" then
+            jev:begin_human()
+            start_match(2)
+        elseif id == "jev" then
+            local started = jev:start()
+            if not started then
+                local err = jev:error() or "Jev could not start"
+                S.banner = err
+                S.banner_t = 6
+                S.banner_col = { 1, 0.4, 0.45 }
+                pe_log("[NC] " .. err)
+            end
         elseif id == "settings" then hud_hide("m_"); SET:open(function() end); sfx("click")
         elseif id == "quit" then pcall(engine.quit) end
     end
@@ -924,7 +1085,9 @@ local function pause_input()
         local id = PAUSE[S.pause_i].id
         hud_hide("p_")
         if id == "resume" then S.paused = false
-        elseif id == "restart" then start_match(S.players)
+        elseif id == "restart" then
+            jev:begin_human()
+            start_match(S.players)
         elseif id == "settings" then SET:open(function() end)
         elseif id == "title" then to_title() end
     end
@@ -974,6 +1137,7 @@ local function init()
 end
 
 local function update(dt)
+    jev:tick(dt)
     if dt > 0.1 then dt = 0.1 end
     S.t = S.t + dt; S.frame = S.frame + 1
     for i = #deferred, 1, -1 do
@@ -1053,6 +1217,7 @@ local function update(dt)
         S.banner_t = max(0, S.banner_t - dt)
         S.flash = max(0, S.flash - dt * 2.5)
         if S.mode == "win" then
+            clear_p1_holds()
             S.win_t = S.win_t + dt
             local sw, sh = surface()
             local c = TEAM[S.winner].col
@@ -1066,14 +1231,24 @@ local function update(dt)
                 sparks(x, 2 + rand() * 3, z, c[1], c[2], c[3], 70, 9, 1.2)
                 flash_light(x, 3, z, c[1], c[2], c[3], 40, 8, 0.6)
             end
-            if S.win_t > 1.5 and (edge("Return") or edge("Space")) then start_match(S.players)
-            elseif edge("Escape") then to_title() end
+            if S.win_t > 1.5 and (edge("Return") or edge("Space")) then
+                jev:begin_human()
+                start_match(S.players)
+            elseif edge("Escape") then
+                to_title()
+            end
         end
     end
     for _, t in ipairs(tanks) do draw_tank(t) end
     if S.mode ~= "title" then draw_hud() else hud_hide("h_") end
     update_lights(dt)
     update_camera(frozen and 0 or dt)
+    for i = 1, #P1_HOLD do
+        local k = P1_HOLD[i]
+        if jev_hold[k] then
+            prevk[k] = true
+        end
+    end
     for _, k in ipairs(EDGE_KEYS) do if prevk[k] == nil then prevk[k] = down(k) end end
 end
 
