@@ -1,0 +1,1574 @@
+<?xml version="1.0"?>
+<materialx version="1.39" colorspace="lin_rec709">
+  <nodegraph name="NG_BishopBlack">
+    <image name="diffuse2" type="color3">
+      <input name="file" type="filename" value="textures/bishop_black_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic2" type="float">
+      <input name="file" type="filename" value="textures/bishop_shared_metallic.jpg" />
+    </image>
+    <image name="roughness2" type="float">
+      <input name="file" type="filename" value="textures/bishop_black_roughness.jpg" />
+    </image>
+    <image name="normal2" type="vector3">
+      <input name="file" type="filename" value="textures/bishop_black_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap4" type="vector3">
+      <input name="in" type="vector3" nodename="normal2" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap4" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse2" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic2" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness2" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse2" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse2" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Bishop_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_BishopBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_BishopBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_BishopBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_BishopBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_BishopBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_BishopBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_BishopBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_BishopBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_BishopBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_BishopBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_BishopBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_BishopBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_BishopBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_BishopBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_BishopBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_BishopBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_BishopBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_BishopBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_BishopBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_BishopBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_BishopBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_BishopBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_BishopBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_BishopBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_BishopBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_BishopBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_BishopBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_BishopBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_BishopBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_BishopBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Bishop_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Bishop_B" />
+  </surfacematerial>
+  <nodegraph name="NG_BishopWhite">
+    <image name="diffuse3" type="color3">
+      <input name="file" type="filename" value="textures/bishop_white_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic3" type="float">
+      <input name="file" type="filename" value="textures/bishop_shared_metallic.jpg" />
+    </image>
+    <image name="roughness3" type="float">
+      <input name="file" type="filename" value="textures/bishop_white_roughness.jpg" />
+    </image>
+    <image name="normal3" type="vector3">
+      <input name="file" type="filename" value="textures/bishop_white_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap5" type="vector3">
+      <input name="in" type="vector3" nodename="normal3" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap5" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse3" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic3" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness3" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse3" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse3" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Bishop_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_BishopWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_BishopWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_BishopWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_BishopWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_BishopWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_BishopWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_BishopWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_BishopWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_BishopWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_BishopWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_BishopWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_BishopWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_BishopWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_BishopWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_BishopWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_BishopWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_BishopWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_BishopWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_BishopWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_BishopWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_BishopWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_BishopWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_BishopWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_BishopWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_BishopWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_BishopWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_BishopWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_BishopWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_BishopWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_BishopWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Bishop_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Bishop_W" />
+  </surfacematerial>
+  <nodegraph name="NG_CastleBlack">
+    <image name="diffuse6" type="color3">
+      <input name="file" type="filename" value="textures/castle_black_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic6" type="float">
+      <input name="file" type="filename" value="textures/castle_shared_metallic.jpg" />
+    </image>
+    <image name="roughness6" type="float">
+      <input name="file" type="filename" value="textures/castle_shared_roughness.jpg" />
+    </image>
+    <image name="normal6" type="vector3">
+      <input name="file" type="filename" value="textures/castle_shared_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap8" type="vector3">
+      <input name="in" type="vector3" nodename="normal6" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap8" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse6" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic6" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness6" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse6" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse6" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Castle_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_CastleBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_CastleBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_CastleBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_CastleBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_CastleBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_CastleBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_CastleBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_CastleBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_CastleBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_CastleBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_CastleBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_CastleBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_CastleBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_CastleBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_CastleBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_CastleBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_CastleBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_CastleBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_CastleBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_CastleBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_CastleBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_CastleBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_CastleBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_CastleBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_CastleBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_CastleBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_CastleBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_CastleBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_CastleBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_CastleBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Castle_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Castle_B" />
+  </surfacematerial>
+  <nodegraph name="NG_CastleWhite">
+    <image name="diffuse7" type="color3">
+      <input name="file" type="filename" value="textures/castle_white_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic7" type="float">
+      <input name="file" type="filename" value="textures/castle_shared_metallic.jpg" />
+    </image>
+    <image name="roughness7" type="float">
+      <input name="file" type="filename" value="textures/castle_shared_roughness.jpg" />
+    </image>
+    <image name="normal7" type="vector3">
+      <input name="file" type="filename" value="textures/castle_shared_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap9" type="vector3">
+      <input name="in" type="vector3" nodename="normal7" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap9" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse7" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic7" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness7" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse7" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse7" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Castle_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_CastleWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_CastleWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_CastleWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_CastleWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_CastleWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_CastleWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_CastleWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_CastleWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_CastleWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_CastleWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_CastleWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_CastleWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_CastleWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_CastleWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_CastleWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_CastleWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_CastleWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_CastleWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_CastleWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_CastleWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_CastleWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_CastleWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_CastleWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_CastleWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_CastleWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_CastleWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_CastleWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_CastleWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_CastleWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_CastleWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Castle_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Castle_W" />
+  </surfacematerial>
+  <nodegraph name="NG_ChessBoard">
+    <image name="mtlximage13" type="color3">
+      <input name="file" type="filename" value="textures/chessboard_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="mtlximage16" type="float">
+      <input name="file" type="filename" value="textures/chessboard_metallic.jpg" />
+    </image>
+    <image name="mtlximage17" type="float">
+      <input name="file" type="filename" value="textures/chessboard_roughness.jpg" />
+    </image>
+    <image name="mtlximage15" type="vector3">
+      <input name="file" type="filename" value="textures/chessboard_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap12" type="vector3">
+      <input name="in" type="vector3" nodename="mtlximage15" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap12" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="mtlximage13" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="mtlximage16" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="mtlximage17" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="mtlximage13" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="mtlximage13" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Chessboard" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_ChessBoard" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_ChessBoard" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_ChessBoard" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_ChessBoard" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_ChessBoard" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_ChessBoard" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_ChessBoard" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_ChessBoard" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_ChessBoard" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_ChessBoard" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_ChessBoard" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_ChessBoard" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_ChessBoard" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_ChessBoard" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_ChessBoard" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_ChessBoard" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_ChessBoard" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_ChessBoard" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_ChessBoard" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_ChessBoard" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_ChessBoard" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_ChessBoard" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_ChessBoard" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_ChessBoard" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_ChessBoard" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_ChessBoard" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_ChessBoard" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_ChessBoard" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_ChessBoard" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_ChessBoard" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Chessboard" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Chessboard" />
+  </surfacematerial>
+  <nodegraph name="NG_KingBlack">
+    <image name="mtlximage1" type="color3">
+      <input name="file" type="filename" value="textures/king_black_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="mtlximage2" type="float">
+      <input name="file" type="filename" value="textures/king_shared_metallic.jpg" />
+    </image>
+    <image name="mtlximage4" type="float">
+      <input name="file" type="filename" value="textures/king_black_roughness.jpg" />
+    </image>
+    <image name="mtlximage3" type="float">
+      <input name="file" type="filename" value="textures/king_shared_scattering.jpg" />
+    </image>
+    <image name="mtlximage6" type="vector3">
+      <input name="file" type="filename" value="textures/king_black_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap1" type="vector3">
+      <input name="in" type="vector3" nodename="mtlximage6" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap1" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="mtlximage1" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="mtlximage2" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="mtlximage4" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" nodename="mtlximage3" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="mtlximage1" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="mtlximage1" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="King_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_KingBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_KingBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_KingBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_KingBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_KingBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_KingBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_KingBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_KingBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_KingBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_KingBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_KingBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_KingBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_KingBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_KingBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_KingBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_KingBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_KingBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_KingBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_KingBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_KingBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_KingBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_KingBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_KingBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_KingBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_KingBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_KingBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_KingBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_KingBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_KingBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_KingBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_KingBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_KingBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_KingBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_KingBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_KingBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_KingBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_King_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="King_B" />
+  </surfacematerial>
+  <nodegraph name="NG_KingWhite">
+    <image name="mtlximage7" type="color3">
+      <input name="file" type="filename" value="textures/king_white_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="mtlximage10" type="float">
+      <input name="file" type="filename" value="textures/king_shared_metallic.jpg" />
+    </image>
+    <image name="mtlximage11" type="float">
+      <input name="file" type="filename" value="textures/king_white_roughness.jpg" />
+    </image>
+    <image name="mtlximage8" type="float">
+      <input name="file" type="filename" value="textures/king_shared_scattering.jpg" />
+    </image>
+    <image name="mtlximage9" type="vector3">
+      <input name="file" type="filename" value="textures/king_white_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap11" type="vector3">
+      <input name="in" type="vector3" nodename="mtlximage9" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap11" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="mtlximage7" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="mtlximage10" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="mtlximage11" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" nodename="mtlximage8" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="mtlximage7" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="mtlximage7" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="King_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_KingWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_KingWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_KingWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_KingWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_KingWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_KingWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_KingWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_KingWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_KingWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_KingWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_KingWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_KingWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_KingWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_KingWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_KingWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_KingWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_KingWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_KingWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_KingWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_KingWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_KingWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_KingWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_KingWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_KingWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_KingWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_KingWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_KingWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_KingWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_KingWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_KingWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_KingWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_KingWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_KingWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_KingWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_KingWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_KingWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_King_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="King_W" />
+  </surfacematerial>
+  <nodegraph name="NG_KnightBlack">
+    <image name="diffuse4" type="color3">
+      <input name="file" type="filename" value="textures/knight_black_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="roughness4" type="float">
+      <input name="file" type="filename" value="textures/knight_black_roughness.jpg" />
+    </image>
+    <image name="normal4" type="vector3">
+      <input name="file" type="filename" value="textures/knight_black_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap6" type="vector3">
+      <input name="in" type="vector3" nodename="normal4" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap6" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse4" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness4" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse4" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse4" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Knight_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_KnightBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_KnightBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_KnightBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_KnightBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_KnightBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_KnightBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_KnightBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_KnightBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_KnightBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_KnightBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_KnightBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_KnightBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_KnightBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_KnightBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_KnightBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_KnightBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_KnightBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_KnightBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_KnightBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_KnightBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_KnightBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_KnightBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_KnightBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_KnightBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_KnightBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_KnightBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_KnightBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_KnightBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_KnightBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_KnightBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Knight_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Knight_B" />
+  </surfacematerial>
+  <nodegraph name="NG_KnightWhite">
+    <image name="diffuse5" type="color3">
+      <input name="file" type="filename" value="textures/knight_white_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="roughness5" type="float">
+      <input name="file" type="filename" value="textures/knight_white_roughness.jpg" />
+    </image>
+    <image name="normal5" type="vector3">
+      <input name="file" type="filename" value="textures/knight_white_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap7" type="vector3">
+      <input name="in" type="vector3" nodename="normal5" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap7" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse5" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness5" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse5" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse5" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Knight_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_KnightWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_KnightWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_KnightWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_KnightWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_KnightWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_KnightWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_KnightWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_KnightWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_KnightWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_KnightWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_KnightWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_KnightWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_KnightWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_KnightWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_KnightWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_KnightWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_KnightWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_KnightWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_KnightWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_KnightWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_KnightWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_KnightWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_KnightWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_KnightWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_KnightWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_KnightWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_KnightWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_KnightWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_KnightWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_KnightWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Knight_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Knight_W" />
+  </surfacematerial>
+  <nodegraph name="NG_PawnBodyBlack">
+    <image name="diffuse9" type="color3">
+      <input name="file" type="filename" value="textures/pawn_black_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic9" type="float">
+      <input name="file" type="filename" value="textures/pawn_shared_metallic.jpg" />
+    </image>
+    <image name="roughness9" type="float">
+      <input name="file" type="filename" value="textures/pawn_shared_roughness.jpg" />
+    </image>
+    <image name="normal9" type="vector3">
+      <input name="file" type="filename" value="textures/pawn_shared_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap13" type="vector3">
+      <input name="in" type="vector3" nodename="normal9" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap13" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse9" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic9" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness9" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse9" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse9" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Pawn_Body_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_PawnBodyBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_PawnBodyBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Pawn_Body_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Pawn_Body_B" />
+  </surfacematerial>
+  <nodegraph name="NG_PawnBodyWhite">
+    <image name="diffuse8" type="color3">
+      <input name="file" type="filename" value="textures/pawn_white_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic8" type="float">
+      <input name="file" type="filename" value="textures/pawn_shared_metallic.jpg" />
+    </image>
+    <image name="roughness8" type="float">
+      <input name="file" type="filename" value="textures/pawn_shared_roughness.jpg" />
+    </image>
+    <image name="normal8" type="vector3">
+      <input name="file" type="filename" value="textures/pawn_shared_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap10" type="vector3">
+      <input name="in" type="vector3" nodename="normal8" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap10" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse8" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic8" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness8" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse8" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse8" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Pawn_Body_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_PawnBodyWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_PawnBodyWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Pawn_Body_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Pawn_Body_W" />
+  </surfacematerial>
+  <nodegraph name="NG_PawnTopBlack">
+    <image name="mtlximage19" type="float">
+      <input name="file" type="filename" value="textures/pawn_shared_roughness.jpg" />
+    </image>
+    <image name="mtlximage18" type="vector3">
+      <input name="file" type="filename" value="textures/pawn_shared_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap14" type="vector3">
+      <input name="in" type="vector3" nodename="mtlximage18" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap14" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="specular_roughness" type="float" nodename="mtlximage19" colorspace="lin_rec709" />
+      <input name="base_color" type="color3" value="1, 1, 1" colorspace="lin_rec709" />
+      <input name="transmission" type="float" value="1" colorspace="lin_rec709" />
+      <input name="transmission_color" type="color3" value="0.2995, 0.5, 0.450276" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" value="1, 1, 1" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" value="1, 1, 1" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Pawn_Top_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_PawnTopBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_PawnTopBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_PawnTopBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_PawnTopBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_PawnTopBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_PawnTopBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_PawnTopBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_PawnTopBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_PawnTopBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_PawnTopBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_PawnTopBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_PawnTopBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_PawnTopBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_PawnTopBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_PawnTopBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_PawnTopBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_PawnTopBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_PawnTopBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_PawnTopBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_PawnTopBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_PawnTopBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_PawnTopBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_PawnTopBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_PawnTopBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Pawn_Top_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Pawn_Top_B" />
+  </surfacematerial>
+  <nodegraph name="NG_PawnTopWhite">
+    <image name="mtlximage21" type="float">
+      <input name="file" type="filename" value="textures/pawn_shared_roughness.jpg" />
+    </image>
+    <image name="mtlximage20" type="vector3">
+      <input name="file" type="filename" value="textures/pawn_shared_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap15" type="vector3">
+      <input name="in" type="vector3" nodename="mtlximage20" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap15" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="specular_roughness" type="float" nodename="mtlximage21" colorspace="lin_rec709" />
+      <input name="base_color" type="color3" value="1, 1, 1" colorspace="lin_rec709" />
+      <input name="transmission" type="float" value="1" colorspace="lin_rec709" />
+      <input name="transmission_color" type="color3" value="1, 1, 0.828" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" value="0" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" value="1, 1, 1" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" value="1, 1, 1" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Pawn_Top_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_PawnTopWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_PawnTopWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_PawnTopWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_PawnTopWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_PawnTopWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_PawnTopWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_PawnTopWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_PawnTopWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_PawnTopWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_PawnTopWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_PawnTopWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_PawnTopWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_PawnTopWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_PawnTopWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_PawnTopWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_PawnTopWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_PawnTopWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_PawnTopWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_PawnTopWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_PawnTopWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_PawnTopWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_PawnTopWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_PawnTopWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_PawnTopWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Pawn_Top_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Pawn_Top_W" />
+  </surfacematerial>
+  <nodegraph name="NG_QueenBlack">
+    <image name="diffuse" type="color3">
+      <input name="file" type="filename" value="textures/queen_black_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic" type="float">
+      <input name="file" type="filename" value="textures/queen_shared_metallic.jpg" />
+    </image>
+    <image name="roughness" type="float">
+      <input name="file" type="filename" value="textures/queen_black_roughness.jpg" />
+    </image>
+    <image name="sss" type="float">
+      <input name="file" type="filename" value="textures/queen_shared_scattering.jpg" />
+    </image>
+    <image name="normal" type="vector3">
+      <input name="file" type="filename" value="textures/queen_black_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap2" type="vector3">
+      <input name="in" type="vector3" nodename="normal" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap2" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" nodename="sss" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.003" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Queen_B" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_QueenBlack" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_QueenBlack" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_QueenBlack" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_QueenBlack" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_QueenBlack" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_QueenBlack" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_QueenBlack" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_QueenBlack" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_QueenBlack" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_QueenBlack" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_QueenBlack" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_QueenBlack" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_QueenBlack" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_QueenBlack" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_QueenBlack" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_QueenBlack" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_QueenBlack" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_QueenBlack" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_QueenBlack" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_QueenBlack" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_QueenBlack" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_QueenBlack" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_QueenBlack" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_QueenBlack" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_QueenBlack" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_QueenBlack" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_QueenBlack" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_QueenBlack" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_QueenBlack" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_QueenBlack" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Queen_B" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Queen_B" />
+  </surfacematerial>
+  <nodegraph name="NG_QueenWhite">
+    <image name="diffuse1" type="color3">
+      <input name="file" type="filename" value="textures/queen_white_base_color.jpg" colorspace="srgb_texture" />
+    </image>
+    <image name="metallic1" type="float">
+      <input name="file" type="filename" value="textures/queen_shared_metallic.jpg" />
+    </image>
+    <image name="roughness1" type="float">
+      <input name="file" type="filename" value="textures/queen_white_roughness.jpg" />
+    </image>
+    <image name="sss1" type="float">
+      <input name="file" type="filename" value="textures/queen_shared_scattering.jpg" />
+    </image>
+    <image name="normal1" type="vector3">
+      <input name="file" type="filename" value="textures/queen_white_normal.jpg" />
+    </image>
+    <normalmap name="mtlxnormalmap3" type="vector3">
+      <input name="in" type="vector3" nodename="normal1" />
+    </normalmap>
+    <output name="normal_output" type="vector3" nodename="mtlxnormalmap3" />
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base_color" type="color3" nodename="diffuse1" colorspace="lin_rec709" />
+      <input name="metalness" type="float" nodename="metallic1" colorspace="lin_rec709" />
+      <input name="specular_roughness" type="float" nodename="roughness1" colorspace="lin_rec709" />
+      <input name="subsurface" type="float" nodename="sss1" colorspace="lin_rec709" />
+      <input name="subsurface_color" type="color3" nodename="diffuse1" colorspace="lin_rec709" />
+      <input name="subsurface_radius" type="color3" nodename="diffuse1" colorspace="lin_rec709" />
+      <input name="subsurface_scale" type="float" value="0.001" colorspace="lin_rec709" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="Queen_W" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_QueenWhite" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_QueenWhite" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_QueenWhite" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_QueenWhite" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_QueenWhite" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_QueenWhite" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_QueenWhite" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_QueenWhite" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_QueenWhite" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_QueenWhite" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_QueenWhite" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_QueenWhite" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_QueenWhite" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_QueenWhite" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_QueenWhite" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_QueenWhite" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_QueenWhite" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_QueenWhite" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_QueenWhite" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_QueenWhite" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_QueenWhite" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_QueenWhite" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_QueenWhite" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_QueenWhite" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_QueenWhite" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_QueenWhite" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_QueenWhite" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_QueenWhite" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_QueenWhite" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_QueenWhite" />
+  </open_pbr_surface>
+  <surfacematerial name="M_Queen_W" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="Queen_W" />
+  </surfacematerial>
+  <look name="L_ChessSet">
+    <materialassign name="Chessboard" geom="Chessboard" material="M_Chessboard" />
+    <materialassign name="Bishop_B" geom="Bishop_B" material="M_Bishop_B" />
+    <materialassign name="Bishop_W" geom="Bishop_W" material="M_Bishop_W" />
+    <materialassign name="Castle_B" geom="Castle_B" material="M_Castle_B" />
+    <materialassign name="Castle_W" geom="Castle_W" material="M_Castle_W" />
+    <materialassign name="Knight_B" geom="Knight_B" material="M_Knight_B" />
+    <materialassign name="Knight_W" geom="Knight_W" material="M_Knight_W" />
+    <materialassign name="King_B" geom="King_B" material="M_King_B" />
+    <materialassign name="King_W" geom="King_W" material="M_King_W" />
+    <materialassign name="Pawn_Body_B" geom="Pawn_Body_B" material="M_Pawn_Body_B" />
+    <materialassign name="Pawn_Top_B" geom="Pawn_Top_B" material="M_Pawn_Top_B" />
+    <materialassign name="Pawn_Body_W" geom="Pawn_Body_W" material="M_Pawn_Body_W" />
+    <materialassign name="Pawn_Top_W" geom="Pawn_Top_W" material="M_Pawn_Top_W" />
+    <materialassign name="Queen_B" geom="Queen_B" material="M_Queen_B" />
+    <materialassign name="Queen_W" geom="Queen_W" material="M_Queen_W" />
+  </look>
+</materialx>
