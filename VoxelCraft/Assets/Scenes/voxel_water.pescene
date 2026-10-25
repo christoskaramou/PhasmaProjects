@@ -51,7 +51,7 @@
         "color_grading_intensity": 1.0,
         "dof": false,
         "dof_focus_scale": 15.0,
-        "dof_blur_range": 5.0,
+        "dof_blur_range": 32.0,
         "bloom": false,
         "bloom_strength": 1.0,
         "bloom_range": 1.0,
