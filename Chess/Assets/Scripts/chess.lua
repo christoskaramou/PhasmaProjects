@@ -51,7 +51,110 @@ local api = {
 script.chess = api
 _G.chess = api -- convenience for anything sharing this environment
 
+local JevAuto = (function()
+    local path = "Scripts/jev_auto.lua"
+    local source = fs.read(path)
+    if not source then
+        error("[chess] missing " .. path)
+    end
+    return assert(load(source, "@" .. path, "t", _ENV))()
+end)()
+
+local picked = false
+local jev
+
+function chess_note_human()
+    picked = true
+end
+
+function chess_begin_human()
+    if jev then
+        jev:begin_human()
+    end
+end
+
+function chess_jev_assisted()
+    return jev ~= nil and jev:assisted()
+end
+
+function chess_driver_running()
+    if not jev or not jev:assisted() then
+        return false
+    end
+    local note = jev:note()
+    return type(note) == "string" and note:sub(1, 4) == "Jev "
+end
+
+function chess_jev_start()
+    local ok = jev:start()
+    if ok then
+        return
+    end
+    local err = jev:error() or "Jev could not start"
+    pe_log("[chess] " .. err)
+    if game.banner then
+        game.banner(err)
+    end
+    jev:begin_human()
+end
+
+jev = JevAuto.attach({
+    port = 9145,
+    id = "chess",
+    description = "Chess. Jev plays both sides; a click hands the board back and Stockfish takes the other side. "
+        .. "Legal moves use ids such as e2e4.",
+    playing = function()
+        return game.playing()
+    end,
+    terminal = function()
+        return game.terminal()
+    end,
+    score = function()
+        return 0
+    end,
+    busy = function()
+        return game.busy_anim()
+    end,
+    human_edge = function()
+        local hit = picked
+        picked = false
+        return hit == true
+    end,
+    observe = function()
+        return game.observe()
+    end,
+    actions = function()
+        return game.jev_actions()
+    end,
+    apply = function(id)
+        game.move(id)
+    end,
+    reset = function(seed)
+        game.jev_match(seed)
+    end,
+    on_human = function()
+        if proc and proc.stop then
+            proc.stop()
+        end
+        if game.jev_wants_engine then
+            game.jev_wants_engine()
+        end
+    end,
+})
+
 game.init()
-script.on_update("chess", function() game.update() end, "play")
+script.on_update("chess", function()
+    game.update()
+    local ms = 16
+    if engine and engine.get_metrics then
+        ms = engine.get_metrics().delta_ms or 16
+    end
+    jev:tick(ms / 1000)
+end, "play")
 -- Engine CollectHooks looks for env.destroy; G.destroy was never reached without this.
-function destroy() game.destroy() end
+function destroy()
+    if jev then
+        jev:begin_human()
+    end
+    game.destroy()
+end

@@ -45,6 +45,8 @@ local FILL_ATK = { 0.16, 0.11, 0.11, 0.9 }
 local FILL_AB_OK = { 0.16, 0.14, 0.22, 0.95 }
 local FILL_AB_NO = { 0.10, 0.10, 0.12, 0.95 }
 local FILL_PLACE = { 0.05, 0.08, 0.05, 0.92 }
+local NOTICE_COL = { 0.95, 0.45, 0.4, 1.0 }
+local JEV_OPTS = { title = "Jev", body = "start", font_scale = 1.05 }
 local PLACE_OPTS = { body = "Left-click to place — right-click to cancel", font_scale = 1.05,
     align = "center", no_input = true, border = { 0.3, 0.6, 0.3, 0.9 } }
 local OPT_MOVE = { title = "Move", body = "right-click", font_scale = 0.85, no_input = true, align = "center" }
@@ -457,7 +459,9 @@ local function drive_top(state)
         U.COLOR.hp_good, sw - M * 2 - 440 - 150, M, 150, 70)
 
     local msg, ccol
-    if state.result == "win" then
+    if Hud.notice then
+        msg, ccol = Hud.notice, NOTICE_COL
+    elseif state.result == "win" then
         msg, ccol = "VICTORY  -  the Wilds camp is broken!   (press R)", { 0.5, 0.95, 0.55, 1.0 }
     elseif state.result == "lose" then
         msg, ccol = "DEFEAT  -  your warband has fallen.   (press R)", { 0.95, 0.45, 0.4, 1.0 }
@@ -466,6 +470,28 @@ local function drive_top(state)
             state.enemy_halls or 0, state.enemy_alive), U.COLOR.ink
     end
     drive_text("Objective", msg, ccol, sw * 0.5 - 500, M, 1000, 70)
+end
+
+-- Jev sits on the objective row, left of the match banner (the start / R path).
+local function draw_jev()
+    local M = 20.0
+    local gap = 12.0
+    local bh = 70.0
+    local obj_x = sw * 0.5 - 500.0
+    local bw = 140.0
+    local x = obj_x - gap - bw
+    if x < M then
+        x = M
+        bw = obj_x - gap - x
+    end
+    if bw < 88.0 then
+        x = M
+        bw = 140.0
+    end
+
+    add_panel(x, M, bw, bh)
+    JEV_OPTS.body = Hud.jev_note or "start"
+    Hud._jev_click = button("jev_start", x, M, bw, bh, FILL_BTN, JEV_OPTS) == true
 end
 
 -- ---- floating health bars + selection box (screen overlays) --------------------
@@ -581,9 +607,18 @@ end
 -- without this the overlay is never re-shown on the 2nd Play (`shown` stays true) and the
 -- cached authored-panel handles (`nodes`) point at the pre-snapshot scene — leaving the
 -- whole HUD blank. Called from Game.init.
+function Hud.take_jev()
+    local clicked = Hud._jev_click == true
+    Hud._jev_click = false
+    return clicked
+end
+
 function Hud.reset()
     shown = false
     nodes = nil
+    Hud.notice = nil
+    Hud.jev_note = nil
+    Hud._jev_click = false
     dyn_now = {}
     dyn_prev = {}
     last_text = {}
@@ -592,6 +627,7 @@ function Hud.reset()
 end
 
 function Hud.update(state)
+    Hud._jev_click = false
     if not (runtime_ui and runtime_ui.set_quad) then return end
     if not shown then
         shown = true
@@ -608,6 +644,7 @@ function Hud.update(state)
     draw_portrait(state)
     draw_command_card(state)
     drive_top(state)
+    draw_jev()
 
     -- Placement banner: shown while the player is in build-placement mode.
     if WB.build and WB.build.is_placing and WB.build.is_placing() then

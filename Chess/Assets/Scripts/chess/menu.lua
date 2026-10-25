@@ -271,6 +271,7 @@ local function rows_for(cfg, ctx)
 
     if page == "root" then
         go("m_play", "Play", "play")
+        btn("m_jev", "Jev", "jev")
         go("m_analysis", "Analysis", "analysis")
         go("m_settings", "Settings", "settings")
         btn("m_exit", "Exit", "exit", "exit")
@@ -423,9 +424,17 @@ function menu.draw_main(w, h, cfg, ctx)
         elseif row.kind == "note" then
             label(row.id, bx, y, bw, bh, row.label, FONT, {0.60, 0.60, 0.64, 1}, false)
         elseif button(row.id, bx, y, bw, bh, row.label, row.role) then
-            if row.page then page = row.page
-            elseif row.act == "back" then page = PARENT[page] or "root"
-            else action = row.act end
+            if row.page then
+                page = row.page
+            elseif row.act == "back" then
+                page = PARENT[page] or "root"
+            elseif row.act == "jev" then
+                if chess_jev_start then
+                    chess_jev_start()
+                end
+            else
+                action = row.act
+            end
         end
         y = y + bh + gap
     end

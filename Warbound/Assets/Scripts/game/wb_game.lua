@@ -263,6 +263,290 @@ local function recount()
     state.enemy_halls  = halls.enemy
 end
 
+-- ---- jev orders ----------------------------------------------------------------
+-- apply() stores one id and returns. The match loop issues it once, beside the
+-- right-click order path, then keeps simulating. Re-sending a laborer who is
+-- already harvesting that node would drop the load they are carrying.
+
+local order_pulse = nil
+
+local function player_econ()
+    return state.econ and state.econ.player or nil
+end
+
+local function focus_xz()
+    local hero = state.hero
+    if hero and hero.alive then
+        return hero.x, hero.z
+    end
+
+    for _, u in ipairs(state.player_units) do
+        if u.alive and not u.arch_is_worker then
+            return u.x, u.z
+        end
+    end
+
+    return 0.0, 12.0
+end
+
+local function nearest_enemy(ax, az)
+    local best = nil
+    local best_d = nil
+
+    local function consider(e)
+        if not (e and e.alive) then
+            return
+        end
+
+        local d = U.dist2_sq(ax, az, e.x, e.z)
+        if not best_d or d < best_d then
+            best = e
+            best_d = d
+        end
+    end
+
+    for _, e in ipairs(state.enemy_units) do
+        consider(e)
+    end
+    if best then
+        return best
+    end
+
+    local ee = state.econ and state.econ.enemy
+    if not ee then
+        return nil
+    end
+
+    for _, b in ipairs(ee.buildings) do
+        if b.state == "done" or b.state == "site" then
+            consider(b)
+        end
+    end
+    return best
+end
+
+local function harvest_workers(kind)
+    local list = {}
+    for _, u in ipairs(state.player_units) do
+        if u.alive and u.arch_is_worker then
+            local job = u.job
+            if not (job and job.kind == kind) then
+                list[#list + 1] = u
+            end
+        end
+    end
+    return list
+end
+
+local function army_units()
+    local list = {}
+    for _, u in ipairs(state.player_units) do
+        if u.alive and not u.arch_is_worker then
+            list[#list + 1] = u
+        end
+    end
+    return list
+end
+
+local function ready_hall(arch)
+    local E = player_econ()
+    if not E then
+        return nil
+    end
+
+    for _, b in ipairs(E.buildings) do
+        local standing = b.alive and b.state == "done" and b.arch == arch
+        if standing and Economy.train_status(state, E, b) == "ok" then
+            return b
+        end
+    end
+    return nil
+end
+
+local function warstomp_ready()
+    local hero = state.hero
+    if not (hero and hero.alive) then
+        return false
+    end
+    return WB.abilities.status(hero, "warstomp") == "ready"
+end
+
+local function issue_harvest(id)
+    local E = player_econ()
+    if not E then
+        return
+    end
+
+    local kind = "lumber"
+    if id == "harvest_gold" then
+        kind = "gold"
+    end
+
+    local workers = harvest_workers(kind)
+    if #workers > 0 then
+        Economy.order_harvest(E, workers, kind)
+    end
+end
+
+local function issue_train(id)
+    local E = player_econ()
+    if not E then
+        return
+    end
+
+    local arch = "barracks"
+    if id == "train_worker" then
+        arch = "town_hall"
+    end
+
+    local hall = ready_hall(arch)
+    if hall then
+        Economy.try_train(state, E, hall)
+    end
+end
+
+local function issue_attack()
+    local army = army_units()
+    if #army == 0 then
+        return
+    end
+
+    local ax, az = focus_xz()
+    local foe = nearest_enemy(ax, az)
+    if foe then
+        WB.orders.attack(army, foe)
+    end
+end
+
+local function issue_ability()
+    if warstomp_ready() then
+        WB.abilities.try_cast(state, "warstomp")
+    end
+end
+
+local function issue_pulse()
+    local id = order_pulse
+    order_pulse = nil
+    if not id or state.result then
+        return
+    end
+
+    if id == "harvest_gold" or id == "harvest_lumber" then
+        issue_harvest(id)
+        return
+    end
+    if id == "train_worker" or id == "train_soldier" then
+        issue_train(id)
+        return
+    end
+    if id == "attack" then
+        issue_attack()
+        return
+    end
+    if id == "ability" then
+        issue_ability()
+    end
+end
+
+function Game.store_pulse(id)
+    order_pulse = id
+end
+
+function Game.clear_pulse()
+    order_pulse = nil
+end
+
+function Game.jev_playing()
+    return state.econ ~= nil and state.result == nil
+end
+
+function Game.jev_terminal()
+    return state.result ~= nil
+end
+
+function Game.jev_score()
+    return state.kills or 0
+end
+
+function Game.jev_observe()
+    local obs = {
+        gold = 0,
+        lumber = 0,
+        food = 0,
+        food_cap = 0,
+        workers = 0,
+        army = 0,
+        hero_hp = 0,
+    }
+    local E = player_econ()
+    if not E then
+        return obs
+    end
+
+    local workers = 0
+    local army = 0
+    for _, u in ipairs(state.player_units) do
+        if u.alive then
+            if u.arch_is_worker then
+                workers = workers + 1
+            else
+                army = army + 1
+            end
+        end
+    end
+
+    obs.gold = math.floor((E.gold or 0) + 0.5)
+    obs.lumber = math.floor((E.lumber or 0) + 0.5)
+    obs.food = Economy.food_used(E)
+    obs.food_cap = E.food_cap or 0
+    obs.workers = workers
+    obs.army = army
+
+    local hero = state.hero
+    if hero and hero.alive then
+        obs.hero_hp = math.floor(hero.hp + 0.5)
+    end
+
+    local ax, az = focus_xz()
+    local foe = nearest_enemy(ax, az)
+    if foe then
+        obs.enemy_x = foe.x
+        obs.enemy_z = foe.z
+    end
+    return obs
+end
+
+function Game.jev_actions()
+    local actions = {}
+
+    local function add(id, description)
+        actions[#actions + 1] = { id = id, description = description }
+    end
+
+    if #harvest_workers("gold") > 0 then
+        add("harvest_gold", "Send laborers who are not already mining to the gold mine")
+    end
+    if #harvest_workers("lumber") > 0 then
+        add("harvest_lumber", "Send laborers who are not already chopping to the lumber grove")
+    end
+    if ready_hall("town_hall") then
+        add("train_worker", "Train one laborer at the Town Hall")
+    end
+    if ready_hall("barracks") then
+        add("train_soldier", "Train one soldier at the Barracks")
+    end
+    if #army_units() > 0 then
+        local ax, az = focus_xz()
+        if nearest_enemy(ax, az) then
+            add("attack", "Order the army to attack the nearest enemy")
+        end
+    end
+    if warstomp_ready() then
+        add("ability", "Cast Warstomp")
+    end
+    return actions
+end
+
 -- ---- lifecycle ----------------------------------------------------------------
 
 local function env(name)
@@ -278,6 +562,11 @@ local function abort_session_systems()
 end
 
 function Game.init()
+    if Game.human_start then
+        Game.human_start()
+    end
+    order_pulse = nil
+
     -- Reset match state. The Lua chunk + modules persist across an editor Play -> Stop ->
     -- Play, so init must start from clean lists (not append to the prior session's) or the
     -- second Play double-adopts / runs on stale state.
@@ -347,6 +636,10 @@ function Game.init()
 end
 
 function Game.restart()
+    order_pulse = nil
+    if WB.hud then
+        WB.hud.notice = nil
+    end
     abort_session_systems()
     for _, u in ipairs(state.all_units) do if u.alive then Units.kill(u) end end
     reset_state()
@@ -381,14 +674,21 @@ function Game.update(dt)
     Camera.update(dt, mouse_in_ui)
 
     if state.result then
+        order_pulse = nil
         if WB.build and WB.build.is_placing and WB.build.is_placing() then WB.build.cancel() end
-        if r_pressed() then Game.restart() end
+        if r_pressed() then
+            if Game.human_start then
+                Game.human_start()
+            end
+            Game.restart()
+        end
         WB.hud.update(state)
         return
     end
 
     WB.selection.update(state.player_units, mouse_in_ui, state)
     WB.orders.handle_input(WB.selection.list, state.enemy_units, mouse_in_ui)
+    issue_pulse()
     WB.combat.acquire(state.player_units, state.enemy_units, state)
     Economy.update(gdt, state)   -- sets worker harvest goals + ticks training queues
     if WB.build then WB.build.update(gdt, state) end
