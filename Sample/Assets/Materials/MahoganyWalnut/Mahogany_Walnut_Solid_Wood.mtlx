@@ -1,0 +1,192 @@
+<?xml version="1.0"?>
+<materialx version="1.39">
+  <nodegraph name="NG_Mahogany_Walnut_Solid_Wood">
+    <constant name="RoughnessMin" type="float">
+      <input name="value" type="float" value="0.0" />
+    </constant>
+    <constant name="UVScale" type="float">
+      <input name="value" type="float" value="2" />
+    </constant>
+    <normal name="onthefly_4" type="vector3">
+      <input name="space" type="string" value="world" />
+    </normal>
+    <output name="coat_normal_output" type="vector3" nodename="onthefly_4" />
+    <output name="normal_output" type="vector3" nodename="node_normalmap" />
+    <tangent name="onthefly_6" type="vector3">
+      <input name="space" type="string" value="world" />
+    </tangent>
+    <output name="tangent_output" type="vector3" nodename="onthefly_6" />
+    <constant name="RoughnessMax" type="float">
+      <input name="value" type="float" value="0.9150000214576721" />
+    </constant>
+    <texcoord name="node_texcoord_vector2_8" type="vector2">
+      <input name="index" type="integer" value="0" />
+    </texcoord>
+    <multiply name="node_multiply_9" type="vector2">
+      <input name="in1" type="vector2" nodename="node_texcoord_vector2_8" />
+      <input name="in2" type="float" nodename="UVScale" />
+    </multiply>
+    <image name="node_image_vector3_10" type="vector3" GLSLFX_usage="normal" expose="true">
+      <input name="texcoord" type="vector2" nodename="node_multiply_9" />
+      <input name="file" type="filename" value="textures/Mahogany_Walnut_Solid_Wood_Normal.png" />
+      <input name="layer" type="string" value="" />
+      <input name="default" type="vector3" value=" 0.000000, 0.000000, 0.000000" />
+      <input name="uaddressmode" type="string" value="periodic" />
+      <input name="vaddressmode" type="string" value="periodic" />
+      <input name="filtertype" type="string" value="linear" />
+      <input name="framerange" type="string" value="" />
+      <input name="frameoffset" type="integer" value="0" />
+      <input name="frameendaction" type="string" value="constant" />
+    </image>
+    <mix name="node_mix_3" type="float">
+      <input name="fg" type="float" nodename="RoughnessMax" />
+      <input name="bg" type="float" nodename="RoughnessMin" />
+      <input name="mix" type="float" nodename="node_extract_11" />
+    </mix>
+    <normalmap name="node_normalmap" type="vector3">
+      <input name="in" type="vector3" nodename="node_image_vector3_10" />
+    </normalmap>
+    <image name="node_image_color3_2" type="color3" GLSLFX_usage="baseColor" expose="true">
+      <input name="texcoord" type="vector2" nodename="node_multiply_9" />
+      <input name="file" type="filename" colorspace="srgb_texture" value="textures/Mahogany_Walnut_Solid_Wood_baseColor.png" />
+      <input name="layer" type="string" value="" />
+      <input name="default" type="color3" value=" 0.000000, 0.000000, 0.000000" />
+      <input name="uaddressmode" type="string" value="periodic" />
+      <input name="vaddressmode" type="string" value="periodic" />
+      <input name="filtertype" type="string" value="linear" />
+      <input name="framerange" type="string" value="" />
+      <input name="frameoffset" type="integer" value="0" />
+      <input name="frameendaction" type="string" value="constant" />
+    </image>
+    <image name="node_image_vector3_12" type="vector3" GLSLFX_usage="mask" expose="true">
+      <input name="texcoord" type="vector2" nodename="node_multiply_9" />
+      <input name="file" type="filename" value="textures/Mahogany_Walnut_Solid_Wood_Mask.png" />
+      <input name="layer" type="string" value="" />
+      <input name="default" type="vector3" value=" 0.000000, 0.000000, 0.000000" />
+      <input name="uaddressmode" type="string" value="periodic" />
+      <input name="vaddressmode" type="string" value="periodic" />
+      <input name="filtertype" type="string" value="linear" />
+      <input name="framerange" type="string" value="" />
+      <input name="frameoffset" type="integer" value="0" />
+      <input name="frameendaction" type="string" value="constant" />
+    </image>
+    <extract name="node_extract_11" type="float">
+      <input name="in" type="vector3" nodename="node_image_vector3_12" />
+      <input name="index" type="integer" value="0" />
+    </extract>
+    <standard_surface_to_open_pbr_surface name="node1" type="multioutput" nodedef="ND_standard_surface_to_open_pbr_surface">
+      <input name="base" type="float" value="0.800000011920929" />
+      <input name="base_color" type="color3" nodename="node_image_color3_2" />
+      <input name="diffuse_roughness" type="float" value="0.0" />
+      <input name="metalness" type="float" value="0.0" />
+      <input name="specular" type="float" value="1.0" />
+      <input name="specular_color" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="specular_roughness" type="float" nodename="node_mix_3" />
+      <input name="specular_IOR" type="float" value="1.5" />
+      <input name="specular_anisotropy" type="float" value="0.0" />
+      <input name="transmission" type="float" value="0.0" />
+      <input name="transmission_color" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="transmission_depth" type="float" value="0.0" />
+      <input name="transmission_scatter" type="color3" value=" 0.000000, 0.000000, 0.000000" />
+      <input name="transmission_scatter_anisotropy" type="float" value="0.0" />
+      <input name="transmission_dispersion" type="float" value="0.0" />
+      <input name="subsurface" type="float" value="0.0" />
+      <input name="subsurface_color" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="subsurface_radius" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="subsurface_scale" type="float" value="1.0" />
+      <input name="subsurface_anisotropy" type="float" value="0.0" />
+      <input name="sheen" type="float" value="0.0" />
+      <input name="sheen_color" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="sheen_roughness" type="float" value="0.30000001192092896" />
+      <input name="coat" type="float" value="0.0" />
+      <input name="coat_color" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="coat_roughness" type="float" value="0.10000000149011612" />
+      <input name="coat_anisotropy" type="float" value="0.0" />
+      <input name="coat_IOR" type="float" value="1.5" />
+      <input name="coat_affect_roughness" type="float" value="0.0" />
+      <input name="thin_film_thickness" type="float" value="0.0" />
+      <input name="thin_film_IOR" type="float" value="1.5" />
+      <input name="emission" type="float" value="0.0" />
+      <input name="emission_color" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="opacity" type="color3" value=" 1.000000, 1.000000, 1.000000" />
+      <input name="thin_walled" type="boolean" value="false" />
+    </standard_surface_to_open_pbr_surface>
+    <output name="base_weight_out" type="float" nodename="node1" output="base_weight_out" />
+    <output name="base_color_out" type="color3" nodename="node1" output="base_color_out" />
+    <output name="base_diffuse_roughness_out" type="float" nodename="node1" output="base_diffuse_roughness_out" />
+    <output name="base_metalness_out" type="float" nodename="node1" output="base_metalness_out" />
+    <output name="specular_weight_out" type="float" nodename="node1" output="specular_weight_out" />
+    <output name="specular_color_out" type="color3" nodename="node1" output="specular_color_out" />
+    <output name="specular_roughness_out" type="float" nodename="node1" output="specular_roughness_out" />
+    <output name="specular_ior_out" type="float" nodename="node1" output="specular_ior_out" />
+    <output name="specular_roughness_anisotropy_out" type="float" nodename="node1" output="specular_roughness_anisotropy_out" />
+    <output name="transmission_weight_out" type="float" nodename="node1" output="transmission_weight_out" />
+    <output name="transmission_color_out" type="color3" nodename="node1" output="transmission_color_out" />
+    <output name="transmission_depth_out" type="float" nodename="node1" output="transmission_depth_out" />
+    <output name="transmission_scatter_out" type="color3" nodename="node1" output="transmission_scatter_out" />
+    <output name="transmission_scatter_anisotropy_out" type="float" nodename="node1" output="transmission_scatter_anisotropy_out" />
+    <output name="transmission_dispersion_scale_out" type="float" nodename="node1" output="transmission_dispersion_scale_out" />
+    <output name="subsurface_weight_out" type="float" nodename="node1" output="subsurface_weight_out" />
+    <output name="subsurface_color_out" type="color3" nodename="node1" output="subsurface_color_out" />
+    <output name="subsurface_radius_out" type="float" nodename="node1" output="subsurface_radius_out" />
+    <output name="subsurface_radius_scale_out" type="color3" nodename="node1" output="subsurface_radius_scale_out" />
+    <output name="subsurface_scatter_anisotropy_out" type="float" nodename="node1" output="subsurface_scatter_anisotropy_out" />
+    <output name="fuzz_weight_out" type="float" nodename="node1" output="fuzz_weight_out" />
+    <output name="fuzz_color_out" type="color3" nodename="node1" output="fuzz_color_out" />
+    <output name="fuzz_roughness_out" type="float" nodename="node1" output="fuzz_roughness_out" />
+    <output name="coat_weight_out" type="float" nodename="node1" output="coat_weight_out" />
+    <output name="coat_color_out" type="color3" nodename="node1" output="coat_color_out" />
+    <output name="coat_roughness_out" type="float" nodename="node1" output="coat_roughness_out" />
+    <output name="coat_roughness_anisotropy_out" type="float" nodename="node1" output="coat_roughness_anisotropy_out" />
+    <output name="coat_ior_out" type="float" nodename="node1" output="coat_ior_out" />
+    <output name="coat_darkening_out" type="float" nodename="node1" output="coat_darkening_out" />
+    <output name="thin_film_weight_out" type="float" nodename="node1" output="thin_film_weight_out" />
+    <output name="thin_film_thickness_out" type="float" nodename="node1" output="thin_film_thickness_out" />
+    <output name="thin_film_ior_out" type="float" nodename="node1" output="thin_film_ior_out" />
+    <output name="emission_luminance_out" type="float" nodename="node1" output="emission_luminance_out" />
+    <output name="emission_color_out" type="color3" nodename="node1" output="emission_color_out" />
+    <output name="geometry_opacity_out" type="float" nodename="node1" output="geometry_opacity_out" />
+    <output name="geometry_thin_walled_out" type="boolean" nodename="node1" output="geometry_thin_walled_out" />
+  </nodegraph>
+  <open_pbr_surface name="SR_Mahogany_Walnut_Solid_Wood" type="surfaceshader">
+    <input name="base_weight" type="float" output="base_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="base_color" type="color3" output="base_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="base_diffuse_roughness" type="float" output="base_diffuse_roughness_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="base_metalness" type="float" output="base_metalness_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="specular_weight" type="float" output="specular_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="specular_color" type="color3" output="specular_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="specular_roughness" type="float" output="specular_roughness_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="specular_ior" type="float" output="specular_ior_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="specular_roughness_anisotropy" type="float" output="specular_roughness_anisotropy_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="transmission_weight" type="float" output="transmission_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="transmission_color" type="color3" output="transmission_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="transmission_depth" type="float" output="transmission_depth_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="transmission_scatter" type="color3" output="transmission_scatter_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="transmission_scatter_anisotropy" type="float" output="transmission_scatter_anisotropy_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="transmission_dispersion_scale" type="float" output="transmission_dispersion_scale_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="subsurface_weight" type="float" output="subsurface_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="subsurface_color" type="color3" output="subsurface_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="subsurface_radius" type="float" output="subsurface_radius_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="subsurface_radius_scale" type="color3" output="subsurface_radius_scale_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="subsurface_scatter_anisotropy" type="float" output="subsurface_scatter_anisotropy_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="fuzz_weight" type="float" output="fuzz_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="fuzz_color" type="color3" output="fuzz_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="fuzz_roughness" type="float" output="fuzz_roughness_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="coat_weight" type="float" output="coat_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="coat_color" type="color3" output="coat_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="coat_roughness" type="float" output="coat_roughness_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="coat_roughness_anisotropy" type="float" output="coat_roughness_anisotropy_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="coat_ior" type="float" output="coat_ior_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="coat_darkening" type="float" output="coat_darkening_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="thin_film_weight" type="float" output="thin_film_weight_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="thin_film_thickness" type="float" output="thin_film_thickness_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="thin_film_ior" type="float" output="thin_film_ior_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="emission_luminance" type="float" output="emission_luminance_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="emission_color" type="color3" output="emission_color_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="geometry_opacity" type="float" output="geometry_opacity_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+    <input name="geometry_thin_walled" type="boolean" output="geometry_thin_walled_out" nodegraph="NG_Mahogany_Walnut_Solid_Wood" />
+  </open_pbr_surface>
+  <surfacematerial name="Mahogany_Walnut_Solid_Wood" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="SR_Mahogany_Walnut_Solid_Wood" />
+  </surfacematerial>
+</materialx>
