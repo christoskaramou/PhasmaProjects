@@ -81,7 +81,8 @@ local function draw_hud(dt, st)
         local lab = (i == (G.sel or 1) and "> " or "") .. hh.name .. " (" .. i .. ")"
         c.hero[i] = button("b_h" .. i, lab, SW / 2 + (i - 2.5) * 222 * US, yb, title, 210)
     end
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb + 80 * US, title)
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, yb + 80 * US, title, 300)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, yb + 80 * US, title, 300)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb + 156 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb + 232 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.42, pause)
@@ -93,8 +94,148 @@ local function draw_hud(dt, st)
     return c
 end
 
+------------------------------------------------------------------ Jev. Direction holds and shot/potion pulses sit in G.vk,
+-- which held() already treats as a key. apply() only stores that and returns.
+local JEV_MOVE = {
+    n = { 0, 1 },
+    ne = { 1, 1 },
+    e = { 1, 0 },
+    se = { 1, -1 },
+    s = { 0, -1 },
+    sw = { -1, -1 },
+    w = { -1, 0 },
+    nw = { -1, 1 },
+    stop = { 0, 0 },
+}
+local JEV_ACTIONS = {
+    { id = "n", description = "Hold north" },
+    { id = "ne", description = "Hold northeast" },
+    { id = "e", description = "Hold east" },
+    { id = "se", description = "Hold southeast" },
+    { id = "s", description = "Hold south" },
+    { id = "sw", description = "Hold southwest" },
+    { id = "w", description = "Hold west" },
+    { id = "nw", description = "Hold northwest" },
+    { id = "stop", description = "Stop moving" },
+    { id = "shot", description = "Shoot once" },
+    { id = "potion", description = "Use a potion once" },
+}
+local JEV_KEYS = {
+    "W", "A", "S", "D", "Up", "Down", "Left", "Right",
+    "Space", "J", "X", "LeftShift", "RightShift",
+}
+local JevHold = {
+    q = { Space = 0, X = 0 },
+    down = {},
+    raw = {},
+    seen = false,
+}
+local jev
+
+local function clear_move()
+    G.vk = G.vk or {}
+    G.vk.W = nil
+    G.vk.A = nil
+    G.vk.S = nil
+    G.vk.D = nil
+    G.vk.Up = nil
+    G.vk.Down = nil
+    G.vk.Left = nil
+    G.vk.Right = nil
+end
+
+local function clear_jev_input()
+    clear_move()
+    JevHold.q.Space = 0
+    JevHold.q.X = 0
+    JevHold.down.Space = nil
+    JevHold.down.X = nil
+    G.vk.Space = nil
+    G.vk.X = nil
+end
+
+local function apply_jev(id)
+    local step = JEV_MOVE[id]
+    if step then
+        clear_move()
+        if step[2] > 0 then
+            G.vk.W = true
+        elseif step[2] < 0 then
+            G.vk.S = true
+        end
+        if step[1] > 0 then
+            G.vk.D = true
+        elseif step[1] < 0 then
+            G.vk.A = true
+        end
+        JevHold.q.Space = JevHold.q.Space + 1
+        return
+    end
+
+    if id == "shot" then
+        JevHold.q.Space = JevHold.q.Space + 1
+        return
+    end
+    if id == "potion" then
+        JevHold.q.X = JevHold.q.X + 1
+    end
+end
+
+-- A pulse is one virtual key-down, then a release on the next frame so edge() can fire again.
+local function arm_pulses()
+    local play = G.state == "play" and not G.set_open
+    G.vk = G.vk or {}
+    for _, key in ipairs({ "Space", "X" }) do
+        if JevHold.down[key] or not play then
+            G.vk[key] = nil
+            JevHold.down[key] = nil
+        elseif JevHold.q[key] > 0 then
+            G.vk[key] = true
+            JevHold.down[key] = true
+            JevHold.q[key] = JevHold.q[key] - 1
+        end
+    end
+end
+
+local function human_edge()
+    local hit = false
+    for _, key in ipairs(JEV_KEYS) do
+        local ok, down = pcall(input.is_key_down_raw, key)
+        down = ok and down and true or false
+        if JevHold.seen and down and not JevHold.raw[key] then
+            hit = true
+        end
+        JevHold.raw[key] = down
+    end
+    JevHold.seen = true
+    return hit
+end
+
+local function nearest_monster()
+    local px = G.P and G.P.x or 0
+    local py = G.P and G.P.y or 0
+    local best
+    local bd
+    for _, m in ipairs(G.MON or {}) do
+        if m.alive ~= false then
+            local d = (m.x - px) * (m.x - px) + (m.y - py) * (m.y - py)
+            if not bd or d < bd then
+                best = m
+                bd = d
+            end
+        end
+    end
+    if not best then
+        return px, py, 0, 0
+    end
+    return px, py, best.x, best.y
+end
+
 ------------------------------------------------------------------ flow
 local function to_title()
+    if jev then
+        jev:begin_human()
+    end
     G.state = "title"
     G.new_game_sim(G.sel or 1); G.reset_world()
     music("title")
@@ -107,18 +248,30 @@ local function new_game()
 end
 G.new_game = new_game
 local function game_over()
-    G.state = "over"; G.over_t = 0
-    music(nil); sfx("gameover")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    G.state = "over"
+    G.over_t = 0
+    music(nil)
+    sfx("gameover")
+    clear_jev_input()
+    if jev and jev:assisted() then
+        return
+    end
+    if G.score > G.hiscore then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
 local acc = 0
 local mprev = { x = 0, y = 0 }
 local q = { fire = false, potion = false }
 local lmouse_prev, rmouse_prev = true, true
 local function update(dt)
+    jev:tick(dt)
+
     flush_mats()
     dt = clamp(dt, 0, 0.1)   -- a negative frame time (timer hitch) would make every damp() explode
     G.t = G.t + dt; G.dt = dt
+    arm_pulses()
     local k = { ret = edge("Return"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), qk = edge("Q"), f3 = edge("F3"),
         space = edge("Space"), j = edge("J"), x = edge("X"), sh = edge("LeftShift"), sh2 = edge("RightShift"),
         k1 = edge("1"), k2 = edge("2"), k3 = edge("3"), k4 = edge("4"), lf = edge("Left"), rt = edge("Right"), a = edge("A"), d = edge("D") }
@@ -138,7 +291,18 @@ local function update(dt)
         for i = 1, 4 do if k["k" .. i] or c.hero[i] then G.sel = i end end
         if k.lf or k.a then G.sel = (s0 + 2) % 4 + 1 elseif k.rt or k.d then G.sel = s0 % 4 + 1 end
         if G.sel ~= s0 then sfx("click"); G.P.hero = G.sel end
-        if k.ret or k.space or c.start then sfx("click"); new_game()
+        if k.ret or k.space or c.start then
+            sfx("click")
+            G.new_game()
+        elseif c.jev then
+            sfx("click")
+            local ok = jev:start()
+            lclick, rclick = false, false
+            if not ok then
+                local err = tostring(jev:error() or "Jev failed")
+                G.banner_set(err, 6)
+                pe_log("[GT] " .. err)
+            end
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "play" then
@@ -154,8 +318,12 @@ local function update(dt)
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.2 then
-            if k.ret or k.space or c.again then sfx("click"); new_game()
-            elseif k.esc or c.title then to_title() end
+            if k.ret or k.space or c.again then
+                sfx("click")
+                G.new_game()
+            elseif k.esc or c.title then
+                to_title()
+            end
         end
     end
     st = G.state
@@ -230,6 +398,69 @@ function G.autoplay_fn()
     local ax = abs(mx) > 0.12 and (mx > 0 and 1 or -1) or 0
     local ay = abs(my) > 0.12 and (my > 0 and 1 or -1) or 0
     return ax, ay, false
+end
+
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9139,
+    id = "gauntlet-remix",
+    description = "Gauntlet Remix. North is +y and east is +x. The offered action walks toward the nearest monster and shoots. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play" and not G.set_open
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = function()
+        local hx, hy, mx, my = nearest_monster()
+        return {
+            hero_x = hx,
+            hero_y = hy,
+            monster_x = mx,
+            monster_y = my,
+            health = G.health or 0,
+            score = G.score or 0,
+        }
+    end,
+    actions = function()
+        local hx, hy, mx, my = nearest_monster()
+        local dx = mx - hx
+        local dy = my - hy
+        if dx == 0 and dy == 0 then
+            return { { id = "n", description = "Walk north and shoot.", score = 1 } }
+        end
+        local best_id = "n"
+        local best = -1e18
+        for id, step in pairs(JEV_MOVE) do
+            if id ~= "stop" then
+                local dot = step[1] * dx + step[2] * dy
+                if dot > best then
+                    best = dot
+                    best_id = id
+                end
+            end
+        end
+        return { { id = best_id, description = "Walk toward the monster and shoot.", score = best } }
+    end,
+    apply = apply_jev,
+    reset = function(seed)
+        clear_jev_input()
+        math.randomseed(seed)
+        new_game()
+    end,
+    on_human = clear_jev_input,
+})
+G.new_game = function()
+    jev:begin_human()
+    new_game()
 end
 
 ------------------------------------------------------------------ boot

@@ -28,6 +28,7 @@ local VIS = G.vis
 local function render_player(dt)
     if G.hide_player then R.root:set_position(HIDE); R.shield:set_position(HIDE); return end
     local x, y = ip(P)
+    x = clamp(x, X0 + 0.9, X1 - 0.9)
     local st = P.st
     local shooting = P.shoot_t > 0 and st ~= "dead"
     local yaw_t = (st == "climb") and 90 or (shooting and -90 or (P.face > 0 and -25 or 205))

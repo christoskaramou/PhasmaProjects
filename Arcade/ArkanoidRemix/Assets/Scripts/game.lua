@@ -864,7 +864,9 @@ local function draw_hud(dt, st)
     text("o_s", "Score " .. tostring(G.score), 0, SH * 0.24 + 140 * US, SW, 44 * US, 1.4, WHITE, "center", over)
     local c = {}
     local yb = SH * 0.3
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb, title)
+    local span = (340 + 24) * US
+    c.start = button("b_start", "Start (Enter)", SW / 2 - span / 2, yb, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + span / 2, yb, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.42, pause)
@@ -877,22 +879,151 @@ local function draw_hud(dt, st)
 end
 
 ------------------------------------------------------------------ flow
+local jev
+local hold_left = false
+local hold_right = false
+local pulse_launch = false
+local vk_live = false
+local raw_prev = {}
+local RAW_PLAY = { "Left", "Right", "A", "D", "Space", "Z", "J", "Up", "W" }
+
+local function clear_virtual()
+    hold_left = false
+    hold_right = false
+    pulse_launch = false
+    vk_live = false
+    if not G.vk then
+        return
+    end
+
+    G.vk["Left"] = nil
+    G.vk["A"] = nil
+    G.vk["Right"] = nil
+    G.vk["D"] = nil
+    G.vk["Space"] = nil
+end
+
+-- Holds stay until the next act. The launch pulse is published for one play frame
+-- so edge() sees it the same way it sees Space.
+local function sync_vk()
+    local playing = G.state == "play" and not G.set_open
+    local fire = false
+    if playing then
+        fire = pulse_launch
+    end
+    pulse_launch = false
+
+    if not hold_left and not hold_right and not fire and not vk_live then
+        return
+    end
+
+    if not G.vk then
+        G.vk = {}
+    end
+
+    G.vk["Left"] = hold_left or nil
+    G.vk["A"] = hold_left or nil
+    G.vk["Right"] = hold_right or nil
+    G.vk["D"] = hold_right or nil
+    G.vk["Space"] = fire or nil
+    vk_live = hold_left or hold_right or fire
+end
+
+local function human_edge()
+    local raw = input.is_key_down_raw
+    if type(raw) ~= "function" then
+        return false
+    end
+
+    local hit = false
+    for i = 1, #RAW_PLAY do
+        local key = RAW_PLAY[i]
+        local ok, down = pcall(raw, key)
+        down = ok and down and true or false
+        if down and not raw_prev[key] then
+            hit = true
+        end
+        raw_prev[key] = down
+    end
+    return hit
+end
+
+local function apply_action(id)
+    if id == "left" then
+        hold_left = true
+        hold_right = false
+    elseif id == "right" then
+        hold_right = true
+        hold_left = false
+    elseif id == "stop" then
+        hold_left = false
+        hold_right = false
+    elseif id == "launch" then
+        pulse_launch = true
+    end
+end
+
+local function observe_match()
+    local ball = nil
+    local balls = G.BALLS or {}
+    for i = 1, #balls do
+        local candidate = balls[i]
+        if not ball or candidate.y < ball.y then
+            ball = candidate
+        end
+    end
+
+    return {
+        paddle_x = G.P and G.P.x or 0,
+        ball_x = ball and ball.x or 0,
+        ball_y = ball and ball.y or 0,
+        ball_vx = ball and ball.vx or 0,
+        ball_vy = ball and ball.vy or 0,
+        lives = G.lives or 0,
+        score = G.score or 0,
+    }
+end
+
 local function to_title()
+    if jev then
+        jev:begin_human()
+    end
     G.state = "title"; G.won = false
     G.new_game_sim(); G.reset_world()
     music("title")
 end
 G.to_title = to_title
-local function new_game()
-    G.reset_world(); G.new_game_sim()
+
+local function start_match(seed)
+    if type(seed) == "number" then
+        math.randomseed(seed)
+    end
+
+    G.reset_world()
+    G.new_game_sim()
     G.state = "play"
-    music(nil); sfx("start")
+    music(nil)
+    sfx("start")
+end
+
+local function new_game()
+    if jev then
+        jev:begin_human()
+    end
+    start_match()
 end
 G.new_game = new_game
+
 local function game_over()
     G.state = "over"; G.over_t = 0
     music(G.won and "ending" or nil); sfx(G.won and "extra" or "gameover")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    if jev and jev:assisted() then
+        return
+    end
+    if G.score > G.hiscore then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
 local acc = 0
 local mprev = 0
@@ -900,6 +1031,10 @@ local q = { fire = false }
 local lmouse_prev = true
 local function update(dt)
     flush_mats()
+    if jev then
+        jev:tick(dt)
+    end
+    sync_vk()
     dt = min(dt, 0.1)
     G.t = G.t + dt; G.dt = dt
     local k = { ret = edge("Return"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), qk = edge("Q"), f3 = edge("F3"),
@@ -915,9 +1050,22 @@ local function update(dt)
     local function open_settings() sfx("click"); SET:open(); G.set_open = true end
     if k.m then SET:toggle_mute() end
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game()
-        elseif k.o or c.set_t then open_settings()
-        elseif c.quit_app then engine.quit() end
+        if k.ret or k.space or c.start then
+            sfx("click")
+            new_game()
+        elseif c.jev then
+            sfx("click")
+            local ok = jev:start()
+            if not ok then
+                local err = jev:error() or "Jev failed"
+                pe_log("[AK] " .. err)
+                G.banner_set(err, 4)
+            end
+        elseif k.o or c.set_t then
+            open_settings()
+        elseif c.quit_app then
+            engine.quit()
+        end
     elseif st == "play" then
         if k.p or k.esc then G.state = "pause"; sfx("click")
         elseif k.space or k.z or k.j or k.up or k.w or lclick then q.fire = true end
@@ -984,6 +1132,48 @@ build_lights()
 paint_templates()
 build_world()
 to_title()
-G.update = update; G.SET = SET
+
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9138,
+    id = "arkanoid_remix",
+    description = "Steer the Vaus. The offered action launches a held ball, or moves the Vaus under the ball. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play" and not G.set_open
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = observe_match,
+    actions = function()
+        local view = observe_match()
+        local moving = view.ball_vx ~= 0 or view.ball_vy ~= 0
+        if not moving then
+            return { { id = "launch", description = "Launch the ball.", score = 1 } }
+        end
+        local dx = view.ball_x - view.paddle_x
+        if dx > 0.2 then
+            return { { id = "right", description = "Move the Vaus right under the ball.", score = dx } }
+        end
+        if dx < -0.2 then
+            return { { id = "left", description = "Move the Vaus left under the ball.", score = -dx } }
+        end
+        return { { id = "stop", description = "The Vaus is under the ball.", score = 1 } }
+    end,
+    apply = apply_action,
+    reset = start_match,
+    on_human = clear_virtual,
+})
+
+G.update = update
+G.SET = SET
 hooks { update = update }
 pe_log("[AK] ready")

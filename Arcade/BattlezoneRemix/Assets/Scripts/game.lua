@@ -16,6 +16,8 @@ local function norm2(x, z)
     return x / l, z / l, l
 end
 local G = { state = "boot", t = 0, score = 0, hiscore = 0, lives = 3, wave = 0 }
+local jev
+local hw_mdx = 0
 local KK = {}
 _G.BZ = G
 
@@ -552,7 +554,10 @@ local function kill_enemy(e, kind)
     explode(e.x, e.z, kind == "super" or kind == "saucer")
     sfx("death")
     G.score = G.score + (SCORE_VAL[kind] or 1000)
-    if G.score > G.hiscore then G.hiscore = G.score; G.newhi = true end
+    if (not jev or not jev:assisted()) and G.score > G.hiscore then
+        G.hiscore = G.score
+        G.newhi = true
+    end
     sfx("score")
     hide_ent(e)
     G.kills = (G.kills or 0) + 1
@@ -749,6 +754,7 @@ local function update_player(dt, control)
         -- turning is mouse-only (cursor is locked in relative mode during play)
         local ok, md = pcall(input.get_mouse_delta)
         if ok and md and md.x then mdx = md.x end
+        hw_mdx = mdx
         if G.vmdx then mdx = G.vmdx end          -- automation
     end
     -- smooth mouse turning: the per-frame delta becomes a target turn RATE (rad/s), and the actual
@@ -1069,14 +1075,33 @@ local function new_game()
 end
 
 local function to_title()
+    if jev then
+        jev:begin_human()
+    end
     clear_enemies()
     G.state = "title"
     G.banner = { text = "", sub = "", t = 99, dur = 0 }
-    set_menu({ { label = "PLAY", act = "play" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT", act = "quit" } })
+    set_menu({
+        { label = "PLAY", act = "play" },
+        { label = "Jev", act = "jev" },
+        { label = "SETTINGS", act = "settings" },
+        { label = "QUIT", act = "quit" },
+    })
 end
 
 local function do_menu_action(act)
-    if act == "play" then new_game()
+    if act == "play" then
+        jev:begin_human()
+        new_game()
+    elseif act == "jev" then
+        if not jev:start() then
+            local err = jev:error()
+            if not err or err == "" then
+                err = "Jev could not start"
+            end
+            G.banner = { text = "JEV", sub = err, t = 0, dur = 8 }
+            pe_log("[Battlezone] " .. err)
+        end
     elseif act == "resume" then G.state = G.paused_from or "play"
     elseif act == "settings" then
         if SET then G.in_settings = true; SET:open(function() G.in_settings = false end) end
@@ -1094,8 +1119,77 @@ local function update_visuals(dt)
     if L.muzzle then set_point(L.muzzle, vec3(P.x + sin(P.yaw)*3, 1.7, P.z + cos(P.yaw)*3), vec3(1,0.6,0.2), 0, 1) end
 end
 
+-- Hardware edges only. G.vmdx / G.vkeys are the Jev hold and must not count.
+local HUMAN_KEYS = { "Up", "Down", "W", "S", "Space" }
+local hw_prev = {}
+local human_edge_now = false
+local swallow_mouse = 0
+
+local function sample_human()
+    local edge = false
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, down = pcall(input.is_key_down_raw, key)
+        down = ok and down == true
+        if down and not hw_prev[key] then
+            edge = true
+        end
+        hw_prev[key] = down
+    end
+
+    local ok_click, click = pcall(input.is_left_mouse_down)
+    click = ok_click and click == true
+    if click and not hw_prev.Click then
+        edge = true
+    end
+    hw_prev.Click = click
+
+    if swallow_mouse > 0 then
+        swallow_mouse = swallow_mouse - 1
+    elseif hw_mdx ~= 0 then
+        edge = true
+    end
+
+    local live = G.state == "play" and not (SET and SET:is_open())
+    human_edge_now = live and edge
+end
+
+local function clear_hold()
+    G.vmdx = nil
+    G.vkeys.Up = nil
+    G.vkeys.Down = nil
+    G.vkeys.W = nil
+    G.vkeys.S = nil
+    G.vkeys.Space = nil
+    G.space_pulse = nil
+    G.space_live = nil
+end
+
+local function arm_space()
+    if not G.space_pulse then
+        return
+    end
+
+    G.vkeys.Space = true
+    G.space_pulse = nil
+    G.space_live = true
+    prev.Space = false
+end
+
+local function release_space()
+    if not G.space_live then
+        return
+    end
+
+    G.vkeys.Space = nil
+    G.space_live = nil
+end
+
 local function update(dt)
     dt = min(dt, 0.05)
+    sample_human()
+    jev:tick(dt)
+    hw_mdx = 0
     G.t = G.t + dt
     local okS, sz = pcall(runtime_ui.get_surface_size)
     if okS and sz then SW, SH = sz.width or SW, sz.height or SH end
@@ -1130,6 +1224,7 @@ local function update(dt)
             G.paused_from = "play"; G.state = "paused"
             set_menu({ { label = "RESUME", act = "resume" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT TO TITLE", act = "title" } })
         else
+            arm_space()
             update_player(dt, true)
             for _, e in ipairs(TANKS) do update_enemy_tank(e, dt, false) end
             for _, e in ipairs(SUPERS) do update_enemy_tank(e, dt, true) end
@@ -1154,6 +1249,7 @@ local function update(dt)
     end
     update_visuals(dt)
     draw_hud(dt)
+    release_space()
     latch()
     G.mouse_moved = false
     -- hide + lock the cursor only while actually playing; menus (title/pause/settings/over) get it back
@@ -1162,9 +1258,145 @@ local function update(dt)
         G.mouse_locked = want_lock
         pcall(input.set_relative_mouse, want_lock)
         pcall(input.get_mouse_delta)   -- drop the jump accumulated while switching
+        hw_mdx = 0
+        swallow_mouse = 2
         P.turn = 0
     end
 end
+
+-- Positive is the same sign as a rightward mouse delta. update_player turns that
+-- held delta into a rad/s rate (delta * sens / dt), capped at TURN_CAP.
+local JEV_TURN = 32
+
+local function set_thrust(dir)
+    G.vkeys.Up = (dir > 0) or nil
+    G.vkeys.Down = (dir < 0) or nil
+    G.vkeys.W = nil
+    G.vkeys.S = nil
+end
+
+local function pulse_space()
+    G.space_pulse = true
+end
+
+local function apply_jev(id)
+    if id == "left" then
+        G.vmdx = -JEV_TURN
+    elseif id == "right" then
+        G.vmdx = JEV_TURN
+    elseif id == "straight" then
+        G.vmdx = 0
+    elseif id == "forward" then
+        set_thrust(1)
+    elseif id == "back" then
+        set_thrust(-1)
+    elseif id == "stop" then
+        set_thrust(0)
+    elseif id == "fire" then
+        pulse_space()
+    elseif id == "forward_fire" then
+        set_thrust(1)
+        pulse_space()
+    end
+end
+
+local function nearest_enemy()
+    local best, kind, best_d
+    local function consider(pool, pool_kind)
+        for _, e in ipairs(pool) do
+            if e.alive then
+                local dx = e.x - P.x
+                local dz = e.z - P.z
+                local d = dx * dx + dz * dz
+                if not best or d < best_d then
+                    best = e
+                    kind = pool_kind
+                    best_d = d
+                end
+            end
+        end
+    end
+
+    consider(TANKS, "enemy")
+    consider(SUPERS, "super")
+    consider(SAUCERS, "saucer")
+    consider(MISSILES, "missile")
+    return best, kind
+end
+
+local jev_source = fs.read("Scripts/jev_auto.lua")
+assert(jev_source, "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+
+jev = JevAuto.attach({
+    port = 9130,
+    id = "battlezone",
+    description = "First-person tank combat. The offered action turns toward the nearest enemy, or drives and fires once lined up. Prefer the higher action score.",
+    playing = function()
+        if G.state ~= "play" then
+            return false
+        end
+        if SET and SET:is_open() then
+            return false
+        end
+        return true
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    human_edge = function()
+        return human_edge_now
+    end,
+    observe = function()
+        local enemy, kind = nearest_enemy()
+        local obs = {
+            x = P.x,
+            z = P.z,
+            yaw = P.yaw,
+            score = G.score or 0,
+            enemy_x = 0,
+            enemy_z = 0,
+            enemy_kind = "none",
+        }
+        if enemy then
+            obs.enemy_x = enemy.x
+            obs.enemy_z = enemy.z
+            obs.enemy_kind = kind
+        end
+        return obs
+    end,
+    actions = function()
+        local enemy = nearest_enemy()
+        if not enemy then
+            return { { id = "forward", description = "No enemy. Drive forward.", score = 1 } }
+        end
+        local dx = enemy.x - P.x
+        local dz = enemy.z - P.z
+        local want = math.atan2(dx, dz)
+        local err = math.atan2(math.sin(want - P.yaw), math.cos(want - P.yaw))
+        if err > 0.18 then
+            return { { id = "left", description = "Turn left toward the enemy.", score = err } }
+        end
+        if err < -0.18 then
+            return { { id = "right", description = "Turn right toward the enemy.", score = -err } }
+        end
+        return { { id = "forward_fire", description = "Facing the enemy. Drive and fire.", score = 1 } }
+    end,
+    apply = function(id)
+        apply_jev(id)
+    end,
+    reset = function(seed)
+        math.randomseed(seed)
+        clear_hold()
+        new_game()
+    end,
+    on_human = function()
+        clear_hold()
+    end,
+})
 
 local function init()
     build_lights(); build_world(); build_debris(); build_rings(); build_orbs()

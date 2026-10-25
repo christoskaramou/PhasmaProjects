@@ -594,7 +594,7 @@ local score_pop = 0
 local function add_score(n)
     local before = G.score
     G.score = G.score + n; score_pop = 1
-    if G.score > G.hiscore then G.hiscore = G.score end
+    if not (G.jev and G.jev:assisted()) and G.score > G.hiscore then G.hiscore = G.score end
     for _, th in ipairs({ 10000, 40000, 80000, 120000 }) do
         if before < th and G.score >= th then G.lives = G.lives + 1; sfx("extra"); popup(P.x, P.y + 2, "1UP", { .4, 1, .5 }) end
     end
@@ -640,6 +640,13 @@ local function latch() for _, k in ipairs(WATCH) do prev[k] = kdown(k) end end
 local mouse_prev_down = false
 local function mouse_down() local ok, d = pcall(input.is_left_mouse_down); return (ok and d) or G.vkeys.Click end
 local function mouse_clicked() local d = mouse_down(); local c = d and not mouse_prev_down; mouse_prev_down = d; return c end
+
+G.jev_in = {
+    raw = {},
+    edge = false,
+    pump = false,
+    keys = { "Left", "Right", "A", "D", "Up", "Down", "W", "S", "Space", "LCtrl" },
+}
 
 ------------------------------------------------------------------ player logic
 local function blocked(nx, ny)
@@ -1209,6 +1216,10 @@ local function start_round(n)
     P.x, P.y, P.fx, P.fy, P.face, P.state, P.inv = tx(6), ty(0), 0, -1, 1, "alive", 0
     P.ang, P.yaw = -90, 0
     dig_at(P.x, P.y)
+    if G.vkeys.Space then
+        G.jev_in.pump = true
+        prev.Space = false
+    end
     G.state = "intro"; G.intro_t = 0
     show_banner("Round " .. n, n == 1 and "Player 1" or "", 2.6)
     sfx("start")
@@ -1221,21 +1232,42 @@ end
 local function to_title()
     G.state = "title"; P.state = "none"
     G.round = 1; build_round(); harp_off()
-    set_menu({ { label = "Play", act = "play" }, { label = "Settings", act = "settings" }, { label = "Quit", act = "quit" } })
+    set_menu({
+        { label = "Play", act = "play" },
+        { label = "Jev", act = "jev" },
+        { label = "Settings", act = "settings" },
+        { label = "Quit", act = "quit" },
+    })
 end
 local function game_over()
     G.state = "over"; sfx("gameover")
-    G.newhi = G.score > 0 and G.score >= G.hiscore
-    pcall(fs.write, KK.HISAVE, tostring(G.hiscore))
+    local assisted = G.jev and G.jev:assisted()
+    G.newhi = not assisted and G.score > 0 and G.score >= G.hiscore
+    if not assisted then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)) end
     set_menu({ { label = "Play Again", act = "play" }, { label = "Settings", act = "settings" }, { label = "Title", act = "title" } })
 end
 local function do_menu_action(act)
     sfx("click")
-    if act == "play" then new_game()
+    if act == "play" then
+        G.jev:begin_human()
+        new_game()
+    elseif act == "jev" then
+        G.jev:begin_human()
+        local ok = G.jev:start()
+        if not ok then
+            local err = G.jev:error() or "Jev failed to start"
+            show_banner(err, "", 4)
+            pe_log("[DigDug] " .. err)
+        end
     elseif act == "resume" then G.state = "play"
     elseif act == "settings" then if SET then G.in_settings = true; SET:open(function() G.in_settings = false end) end
-    elseif act == "title" then to_title()
-    elseif act == "quit" then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)); pcall(engine.quit) end
+    elseif act == "title" then
+        G.jev:begin_human()
+        to_title()
+    elseif act == "quit" then
+        if not (G.jev and G.jev:assisted()) then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)) end
+        pcall(engine.quit)
+    end
 end
 local function respawn()
     for _, e in ipairs(enemies) do reset_enemy(e) end
@@ -1249,6 +1281,10 @@ local function play_tick(dt, control)
     if control == "auto" then autopilot() end
     local fire_p = control == "auto" and G.auto_fire or (pressed("Space") or pressed("LCtrl") or G.click)
     local fire_h = control == "auto" and G.auto_fire or (kdown("Space") or mouse_down())
+    if control ~= "auto" and G.jev_in.pump and P.state == "alive" then
+        fire_p = true
+        G.jev_in.pump = false
+    end
     if P.state == "alive" then
         move_player(dt, control)
         update_harpoon(dt, fire_p, fire_h)
@@ -1384,6 +1420,149 @@ local function update(dt)
     latch()
 end
 
+------------------------------------------------------------------ Jev
+G.jev = assert(load(
+    assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua"),
+    "@Scripts/jev_auto.lua",
+    "t",
+    _ENV
+))().attach({
+    port = 9144,
+    id = "digdug",
+    description = "Dig Dug Remix. Dig tunnels, hold the pump to pop enemies, and drop rocks.",
+    playing = function()
+        return G.state == "play" or G.state == "intro" or G.state == "clear"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = function()
+        return G.jev_in.edge
+    end,
+    observe = function()
+        local function tile_of(x, y)
+            local c = clamp(floor((x - tx(0)) / 2 + 0.5), 0, COLS - 1)
+            local r = clamp(floor((ty(0) - y) / 2 + 0.5), 0, ROWS - 1)
+            return c, r
+        end
+
+        local c, r = tile_of(P.x, P.y)
+        local best = 1e9
+        local nc, nr = nil, nil
+        for _, e in ipairs(enemies) do
+            if e.alive and e.x then
+                local ec, er = tile_of(e.x, e.y)
+                local dist = abs(ec - c) + abs(er - r)
+                if dist < best then
+                    best = dist
+                    nc, nr = ec, er
+                end
+            end
+        end
+        local obs = {
+            cell = { c = c, r = r },
+            lives = G.lives or 0,
+            score = G.score or 0,
+        }
+        if nc then
+            obs.nearest_enemy_cell = { c = nc, r = nr }
+        end
+        return obs
+    end,
+    actions = function()
+        local best
+        local best_d = 1e9
+        for _, e in ipairs(enemies) do
+            if e.alive and e.x then
+                local d = abs(e.x - P.x) + abs(e.y - P.y)
+                if d < best_d then
+                    best = e
+                    best_d = d
+                end
+            end
+        end
+        if not best then
+            return { { id = "right", description = "Dig right.", score = 1 } }
+        end
+        local dx = best.x - P.x
+        local dy = best.y - P.y
+        if abs(dx) < 0.9 and abs(dy) < 0.9 then
+            return { { id = "pump", description = "Pump the enemy.", score = 2 } }
+        end
+        if abs(dx) >= abs(dy) then
+            if dx > 0 then
+                return { { id = "right", description = "Dig right toward the enemy.", score = dx } }
+            end
+            return { { id = "left", description = "Dig left toward the enemy.", score = -dx } }
+        end
+        if dy > 0 then
+            return { { id = "up", description = "Dig up toward the enemy.", score = dy } }
+        end
+        return { { id = "down", description = "Dig down toward the enemy.", score = -dy } }
+    end,
+    apply = function(id)
+        local holds = {
+            left = { Left = true },
+            right = { Right = true },
+            up = { Up = true },
+            down = { Down = true },
+            stop = {},
+            pump = { Space = true },
+        }
+        local chosen = holds[id]
+        if not chosen then
+            return
+        end
+
+        local was_pump = G.vkeys.Space == true
+        G.vkeys = {}
+        for key, down in pairs(chosen) do
+            G.vkeys[key] = down
+        end
+
+        if id ~= "pump" then
+            G.jev_in.pump = false
+            return
+        end
+
+        if not was_pump then
+            G.jev_in.pump = true
+            prev.Space = false
+        end
+    end,
+    reset = function(seed)
+        math.randomseed(seed)
+        G.vkeys = {}
+        G.jev_in.pump = false
+        new_game()
+    end,
+    on_human = function()
+        G.vkeys = {}
+        G.jev_in.pump = false
+    end,
+})
+
+function G.jev_frame(dt)
+    local inn = G.jev_in
+    inn.edge = false
+    for _, key in ipairs(inn.keys) do
+        local ok, down = pcall(input.is_key_down_raw, key)
+        down = ok and down == true
+        if down and not inn.raw[key] then
+            inn.edge = true
+        end
+        inn.raw[key] = down
+    end
+    G.jev:tick(dt)
+    update(dt)
+end
+
 local function init()
     build_lights(); build_backdrop(); build_earth(); build_rocks(); build_debris(); build_rings()
     build_gems(); build_enemy_pools(); build_player();
@@ -1394,7 +1573,7 @@ local function init()
     G.state = "boot"
 end
 init()
-hooks { update = update }
+hooks { update = G.jev_frame }
 
 -- automation helpers (MCP): DD.sim(seconds, keys) steps the game at 60 Hz
 function G.sim(sec, keys)

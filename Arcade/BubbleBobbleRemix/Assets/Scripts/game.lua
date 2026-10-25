@@ -266,10 +266,48 @@ end
 
 ------------------------------------------------------------------ input
 local prev = {}
+local VK = {}
+local jev
+local hw_prev = {}
+local hw_edge = false
+local HW_KEYS = {
+    "Left", "A", "Right", "D",
+    "Space", "W", "Up", "K",
+    "J", "X", "LeftCtrl", "RightCtrl", "F",
+}
 local keyfn = input.is_key_down_raw or input.is_key_pressed
-local function held(k) local ok, v = pcall(keyfn, k); return ok and v end
+local function held(k)
+    if VK[k] then
+        return true
+    end
+
+    local ok, v = pcall(keyfn, k)
+    return ok and v
+end
 local function edge(k) local d = held(k); local p = prev[k]; prev[k] = d; return d and not p end
 local function any(...) for _, k in ipairs({ ... }) do if held(k) then return true end end; return false end
+
+local function clear_vk()
+    for key in pairs(VK) do
+        VK[key] = nil
+    end
+end
+
+local function poll_hardware()
+    hw_edge = false
+    for i = 1, #HW_KEYS do
+        local name = HW_KEYS[i]
+        local ok, down = pcall(input.is_key_down_raw, name)
+        local pressed = false
+        if ok and down then
+            pressed = true
+        end
+        if pressed and not hw_prev[name] then
+            hw_edge = true
+        end
+        hw_prev[name] = pressed
+    end
+end
 
 ------------------------------------------------------------------ state
 local score, hiscore, lives, level_no = 0, 0, 3, 0
@@ -961,7 +999,9 @@ local function draw_hud(dt, st)
     text("o_t", "Game Over", 0, SH * 0.28, SW, 90 * US, 3.0, { 1, .55, .65, 1 }, "center", over)
     text("o_s", "Score " .. fmt(score) .. "  ·  Round " .. level_no, 0, SH * 0.28 + 90 * US, SW, 40 * US, 1.3, DIM, "center", over)
     local c = {}
-    c.start = button("b_start", "Start (Enter)", SW / 2, SH * 0.42, title)
+    local side = 190 * US
+    c.start = button("b_start", "Start (Enter)", SW / 2 - side, SH * 0.42, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + side, SH * 0.42, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, SH * 0.42 + 78 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, SH * 0.42 + 156 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.44, pause)
@@ -1000,6 +1040,8 @@ local function update(dt)
     flush_mats()
     dt = min(dt, 1 / 20)
     G.t = G.t + dt; G.dt = dt
+    poll_hardware()
+    jev:tick(dt)
     local k = { ret = edge("Return"), space = edge("Space"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), q = edge("Q"),
         up = edge("Up"), w = edge("W"), j = edge("J"), x = edge("X"), lc = edge("LeftCtrl") }
     set_open = SET:update(dt)
@@ -1010,7 +1052,19 @@ local function update(dt)
     if k.m then SET:toggle_mute() end
     local consumed = false
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game(); consumed = true
+        if k.ret or k.space or c.start then
+            sfx("click")
+            jev:begin_human()
+            new_game()
+            consumed = true
+        elseif c.jev then
+            sfx("click")
+            local ok = jev:start()
+            if not ok then
+                local err = jev:error() or "Jev failed to start"
+                show_banner(err, "", 4.5, { 1, .45, .45 })
+                pe_log("[BB] " .. err)
+            end
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "play" or st == "next" then
@@ -1022,7 +1076,11 @@ local function update(dt)
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.0 then
-            if k.ret or k.space or c.again then sfx("click"); new_game(); consumed = true
+            if k.ret or k.space or c.again then
+                sfx("click")
+                jev:begin_human()
+                new_game()
+                consumed = true
             elseif k.esc or c.title then to_title() end
         end
     end
@@ -1051,7 +1109,10 @@ local function update(dt)
                 lives = lives - 1
                 if lives <= 0 then
                     G.state = "over"; G.over_t = 0; sfx("gameover"); BARON.leaving = true
-                    if score > hiscore then hiscore = score; save_hi() end
+                    if score > hiscore and not jev:assisted() then
+                        hiscore = score
+                        save_hi()
+                    end
                 else respawn() end
             end
         end
@@ -1075,5 +1136,116 @@ G.blow = blow_bubble; G.spawn_letter = spawn_letter; G.baron = baron_spawn; G.ki
 G.state_set = function(s) G.state = s; G.over_t = 5 end
 G.info = function() return score, lives, level_no end
 G.begin_transition = begin_transition; G.start_level = function(n) clear_actors(); start_level(n) end
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Jev module: Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+
+local function nearest_enemy()
+    local best = math.huge
+    local x = nil
+    local y = nil
+
+    for _, e in ipairs(ENEMIES) do
+        if e.state ~= "dead" then
+            local dx = e.x - P.x
+            local dy = e.y - P.y
+            local d = dx * dx + dy * dy
+            if d < best then
+                best = d
+                x = e.x
+                y = e.y
+            end
+        end
+    end
+
+    if BARON.on and not BARON.leaving then
+        local dx = BARON.x - P.x
+        local dy = BARON.y - P.y
+        local d = dx * dx + dy * dy
+        if d < best then
+            x = BARON.x
+            y = BARON.y
+        end
+    end
+
+    return x, y
+end
+
+local function apply_jev(id)
+    clear_vk()
+    local left = id == "left" or id == "left_jump"
+    local right = id == "right" or id == "right_jump"
+    local jump = id == "jump" or id == "left_jump" or id == "right_jump"
+
+    if left then
+        VK["Left"] = true
+    end
+    if right then
+        VK["Right"] = true
+    end
+    if jump then
+        VK["Space"] = true
+    end
+    if left or right or id == "bubble" then
+        VK["J"] = true
+    end
+end
+
+jev = JevAuto.attach({
+    port = 9142,
+    id = "bubble-bobble-remix",
+    description =
+        "Bubble Bobble Remix. The offered action walks toward the nearest enemy and blows bubbles. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play" or G.state == "next"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return score
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = function()
+        return hw_edge
+    end,
+    observe = function()
+        local enemy_x, enemy_y = nearest_enemy()
+        return {
+            player_x = P.x,
+            player_y = P.y,
+            enemy_x = enemy_x or 0,
+            enemy_y = enemy_y or 0,
+            lives = lives,
+            score = score,
+        }
+    end,
+    actions = function()
+        local enemy_x, enemy_y = nearest_enemy()
+        if not enemy_x then
+            return { { id = "right", description = "Walk right and blow bubbles.", score = 1 } }
+        end
+        local dx = enemy_x - P.x
+        if enemy_y > P.y + 0.8 and math.abs(dx) < 0.9 then
+            return { { id = "jump", description = "Jump toward the enemy above.", score = 2 } }
+        end
+        if dx > 0.3 then
+            return { { id = "right", description = "Walk right toward the enemy and blow bubbles.", score = dx } }
+        end
+        if dx < -0.3 then
+            return { { id = "left", description = "Walk left toward the enemy and blow bubbles.", score = -dx } }
+        end
+        return { { id = "bubble", description = "Blow a bubble at the enemy.", score = 1 } }
+    end,
+    apply = apply_jev,
+    reset = function(seed)
+        clear_vk()
+        math.randomseed(seed)
+        new_game()
+    end,
+    on_human = clear_vk,
+})
+
 hooks { update = update }
 pe_log("[BB] ready  camz " .. floor(CAMZ))

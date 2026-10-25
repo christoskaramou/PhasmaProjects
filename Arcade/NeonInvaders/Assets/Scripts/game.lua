@@ -79,6 +79,8 @@ local cam, shake = nil, 0
 local LT, THRUST = nil, nil
 local flash = { e=0, c={1,1,1}, x=0, y=0, ui=0, uc={1,1,1} }
 local keys_prev = {}
+local vkeys = {}
+local jev
 local hud_dirty = true
 local SW, SH = 1920, 1080
 
@@ -265,6 +267,13 @@ local function hide_banner() quad("banner", {x=0,y=0,w=1,h=1, visible=false}) en
 -- ---------------------------------------------------------------- flow
 local function start_game()
   G.score = 0; G.lives = 3; G.wave = 1
+  G.clear_t = nil
+  G.invaded = false
+  G.req_kill = nil
+  G.fire_t = nil
+  G.popup = nil
+  G.jev_error = nil
+  quad("popup", {x=0, y=0, w=1, h=1, visible=false})
   for _, b in ipairs(ebul) do b.n:remove() end; ebul = {}
   if pbul then pbul.n:remove(); pbul = nil end
   build_shields(); spawn_wave()
@@ -283,12 +292,16 @@ end
 
 local function game_over()
   G.state = "over"; G.over_t = 0
-  if G.score > G.hi then G.hi = G.score end
+  if G.score > G.hi and not (jev and jev:assisted()) then G.hi = G.score end
   hud_dirty = true; hide_banner()
   panel("GAME OVER", "SCORE " .. fmt(G.score) .. "     HI " .. fmt(G.hi), { {"WAVE REACHED  "..G.wave, {1,0.8,0.3,1}}, {" ", {1,1,1,1}}, {"PRESS  SPACE  TO  PLAY  AGAIN", {0.3,1,0.9,1}} }, {1,0.25,0.5,1})
 end
 
-local function add_score(p) G.score = G.score + p; if G.score > G.hi then G.hi = G.score end; hud_dirty = true end
+local function add_score(p)
+  G.score = G.score + p
+  if G.score > G.hi and not (jev and jev:assisted()) then G.hi = G.score end
+  hud_dirty = true
+end
 
 -- ---------------------------------------------------------------- combat
 local function alive_count() local n = 0; for _, iv in ipairs(invaders) do if iv.alive then n = n + 1 end end; return n end
@@ -410,12 +423,16 @@ local function update_play(dt)
   -- player
   if player.alive then
     local mv = 0
-    if input.is_key_down("Left") or input.is_key_down("A") then mv = mv - 1 end
-    if input.is_key_down("Right") or input.is_key_down("D") then mv = mv + 1 end
+    if vkeys.Left or input.is_key_down("Left") or input.is_key_down("A") then mv = mv - 1 end
+    if vkeys.Right or input.is_key_down("Right") or input.is_key_down("D") then mv = mv + 1 end
     player.x = math.max(-FIELD_W + 0.8, math.min(FIELD_W - 0.8, player.x + mv * 9.5 * dt))
     player.root:set_position(v3(player.x, PLAYER_Y, 0))
     player.root:set_rotation(v3(0, 0, -mv * 12))
-    if input.is_key_down("Space") or input.is_key_down("Up") or input.is_key_down("W") then fire_player() end
+    local fire = vkeys.Space or input.is_key_down("Space")
+    fire = fire or input.is_key_down("Up") or input.is_key_down("W")
+    if fire then
+      fire_player()
+    end
   else
     player.respawn = player.respawn - dt
     if player.respawn <= 0 then
@@ -426,7 +443,16 @@ local function update_play(dt)
 
   if G.wave_intro and G.wave_intro > 0 then
     G.wave_intro = G.wave_intro - dt
-    if G.wave_intro <= 0 then G.marching = true; hide_banner() end
+    if G.wave_intro <= 0 then
+      G.marching = true
+      if G.jev_error then
+        local message = G.jev_error
+        G.jev_error = nil
+        banner(message, {1, 0.25, 0.5, 1})
+      else
+        hide_banner()
+      end
+    end
     return
   end
 
@@ -516,6 +542,7 @@ end
 local function update(dt)
   dt = math.min(dt, 0.1)
   G.t = G.t + dt
+  jev:tick(dt)
 
   -- twinkle a few stars per frame
   for k = 1, 6 do
@@ -535,24 +562,31 @@ local function update(dt)
   if not SET:is_open() then
     local u = SW / 1920
     if can_settings then
-      quad("set_btn", {x=SW/2-150*u, y=SH*0.79, w=300*u, h=64*u, label="SETTINGS  (O)", font_scale=2.0,
+      local set_x = SW/2 - 150*u
+      if G.state == "menu" then
+        set_x = SW/2 + 160*u
+      end
+      quad("set_btn", {x=set_x, y=SH*0.79, w=300*u, h=64*u, label="SETTINGS  (O)", font_scale=2.0,
         fill={0.05,0.1,0.25,0.85}, border={0.2,1,1,1}, text_color={0.85,1,1,1}, corner_radius=16*u, visible=true, z=20})
     else
       quad("set_btn", {x=0,y=0,w=1,h=1, visible=false})
     end
   end
   -- clickable title / pause / game-over buttons (keyboard keys still work)
-  local function si_btn(id, label, y, vis)
+  local function si_btn(id, label, y, vis, x)
     local u = SW / 1920
     if vis then
-      quad(id, {x=SW/2-480*u, y=y, w=300*u, h=64*u, label=label, font_scale=2.0,
+      quad(id, {x=x or (SW/2-480*u), y=y, w=300*u, h=64*u, label=label, font_scale=2.0,
         fill={0.05,0.1,0.25,0.85}, border={0.2,1,1,1}, text_color={0.85,1,1,1}, corner_radius=16*u, visible=true, z=20})
       return ((runtime_ui.get_state("hud", id) or {}).clicked) and true or false
     end
     quad(id, {x=0,y=0,w=1,h=1, visible=false}); return false
   end
   local free = not SET:is_open()
-  local c_start = si_btn("start_btn", "START  (SPACE)", SH*0.79, free and G.state == "menu")
+  local u = SW / 1920
+  local on_menu = free and G.state == "menu"
+  local c_start = si_btn("start_btn", "START  (SPACE)", SH*0.79, on_menu)
+  local c_jev = si_btn("jev_btn", "JEV", SH*0.79, on_menu, SW/2 - 160*u)
   local c_resume = si_btn("resume_btn", "RESUME  (P)", SH*0.79, free and G.state == "pause")
   local c_again = si_btn("again_btn", "PLAY AGAIN", SH*0.79, free and G.state == "over" and G.over_t > 1.0)
   if c_start or c_again then G.req_start = true end
@@ -562,7 +596,9 @@ local function update(dt)
     sfx("hit")
     local st = G.state
     quad("set_btn", {x=0,y=0,w=1,h=1, visible=false}); hide_panel(); hide_banner()
-    for _, id in ipairs({"start_btn", "resume_btn", "again_btn"}) do quad(id, {x=0,y=0,w=1,h=1, visible=false}) end
+    for _, id in ipairs({ "start_btn", "resume_btn", "again_btn", "jev_btn" }) do
+      quad(id, {x=0, y=0, w=1, h=1, visible=false})
+    end
     SET:open(function() if st == "menu" then show_menu() else banner("PAUSED", {1,1,1,1}) end end)
   end
   if SET:update(dt) then
@@ -573,14 +609,33 @@ local function update(dt)
       iv.root:set_position(v3(iv.ox + math.sin(G.t*0.8)*1.5, iv.oy + math.sin(G.t*2 + iv.wob)*0.08, 0)) end end
     if math.floor(G.t*2) ~= G.menu_f then G.menu_f = math.floor(G.t*2)
       for _, iv in ipairs(invaders) do if iv.root then iv.fa:set_enabled(G.menu_f%2==0); iv.fb:set_enabled(G.menu_f%2==1) end end end
-    if pressed("Space") or pressed("Return") or G.req_start then G.req_start = nil; start_game() end
+    if c_jev then
+      G.req_start = nil
+      local ok = jev:start()
+      if not ok then
+        local message = jev:error() or "Jev could not start"
+        G.jev_error = message
+        banner(message, {1, 0.25, 0.5, 1})
+        if type(pe_log) == "function" then
+          pe_log(message)
+        end
+      end
+    elseif pressed("Space") or pressed("Return") or G.req_start then
+      G.req_start = nil
+      jev:begin_human()
+      start_game()
+    end
   elseif G.state == "play" then
     if pressed("P") or pressed("Escape") then G.state = "pause"; banner("PAUSED", {1,1,1,1}) else update_play(dt) end
   elseif G.state == "pause" then
     if pressed("P") or pressed("Escape") or c_resume then G.state = "play"; hide_banner() end
   elseif G.state == "over" then
     G.over_t = G.over_t + dt
-    if G.over_t > 1.0 and (pressed("Space") or pressed("Return") or G.req_start) then G.req_start = nil; start_game() end
+    if G.over_t > 1.0 and (pressed("Space") or pressed("Return") or G.req_start) then
+      G.req_start = nil
+      jev:begin_human()
+      start_game()
+    end
   end
   for _, k in ipairs({"Space", "Return", "P", "Escape", "O", "Tab"}) do keys_prev[k] = keydown(k) end
 
@@ -650,6 +705,155 @@ local function init()
   draw_hud(); show_menu()
   SET:apply()
 end
+
+-- ---------------------------------------------------------------- Jev
+local PLAY_KEYS = { "Left", "Right", "A", "D", "Space", "Up", "W" }
+local human_was = {}
+
+local function raw_down(key)
+  if input.is_key_down_raw then
+    return input.is_key_down_raw(key) and true or false
+  end
+  return input.is_key_down(key) and true or false
+end
+
+local function clear_hold()
+  vkeys.Left = nil
+  vkeys.Right = nil
+  vkeys.Space = nil
+end
+
+local function human_edge()
+  local edge = false
+  for i = 1, #PLAY_KEYS do
+    local key = PLAY_KEYS[i]
+    local down = raw_down(key)
+    if down and not human_was[key] then
+      edge = true
+    end
+    human_was[key] = down
+  end
+  return edge
+end
+
+local function seed_human_keys()
+  for i = 1, #PLAY_KEYS do
+    local key = PLAY_KEYS[i]
+    human_was[key] = raw_down(key)
+  end
+end
+
+local function nearest_invaders(limit)
+  local list = {}
+  local px = player.x or 0
+  for _, iv in ipairs(invaders) do
+    if iv.alive then
+      local x, y = inv_pos(iv)
+      local dx = x - px
+      local dy = y - PLAYER_Y
+      list[#list + 1] = { x = x, y = y, d = dx * dx + dy * dy }
+    end
+  end
+  table.sort(list, function(a, b)
+    return a.d < b.d
+  end)
+  local out = {}
+  local n = math.min(limit, #list)
+  for i = 1, n do
+    out[i] = { x = list[i].x, y = list[i].y }
+  end
+  return out
+end
+
+local function observe_match()
+  local obs = {
+    player_x = player.x or 0,
+    lives = G.lives,
+    score = G.score,
+    invaders = nearest_invaders(5),
+    shot = pbul ~= nil,
+  }
+  if pbul then
+    obs.shot_x = pbul.x
+    obs.shot_y = pbul.y
+  end
+  return obs
+end
+
+local function aim_dx()
+  if ufo and ufo.active then
+    return ufo.x - player.x
+  end
+  local best = nil
+  local ax = player.x
+  for i = 1, #invaders do
+    local iv = invaders[i]
+    if iv.alive then
+      local y = iv.y or 0
+      if not best or y < best then
+        best = y
+        ax = iv.x
+      end
+    end
+  end
+  return ax - player.x
+end
+
+local function apply_hold(id)
+  clear_hold()
+  if id == "left" then
+    vkeys.Left = true
+  elseif id == "right" then
+    vkeys.Right = true
+  end
+  vkeys.Space = true
+end
+
+local function jev_actions()
+  local dx = aim_dx()
+  if dx > 0.6 then
+    return { { id = "right", description = "Fly right. The gun keeps firing.", score = dx } }
+  end
+  if dx < -0.6 then
+    return { { id = "left", description = "Fly left. The gun keeps firing.", score = -dx } }
+  end
+  return { { id = "stop", description = "Lined up. The gun keeps firing.", score = 1 } }
+end
+
+local function reset_match(seed)
+  if not player.root then
+    return
+  end
+  clear_hold()
+  seed_human_keys()
+  if type(seed) == "number" then
+    math.randomseed(seed)
+  end
+  start_game()
+end
+
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Jev module: Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+  port = 9103,
+  id = "neon_invaders",
+  description = "Neon Invaders. The offered action is the steer, and the gun keeps firing. Prefer the higher action score.",
+  playing = function()
+    return player.root ~= nil and (G.state == "play" or G.state == "pause")
+  end,
+  terminal = function()
+    return G.state == "over"
+  end,
+  score = function()
+    return G.score
+  end,
+  human_edge = human_edge,
+  observe = observe_match,
+  actions = jev_actions,
+  apply = apply_hold,
+  reset = reset_match,
+  on_human = clear_hold,
+})
 
 -- debug/automation handle (used by the MCP screenshot harness)
 SI = { G=G, player=player, ufo=ufo, start=function() G.req_start = true end, fire=function() fire_player() end,

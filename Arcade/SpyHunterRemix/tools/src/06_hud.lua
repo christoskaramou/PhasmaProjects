@@ -70,7 +70,8 @@ local function draw_hud(dt, st)
     text("o_s", "Score " .. tostring(G.score), 0, SH * 0.24 + 140 * US, SW, 44 * US, 1.4, WHITE, "center", over)
     local c = {}
     local yb = SH * 0.28
-    c.start = button("b_start", "Start (Enter)", SW / 2, yb, title)
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, yb, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, yb, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, yb + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, yb + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.42, pause)
@@ -82,23 +83,224 @@ local function draw_hud(dt, st)
     return c
 end
 
+------------------------------------------------------------------ Jev autoplay (holds ride the existing virtual-key read)
+local jev_source = fs.read("Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+local pulse_guns = false
+local pulse_special = false
+local human_prev = {}
+local HUMAN_KEYS = {
+    "Left", "Right", "A", "D",
+    "Up", "Down", "W", "S",
+    "Space", "J", "X", "LeftShift", "RightShift",
+}
+local HOSTILE = { sw = true, rl = true, enf = true, heli = true, eboat = true, dumper = true }
+local ACTIONS = {
+    { id = "left", description = "Steer left. Holds until another steer action." },
+    { id = "right", description = "Steer right. Holds until another steer action." },
+    { id = "straight", description = "Hold the wheel straight." },
+    { id = "gas", description = "Accelerate. Holds until brake." },
+    { id = "brake", description = "Brake. Holds until gas." },
+    { id = "guns", description = "Fire the machine guns once." },
+    { id = "special", description = "Fire the special weapon once." },
+}
+
+local function clear_virtual()
+    G.vk = {}
+    pulse_guns = false
+    pulse_special = false
+end
+
+local function read_human()
+    local raw = input.is_key_down_raw
+    local now = {}
+    if type(raw) ~= "function" then
+        return now
+    end
+
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, down = pcall(raw, key)
+        now[key] = ok and down and true or false
+    end
+    return now
+end
+
+local function prime_human()
+    human_prev = read_human()
+end
+
+local function human_edge()
+    local now = read_human()
+    local hit = false
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        if now[key] and not human_prev[key] then
+            hit = true
+        end
+    end
+    human_prev = now
+    return hit
+end
+
+local function lane_offset()
+    local P = G.P
+    local cx, hw, isl = G.course(P.y)
+    local center = cx
+    if isl > 0.05 then
+        local side = -1
+        if P.x >= cx then
+            side = 1
+        end
+        center = cx + side * (isl + hw) * 0.5
+    end
+    return P.x - center
+end
+
+local function nearest_enemy()
+    local P = G.P
+    local best = nil
+    local best_dist = math.huge
+    for i = 1, #G.EN do
+        local e = G.EN[i]
+        if e.alive and HOSTILE[e.k] and e.y > P.y then
+            local dist = e.y - P.y
+            if dist < best_dist then
+                best = e
+                best_dist = dist
+            end
+        end
+    end
+    if not best then
+        return { distance = -1, side = 0, kind = "" }
+    end
+    return { distance = best.y - P.y, side = best.x - P.x, kind = best.k }
+end
+
+local function apply_action(id)
+    if not G.vk then
+        G.vk = {}
+    end
+    if id == "left" or id == "right" or id == "straight" then
+        G.vk.Left = nil
+        G.vk.Right = nil
+        G.vk.A = nil
+        G.vk.D = nil
+        G.vk.Down = nil
+        G.vk.S = nil
+    end
+    if id == "gas" or id == "brake" then
+        G.vk.Up = nil
+        G.vk.Down = nil
+        G.vk.W = nil
+        G.vk.S = nil
+    end
+    if id == "left" then
+        G.vk.Left = true
+        G.vk.Up = true
+        pulse_guns = true
+    elseif id == "right" then
+        G.vk.Right = true
+        G.vk.Up = true
+        pulse_guns = true
+    elseif id == "straight" then
+        G.vk.Up = true
+        pulse_guns = true
+    elseif id == "gas" then
+        G.vk.Up = true
+    elseif id == "brake" then
+        G.vk.Down = true
+    elseif id == "guns" then
+        pulse_guns = true
+    elseif id == "special" then
+        pulse_special = true
+    end
+end
+
+local function start_match()
+    clear_virtual()
+    G.reset_world()
+    G.new_game_sim()
+    G.sh_fx_reset()
+    G.state = "play"
+    G.cam_snap = true
+    music("drive")
+    sfx("start")
+end
+
+local jev = JevAuto.attach({
+    port = 9140,
+    id = "spyhunter-remix",
+    description = "Spy Hunter Remix. The offered action steers the Interceptor. Gas and the guns stay on with that steer. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    on_human = clear_virtual,
+    observe = function()
+        return {
+            lane_offset = lane_offset(),
+            speed = G.P.v,
+            nearest_enemy_ahead = nearest_enemy(),
+            score = G.score or 0,
+        }
+    end,
+    actions = function()
+        local off = lane_offset()
+        if off > 1.1 then
+            return { { id = "left", description = "Steer left back into the lane. Gas and guns stay on.", score = off } }
+        end
+        if off < -1.1 then
+            return { { id = "right", description = "Steer right back into the lane. Gas and guns stay on.", score = -off } }
+        end
+        local foe = nearest_enemy()
+        if foe and foe.distance and foe.distance >= 0 and foe.distance < 28 then
+            if foe.side > 0.35 then
+                return { { id = "right", description = "Steer toward the enemy ahead. Gas and guns stay on.", score = foe.side } }
+            end
+            if foe.side < -0.35 then
+                return { { id = "left", description = "Steer toward the enemy ahead. Gas and guns stay on.", score = -foe.side } }
+            end
+        end
+        return { { id = "straight", description = "Hold the lane. Gas and guns stay on.", score = 1 } }
+    end,
+    apply = apply_action,
+    reset = function(seed)
+        math.randomseed(seed)
+        start_match()
+        prime_human()
+    end,
+})
+
 ------------------------------------------------------------------ flow
 local function to_title()
+    jev:begin_human()
     G.state = "title"
     G.new_game_sim(); G.reset_world()
     music("title")
 end
 G.to_title = to_title
 local function new_game()
-    G.reset_world(); G.new_game_sim(); G.sh_fx_reset()
-    G.state = "play"; G.cam_snap = true
-    music("drive"); sfx("start")
+    jev:begin_human()
+    start_match()
 end
 G.new_game = new_game
 local function game_over()
     G.state = "over"; G.over_t = 0
     music(nil); sfx("gameover")
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    if G.score > G.hiscore and not jev:assisted() then
+        G.hiscore = G.score
+        save_hi()
+    end
 end
 local acc = 0
 local mprev = 0
@@ -107,7 +309,9 @@ local lmouse_prev, rmouse_prev = true, true
 local function update(dt)
     flush_mats()
     dt = clamp(dt, 0, 0.1)   -- a negative frame time (timer hitch) would make every damp() explode
-    G.t = G.t + dt; G.dt = dt
+    G.t = G.t + dt
+    G.dt = dt
+    jev:tick(dt)
     local k = { ret = edge("Return"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), qk = edge("Q"), f3 = edge("F3"),
         space = edge("Space"), j = edge("J"), x = edge("X"), sh = edge("LeftShift"), sh2 = edge("RightShift") }
     local ld, rd = false, false
@@ -122,9 +326,22 @@ local function update(dt)
     local function open_settings() sfx("click"); SET:open(); G.set_open = true end
     if k.m then SET:toggle_mute() end
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game()
-        elseif k.o or c.set_t then open_settings()
-        elseif c.quit_app then engine.quit() end
+        if k.ret or k.space or c.start then
+            sfx("click")
+            new_game()
+        elseif c.jev then
+            sfx("click")
+            local ok = jev:start()
+            if not ok then
+                local err = jev:error() or "Jev failed to start"
+                G.banner_set(err, 4)
+                pe_log("[SH] " .. err)
+            end
+        elseif k.o or c.set_t then
+            open_settings()
+        elseif c.quit_app then
+            engine.quit()
+        end
     elseif st == "play" then
         if k.p or k.esc then G.state = "pause"; sfx("click")
         else
@@ -148,6 +365,14 @@ local function update(dt)
         local my = (any("Up", "W") and 1 or 0) - (any("Down", "S") and 1 or 0)
         if mx ~= 0 and mx ~= mprev and G.P.alive then sfx("steer") end
         mprev = mx
+        if pulse_guns then
+            q.fire = true
+            pulse_guns = false
+        end
+        if pulse_special then
+            q.special = true
+            pulse_special = false
+        end
         if G.autoplay then mx, my, q.fire = G.autoplay_fn() end
         local inp = { mx = mx, my = my }
         acc = acc + dt

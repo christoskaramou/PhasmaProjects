@@ -14,6 +14,8 @@ local function damp(a, b, r, dt) return lerp(a, b, 1 - math.exp(-r * dt)) end
 local function sfx(name) pcall(audio.play, "Audio/" .. name .. ".wav") end
 
 local G = { state = "boot", t = 0, vkeys = {} }
+local jev
+local nearest_obstacle
 _G.RR = G
 local SET = nil
 local function pscale() return SET and SET:particle_scale() or 1 end
@@ -48,6 +50,25 @@ local function pressed(...)
     return false
 end
 local function latch_keys() for _, k in ipairs(WATCH) do keys_prev[k] = keys_now[k] end end
+
+-- Hardware edges only, and only during a live match. Menu arrows share those keys.
+local HUMAN_KEYS = { "Left", "Right", "Up", "Down", "W", "A", "S", "D", "Space", "Z", "J", "X" }
+local human_down = {}
+local function human_edge()
+    local edge = false
+    for _, key in ipairs(HUMAN_KEYS) do
+        local ok, down = pcall(input.is_key_down_raw, key)
+        local pressed_key = ok and down == true
+        if pressed_key and not human_down[key] then
+            edge = true
+        end
+        human_down[key] = pressed_key
+    end
+    if G.state ~= "play" then
+        return false
+    end
+    return edge
+end
 
 ---------------------------------------------------------------- render setup
 local function S(k, v) pcall(settings.set, k, v) end
@@ -1034,7 +1055,7 @@ end
 local function show_title()
     menu_card("RIVER RAID", "R E M I X", { "MISSION BRIEFING",
         "Fly up the river and destroy the bridges.\nTankers 30   Helicopters 60   Fuel depots 80   Jets 100   Bridges 500\nFly over FUEL depots to refuel - shoot them only if you must!\nDon't touch the banks. Every bridge is a checkpoint.\nBonus jet every 10,000 points." },
-        { "PRESS ENTER / SPACE TO FLY", "ENTER fly   O settings   ARROWS / WASD steer & throttle   SPACE fire" }, nil, { "FLY", "SETTINGS" })
+        { "PRESS ENTER / SPACE TO FLY", "ENTER fly   O settings   ARROWS / WASD steer & throttle   SPACE fire" }, nil, { "FLY", "Jev", "SETTINGS" })
 end
 local function show_pause()
     menu_card("PAUSED", string.format("SCORE  %06d", G.score), nil, { "ESC  RESUME", "ESC resume   O settings   R restart   Q quit" }, col(1, 0.9, 0.5), { "RESUME", "SETTINGS", "RESTART", "QUIT TO TITLE" })
@@ -1064,13 +1085,23 @@ local function load_best()
     G.best = (ok and tonumber(s)) or 0
 end
 local function save_best()
-    if G.score > (G.best or 0) then G.best = G.score; pcall(fs.write, "Save/best.txt", tostring(G.best)) end
+    if jev and jev:assisted() then
+        return
+    end
+    if G.score > (G.best or 0) then
+        G.best = G.score
+        pcall(fs.write, "Save/best.txt", tostring(G.best))
+    end
 end
-local function new_game(attract)
+local function new_game(attract, seed)
+    G.vkeys = {}
     G.score, G.lives, G.bridge_count, G.checkpoint = 0, 4, 0, 0
     G.bridges_down = {}
-    G.seed = 0
+    G.seed = seed or 0
     G.banner = nil
+    for i = #MIS, 1, -1 do
+        kill_missile(i)
+    end
     spawn_player(0)
     if not attract then
         G.state = "play"
@@ -1079,7 +1110,10 @@ local function new_game(attract)
         G.banner = { text = "GO!", t = 1.2 }
     end
 end
-_G.rr_start = function() new_game(false) end
+_G.rr_start = function()
+    jev:begin_human()
+    new_game(false)
+end
 
 local function init()
     math.randomseed(1982)
@@ -1124,6 +1158,8 @@ local function update(dt)
     if dt > 0.05 then dt = 0.05 end
     flush_mats()
     G.t = G.t + dt
+    jev:tick(dt)
+    human_edge()
     poll_keys()
     if SET and SET:update(dt) then latch_keys(); return end
 
@@ -1131,16 +1167,48 @@ local function update(dt)
         step_world(dt, true)
         if not P.alive and P.dead_t > 1.5 then spawn_player(G.checkpoint or 0) end
         local c = menu_clicked()
-        if pressed("Up", "W") then MBTN.sel = (MBTN.sel - 2) % max(1, MBTN.n) + 1 elseif pressed("Down", "S") then MBTN.sel = MBTN.sel % max(1, MBTN.n) + 1 end
-        if pressed("Return") then c = MBTN.sel end
-        if (pressed("O") or c == 2) and SET then
+        if pressed("Up", "W") then
+            MBTN.sel = (MBTN.sel - 2) % max(1, MBTN.n) + 1
+        elseif pressed("Down", "S") then
+            MBTN.sel = MBTN.sel % max(1, MBTN.n) + 1
+        end
+        if pressed("Return") then
+            c = MBTN.sel
+        end
+
+        local open_settings = pressed("O")
+        if G.state == "title" then
+            open_settings = open_settings or c == 3
+        else
+            open_settings = open_settings or c == 2
+        end
+
+        if G.state == "title" and c == 2 then
+            local ok = jev:start()
+            if not ok then
+                local message = jev:error() or "Jev failed to start"
+                G.banner = { text = message, t = 6 }
+                pe_log("[RiverRaid] " .. message)
+            end
+        elseif open_settings and SET then
             runtime_ui.hide(UI.menu)
             local st = G.state
-            SET:open(function() if st == "title" then show_title() else show_gameover() end end)
+            SET:open(function()
+                if st == "title" then
+                    show_title()
+                else
+                    show_gameover()
+                end
+            end)
         elseif c == 1 or pressed("Space") then
-            MBTN.sel = 1; new_game(false)
+            MBTN.sel = 1
+            jev:begin_human()
+            new_game(false)
         elseif G.state == "gameover" and (pressed("Q") or c == 3) then
-            G.state = "title"; new_game(true); G.state = "title"
+            jev:begin_human()
+            G.state = "title"
+            new_game(true)
+            G.state = "title"
         end
         if G.state == "title" then show_title() elseif G.state == "gameover" then show_gameover() end
         runtime_ui.hide(UI.hud)
@@ -1153,8 +1221,14 @@ local function update(dt)
         if pressed("Return") then c = MBTN.sel end
         if pressed("Escape", "P") or c == 1 then G.state = "play"; runtime_ui.hide(UI.menu)
         elseif (pressed("O") or c == 2) and SET then runtime_ui.hide(UI.menu); SET:open(function() show_pause() end)
-        elseif pressed("R") or c == 3 then new_game(false)
-        elseif pressed("Q") or c == 4 then save_best(); new_game(true); G.state = "title"
+        elseif pressed("R") or c == 3 then
+            jev:begin_human()
+            new_game(false)
+        elseif pressed("Q") or c == 4 then
+            save_best()
+            jev:begin_human()
+            new_game(true)
+            G.state = "title"
         else show_pause() end
         latch_keys(); return
     end
@@ -1169,7 +1243,15 @@ local function update(dt)
             G.banner = { text = string.format("JETS LEFT  %d", G.lives), t = 1.4 }
         else
             save_best()
-            G.final = { score = G.score, bridges = G.bridge_count }
+            G.final = {
+                score = G.score,
+                bridges = G.bridge_count,
+                x = P.x,
+                speed = P.spd,
+                fuel = P.fuel,
+                lives = 0,
+                obstacle = nearest_obstacle(),
+            }
             G.state = "gameover"; sfx("over")
             new_game(true); G.state = "gameover"
         end
@@ -1177,6 +1259,148 @@ local function update(dt)
     draw_hud()
     latch_keys()
 end
+
+nearest_obstacle = function()
+    local kind = "none"
+    local x = 0
+    local ahead = 40
+    local w = 0
+
+    for i = 1, #ENT do
+        local e = ENT[i]
+        local ahead_of = e.alive and e.z <= P.z + 0.5
+        if ahead_of then
+            local dz = P.z - e.z
+            if dz < 0 then
+                dz = 0
+            end
+            if dz < ahead then
+                ahead = dz
+                kind = e.kind
+                x = e.x
+                w = e.hx or 0
+            end
+        end
+    end
+
+    for dist = 0, ahead - 0.01, 2 do
+        if is_land(P.x, P.z - dist, 0) then
+            local hw, iw = river_at(P.z - dist)
+            local on_island = iw > 0.05 and abs(P.x) <= iw + 0.05
+            if on_island then
+                kind = "island"
+                x = 0
+                w = iw
+            else
+                kind = "bank"
+                w = 0
+                if P.x >= 0 then
+                    x = hw
+                else
+                    x = -hw
+                end
+            end
+            ahead = dist
+            break
+        end
+    end
+
+    if kind == "none" then
+        ahead = 0
+    end
+
+    return { kind = kind, x = x, ahead = ahead, w = w }
+end
+
+local HOLDS = {
+    left = { Left = true, Space = true },
+    right = { Right = true, Space = true },
+    faster = { Up = true, Space = true },
+}
+
+local function apply_hold(id)
+    local hold = HOLDS[id]
+    if not hold then
+        return
+    end
+
+    G.vkeys = {}
+    G.vkeys.Left = hold.Left
+    G.vkeys.Right = hold.Right
+    G.vkeys.Up = hold.Up
+    G.vkeys.Down = hold.Down
+    G.vkeys.Space = hold.Space
+end
+
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9110,
+    id = "river-raid-remix",
+    description = "Fly up the river. The offered action steers off the banks and islands, or speeds up when the river is clear, and the gun keeps firing. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "gameover"
+    end,
+    score = function()
+        if G.state == "gameover" and G.final then
+            return G.final.score or 0
+        end
+        return G.score or 0
+    end,
+    human_edge = human_edge,
+    observe = function()
+        if G.state == "gameover" and G.final then
+            return {
+                x = G.final.x or 0,
+                speed = G.final.speed or 0,
+                obstacle = G.final.obstacle or { kind = "none", x = 0, ahead = 0, w = 0 },
+                fuel = G.final.fuel or 0,
+                lives = G.final.lives or 0,
+                score = G.final.score or 0,
+            }
+        end
+        return {
+            x = P.x or 0,
+            speed = P.spd or 0,
+            obstacle = nearest_obstacle(),
+            fuel = P.fuel or 0,
+            lives = G.lives or 0,
+            score = G.score or 0,
+        }
+    end,
+    actions = function()
+        local ob = nearest_obstacle()
+        local x = P.x or 0
+        if ob and ob.kind ~= "none" and (ob.ahead or 0) < 22 then
+            local go_left = ob.x >= 0
+            if ob.kind == "island" then
+                go_left = x >= 0
+            end
+            if go_left then
+                return { { id = "left", description = "Steer left off the obstacle. The gun keeps firing.", score = ob.ahead or 1 } }
+            end
+            return { { id = "right", description = "Steer right off the obstacle. The gun keeps firing.", score = ob.ahead or 1 } }
+        end
+        if x > 1.2 then
+            return { { id = "left", description = "Steer back toward the river. The gun keeps firing.", score = x } }
+        end
+        if x < -1.2 then
+            return { { id = "right", description = "Steer back toward the river. The gun keeps firing.", score = -x } }
+        end
+        return { { id = "faster", description = "The river is clear. Speed up and fire.", score = 1 } }
+    end,
+    apply = apply_hold,
+    reset = function(seed)
+        math.randomseed(seed or 0)
+        new_game(false, seed or 0)
+    end,
+    on_human = function()
+        G.vkeys = {}
+    end,
+})
 
 _G.RRD = { spawn = spawn_player, ensure = ensure_rows, river_at = river_at, P = P, ROWS = ROWS, ENT = ENT, clear_rows = clear_rows, POOL = POOL, TPL = TPL, take = take, place = place, CAMS = CAMS }
 hooks { init = init, update = update }

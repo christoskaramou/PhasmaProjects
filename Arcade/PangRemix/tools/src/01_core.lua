@@ -57,7 +57,8 @@ S("color_grading", true); S("color_grading_saturation", 1.05); S("color_grading_
 
 local SET = load(fs.read("Scripts/Lib/settings_menu.lua"), "@settings_menu.lua")().new({
     title = "SETTINGS", subtitle = "Pang Remix", file = "Save/settings.cfg", music = true,
-    click = function() sfx("click") end, defaults = { master = 0.5 },
+    click = function() sfx("click") end, defaults = { master = 0.5, jev = false },
+    extra = { { id = "jev", label = "JEV", kind = "toggle" } },
     theme = { accent = { 0.35, 0.75, 1, 1 }, accent2 = { 1, 0.55, 0.3, 1 }, text = { 0.86, 0.84, 0.8, 1 }, selected_text = { 1, 0.97, 0.9, 1 } } })
 SET:apply()
 G.set_open = false

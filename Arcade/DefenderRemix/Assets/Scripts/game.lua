@@ -372,10 +372,74 @@ end
 
 ------------------------------------------------------------------ input
 local prev = {}
+local pulse = { bomb = false, hyper = false }
 local keyfn = input.is_key_down_raw or input.is_key_pressed
-local function held(k) if G.vk and G.vk[k] then return true end local ok, v = pcall(keyfn, k); return ok and v end
-local function edge(k) local d = held(k); local p = prev[k]; prev[k] = d; return d and not p end
-local function any(...) for _, k in ipairs({ ... }) do if held(k) then return true end end; return false end
+local PLAY_VK = { Left = true, Right = true, Up = true, Down = true, Space = true }
+G.vk = {}
+
+local function raw_down(k)
+    local ok, v = pcall(keyfn, k)
+    return ok and v
+end
+
+local function held(k)
+    if PLAY_VK[k] and G.vk[k] then
+        return true
+    end
+    return raw_down(k)
+end
+
+local function edge(k)
+    local d = raw_down(k)
+    local p = prev[k]
+    prev[k] = d
+    return d and not p
+end
+
+local function any(...)
+    for _, k in ipairs({ ... }) do
+        if held(k) then
+            return true
+        end
+    end
+    return false
+end
+
+local HUMAN_KEYS = {
+    "Left", "Right", "Up", "Down", "A", "D", "W", "S",
+    "Space", "J", "Z", "Left Ctrl", "B", "X", "H", "C",
+}
+local raw_prev = {}
+
+local function sample_human_keys()
+    local raw = input.is_key_down_raw
+    if not raw then
+        return
+    end
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, v = pcall(raw, key)
+        raw_prev[key] = ok and v and true or false
+    end
+end
+
+local function human_edge()
+    local raw = input.is_key_down_raw
+    if not raw then
+        return false
+    end
+    local hit = false
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local ok, v = pcall(raw, key)
+        local down = ok and v and true or false
+        if down and not raw_prev[key] then
+            hit = true
+        end
+        raw_prev[key] = down
+    end
+    return hit
+end
 
 ------------------------------------------------------------------ state
 local score, hiscore, lives, bombs, wave = 0, 0, 3, 3, 0
@@ -938,7 +1002,8 @@ local function draw_hud(dt, st, menu)
     text("o_t", "GAME OVER", 0, SH * 0.28, SW, 90 * US, 3.0, { 1, .55, .35, 1 }, "center", over)
     text("o_s", "SCORE " .. fmt(score) .. "  ·  WAVE " .. wave, 0, SH * 0.28 + 90 * US, SW, 40 * US, 1.3, DIM, "center", over)
     local c = {}
-    c.start = button("b_start", "START (ENTER)", SW / 2, SH * 0.45, title)
+    c.start = button("b_start", "START (ENTER)", SW / 2 - 190 * US, SH * 0.45, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, SH * 0.45, title)
     c.set_t = button("b_set_t", "SETTINGS (O)", SW / 2, SH * 0.45 + 76 * US, title)
     c.quit_app = button("b_quit_app", "QUIT GAME", SW / 2, SH * 0.45 + 152 * US, title)
     c.resume = button("b_resume", "RESUME (P)", SW / 2, SH * 0.44, pause)
@@ -990,10 +1055,13 @@ local function autopilot()
     return c
 end
 
+local jev
+
 local function update(dt)
+    dt = min(dt, 0.25)
+    jev:tick(dt)
     if G.freeze then return end   -- automation only (screenshots)
     flush_mats()
-    dt = min(dt, 0.25)
     G.t = G.t + dt
     -- edges every frame (even while settings is open) so the ESC that closes settings is not re-seen
     local k = { ret = edge("Return"), space = edge("Space"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), q = edge("Q"),
@@ -1007,7 +1075,18 @@ local function update(dt)
     end
     if k.m then SET:toggle_mute() end
     if st == "title" then
-        if (k.ret or k.space or c.start) then sfx("click"); new_game(false)
+        if (k.ret or k.space or c.start) then
+            sfx("click")
+            jev:begin_human()
+            new_game(false)
+        elseif c.jev then
+            local ok = jev:start()
+            if not ok then
+                jev:begin_human()
+                local message = jev:error() or "Jev failed to start"
+                pe_log("[Defender] " .. message)
+                show_banner("JEV", message, 4)
+            end
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "play" then
@@ -1016,12 +1095,15 @@ local function update(dt)
     elseif st == "pause" then
         if k.p or k.esc or k.ret or c.resume then G.state = "play"; sfx("click")
         elseif k.o or c.set_p then open_settings()
-        elseif k.q or c.quit then to_title() end
+        elseif k.q or c.quit then jev:begin_human(); to_title() end
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.2 then
-            if k.ret or k.space or c.again then sfx("click"); new_game(false)
-            elseif k.esc or c.title then to_title() end
+            if k.ret or k.space or c.again then
+                sfx("click")
+                jev:begin_human()
+                new_game(false)
+            elseif k.esc or c.title then jev:begin_human(); to_title() end
         end
     end
     st = G.state
@@ -1031,8 +1113,15 @@ local function update(dt)
         local ctl
         if AUTO.on or st ~= "play" then ctl = autopilot()
         else
-            ctl = { h = (any("Right", "D") and 1 or 0) - (any("Left", "A") and 1 or 0), v = (any("Up", "W") and 1 or 0) - (any("Down", "S") and 1 or 0),
-                fire = any("Space", "J", "Z", "Left Ctrl"), bomb = k.b, hyper = k.hy }
+            ctl = {
+                h = (any("Right", "D") and 1 or 0) - (any("Left", "A") and 1 or 0),
+                v = (any("Up", "W") and 1 or 0) - (any("Down", "S") and 1 or 0),
+                fire = any("Space", "J", "Z", "Left Ctrl"),
+                bomb = k.b or pulse.bomb,
+                hyper = k.hy or pulse.hyper,
+            }
+            pulse.bomb = false
+            pulse.hyper = false
         end
         if st == "over" then ctl = { h = 0, v = 0 } end
         local n = max(1, math.ceil(dt / (1 / 60)))
@@ -1052,7 +1141,7 @@ local function update(dt)
                 lives = lives - 1
                 if lives <= 0 then
                     G.state = "over"; G.over_t = 0; sfx("gameover")
-                    if score > hiscore then hiscore = score; save_hi() end
+                    if score > hiscore and not jev:assisted() then hiscore = score; save_hi() end
                 else reset_player(); show_banner("SHIP READY", lives .. " remaining", 1.4) end
             end
         end
@@ -1072,6 +1161,161 @@ to_title()
 G.spawn = spawn; G.HUMANS = HUMANS; G.explode = explode; G.wrapd = wrapd; G.cam = function() return CAMX end; G.VHW = VIEW_HW
 G.new_game = new_game; G.to_title = to_title; G.P = P; G.smart_bomb = smart_bomb; G.AUTO = AUTO
 G.update = update
-G.vk = {}
+
+local function clear_hold()
+    G.vk.Left = false
+    G.vk.Right = false
+    G.vk.Up = false
+    G.vk.Down = false
+    G.vk.Space = false
+    pulse.bomb = false
+    pulse.hyper = false
+end
+
+local function hold_facing(opposite)
+    local left = P.face < 0
+    if opposite then
+        left = not left
+    end
+    if left then
+        G.vk.Left = true
+    else
+        G.vk.Right = true
+    end
+end
+
+local function apply_action(id)
+    clear_hold()
+
+    if id == "thrust" or id == "thrust_fire" then
+        hold_facing(false)
+    elseif id == "reverse" then
+        hold_facing(true)
+    elseif id == "climb" then
+        G.vk.Up = true
+    elseif id == "dive" then
+        G.vk.Down = true
+    elseif id == "bomb" then
+        pulse.bomb = true
+    elseif id == "hyperspace" then
+        pulse.hyper = true
+    end
+
+    if id == "fire" or id == "thrust_fire" or id == "thrust" or id == "reverse" or id == "climb" or id == "dive" then
+        G.vk.Space = true
+    end
+end
+
+local function humanoid_in_trouble()
+    local best = nil
+    local best_d = 1e9
+    for _, hm in ipairs(HUMANS) do
+        local troubled = hm.alive and (hm.state == "fall" or hm.state == "carried" or hm.targeted)
+        if troubled then
+            local d = abs(wrapd(hm.x - P.x)) + abs(hm.y - P.y)
+            if d < best_d then
+                best = hm
+                best_d = d
+            end
+        end
+    end
+    if not best then
+        return false
+    end
+
+    local state = best.state
+    if state == "walk" then
+        state = "hunted"
+    end
+    return {
+        x = best.x,
+        y = best.y,
+        state = state,
+        dx = wrapd(best.x - P.x),
+        dy = best.y - P.y,
+    }
+end
+
+local function defender_action()
+    local hm = humanoid_in_trouble()
+    local enemy = nearest_enemy()
+    local dx, dy = 0, 0
+    if type(hm) == "table" then
+        dx, dy = hm.dx, hm.dy
+    elseif enemy then
+        dx = wrapd(enemy.x - P.x)
+        dy = enemy.y - P.y
+    else
+        return { { id = "thrust_fire", description = "Patrol. Thrust and fire.", score = 1 } }
+    end
+
+    if abs(dy) > abs(dx) and abs(dy) > 1.2 then
+        if dy > 0 then
+            return { { id = "climb", description = "Climb toward the target. The gun keeps firing.", score = dy } }
+        end
+        return { { id = "dive", description = "Dive toward the target. The gun keeps firing.", score = -dy } }
+    end
+
+    local face = P.face or 1
+    local facing = (dx >= 0 and face > 0) or (dx < 0 and face < 0)
+    if not facing and abs(dx) > 0.8 then
+        return { { id = "reverse", description = "Turn around toward the target. The gun keeps firing.", score = abs(dx) } }
+    end
+    return { { id = "thrust_fire", description = "Thrust toward the target and fire.", score = abs(dx) + 1 } }
+end
+
+local function observe_match()
+    local enemy = nearest_enemy()
+    local nearest = false
+    if enemy then
+        nearest = {
+            kind = enemy.kind,
+            x = enemy.x,
+            y = enemy.y,
+            dx = wrapd(enemy.x - P.x),
+            dy = enemy.y - P.y,
+        }
+    end
+    return {
+        ship = { x = P.x, y = P.y, facing = P.face },
+        enemy = nearest,
+        humanoid = humanoid_in_trouble(),
+        lives = lives,
+        score = score,
+    }
+end
+
+local function reset_match(seed)
+    if type(seed) == "number" then
+        math.randomseed(floor(seed))
+    end
+    clear_hold()
+    new_game(false)
+    sample_human_keys()
+end
+
+local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9123,
+    id = "defender-remix",
+    description = "Patrol a wrapping planet. The offered action flies toward a humanoid in trouble, or the nearest enemy, and the gun keeps firing. Prefer the higher action score.",
+    playing = function()
+        return G.state == "play"
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return score
+    end,
+    human_edge = human_edge,
+    observe = observe_match,
+    actions = defender_action,
+    apply = apply_action,
+    reset = reset_match,
+    on_human = clear_hold,
+})
+
 hooks { update = update }
 pe_log("[Defender] ready  view half-width " .. floor(VIEW_HW) .. "  camz " .. floor(CAMZ))

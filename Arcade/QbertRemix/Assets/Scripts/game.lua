@@ -13,6 +13,8 @@ local function lerp(a, b, t) return a + (b - a) * t end
 local function damp(a, b, k, dt) return lerp(a, b, 1 - math.exp(-k * dt)) end
 local G = { state = "boot", t = 0, score = 0, hiscore = 0, lives = 3, level = 1, round = 1 }
 local KK = {}
+local jev
+local pulse_key
 _G.QB = G
 
 ------------------------------------------------------------------ deferred materials (engine quirk: replay writes)
@@ -501,7 +503,7 @@ local function add_score(n)
     if G.state == "title" then return end
     local before = G.score
     G.score = G.score + n; score_pop = 1
-    if G.score > G.hiscore then G.hiscore = G.score end
+    if not (jev and jev:assisted()) and G.score > G.hiscore then G.hiscore = G.score end
     if before < G.next_extra and G.score >= G.next_extra then
         G.lives = G.lives + 1; G.next_extra = G.next_extra + 14000; sfx("extra")
         local x, y, z = q_world(); popup(x, y + 1.2, z, "1UP", { .4, 1, .5 })
@@ -1062,21 +1064,39 @@ local function to_title()
     G.state = "title"; G.title_t = 0
     q_drop_in(0, 0)
     G.spawn_t, G.egg_t = 3, 4
-    set_menu({ { label = "PLAY", act = "play" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT", act = "quit" } })
+    set_menu({
+        { label = "PLAY", act = "play" },
+        { label = "Jev", act = "jev" },
+        { label = "SETTINGS", act = "settings" },
+        { label = "QUIT", act = "quit" },
+    })
 end
 local function game_over()
     G.state = "over"; sfx("gameover")
-    G.newhi = G.score > 0 and G.score >= G.hiscore
-    pcall(fs.write, KK.HISAVE, tostring(G.hiscore))
+    local assisted = jev and jev:assisted()
+    G.newhi = not assisted and G.score > 0 and G.score >= G.hiscore
+    if not assisted then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)) end
     set_menu({ { label = "PLAY AGAIN", act = "play" }, { label = "TITLE", act = "title" } })
 end
 local function do_menu_action(act)
     sfx("click")
-    if act == "play" then new_game()
+    if act == "play" then
+        jev:begin_human()
+        new_game()
+    elseif act == "jev" then
+        local ok = jev:start()
+        if not ok then
+            local err = jev:error() or "Jev failed to start"
+            pe_log("[Qbert] " .. err)
+            G.banner = { text = err, sub = "", t = 0, dur = 4.5 }
+        end
     elseif act == "resume" then G.state = "play"
     elseif act == "settings" then if SET then runtime_ui.show(HUD); SET:open(function() end) end
     elseif act == "title" then to_title()
-    elseif act == "quit" then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)); pcall(engine.quit) end
+    elseif act == "quit" then
+        if not (jev and jev:assisted()) then pcall(fs.write, KK.HISAVE, tostring(G.hiscore)) end
+        pcall(engine.quit)
+    end
 end
 local function update_dying(dt)
     G.dead_t = G.dead_t + dt
@@ -1182,6 +1202,10 @@ local function update(dt)
             set_menu({ { label = "RESUME", act = "resume" }, { label = "SETTINGS", act = "settings" }, { label = "QUIT TO TITLE", act = "title" } })
         else
             local want = read_dir(dt)
+            if pulse_key then
+                G.vkeys[pulse_key] = nil
+                pulse_key = nil
+            end
             if G.autoplay then want = (Q.state == "idle") and auto_dir() or nil end
             board_tick(dt, want)
         end
@@ -1203,6 +1227,149 @@ local function update(dt)
     latch()
 end
 
+------------------------------------------------------------------ Jev (async; the match keeps ticking while the driver thinks)
+-- KK.KEYMAP: Left/A up-left, Up/W up-right, Down/S down-left, Right/D down-right.
+local JEV_HW = { "Left", "Right", "Up", "Down", "A", "D", "W", "S", "Q", "E", "Z", "C" }
+local JEV_MOVE = {
+    { id = "up_left", key = "Left", dir = "UL", description = "Hop up-left" },
+    { id = "up_right", key = "Up", dir = "UR", description = "Hop up-right" },
+    { id = "down_left", key = "Down", dir = "DL", description = "Hop down-left" },
+    { id = "down_right", key = "Right", dir = "DR", description = "Hop down-right" },
+}
+local hw_prev = {}
+
+local function jev_playing()
+    return G.state == "play" or G.state == "intro" or G.state == "dying" or G.state == "clear"
+end
+
+local function jev_human_edge()
+    local edge = false
+    for i = 1, #JEV_HW do
+        local k = JEV_HW[i]
+        local ok, down = pcall(input.is_key_down_raw, k)
+        down = ok and down or false
+        if down and not hw_prev[k] then edge = true end
+        hw_prev[k] = down
+    end
+    return edge
+end
+
+local function jev_prime_hw()
+    for i = 1, #JEV_HW do
+        local k = JEV_HW[i]
+        local ok, down = pcall(input.is_key_down_raw, k)
+        hw_prev[k] = ok and down or false
+    end
+end
+
+local function jev_clear_pulse()
+    if pulse_key then G.vkeys[pulse_key] = nil end
+    pulse_key = nil
+end
+
+local function jev_observe()
+    local coily_r, coily_c = -1, -1
+    local near_kind, near_r, near_c, near_d = "none", -1, -1, 1e9
+    local qx, qy, qz = q_world()
+    for _, e in ipairs(ENT) do
+        if e.state ~= "dead" then
+            if e.kind == "coily" and coily_r < 0 then
+                coily_r, coily_c = e.r, e.c
+            end
+            local d = dist3(qx, qy, qz, e.x, e.y, e.z)
+            if d < near_d then
+                near_d = d
+                near_kind, near_r, near_c = e.kind, e.r, e.c
+            end
+        end
+    end
+    return {
+        qbert = { row = Q.r, col = Q.c },
+        coily = { row = coily_r, col = coily_c },
+        nearest_enemy = { kind = near_kind, row = near_r, col = near_c },
+        lives = G.lives,
+        score = G.score,
+    }
+end
+
+local function jev_actions()
+    if G.state ~= "play" or Q.state ~= "idle" then return {} end
+    local goal_r, goal_c, goal_d = Q.r, Q.c, 1e9
+    for r = 0, NR - 1 do
+        for c = 0, r do
+            local cb = CUBES[r][c]
+            if cb and top_index(cb.s) < 2 then
+                local d = math.abs(r - Q.r) + math.abs(c - Q.c)
+                if d < goal_d then
+                    goal_d = d
+                    goal_r, goal_c = r, c
+                end
+            end
+        end
+    end
+
+    local best
+    local best_score = -1e9
+    for i = 1, #JEV_MOVE do
+        local move = JEV_MOVE[i]
+        local D = KK.DIRS[move.dir]
+        local nr, nc = Q.r + D[1], Q.c + D[2]
+        if valid(nr, nc) or find_disc(nr, nc) then
+            local score = -math.abs(nr - goal_r) - math.abs(nc - goal_c)
+            if score > best_score then
+                best_score = score
+                best = move
+            end
+        end
+    end
+    if not best then
+        return {}
+    end
+    return { { id = best.id, description = best.description .. " toward an unfinished cube.", score = best_score } }
+end
+
+local function jev_apply(id)
+    local key = nil
+    for i = 1, #JEV_MOVE do
+        if JEV_MOVE[i].id == id then key = JEV_MOVE[i].key end
+    end
+    if not key then return end
+    jev_clear_pulse()
+    G.vkeys[key] = true
+    pulse_key = key
+end
+
+local function jev_reset(seed)
+    math.randomseed(seed)
+    jev_clear_pulse()
+    jev_prime_hw()
+    BUF.dir, BUF.t = nil, 0
+    new_game()
+end
+
+local function jev_on_human()
+    jev_clear_pulse()
+    BUF.dir, BUF.t = nil, 0
+end
+
+local jev_src = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9125,
+    id = "qbert_remix",
+    description = "Q*bert Remix. Change every pyramid cube to the target colour by hopping. Diagonals: up_left (Left/A), up_right (Up/W), down_left (Down/S), down_right (Right/D). Red balls and Coily are fatal. Coily hatches from the purple egg and chases you. Green freezes every enemy. Catch Slick and Sam before they repaint cubes. Discs at the side lure Coily off the edge. coily.row is -1 when Coily is absent. nearest_enemy.kind is none when no enemy is on the board.",
+    playing = jev_playing,
+    terminal = function() return G.state == "over" end,
+    score = function() return G.score or 0 end,
+    busy = function() return Q.state == "hop" end,
+    human_edge = jev_human_edge,
+    observe = jev_observe,
+    actions = jev_actions,
+    apply = jev_apply,
+    reset = jev_reset,
+    on_human = jev_on_human,
+})
+
 local function init()
     build_lights(); build_pyramid(); build_backdrop(); build_rings(); build_debris()
     QA = make_actor("qbert"); QA.root:set_scale(vec3(1.2, 1.2, 1.2))
@@ -1220,7 +1387,12 @@ local function init()
     G.state = "boot"
 end
 init()
-hooks { update = update }
+hooks {
+    update = function(dt)
+        jev:tick(dt)
+        update(dt)
+    end,
+}
 
 -- automation helpers (MCP): QB.sim(seconds, keys) steps the game deterministically at 60 Hz
 function G.sim(sec, keys)

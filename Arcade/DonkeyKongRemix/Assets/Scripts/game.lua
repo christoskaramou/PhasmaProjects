@@ -242,7 +242,22 @@ end
 ------------------------------------------------------------------ input
 local prev = {}
 local keyfn = input.is_key_down_raw or input.is_key_pressed
-local function held(k) if G.vk and G.vk[k] then return true end local ok, v = pcall(keyfn, k); return ok and v end
+if not G.vkeys then
+    G.vkeys = {}
+end
+local function held(k)
+    if G.vkeys[k] then
+        return true
+    end
+
+    if G.vk and G.vk[k] then
+        return true
+    end
+
+    local ok, v = pcall(keyfn, k)
+    return ok and v
+end
+
 local function edge(k) local d = held(k); local p = prev[k]; prev[k] = d; return d and not p end
 local function any(...) for _, k in ipairs({ ... }) do if held(k) then return true end end; return false end
 
@@ -1751,7 +1766,12 @@ local function draw_hud(dt, st)
     end
     G.banner.t = G.banner.t - dt
     local ba = floor(clamp(G.banner.t / 0.4, 0, 1) * 20) / 20
-    text("ban", G.banner.text, 0, SH * 0.42, SW, 80 * US, 2.4, { 1, .9, .6, ba }, "center", (st == "play" or st == "clear") and not G.set_open and G.banner.t > 0)
+    local ban_on = (st == "play" or st == "clear" or st == "intro" or st == "title") and not G.set_open and G.banner.t > 0
+    local long_ban = #G.banner.text > 48
+    local ban_fs = long_ban and 0.85 or 2.4
+    local ban_h = long_ban and 120 * US or 80 * US
+    local ban_y = long_ban and SH * 0.36 or SH * 0.42
+    text("ban", G.banner.text, 0, ban_y, SW, ban_h, ban_fs, { 1, .9, .6, ba }, "center", ban_on)
     -- how high
     local hh = st == "howhigh" and not G.set_open
     text("hh_t", "How High Can You Get?", 0, SH * 0.84, SW, 80 * US, 2.4, WHITE, "center", hh)
@@ -1782,7 +1802,8 @@ local function draw_hud(dt, st)
     text("o_t", "Game Over", 0, SH * 0.28, SW, 90 * US, 3.0, { 1, .4, .3, 1 }, "center", over)
     text("o_s", "Score " .. pad6(G.score) .. "  ·  L=" .. string.format("%02d", G.level), 0, SH * 0.28 + 90 * US, SW, 40 * US, 1.3, DIM, "center", over)
     local c = {}
-    c.start = button("b_start", "Start (Enter)", SW / 2, SH * 0.4, title)
+    c.start = button("b_start", "Start (Enter)", SW / 2 - 190 * US, SH * 0.4, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + 190 * US, SH * 0.4, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, SH * 0.4 + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, SH * 0.4 + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.44, pause)
@@ -1796,6 +1817,10 @@ end
 
 ------------------------------------------------------------------ main loop
 local function to_title()
+    if G.jev then
+        G.jev:begin_human()
+    end
+
     clear_ents()
     build_stage("25")
     G.state = "title"; G.attract = true; G.cut = nil; G.cam_ov = nil
@@ -1809,8 +1834,8 @@ local function to_title()
 end
 G.to_title = to_title
 local function new_game()
-    G.score, G.lives, G.level, G.seq_i = 0, 3, 1, 1; G.bonus = 5000
-    intro_start()
+    G.jev:begin_human()
+    G.start_match()
 end
 G.new_game = new_game
 local acc = 0
@@ -1818,6 +1843,8 @@ G.jump_q = false
 local function update(dt)
     flush_mats()
     dt = min(dt, 0.1)
+    G.sample_human()
+    G.jev:tick(dt)
     G.t = G.t + dt; G.dt = dt
     local k = { ret = edge("Return"), space = edge("Space"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), q = edge("Q"),
         z = edge("Z"), j = edge("J"), f3 = edge("F3") }
@@ -1832,9 +1859,23 @@ local function update(dt)
     pcall(function() md = input.is_left_mouse_down() and true or false end)
     local mouse_click = md and not G.mouse_prev; G.mouse_prev = md
     if st == "title" then
-        if k.ret or k.space or c.start then sfx("click"); new_game()
-        elseif k.o or c.set_t then open_settings()
-        elseif c.quit_app then engine.quit() end
+        if k.ret or k.space or c.start then
+            sfx("click")
+            new_game()
+        elseif c.jev then
+            sfx("click")
+            local started = G.jev:start()
+            if not started then
+                local message = G.jev:error() or "Jev could not start"
+                G.banner.text = message
+                G.banner.t = 8
+                pe_log("[DK] " .. message)
+            end
+        elseif k.o or c.set_t then
+            open_settings()
+        elseif c.quit_app then
+            engine.quit()
+        end
     elseif st == "intro" then
         if (k.ret or k.space or k.z or (mouse_click and not G.set_open)) and G.cut and G.cut.t > 0.3 then
             G.cut = nil; G.bend_all(1); for _, l in ipairs(ST.ladders) do l.hidden = false end; for _, d in ipairs(ST.deco_ladders) do d.hidden = false end
@@ -1886,11 +1927,17 @@ local function update(dt)
             G.lives = G.lives - 1
             if G.lives <= 0 then
                 G.state = "over"; G.over_t = 0
-                if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+                if not G.jev:assisted() and G.score > G.hiscore then
+                    G.hiscore = G.score
+                    save_hi()
+                end
             else start_stage(ST.kind) end
         end
     else AL = 1 end
-    if G.score > G.hiscore and st == "over" then G.hiscore = G.score; save_hi() end
+    if not G.jev:assisted() and G.score > G.hiscore and st == "over" then
+        G.hiscore = G.score
+        save_hi()
+    end
     if st ~= "howhigh" then G.cam_ov = G.cam_ov_fixed end
     update_camera(dt)
     render_stage(dt)
@@ -1912,6 +1959,176 @@ build_rigs()
 build_fx()
 G.hh_g = {}
 for i = 1, 12 do G.hh_g[i] = clone("g_red") end
+-- Nested so the main chunk stays under LuaJIT's 200-local limit.
+(function()
+    local RAW_KEYS = { "Left", "Right", "Up", "Down", "A", "D", "W", "S", "Space", "Z", "J" }
+    local MOVE_KEYS = { "Left", "Right", "Up", "Down", "A", "D", "W", "S" }
+    local raw_prev = {}
+    local human_hit = false
+
+    local function sample_human()
+        local fn = input.is_key_down_raw
+        human_hit = false
+        for i = 1, #RAW_KEYS do
+            local name = RAW_KEYS[i]
+            local down = false
+            if fn then
+                local ok, pressed = pcall(fn, name)
+                down = ok and pressed and true or false
+            end
+
+            if down and not raw_prev[name] then
+                human_hit = true
+            end
+            raw_prev[name] = down
+        end
+    end
+
+    local function clear_move()
+        for i = 1, #MOVE_KEYS do
+            G.vkeys[MOVE_KEYS[i]] = nil
+        end
+    end
+
+    local function clear_hold()
+        clear_move()
+        G.jump_q = false
+    end
+
+    local function apply_action(id)
+        if id == "jump" then
+            G.jump_q = true
+            clear_move()
+            G.vkeys.Right = true
+            return
+        end
+
+        if id == "stop" then
+            clear_move()
+            return
+        end
+
+        local key = nil
+        if id == "left" then
+            key = "Left"
+        elseif id == "right" then
+            key = "Right"
+        elseif id == "up" then
+            key = "Up"
+        elseif id == "down" then
+            key = "Down"
+        end
+
+        if not key then
+            return
+        end
+
+        clear_move()
+        G.vkeys[key] = true
+    end
+
+    local function nearest_hazard()
+        local hx, hy = 0, 0
+        local best = 1e18
+
+        local function consider(x, y)
+            if x == nil or y == nil then
+                return
+            end
+
+            local dx = x - M.x
+            local dy = y - M.y
+            local dist = dx * dx + dy * dy
+            if dist < best then
+                best = dist
+                hx = x
+                hy = y
+            end
+        end
+
+        local lists = { G.B, G.F, G.PIES, G.SPR }
+        for i = 1, #lists do
+            local list = lists[i]
+            if list then
+                for _, ent in ipairs(list) do
+                    consider(ent.x, ent.y)
+                end
+            end
+        end
+
+        if G.KONG then
+            consider(G.KONG.x, G.KONG.y)
+        end
+
+        if ST and ST.fire then
+            consider(ST.fire.x, ST.fire.y)
+        end
+
+        return hx, hy
+    end
+
+    local function start_match(seed)
+        if type(seed) == "number" then
+            math.randomseed(seed)
+        end
+
+        clear_hold()
+        G.score, G.lives, G.level, G.seq_i = 0, 3, 1, 1
+        G.bonus = 5000
+        intro_start()
+    end
+
+    local jev_source = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+    local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+    G.sample_human = sample_human
+    G.start_match = start_match
+    G.jev = JevAuto.attach({
+        port = 9132,
+        id = "donkey-kong-remix",
+        description = "Climb the girders and rescue Pauline. The offered action walks right, climbs, or jumps a nearby hazard. Prefer the higher action score.",
+        playing = function()
+            return G.state == "play"
+        end,
+        terminal = function()
+            return G.state == "over"
+        end,
+        score = function()
+            return G.score or 0
+        end,
+        busy = function()
+            return M.st == "jump"
+        end,
+        human_edge = function()
+            return human_hit
+        end,
+        observe = function()
+            local hx, hy = nearest_hazard()
+            return {
+                x = M.x,
+                y = M.y,
+                on_ladder = M.st == "climb",
+                hazard_x = hx,
+                hazard_y = hy,
+                lives = G.lives,
+                score = G.score,
+            }
+        end,
+        actions = function()
+            local hx = nearest_hazard()
+            if hx and math.abs(hx - M.x) < 1.2 then
+                return { { id = "jump", description = "Jump the hazard while walking right.", score = 2 } }
+            end
+            if M.st == "climb" then
+                return { { id = "up", description = "Climb the ladder.", score = 1 } }
+            end
+            return { { id = "right", description = "Walk right.", score = 1 } }
+        end,
+        apply = apply_action,
+        reset = start_match,
+        on_human = clear_hold,
+    })
+end)()
+
 to_title()
 G.update = update; G.SET = SET; G.WX, G.WY = WX, WY; G.surf = surf; G.build_stage = build_stage; G.how_high = how_high
 G.state_set = function(s) G.state = s; G.over_t = 5 end

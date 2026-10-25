@@ -116,7 +116,9 @@ end
 local function build_world()
     BG.plane = clone("bg_plane", vec3(0, 13, -2.7), vec3(48, 26, 1))
     local function fr(x, y, w, h, z, d) clone("frame", vec3(x, y, z or -0.2), vec3(w, h, d or 5.4)) end
-    fr(-25, 12.2, 2, 30.4); fr(25, 12.2, 2, 30.4); fr(0, 27, 52, 2)
+    -- Posts sit 0.15 behind the lintel and floor and stop inside them, so the four
+    -- corners are one surface. The old posts occupied the same volume and flickered.
+    fr(-25, 13.05, 1.92, 26.5, -0.2, 5.1); fr(25, 13.05, 1.92, 26.5, -0.2, 5.1); fr(0, 27, 52, 2)
     clone("floor", vec3(0, -1.5, -0.2), vec3(52, 3, 5.4))
     -- surroundings so the frame doesn't float: a deep wall behind
     local back = prim("cube", vec3(0, 12, -6), vec3(140, 70, 1)); paint(back, { .08, .09, .11 }, { 0, 0, 0 }, .9, 0)

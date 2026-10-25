@@ -558,7 +558,9 @@ end
 ------------------------------------------------------------------ scoring / lives
 local HISAVE = "Save/hiscore.txt"
 do local ok, s = pcall(fs.read, HISAVE); local v = ok and s and tonumber(s); if v then G.hiscore = v end end
+local jev
 local function save_hi()
+    if jev and jev:assisted() then return end
     if G.score > G.hiscore then G.hiscore = G.score; G.newhi = true end
     pcall(fs.write, HISAVE, tostring(G.hiscore))
 end
@@ -1035,11 +1037,123 @@ local function mouse_clicked()
 end
 local function mouse_down() local ok, d = pcall(input.is_left_mouse_down); return ok and d end
 
+------------------------------------------------------------------ jev holds
+-- Hardware edges only. Virtual keys must not look like a player taking over.
+local HUMAN_KEYS = { "Left", "Right", "A", "D", "Space", "Z", "LShift", "RShift", "X", "LControl" }
+local human_prev = {}
+local hold = { left = false, right = false, fire = false }
+local zap_pulse = false
+local zap_armed = false
+
+local function raw_down(k)
+    local ok, down = pcall(input.is_key_down_raw, k)
+    return ok and down and true or false
+end
+
+local function latch_human()
+    for _, k in ipairs(HUMAN_KEYS) do
+        human_prev[k] = raw_down(k)
+    end
+end
+
+local function human_edge()
+    local edge = false
+    for _, k in ipairs(HUMAN_KEYS) do
+        local down = raw_down(k)
+        if down and not human_prev[k] then
+            edge = true
+        end
+        human_prev[k] = down
+    end
+    return edge
+end
+
+local function clear_virtual()
+    G.vkeys.Left = nil
+    G.vkeys.Right = nil
+    G.vkeys.A = nil
+    G.vkeys.D = nil
+    G.vkeys.Space = nil
+    G.vkeys.Z = nil
+    G.vkeys.LShift = nil
+    G.vkeys.RShift = nil
+    G.vkeys.X = nil
+    G.vkeys.LControl = nil
+end
+
+local function on_human()
+    hold.left = false
+    hold.right = false
+    hold.fire = false
+    zap_pulse = false
+    zap_armed = false
+    clear_virtual()
+end
+
+local function write_hold()
+    zap_armed = false
+    if not jev or not jev:assisted() then
+        return
+    end
+
+    if G.state ~= "play" then
+        clear_virtual()
+        return
+    end
+
+    G.vkeys.Left = hold.left or nil
+    G.vkeys.Right = hold.right or nil
+    G.vkeys.A = nil
+    G.vkeys.D = nil
+    G.vkeys.Space = hold.fire or nil
+    G.vkeys.Z = nil
+    G.vkeys.RShift = nil
+    G.vkeys.X = nil
+    G.vkeys.LControl = nil
+    if zap_pulse then
+        G.vkeys.LShift = true
+        prev.LShift = false
+        zap_armed = true
+    else
+        G.vkeys.LShift = nil
+    end
+end
+
+local function apply_action(id)
+    if id == "left" then
+        hold.left = true
+        hold.right = false
+        hold.fire = true
+    elseif id == "right" then
+        hold.left = false
+        hold.right = true
+        hold.fire = true
+    elseif id == "stop" then
+        hold.left = false
+        hold.right = false
+        hold.fire = true
+    elseif id == "fire" then
+        hold.fire = true
+    elseif id == "left_fire" then
+        hold.left = true
+        hold.right = false
+        hold.fire = true
+    elseif id == "right_fire" then
+        hold.left = false
+        hold.right = true
+        hold.fire = true
+    elseif id == "zap" then
+        zap_pulse = true
+    end
+    write_hold()
+end
+
 ------------------------------------------------------------------ flow
 local function to_title()
     G.state = "title"
     set_menu("title", {
         { label = "PLAY", act = "play" },
+        { label = "Jev", act = "jev" },
         { label = "SETTINGS", act = "settings" },
         { label = "QUIT", act = "quit" },
     })
@@ -1058,7 +1172,18 @@ end
 
 local function do_menu_action(act)
     if act == "play" then
+        jev:begin_human()
         runtime_ui.show(HUD); new_game()
+    elseif act == "jev" then
+        latch_human()
+        local ok, err = jev:start()
+        if not ok then
+            jev:begin_human()
+            err = err or jev:error() or "Jev failed to start"
+            pe_log("[Tempest] " .. tostring(err))
+            to_title()
+            G.banner = { text = "JEV", sub = tostring(err), t = 0, dur = 6 }
+        end
     elseif act == "resume" then
         G.state = G.paused_from or "play"
     elseif act == "settings" then
@@ -1099,6 +1224,89 @@ if SET then SET:apply() end
 S("taa", true); S("cas_sharpening", false); S("motion_blur", false)
 S("bloom", true); S("bloom_strength", 0.55); S("bloom_range", 1.4); S("fxaa", false)
 if SET then PSCALE = SET:particle_scale() or 1; G.pscale = PSCALE end
+
+local jev_source = fs.read("Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_source, "@Scripts/jev_auto.lua", "t", _ENV))()
+local LIVE = { levelintro = true, play = true, clear = true, warp = true, dying = true }
+
+local function nearest_enemy()
+    local n = TUBE.n
+    if not n or n < 1 then
+        return nil
+    end
+
+    local best
+    local best_rank
+    for i = 1, #enemies do
+        local e = enemies[i]
+        if e.alive then
+            local depth = e.depth or 1
+            local lane_dist = abs((e.lane - PL.lane + n * 0.5) % n - n * 0.5)
+            local rank = depth + lane_dist * 0.001
+            if not best or rank < best_rank then
+                best = e
+                best_rank = rank
+            end
+        end
+    end
+    return best
+end
+
+jev = JevAuto.attach({
+    port = 9124,
+    id = "tempest-remix",
+    description = "Tempest Remix. The offered action rides the rim toward the nearest enemy, and the gun keeps firing. Prefer the higher action score.",
+    playing = function()
+        return LIVE[G.state] == true
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = human_edge,
+    observe = function()
+        local enemy = nearest_enemy()
+        return {
+            player_lane = PL.lane or 0,
+            enemy_lane = enemy and enemy.lane or -1,
+            enemy_depth = enemy and enemy.depth or -1,
+            lives = G.lives or 0,
+            score = G.score or 0,
+        }
+    end,
+    actions = function()
+        local enemy = nearest_enemy()
+        if not enemy or not TUBE.n or TUBE.n < 1 then
+            return { { id = "stop", description = "Hold the lane. The gun keeps firing.", score = 1 } }
+        end
+        local n = TUBE.n
+        local signed = (enemy.lane - PL.lane + n * 0.5) % n - n * 0.5
+        if signed > 0.35 then
+            return { { id = "right", description = "Ride right toward the enemy. The gun keeps firing.", score = signed } }
+        end
+        if signed < -0.35 then
+            return { { id = "left", description = "Ride left toward the enemy. The gun keeps firing.", score = -signed } }
+        end
+        return { { id = "stop", description = "On the enemy lane. The gun keeps firing.", score = 1 } }
+    end,
+    apply = apply_action,
+    reset = function(seed)
+        math.randomseed(seed)
+        zap_pulse = false
+        zap_armed = false
+        G.vkeys.LShift = nil
+        G.cam_dz = 0
+        G.shake = 0
+        new_game()
+    end,
+    on_human = on_human,
+})
+
 to_title()
 latch()
 pe_log("[Tempest] ready")
@@ -1137,6 +1345,10 @@ local update_step
 local function update(dt)
     if G.freeze then return end   -- automation only (screenshots)
     dt = math.min(dt, 0.25)
+    if jev then
+        jev:tick(dt)
+    end
+    write_hold()
     local n = math.max(1, math.ceil(dt / (1 / 40)))
     for _ = 1, n do update_step(dt / n) end
 end
@@ -1182,6 +1394,11 @@ update_step = function(dt)
         if kdown("Right") or kdown("D") then move = move + 1 end
         local fire = kdown("Space") or kdown("Z") or mouse_down()
         local zap = pressed("LShift") or pressed("RShift") or pressed("X") or pressed("LControl")
+        if zap_armed then
+            zap_armed = false
+            zap_pulse = false
+            G.vkeys.LShift = nil
+        end
         update_player(dt, move, fire, zap)
         -- spawn queue
         SPAWN.t = SPAWN.t + dt

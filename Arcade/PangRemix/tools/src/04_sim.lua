@@ -181,7 +181,7 @@ local function player_step(inp, dt)
     if P.stun > 0 then P.stun = P.stun - dt; return end
     fire(inp)
     if P.shoot_t > 0 then P.shoot_t = P.shoot_t - dt end
-    local moving = P.shoot_t <= 0 or P.weapon == "vulcan"
+    local moving = P.shoot_t <= 0 or P.weapon == "vulcan" or G.jev_x
     if P.st == "walk" then
         local lu = inp.v > 0 and ladder_near(P.x, P.y, false)
         local ld = inp.v < 0 and ladder_near(P.x, P.y, true)

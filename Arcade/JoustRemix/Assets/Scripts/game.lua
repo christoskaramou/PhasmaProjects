@@ -383,10 +383,26 @@ end
 
 ------------------------------------------------------------------ input
 local prev = {}
+G.vk = {}
+G.human_prev = {}
+G.human_hit = false
+G.human_keys = { "Left", "A", "Right", "D", "Space", "W", "Up", "J" }
 local keyfn = input.is_key_down_raw or input.is_key_pressed
 local function held(k) if G.vk and G.vk[k] then return true end local ok, v = pcall(keyfn, k); return ok and v end
 local function edge(k) local d = held(k); local p = prev[k]; prev[k] = d; return d and not p end
 local function any(...) for _, k in ipairs({ ... }) do if held(k) then return true end end; return false end
+G.poll_human = function()
+    G.human_hit = false
+    for i = 1, #G.human_keys do
+        local name = G.human_keys[i]
+        local ok, pressed = pcall(input.is_key_down_raw, name)
+        local down = ok and pressed and true or false
+        if down and not G.human_prev[name] then
+            G.human_hit = true
+        end
+        G.human_prev[name] = down
+    end
+end
 
 ------------------------------------------------------------------ state
 local score, hiscore, lives, wave = 0, 0, 4, 0
@@ -1185,7 +1201,9 @@ local function draw_hud(dt, st)
     text("o_t", "Game Over", 0, SH * 0.28, SW, 90 * US, 3.0, { 1, .6, .4, 1 }, "center", over)
     text("o_s", "Score " .. fmt(score) .. "  ·  Wave " .. wave, 0, SH * 0.28 + 90 * US, SW, 40 * US, 1.3, DIM, "center", over)
     local c = {}
-    c.start = button("b_start", "Start (Enter)", SW / 2, SH * 0.43, title)
+    local span = 346 * US
+    c.start = button("b_start", "Start (Enter)", SW / 2 - span / 2, SH * 0.43, title)
+    c.jev = button("b_jev", "Jev", SW / 2 + span / 2, SH * 0.43, title)
     c.set_t = button("b_set_t", "Settings (O)", SW / 2, SH * 0.43 + 76 * US, title)
     c.quit_app = button("b_quit_app", "Quit Game", SW / 2, SH * 0.43 + 152 * US, title)
     c.resume = button("b_resume", "Resume (P)", SW / 2, SH * 0.44, pause)
@@ -1219,7 +1237,11 @@ local function new_game(attract)
     start_wave()
     if not attract then sfx("start") end
 end
-local function to_title() new_game(true); G.state = "title" end
+local function to_title()
+    G.jev:begin_human()
+    new_game(true)
+    G.state = "title"
+end
 local function autopilot()
     local c = { h = 0, flap = false }
     local e = nearest_enemy(P)
@@ -1237,6 +1259,8 @@ local function update(dt)
     flush_mats()
     dt = min(dt, 1 / 20)
     G.t = G.t + dt; G.dt = dt
+    G.poll_human()
+    G.jev:tick(dt)
     local k = { ret = edge("Return"), space = edge("Space"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), q = edge("Q"),
         up = edge("Up"), w = edge("W"), f3 = edge("F3") }
     if k.f3 then G.DBG.on = not G.DBG.on end
@@ -1248,7 +1272,19 @@ local function update(dt)
     if k.m then SET:toggle_mute() end
     local consumed = false
     if st == "title" then
-        if (k.ret or k.space or c.start) then sfx("click"); new_game(false); consumed = true
+        if (k.ret or k.space or c.start) then
+            sfx("click")
+            G.jev:begin_human()
+            new_game(false)
+            consumed = true
+        elseif c.jev then
+            local started = G.jev:start()
+            if not started then
+                local err = G.jev:error() or "Jev could not start"
+                G.jev:begin_human()
+                show_banner("Jev", err, 4)
+                pe_log("[Joust] " .. err)
+            end
         elseif k.o or c.set_t then open_settings()
         elseif c.quit_app then engine.quit() end
     elseif st == "play" then
@@ -1260,8 +1296,14 @@ local function update(dt)
     elseif st == "over" then
         G.over_t = (G.over_t or 0) + dt
         if G.over_t > 1.2 then
-            if k.ret or k.space or c.again then sfx("click"); new_game(false); consumed = true
-            elseif k.esc or c.title then to_title() end
+            if k.ret or k.space or c.again then
+                sfx("click")
+                G.jev:begin_human()
+                new_game(false)
+                consumed = true
+            elseif k.esc or c.title then
+                to_title()
+            end
         end
     end
     st = G.state
@@ -1289,7 +1331,10 @@ local function update(dt)
                 lives = lives - 1
                 if lives <= 0 then
                     G.state = "over"; G.over_t = 0; sfx("gameover")
-                    if score > hiscore then hiscore = score; save_hi() end
+                    if score > hiscore and not G.jev:assisted() then
+                        hiscore = score
+                        save_hi()
+                    end
                 else reset_player() end
             end
         end
@@ -1308,6 +1353,97 @@ paint_templates()
 build_world()
 build_debris(); build_rings(); build_feathers()
 build_riders(); build_eggs(); build_troll()
+
+G.clear_vk = function()
+    G.vk.Left = nil
+    G.vk.Right = nil
+    G.vk.Space = nil
+end
+
+G.jev_actions = {
+    { id = "left", description = "Hold left" },
+    { id = "right", description = "Hold right" },
+    { id = "stop", description = "Release move and flap" },
+    { id = "flap", description = "Hold flap" },
+    { id = "left_flap", description = "Hold left and flap" },
+    { id = "right_flap", description = "Hold right and flap" },
+}
+
+G.jev = assert(load(assert(fs.read("Scripts/jev_auto.lua")), "@Scripts/jev_auto.lua", "t", _ENV))().attach({
+    port = 9127,
+    id = "joust-remix",
+    description = "Joust Remix. Hold left or right to move, and hold flap to fly. Strike enemies from above.",
+    playing = function()
+        return G.state == "play" and not set_open
+    end,
+    terminal = function()
+        return G.state == "over"
+    end,
+    score = function()
+        return score
+    end,
+    busy = function()
+        return false
+    end,
+    human_edge = function()
+        return G.human_hit
+    end,
+    observe = function()
+        local enemy = nearest_enemy(P)
+        local enemy_x = 0
+        local enemy_y = 0
+        if enemy then
+            enemy_x = enemy.x
+            enemy_y = enemy.y
+        end
+
+        return {
+            player_x = P.x,
+            player_y = P.y,
+            vertical_speed = P.vy,
+            nearest_enemy_x = enemy_x,
+            nearest_enemy_y = enemy_y,
+            has_enemy = enemy ~= nil,
+            lives = lives,
+            score = score,
+        }
+    end,
+    actions = function()
+        local enemy = nearest_enemy(P)
+        local dx = 0
+        local above = true
+        if enemy then
+            dx = enemy.x - P.x
+            above = enemy.y > P.y + 0.4
+        end
+        if dx > 0.5 then
+            return { { id = "right_flap", description = "Fly right and flap.", score = dx } }
+        end
+        if dx < -0.5 then
+            return { { id = "left_flap", description = "Fly left and flap.", score = -dx } }
+        end
+        if above then
+            return { { id = "flap", description = "Flap to climb toward the enemy.", score = 1 } }
+        end
+        return { { id = "stop", description = "Level with the enemy.", score = 1 } }
+    end,
+    apply = function(id)
+        local left = id == "left" or id == "left_flap"
+        local right = id == "right" or id == "right_flap"
+        local flap = id == "flap" or id == "left_flap" or id == "right_flap"
+        G.vk.Left = left or nil
+        G.vk.Right = right or nil
+        G.vk.Space = flap or nil
+    end,
+    reset = function(seed)
+        math.randomseed(seed)
+        G.clear_vk()
+        new_game(false)
+    end,
+    on_human = function()
+        G.clear_vk()
+    end,
+})
 to_title()
 G.spawn = spawn_enemy; G.P = P; G.new_game = new_game; G.to_title = to_title; G.AUTO = AUTO; G.unseat = unseat; G.EGGS = EGGS; G.drop_egg = drop_egg
 G.SET = SET; G.state_set = function(s) G.state = s; G.over_t = 5 end

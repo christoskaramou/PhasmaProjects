@@ -93,7 +93,9 @@ local function draw_hud(dt, st)
     text("fklk", lk and ((lk.side < 0) and ("<  " .. lk.name) or (lk.name .. "  >")) or "", 0, SH * 0.3, SW, 50 * US, 1.8, { GOLD[1], GOLD[2], GOLD[3], lka }, "center", st == "play" and lk ~= nil and not G.set_open)
     G.banner.t = (G.banner.t or 0) - dt
     local ba = floor(clamp(G.banner.t / 0.4, 0, 1) * 20) / 20
-    text("ban", G.banner.text or "", 0, SH * 0.22, SW, 90 * US, 3.0, { 1, .85, .35, ba }, "center", st == "play" and not G.set_open and G.banner.t > 0)
+    local ban_on = (st == "play" or st == "count" or st == "title") and not G.set_open and (G.banner.t or 0) > 0
+    local ban_fs = #(G.banner.text or "") > 28 and 1.15 or 3.0
+    text("ban", G.banner.text or "", 0, SH * 0.22, SW, 90 * US, ban_fs, { 1, .85, .35, ba }, "center", ban_on)
     -- countdown
     local cd = st == "count" and not G.set_open
     local n = 3 - floor(G.count_t or 0)
@@ -128,7 +130,12 @@ local function draw_hud(dt, st)
     text("o_s", "Score " .. tostring(G.score) .. (cur and ("  ·  " .. cur.name) or ""), 0, SH * 0.26 + 90 * US, SW, 40 * US, 1.3, DIM, "center", over)
     local c = {}
     local yb = SH * 0.36
-    c.start = button("b_start", "Start (Enter)", SW * 0.75, yb, title); yb = yb + 76 * US
+    local bw = 340 * US
+    local gap = 18 * US
+    local mid = SW * 0.75
+    c.start = button("b_start", "Start (Enter)", mid - (bw + gap) / 2, yb, title)
+    c.jev = button("b_jev", "Jev", mid + (bw + gap) / 2, yb, title)
+    yb = yb + 76 * US
     c.radio = button("b_radio", "Radio: " .. RADIO[G.radio][2], SW * 0.75, yb, title); yb = yb + 76 * US
     c.set_t = button("b_set_t", "Settings (O)", SW * 0.75, yb, title); yb = yb + 76 * US
     c.quit_app = button("b_quit_app", "Quit Game", SW * 0.75, yb, title)
@@ -144,22 +151,212 @@ end
 ------------------------------------------------------------------ flow
 local function to_title()
     G.state = "title"; G.won = false; G.cam_ov = nil
+    G.vk = nil
+    G.shift_q = false
     G.race_reset()
     music("title")
 end
 G.to_title = to_title
-local function new_game()
+G.begin_race = function()
     G.score = 0
+    G.shift_q = false
+    if G.vk then G.vk.Gear = nil end
     G.race_reset()
     G.state = "count"; G.count_t = 0; G.beeped = -1
     music(RADIO[G.radio][1])
+end
+local function new_game()
+    G.jev:begin_human()
+    G.begin_race()
 end
 G.new_game = new_game
 local function game_over(won)
     G.state = "over"; G.over_t = 0; G.won = won
     if not won then music(nil) end
-    if G.score > G.hiscore then G.hiscore = G.score; save_hi() end
+    if G.score > G.hiscore and not (G.jev and G.jev:assisted()) then G.hiscore = G.score; save_hi() end
 end
+
+-- Nested so these locals stay off the main chunk (LuaJIT's 200-local ceiling).
+;(function()
+    local drive_prev = {}
+    local drive_edge = false
+    local DRIVE_KEYS = {
+        "Left", "Right", "A", "D", "Up", "Down", "W", "S", "Space",
+        "LeftShift", "RightShift", "Left Shift", "Right Shift",
+    }
+
+    local function poll_drive_keys()
+        drive_edge = false
+        for i = 1, #DRIVE_KEYS do
+            local key = DRIVE_KEYS[i]
+            local ok, raw = pcall(input.is_key_down_raw, key)
+            local down = ok and raw and true or false
+            if down and not drive_prev[key] then
+                drive_edge = true
+            end
+            drive_prev[key] = down
+        end
+    end
+
+    local function clear_drive()
+        G.vk = nil
+        G.shift_q = false
+    end
+
+    local function hold_keys(keys, on)
+        if on then
+            G.vk = G.vk or {}
+        end
+        if not G.vk then
+            return
+        end
+        for i = 1, #keys do
+            if on then
+                G.vk[keys[i]] = true
+            else
+                G.vk[keys[i]] = nil
+            end
+        end
+    end
+
+    local STEER_L = { "Left", "A" }
+    local STEER_R = { "Right", "D" }
+    local GAS_K = { "Up", "W" }
+    local BRAKE_K = { "Down", "S" }
+
+    local function apply_drive(id)
+        if id == "left" then
+            hold_keys(STEER_R, false)
+            hold_keys(STEER_L, true)
+            hold_keys(BRAKE_K, false)
+            hold_keys(GAS_K, true)
+        elseif id == "right" then
+            hold_keys(STEER_L, false)
+            hold_keys(STEER_R, true)
+            hold_keys(BRAKE_K, false)
+            hold_keys(GAS_K, true)
+        elseif id == "straight" then
+            hold_keys(STEER_L, false)
+            hold_keys(STEER_R, false)
+            hold_keys(BRAKE_K, false)
+            hold_keys(GAS_K, true)
+        elseif id == "gas" then
+            hold_keys(BRAKE_K, false)
+            hold_keys(GAS_K, true)
+        elseif id == "brake" then
+            hold_keys(GAS_K, false)
+            hold_keys(BRAKE_K, true)
+        elseif id == "coast" then
+            hold_keys(GAS_K, false)
+            hold_keys(BRAKE_K, false)
+        elseif id == "gear" then
+            G.vk = G.vk or {}
+            G.vk.Gear = true
+        end
+    end
+
+    local function drive_action()
+        local avoid = 0
+        if CARS then
+            local best = 1e18
+            for _, c in ipairs(CARS) do
+                local ds = c.s - P.s
+                if ds > 0 and ds < 22 and ds < best then
+                    best = ds
+                    avoid = car_x(c) - P.x
+                end
+            end
+        end
+        if math.abs(avoid) > 0.4 then
+            if avoid > 0 then
+                return { { id = "left", description = "Steer left around the car ahead and accelerate.", score = avoid } }
+            end
+            return { { id = "right", description = "Steer right around the car ahead and accelerate.", score = -avoid } }
+        end
+        if P.x > 1.4 then
+            return { { id = "left", description = "Steer left toward the road and accelerate.", score = P.x } }
+        end
+        if P.x < -1.4 then
+            return { { id = "right", description = "Steer right toward the road and accelerate.", score = -P.x } }
+        end
+        return { { id = "straight", description = "Hold the wheel straight and accelerate.", score = 1 } }
+    end
+    local function live_match()
+        local st = G.state
+        return st == "count" or st == "play" or st == "pause" or st == "goal"
+    end
+
+    -- Road curve is degrees per segment. Positive is a left bend (the left warning sign).
+    local function next_curve()
+        local g0 = floor(P.s / G.TC.SEG) + 1
+        local sg = G.SG
+        for i = 0, 120 do
+            local seg = sg[g0 + i]
+            if not seg then
+                break
+            end
+            local cv = seg.curve or 0
+            if cv > 0.2 or cv < -0.2 then
+                if cv > 0 then
+                    return "left"
+                end
+                return "right"
+            end
+        end
+        return "straight"
+    end
+
+    local function round2(v)
+        return floor((v or 0) * 100 + 0.5) / 100
+    end
+
+    local jev_src = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+    local JevAuto = assert(load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV))()
+    G.poll_drive_keys = poll_drive_keys
+    G.jev = JevAuto.attach({
+        port = 9135,
+        id = "outrun_remix",
+        description = "Out Run Remix. The offered action steers around traffic and the next bend, and the accelerator stays down. Prefer the higher action score.",
+        playing = live_match,
+        terminal = function()
+            return G.state == "over"
+        end,
+        score = function()
+            return G.score or 0
+        end,
+        busy = function()
+            return false
+        end,
+        human_edge = function()
+            return drive_edge
+        end,
+        observe = function()
+            return {
+                speed = round2(P.v),
+                lateral_offset = round2(P.x),
+                next_curve = next_curve(),
+                score = G.score or 0,
+            }
+        end,
+        actions = function()
+            local steered = drive_action()
+            if steered[1].id == "straight" then
+                local bend = next_curve()
+                if bend == "left" or bend == "right" then
+                    return { { id = bend, description = "Steer with the next bend and accelerate.", score = 2 } }
+                end
+            end
+            return steered
+        end,
+        apply = apply_drive,
+        reset = function(seed)
+            math.randomseed(seed)
+            G.begin_race()
+        end,
+        on_human = clear_drive,
+    })
+end)()
+
 local acc = 0
 G.shift_q = false
 local rmouse_prev = true
@@ -167,6 +364,8 @@ local function update(dt)
     flush_mats()
     dt = clamp(dt, 0, 0.1)   -- a negative frame time (timer hitch) would make every damp() explode
     G.t = G.t + dt; G.dt = dt
+    G.poll_drive_keys()
+    G.jev:tick(dt)
     local k = { ret = edge("Return"), space = edge("Space"), esc = edge("Escape"), p = edge("P"), o = edge("O"), m = edge("M"), q = edge("Q"),
         sh = edge("LeftShift"), sh2 = edge("RightShift"), left = edge("Left"), right = edge("Right"), f3 = edge("F3") }
     local rd = false
@@ -181,6 +380,16 @@ local function update(dt)
     if k.m then SET:toggle_mute() end
     if st == "title" then
         if k.ret or k.space or c.start then sfx("click"); new_game()
+        elseif c.jev then
+            sfx("click")
+            local ok, err = G.jev:start()
+            if not ok then
+                err = tostring(err or G.jev:error() or "Jev failed to start")
+                pe_log("[OR] " .. err)
+                to_title()
+                G.banner.text = err
+                G.banner.t = 8
+            end
         elseif c.radio or k.right then sfx("click"); G.radio = G.radio % #RADIO + 1; music(RADIO[G.radio][1])
         elseif k.left then sfx("click"); G.radio = (G.radio - 2) % #RADIO + 1; music(RADIO[G.radio][1])
         elseif k.o or c.set_t then open_settings()
@@ -211,7 +420,11 @@ local function update(dt)
     st = G.state
     local running = (st == "play" or st == "goal" or st == "count" or st == "title") and not (G.set_open and st ~= "title")
     if running then
-        if (k.space or k.sh or k.sh2 or rclick) and st == "play" then G.shift_q = true end
+        local gear_pulse = G.vk and G.vk.Gear
+        if (k.space or k.sh or k.sh2 or rclick or gear_pulse) and st == "play" then
+            G.shift_q = true
+            if G.vk then G.vk.Gear = nil end
+        end
         local inp = { h = (any("Right", "D") and 1 or 0) - (any("Left", "A") and 1 or 0), gas = any("Up", "W"), brake = any("Down", "S"), shift = false }
         if st ~= "play" then inp.h, inp.gas, inp.brake = 0, false, false end
         if G.autoplay and st == "play" then

@@ -525,7 +525,7 @@ local function draw_menu(kind)
     end
     -- clickable buttons (mouse); keyboard keys still work. G.mclick = id of the clicked button this frame.
     local btns
-    if kind == "title" then btns = { { "start", "START  (ENTER)" }, { "settings", "SETTINGS  (TAB)" } }
+    if kind == "title" then btns = { { "start", "START  (ENTER)" }, { "jev", "JEV" }, { "settings", "SETTINGS  (TAB)" } }
     elseif kind == "pause" then btns = { { "resume", "RESUME  (P)" }, { "settings", "SETTINGS  (TAB)" }, { "quit", "QUIT  (ESC)" } }
     else btns = { { "again", "PLAY AGAIN" }, { "settings", "SETTINGS  (TAB)" } } end
     local bw, gap = S(230), S(16)
@@ -1062,7 +1062,11 @@ end
 
 local inp = { jump_pressed = false }
 local acc, title_t = 0, 0
+local pulse_space = false
 local function gather_input()
+    if pulse_space then
+        keys_prev.Space = false
+    end
     inp.left, inp.right = anydown("Left", "A"), anydown("Right", "D")
     inp.up, inp.down = anydown("Up", "W"), anydown("Down", "S")
     inp.jump_held = down("Space")
@@ -1091,8 +1095,225 @@ local function init()
     pe_log("[Pitfall] ready: " .. TOTAL_TREASURES .. " treasures, " .. n .. " cooked mesh templates, settings " .. (SET and "loaded" or "absent"))
 end
 
+local jev
+local pulse_down = false
+local hop = false
+local hop_saw_air = false
+local hop_wait = 0
+local raw_prev = {}
+local raw_primed = false
+local hazard_best = { dist = 1e9, side = "none" }
+
+local function clear_hold()
+    G.vkeys.Left = nil
+    G.vkeys.Right = nil
+    G.vkeys.Space = nil
+    G.vkeys.Down = nil
+    pulse_space = false
+    pulse_down = false
+    hop = false
+    hop_saw_air = false
+    hop_wait = 0
+end
+
+local function release_pulses()
+    if pulse_space then
+        G.vkeys.Space = nil
+        pulse_space = false
+    end
+    if pulse_down then
+        G.vkeys.Down = nil
+        pulse_down = false
+    end
+end
+
+local function settle_hop()
+    if not hop then
+        return
+    end
+    if G.state == "play" and (P.mode == "air" or P.mode == "catch") then
+        hop_saw_air = true
+        return
+    end
+    if hop_saw_air or G.state ~= "play" then
+        hop = false
+        hop_saw_air = false
+        return
+    end
+    hop_wait = hop_wait - 1
+    if hop_wait <= 0 then
+        hop = false
+        hop_saw_air = false
+    end
+end
+
+local function human_edge()
+    local keys = { "Left", "Right", "A", "D", "Up", "W", "Down", "S", "Space" }
+    local edge = false
+    for _, k in ipairs(keys) do
+        local ok, raw = pcall(input.is_key_down_raw, k)
+        local held = ok and raw == true
+        if raw_primed and held and not raw_prev[k] then
+            edge = true
+        end
+        raw_prev[k] = held
+    end
+    raw_primed = true
+    return edge
+end
+
+local function consider_hazard(hx, pad)
+    local delta = hx - P.x
+    local dist = math.abs(delta) - (pad or 0)
+    if dist < 0 then
+        dist = 0
+    end
+    if dist < hazard_best.dist then
+        hazard_best.dist = dist
+        if delta < 0 then
+            hazard_best.side = "left"
+        else
+            hazard_best.side = "right"
+        end
+    end
+end
+
+local function consider_pit()
+    if R.pit == "croc" then
+        if croc_open_amount() > 0.5 then
+            for _, cx in ipairs(CROC_X) do
+                consider_hazard(cx, 0.9)
+            end
+        end
+        local hw = pit_halfwidth()
+        consider_hazard(PIT_C - hw, 0)
+        consider_hazard(PIT_C + hw, 0)
+        return
+    end
+    if not R.pit then
+        return
+    end
+    local reach = pit_halfwidth() - 0.5
+    if reach < 0 then
+        reach = 0
+    end
+    local left = PIT_C - reach
+    local right = PIT_C + reach
+    if P.x >= left and P.x <= right then
+        if 0 < hazard_best.dist then
+            hazard_best.dist = 0
+            if P.x < PIT_C then
+                hazard_best.side = "right"
+            else
+                hazard_best.side = "left"
+            end
+        end
+        return
+    end
+    if P.x < left then
+        consider_hazard(left, 0)
+    else
+        consider_hazard(right, 0)
+    end
+end
+
+local function nearest_hazard()
+    if not R then
+        return "none", 999
+    end
+    hazard_best.dist = 1e9
+    hazard_best.side = "none"
+    for _, h in ipairs(R.holes) do
+        consider_hazard(h, 0.85)
+    end
+    for _, l in ipairs(logs) do
+        consider_hazard(l.x, 0.55)
+    end
+    if R.fire or R.cobra then
+        consider_hazard(19.5, 0.5)
+    end
+    if G.under and R.scorpion then
+        consider_hazard(G.scorp_x, 0.55)
+    end
+    consider_pit()
+    if hazard_best.dist >= 1e9 then
+        return "none", 999
+    end
+    return hazard_best.side, hazard_best.dist
+end
+
+local function round2(v)
+    return math.floor(v * 100 + 0.5) / 100
+end
+
+local function observe_match()
+    local side, dist = nearest_hazard()
+    return {
+        x = round2(P.x),
+        on_ground = P.mode == "ground",
+        on_vine = P.mode == "vine" or P.mode == "catch",
+        hazard_side = side,
+        hazard_distance = round2(dist),
+        lives = G.lives or 0,
+        score = G.score or 0,
+    }
+end
+
+local ACTIONS = {
+    { id = "left", description = "Hold left" },
+    { id = "right", description = "Hold right" },
+    { id = "stop", description = "Release left and right" },
+    { id = "jump", description = "Jump" },
+    { id = "down", description = "Drop from a vine" },
+}
+
+local function apply_action(id)
+    if id == "left" then
+        G.vkeys.Left = true
+        G.vkeys.Right = nil
+    elseif id == "right" then
+        G.vkeys.Right = true
+        G.vkeys.Left = nil
+    elseif id == "stop" then
+        G.vkeys.Left = nil
+        G.vkeys.Right = nil
+    elseif id == "jump" then
+        G.vkeys.Right = true
+        G.vkeys.Left = nil
+        G.vkeys.Space = true
+        pulse_space = true
+        if G.state == "play" then
+            hop = true
+            hop_saw_air = false
+            hop_wait = 2
+        end
+    elseif id == "down" then
+        G.vkeys.Down = true
+        pulse_down = true
+    end
+end
+
+local function reset_match(seed)
+    math.randomseed(seed or 1)
+    clear_hold()
+    new_game()
+end
+
+local function start_jev()
+    raw_primed = false
+    jev:begin_human()
+    if jev:start() then
+        return
+    end
+    local message = jev:error() or "Jev could not start"
+    pe_log("[Pitfall] " .. message)
+    show_toast(message)
+    toast.t = 6
+end
+
 local function update(dt)
     dt = math.min(dt, 0.25)
+    jev:tick(dt)
     G.flash = math.max(0, (G.flash or 0) - dt * 1.6)
     toast.t = math.max(0, toast.t - dt)
     if SET and SET:update(dt) then latch_keys(); return end
@@ -1112,9 +1333,15 @@ local function update(dt)
         P.run_phase = P.run_phase + P.vx * dt * 1.6
         present_world(dt); animate_harry(dt); update_camera(dt)
         draw_menu("title")
-        if pressed("Return", "Space") or mclick == "start" then new_game() end
+        if pressed("Return", "Space") or mclick == "start" then
+            jev:begin_human()
+            new_game()
+        elseif mclick == "jev" then
+            start_jev()
+        end
     elseif G.state == "play" or G.state == "dying" then
         gather_input()
+        release_pulses()
         acc = acc + dt
         local steps = 0
         while acc >= STEP and steps < 60 do
@@ -1133,6 +1360,7 @@ local function update(dt)
             G.lives = G.lives - 1
             if G.lives <= 0 then G.state = "over" else G.state = "play"; respawn(); show_toast("WATCH YOUR STEP, HARRY!") end
         end
+        settle_hop()
     elseif G.state == "pause" then
         draw_hud(dt); draw_menu("pause")
         if pressed("Return", "P") or mclick == "resume" then G.state = "play"; runtime_ui.hide("menu"); sfx("select")
@@ -1140,7 +1368,10 @@ local function update(dt)
     elseif G.state == "over" or G.state == "win" then
         G.t = G.t + dt
         present_world(dt); update_camera(dt); draw_hud(dt); draw_menu(G.state)
-        if pressed("Return") or mclick == "again" then new_game() end
+        if pressed("Return") or mclick == "again" then
+            jev:begin_human()
+            new_game()
+        end
     end
     latch_keys()
 end
@@ -1166,5 +1397,40 @@ G.H, G.OBJ, G.WORLD, G.TPL = H, OBJ, WORLD, TPL
 G.set = function() return SET end
 G.vine = vine_state
 G.croc_open = croc_open_amount
+
+local jev_src = assert(fs.read("Scripts/jev_auto.lua"), "Missing Scripts/jev_auto.lua")
+local JevAuto = assert(load(jev_src, "@Scripts/jev_auto.lua", "t", _ENV))()
+jev = JevAuto.attach({
+    port = 9102,
+    id = "pitfall",
+    description = "Pitfall! Remastered. Run, jump, and swing on vines. Left and right are holds. Jump and down are one-frame taps.",
+    playing = function()
+        return G.state == "play" or G.state == "dying"
+    end,
+    terminal = function()
+        return G.state == "over" or G.state == "win"
+    end,
+    score = function()
+        return G.score or 0
+    end,
+    busy = function()
+        return hop
+    end,
+    human_edge = human_edge,
+    observe = observe_match,
+    actions = function()
+        local side, dist = nearest_hazard()
+        if dist and dist >= 0 and dist < 2.2 then
+            return { { id = "jump", description = "Jump while running right.", score = 2 } }
+        end
+        if side == "left" then
+            return { { id = "left", description = "Run left, away from the hazard.", score = 1 } }
+        end
+        return { { id = "right", description = "Run right.", score = 1 } }
+    end,
+    apply = apply_action,
+    reset = reset_match,
+    on_human = clear_hold,
+})
 
 hooks { init = init, update = update }
