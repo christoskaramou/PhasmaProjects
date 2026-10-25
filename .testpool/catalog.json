@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "settings": { "budgetSec": 120, "jev": "auto", "maxBlocks": 2 },
+  "tests": [
+    {
+      "id": "warbound-jev-orders",
+      "name": "Jev stores one order and the Wilds still tick",
+      "covers": "Warbound Jev apply stores one harvest, train, attack, or ability order and the match loop issues it through the existing order functions while the Wilds AI still ticks that frame.",
+      "paths": [
+        "Warbound/Assets/Scripts/warbound.lua",
+        "Warbound/Assets/Scripts/game/wb_game.lua",
+        "Warbound/Assets/Scripts/game/wb_hud.lua",
+        "Warbound/Assets/Scripts/jev_auto.lua",
+        "Warbound/Assets/Scripts/jev_boot.lua",
+        "Warbound/Assets/Scripts/gamekit/**",
+        "Warbound/Assets/Agent/agent_config.json"
+      ],
+      "cwd": "Warbound",
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/jev_orders.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\jev_orders.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": [
+        "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"
+      ],
+      "origin": {
+        "problem": "Warbound had no Jev session, so a driver could not order the warband without pausing the Wilds",
+        "fix": "A Jev control stores one order pulse and the match loop issues it through the existing order functions while the Wilds AI keeps ticking",
+        "date": "2026-10-22"
+      }
+    },
+    {
+      "id": "pong-corners",
+      "name": "Pong paddle covers the rail",
+      "covers": "Pong paddle collision includes the full ball radius and the AI and Jev aim at the intercept, so a ball on the top or bottom rail does not pass the paddle corner.",
+      "paths": ["Arcade/PongRemix/Assets/Scripts/game.lua"],
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/pong_corners.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\pong_corners.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": ["C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"],
+      "origin": {
+        "problem": "Pong left a gap at the rails. The paddle hit box kept only 15 percent of the ball radius, the paddle stopped short of the wall, and the AI scaled its aim toward center.",
+        "fix": "The hit box uses the full ball radius across the frame, the paddle can reach the rail, and both the AI and Jev aim at the predicted intercept.",
+        "date": "2026-10-25"
+      }
+    },
+    {
+      "id": "pang-jev-walk",
+      "name": "Pang Jev walks under the balloon",
+      "covers": "Pang Jev times the wire. A shot that will miss stays out until the ceiling, so Jev does not fire it and stays clear of the balloon for that whole trip.",
+      "paths": [
+        "Arcade/PangRemix/Assets/Scripts/game.lua",
+        "Arcade/PangRemix/tools/src/06_hud.lua"
+      ],
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/pang_jev_walk.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\pang_jev_walk.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": ["C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"],
+      "origin": {
+        "problem": "Pang Jev fired wires that would miss. The miss keeps the wire out until the ceiling, and Jev stood under the balloon the whole time.",
+        "fix": "Jev simulates the wire and the balloons, fires only when the shot hits, and stays clear for the whole miss.",
+        "date": "2026-10-25"
+      }
+    },
+    {
+      "id": "pang-jev-field",
+      "name": "Pang Jev settings, crabs, and pickups",
+      "covers": "Pang settings has a Jev switch on the current stage. Turning it on does not start a new game. Jev steps away from a crab, climbs a ladder for fruit and power-ups, and settings keys do not count as the player taking over.",
+      "paths": [
+        "Arcade/PangRemix/Assets/Scripts/game.lua",
+        "Arcade/PangRemix/tools/src/06_hud.lua",
+        "Arcade/PangRemix/tools/src/01_core.lua",
+        "Arcade/PangRemix/Assets/Scripts/jev_auto.lua",
+        "Arcade/PangRemix/Assets/Scripts/Lib/settings_menu.lua"
+      ],
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/pang_jev_field.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\pang_jev_field.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": ["C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"],
+      "origin": {
+        "problem": "Pang Jev could only start a new match from the title, and it walked into crabs and ignored ladders, fruit, and power-ups.",
+        "fix": "Settings turns Jev on or off on the current stage. Jev steps off crabs and climbs to pickups.",
+        "date": "2026-10-25"
+      }
+    },
+    {
+      "id": "pang-frame-corners",
+      "name": "Pang frame corners do not z-fight",
+      "covers": "Pang stone posts sit behind the lintel and the floor and do not share a front or outer face with them, so the four frame corners do not flicker.",
+      "paths": [
+        "Arcade/PangRemix/Assets/Scripts/game.lua",
+        "Arcade/PangRemix/tools/src/03_stage.lua"
+      ],
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/pang_frame_corners.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\pang_frame_corners.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": ["C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"],
+      "origin": {
+        "problem": "The side posts ran through the floor and the top bar, so those corners shared a face and flickered.",
+        "fix": "The posts are shorter in depth, inset from the outer face, and end inside the floor and the lintel.",
+        "date": "2026-10-25"
+      }
+    }
+  ]
+}

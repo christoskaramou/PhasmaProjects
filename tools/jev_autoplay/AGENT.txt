@@ -1,0 +1,21 @@
+Async Jev autoplay for ONE PhasmaProjects game. Do not edit any other project, PhasmaEngine, tools/jev_autoplay, .gitignore, or Arcade/PrismTetris. Do not git commit. Do not launch PhasmaPlayer.
+
+Read jev_auto.lua and jev_boot.lua in this folder. Copy them byte-for-byte to the game's Assets/Scripts/jev_auto.lua and jev_boot.lua. Copy PhasmaEngine Phasma/Runtime/RuntimeAssets/Scripts/gamekit/driver.lua and json.lua to the game's Assets/Scripts/gamekit/. Do not modify those four files.
+
+Load jev_auto.lua with fs.read + load(..., _ENV). Call JevAuto.attach once at script load. Call jev:tick(dt) once per real frame. Never sleep, pause, or skip the sim while Jev thinks. The network call stays in PhasmaGameDriver.exe.
+
+human_edge reads hardware keys only (input.is_key_down_raw), never virtual keys. on_human clears the hold. apply only stores a hold or a one-shot pulse and returns. The game's existing per-frame input read must see that hold the same way it sees a held key. busy() is true only during a short animation apply already started (a hop). It is false while waiting on Jev.
+
+reset(seed) starts a fresh match and must not clear Jev or write a high score. The normal Play / New Game path calls jev:begin_human() first. Skip high-score writes while jev:assisted().
+
+Add a title-menu item "Jev" beside Play that calls jev:start(). On false, show jev:error() with the game's banner or pe_log. Leave attract-mode autopilot alone.
+
+Set Assets/Agent/agent_config.json mcp true and the port named in your task. Keep other keys. If the file is missing, write {"mcp": true, "mcp_port": PORT}.
+
+If run.ps1 exists, copy PhasmaEngine/build-game-driver/Release/PhasmaGameDriver.exe into source Assets/Bots and the runtime Assets/Bots, the way Arcade/PrismTetris/run.ps1 does. Do not rewrite the rest of run.ps1.
+
+If Assets/Scripts/game.lua is built from tools/src/0*.lua by tools/build_lua.sh, edit the tools/src part that owns input and the title menu, then concatenate tools/src/0*.lua in sorted name order into Assets/Scripts/game.lua.
+
+Syntax-check new and edited lua with C:\Users\Christos\repos\PhasmaEngine\build-ninja-physics\Release\luajit.exe -e "assert(loadfile([[path]]))".
+
+Return: files changed, how the hold or pulse is applied, how the menu starts Jev, and any hook you could not find.

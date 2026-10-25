@@ -30,6 +30,10 @@ __pycache__/
 */Assets/HeroBrain/requests/
 */Assets/HeroBrain/responses/
 
+# Jev's driver, copied into a project by the launcher or run.ps1.
+*/Assets/Bots/
+Arcade/*/Assets/Bots/
+
 # Engine binaries may be dropped beside a project for quick local runs.
 */PhasmaLauncher.exe
 */PhasmaPlayer.exe
