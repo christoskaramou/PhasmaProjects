@@ -302,7 +302,9 @@ function game_over_fx()
         if result:find("wins") then
             local white_won = result:find("White") == 1
             local human_won = bot_both or not bot_on or ((bot_side == "W") ~= white_won)
-            S.play(human_won and "end_win" or "end_lose")
+            if not (chess_jev_assisted and chess_jev_assisted()) then
+                S.play(human_won and "end_win" or "end_lose")
+            end
         else
             S.play("end_draw")
         end
@@ -317,6 +319,9 @@ local function agree_draw()
 end
 
 local function back_to_title()
+    if chess_begin_human then
+        chess_begin_human()
+    end
     LAN.close()
     online = nil
     MENU.hide()
@@ -496,7 +501,24 @@ end
 
 -- One frame of the opponent. Polled unconditionally so the pipe never backs up, then it moves
 -- only when it is genuinely its turn at the live head of the game.
+function G.jev_wants_engine()
+    G._jev_pending_bot = true
+end
+
 local function bot_tick()
+    -- ponytail: proc holds one child. While the Jev driver owns it, leave that
+    -- pipe alone. A second proc handle lets Stockfish run beside the driver.
+    if chess_driver_running and chess_driver_running() then
+        return
+    end
+    if G._jev_pending_bot then
+        G._jev_pending_bot = false
+        if cfg and cfg.side ~= "hotseat" and cfg.side ~= "auto" then
+            local engine_side = (cfg.side == "W") and "B" or "W"
+            G.bot(cfg.elo or 1500, engine_side)
+        end
+        return
+    end
     if not bot_on then return end
     if not BOT.running() then
         pe_log("[chess] bot process died - restarting")
@@ -589,6 +611,9 @@ local function target_at(file, rank)
 end
 
 local function click(file, rank)
+    if chess_note_human then
+        chess_note_human()
+    end
     if not targets then
         select_square(file, rank)
         return
@@ -1139,6 +1164,13 @@ function close_menu()
 end
 
 function start_game(c, keep_link)
+    local from_jev = c and c.jev
+    if c then
+        c.jev = nil
+    end
+    if not from_jev and chess_begin_human then
+        chess_begin_human()
+    end
     cfg = c
     -- Any game that is not the online one drops the lobby: a listener left advertising after
     -- you walked away is a door left open. keep_link is passed by exactly one caller, the
@@ -1156,7 +1188,15 @@ function start_game(c, keep_link)
     if cfg.side == "auto" then
         G.bot(cfg.elo or 1500, "both")
     elseif cfg.side ~= "hotseat" then
-        G.bot(cfg.elo or 1500, (cfg.side == "W") and "B" or "W")
+        local engine_side = (cfg.side == "W") and "B" or "W"
+        if from_jev then
+            bot_on = false
+            bot_both = false
+            bot_side = engine_side
+            bot_wait = nil
+        else
+            G.bot(cfg.elo or 1500, engine_side)
+        end
     end
     if (cfg.clock_min or 0) > 0 then
         clock_k = K.new(cfg.clock_min, cfg.clock_inc or 0)
@@ -1493,11 +1533,20 @@ local function reset_state()
     shown_rows = 0
     -- A previous Play left its engine running (Stop Play does not unwind scene scripts), and
     -- proc holds one child at a time, so take the slot back before anything else.
-    BOT.shutdown()
+    -- A live Jev driver is that child; stopping it here would kill the session.
+    if not (chess_driver_running and chess_driver_running()) then
+        BOT.shutdown()
+    end
     bot_on, bot_side, bot_both, bot_wait = false, "B", false, nil
     -- LuaJIT here has no os.time and no os.clock; a fresh table's address is the only value on
     -- hand that differs between runs, so the blunder rolls are not identical every game.
-    math.randomseed(tonumber((tostring({}):gsub("%D", "")):sub(-9)) or 1)
+    -- A Jev reset passes an explicit seed and must not invent another one.
+    if cfg and cfg._jev_seed then
+        math.randomseed(cfg._jev_seed)
+        cfg._jev_seed = nil
+    else
+        math.randomseed(tonumber((tostring({}):gsub("%D", "")):sub(-9)) or 1)
+    end
     anim, prev_down, promo, result = 0, false, nil, nil
     drag = nil
 
@@ -1853,6 +1902,17 @@ function G.save_pgn()
         if bot_both then white, black = name, name
         elseif bot_side == "W" then white = name else black = name end
     end
+    if chess_jev_assisted and chess_jev_assisted() then
+        if not bot_on then
+            white, black = "Jev", "Jev"
+        elseif not bot_both then
+            if bot_side == "W" then
+                black = "Jev"
+            else
+                white = "Jev"
+            end
+        end
+    end
     local res
     if not result then res = "*"
     elseif result:find("White wins") == 1 then res = "1-0"
@@ -2053,6 +2113,169 @@ function G.status()
         moves = #history,
         bot = bot_on and G.bot_status() or false,
     }
+end
+
+function G.playing()
+    return state ~= nil and menu_mode == nil
+end
+
+function G.terminal()
+    return result ~= nil
+end
+
+function G.busy_anim()
+    return (anim or 0) > 0
+end
+
+function G.banner(text)
+    hud_note = tostring(text)
+    hud_note_frames = 300
+end
+
+local function fen_now()
+    local files = "abcdefgh"
+    local ranks = {}
+    for r = 8, 1, -1 do
+        local row = ""
+        local empty = 0
+        for f = 0, 7 do
+            local sq = state.board[r][f]
+            if not sq then
+                empty = empty + 1
+            else
+                if empty > 0 then
+                    row = row .. tostring(empty)
+                    empty = 0
+                end
+                local piece = sq.kind
+                if sq.color == "B" then
+                    piece = piece:lower()
+                end
+                row = row .. piece
+            end
+        end
+        if empty > 0 then
+            row = row .. tostring(empty)
+        end
+        ranks[#ranks + 1] = row
+    end
+
+    local castle = ""
+    if state.castling.WK then
+        castle = castle .. "K"
+    end
+    if state.castling.WQ then
+        castle = castle .. "Q"
+    end
+    if state.castling.BK then
+        castle = castle .. "k"
+    end
+    if state.castling.BQ then
+        castle = castle .. "q"
+    end
+    if castle == "" then
+        castle = "-"
+    end
+
+    local ep = "-"
+    if state.ep then
+        ep = files:sub(state.ep.file + 1, state.ep.file + 1) .. tostring(state.ep.rank)
+    end
+
+    local turn = "b"
+    if state.turn == "W" then
+        turn = "w"
+    end
+    local fullmove = math.floor(view_ply / 2) + 1
+    return table.concat(ranks, "/")
+        .. " " .. turn
+        .. " " .. castle
+        .. " " .. ep
+        .. " " .. tostring(state.halfmove)
+        .. " " .. tostring(fullmove)
+end
+
+function G.observe()
+    if not state then
+        return {
+            fen = "",
+            turn = "W",
+            ply = 0,
+            check = false,
+            result = false,
+            clock = false,
+            last = false,
+        }
+    end
+
+    local clock = false
+    if clock_k then
+        clock = {w = K.remaining(clock_k, "W"), b = K.remaining(clock_k, "B")}
+    end
+    local last = false
+    if history[view_ply] then
+        last = history[view_ply].san
+    end
+    local side = false
+    if bot_on and not bot_both then
+        if bot_side == "W" then
+            side = "B"
+        else
+            side = "W"
+        end
+    end
+    return {
+        fen = fen_now(),
+        turn = state.turn,
+        ply = view_ply,
+        check = R.in_check(state, state.turn),
+        result = result or false,
+        clock = clock,
+        last = last,
+        side = side,
+    }
+end
+
+function G.jev_actions()
+    if not state or result or menu_mode or replay or view_ply < #history then
+        return {}
+    end
+    local both = chess_jev_assisted and chess_jev_assisted() and not bot_on
+    if not both and (not bot_on or bot_both or state.turn == bot_side) then
+        return {}
+    end
+
+    local files = "abcdefgh"
+    local out = {}
+    for _, m in ipairs(R.legal_moves(state)) do
+        local id = files:sub(m.from_f + 1, m.from_f + 1)
+            .. tostring(m.from_r)
+            .. files:sub(m.to_f + 1, m.to_f + 1)
+            .. tostring(m.to_r)
+        if m.promo then
+            id = id .. m.promo:lower()
+        end
+        out[#out + 1] = {id = id, description = R.san(state, m)}
+    end
+    return out
+end
+
+function G.jev_match(seed)
+    local base = cfg or DEFAULT_CFG
+    local next_cfg = {}
+    for k, v in pairs(DEFAULT_CFG) do
+        if base[k] ~= nil then
+            next_cfg[k] = base[k]
+        else
+            next_cfg[k] = v
+        end
+    end
+    if next_cfg.side ~= "W" and next_cfg.side ~= "B" then
+        next_cfg.side = "W"
+    end
+    next_cfg.jev = true
+    next_cfg._jev_seed = seed or 1
+    start_game(next_cfg)
 end
 
 return G

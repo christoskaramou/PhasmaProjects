@@ -1,5 +1,6 @@
 {
   "mcp": true,
+  "mcp_port": 9148,
   "indexing": {
     "directories": [],
     "include_files": [],

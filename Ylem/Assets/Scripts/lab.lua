@@ -330,6 +330,9 @@ local function reset_atom()
     M.acted = false
     M.won = false
     M.held_id = nil
+    M.pulse = nil
+    M.act_hold = nil
+    M.last_ids = nil
     M.hold_t = 0.0
     M.stream_acc = 0.0
     M.stage = { p = 0, n = 0, e = 0 } -- the left-hand assembly atom: build a chunk, then MERGE it in
@@ -1039,6 +1042,24 @@ local function start_ncatch(x, y, kind, gate)
 end
 
 -- Per-frame -----------------------------------------------------------------
+-- The decay clock records a quench here once the nucleus is stable. apply() calls
+-- the same function so the observation returned with the action already shows it.
+local function settle_quench()
+    if not M.decay or instability() ~= 0 then
+        return
+    end
+
+    local g = M.g
+    M.stats.quenched = (M.stats.quenched or 0) + 1
+    M.gtoast = { msg = "QUENCHED  -  held it stable as " .. iso_name(), age = 0.0 }
+    M.wob = { t = 0.0, amp = (g and g.unit or 0.0) * 0.018, dx = 1.0, dy = 0.0 }
+    if g then
+        g.tx, g.ty = 0.0, 0.0
+    end
+    M.decay = nil
+    sfx(SFX_LOCK)
+end
+
 local function advance(dt)
     local g = M.g
     M.clock = M.clock + dt
@@ -1085,16 +1106,19 @@ local function advance(dt)
             g.tx = a * math.sin(M.clock * 41.0)
             g.ty = a * math.sin(M.clock * 37.0 + 1.3)
         end
-        if M.decay.t <= 0.0 then decay_step(); M.decay = nil end
+        if M.decay.t <= 0.0 then
+            -- A decision already in flight must stay legal after the clock fires.
+            -- The next actions() listing includes these ids once, then drops them.
+            if M.jev and M.jev:assisted() and M.last_ids then
+                M.act_hold = M.last_ids
+            end
+            decay_step()
+            M.decay = nil
+        end
     else
         -- was the clock ticking and the player just reached a stable isotope? that's a
         -- QUENCH — a skill save. (Card-paused decay clears silently: inst may still be >0.)
-        if M.decay and inst == 0 then
-            M.stats.quenched = (M.stats.quenched or 0) + 1
-            M.gtoast = { msg = "QUENCHED  -  held it stable as " .. iso_name(), age = 0.0 }
-            M.wob = { t = 0.0, amp = g.unit * 0.018, dx = 1.0, dy = 0.0 }
-            sfx(SFX_LOCK)
-        end
+        settle_quench()
         M.decay = nil
         g.tx, g.ty = 0.0, 0.0
     end
@@ -1166,6 +1190,55 @@ local function advance(dt)
     end
 end
 
+-- One nucleon or electron, the same landing a catch uses. No drag and no stepper
+-- hold: holding a stepper pauses the decay clock, and this must not.
+local function place_one(kind, a0, shell, spread)
+    if kind == "e" then
+        local si = shell
+        if not si then
+            if not can_add_electron() then
+                return false
+            end
+            si = target_shell()
+            if not si then
+                return false
+            end
+        end
+        local sh = M.atom.shells[si]
+        if not sh then
+            return false
+        end
+        local n = #sh.e
+        if spread == nil then
+            spread = n / (n + 1) * TAU
+        end
+        sh.e[n + 1] = { spread = spread }
+        M.atom.ne = (M.atom.ne or 0) + 1
+        on_electron_added(si)
+        return true
+    end
+
+    if kind == "p" then
+        if not can_add_proton() then
+            return false
+        end
+        M.atom.protons = M.atom.protons + 1
+        on_proton_added(a0 or 0.0)
+        return true
+    end
+
+    if kind == "n" then
+        if not can_add_neutron() then
+            return false
+        end
+        M.atom.neutrons = M.atom.neutrons + 1
+        on_neutron_added(a0 or 0.0)
+        return true
+    end
+
+    return false
+end
+
 local function update_fly(dt)
     local f = M.fly
     if not f or f.state ~= "catch" then return end
@@ -1177,10 +1250,7 @@ local function update_fly(dt)
         local a = f.a0 + f.spin_sign * WIND * TAU * er
         f.x, f.y = g.acx + math.cos(a) * r, g.acy + math.sin(a) * r
         if f.t >= 1.0 then
-            local sh = M.atom.shells[f.shell]
-            sh.e[#sh.e + 1] = { spread = (a - sh.phase) % TAU }
-            M.atom.ne = (M.atom.ne or 0) + 1
-            on_electron_added(f.shell)
+            place_one("e", nil, f.shell, (a - M.atom.shells[f.shell].phase) % TAU)
             M.fly = nil
         end
     else -- proton / neutron pull into the nucleus
@@ -1188,13 +1258,7 @@ local function update_fly(dt)
         local er = ease_out(clamp01(f.t))
         f.x, f.y = lerp(f.sx, g.acx, er), lerp(f.sy, g.acy, er)
         if f.t >= 1.0 then
-            if f.kind == "p" then
-                M.atom.protons = M.atom.protons + 1
-                on_proton_added(f.a0)
-            else
-                M.atom.neutrons = M.atom.neutrons + 1
-                on_neutron_added(f.a0)
-            end
+            place_one(f.kind, f.a0)
             M.fly = nil
         end
     end
@@ -1215,8 +1279,51 @@ local function quest_layout()
     return qx, qy, qw, qh, px, py2, gx0, gy0, ec, erows, my0, mgy0, mcw, mch, mrows
 end
 
+local function builder_free()
+    if M.molecule or M.bonding or M.fusing or M.fission or M.fly then
+        return false
+    end
+    return true
+end
+
+-- Quench is the decay hint's save: one neutron, or one proton (that landing
+-- accretes the principal neutrons). Same order as the on-screen hint.
+local function place_quench()
+    if not M.decay then
+        return false
+    end
+    if stabilizes("n") then
+        return place_one("n")
+    end
+    if stabilizes("p") then
+        return place_one("p")
+    end
+    return false
+end
+
+local function apply_pulse()
+    local id = M.pulse
+    if not id then
+        return
+    end
+    M.pulse = nil
+    if not builder_free() then
+        return
+    end
+    if id == "proton" then
+        place_one("p")
+    elseif id == "neutron" then
+        place_one("n")
+    elseif id == "electron" then
+        place_one("e")
+    elseif id == "quench" then
+        place_quench()
+    end
+end
+
 local function handle_input()
     local g = M.g
+    apply_pulse()
     -- quest catalog: pick any element/molecule as the target. Modal while open.
     local qb = runtime_ui.get_state(SCREEN, "questbtn")
     if qb and qb.clicked then M.questOpen = not M.questOpen; return end
@@ -1251,8 +1358,28 @@ local function handle_input()
         end
         return -- swallow everything else while the catalog is open
     end
+    local jb = runtime_ui.get_state(SCREEN, "jevbtn")
+    if jb and jb.clicked then
+        if M.jev then
+            local ok = M.jev:start()
+            if not ok then
+                local msg = M.jev:error() or "Jev could not start"
+                M.gtoast = { msg = msg, age = 0.0 }
+                if pe_log then
+                    pe_log("[ylem] " .. msg)
+                end
+            end
+        end
+        return
+    end
     local rs = runtime_ui.get_state(SCREEN, "reset")
-    if rs and rs.clicked then reset_atom(); return end
+    if rs and rs.clicked then
+        if M.jev then
+            M.jev:begin_human()
+        end
+        reset_atom()
+        return
+    end
     local ts = runtime_ui.get_state(SCREEN, "target_btn")
     if ts and ts.clicked then new_target(); return end
     for _, c in ipairs(CATALYSTS) do
@@ -2275,6 +2402,10 @@ local function draw()
         end
     end
 
+    quad("jevbtn", { x = g.w - 280.0, y = 26.0, width = 122.0, height = 44.0, z = 45.0,
+        style = "button", title = "Jev", font_scale = 1.7,
+        fill = PAL.BTN_OFF, border = { 0.4, 0.5, 0.62, 0.7 },
+        accent = PAL.RING, text_color = PAL.TIP_TEXT })
     quad("reset", { x = g.w - 150.0, y = 26.0, width = 122.0, height = 44.0, z = 45.0,
         style = "button", title = "Restart", font_scale = 1.7,
         fill = PAL.BTN_OFF, border = { 0.4, 0.5, 0.62, 0.7 },
@@ -2337,8 +2468,134 @@ function M.update(dt)
         for _, v in pairs(M.shelf) do sh = sh + v end
         local sig = string.format("%d|%d|%d|%d|%d|%d|%s", dn, md, sh,
             M.stats.decays or 0, M.stats.quenched or 0, M.tcount or 0, M.view)
-        if sig ~= M._sig then M._sig = sig; save_progress() end
+        local assisted = M.jev and M.jev:assisted()
+        if sig ~= M._sig and not assisted then
+            M._sig = sig
+            save_progress()
+        end
     end
+end
+
+-- Jev. The lab has no title menu: "Jev" sits beside Restart. There is no
+-- game-over state and no high-score table. Progress autosave is the only write,
+-- and update skips it while a Jev run is assisted.
+local HUMAN_KEYS = { "Space", "Escape", "Return", "R" }
+local human_down = {}
+
+function M.bind_jev(jev)
+    M.jev = jev
+end
+
+function M.playing()
+    return M.atom ~= nil
+end
+
+function M.terminal()
+    return false
+end
+
+function M.score()
+    return M.tcount or 0
+end
+
+function M.busy()
+    return false
+end
+
+function M.human_edge()
+    if not (input and input.is_key_down_raw) then
+        return false
+    end
+    local edge = false
+    for i = 1, #HUMAN_KEYS do
+        local key = HUMAN_KEYS[i]
+        local down = input.is_key_down_raw(key) == true
+        if down and not human_down[key] then
+            edge = true
+        end
+        human_down[key] = down
+    end
+    return edge
+end
+
+function M.on_human()
+    M.pulse = nil
+    M.act_hold = nil
+end
+
+function M.observe()
+    local left = 0.0
+    if M.decay then
+        left = M.decay.t
+    end
+    return {
+        z = M.atom.protons,
+        neutrons = M.atom.neutrons,
+        electrons = M.atom.ne or 0,
+        target = target_label(),
+        decaying = M.decay ~= nil,
+        time_left = left,
+    }
+end
+
+local ACTION_TEXT = {
+    proton = "Add one proton",
+    neutron = "Add one neutron",
+    electron = "Add one electron",
+    quench = "Quench the decay by stabilizing the nucleus",
+}
+local ACTION_ORDER = { "proton", "neutron", "electron", "quench" }
+
+function M.actions()
+    local list = {}
+    if M.atom and builder_free() then
+        if can_add_proton() then
+            list[#list + 1] = { id = "proton", description = ACTION_TEXT.proton }
+        end
+        if can_add_neutron() then
+            list[#list + 1] = { id = "neutron", description = ACTION_TEXT.neutron }
+        end
+        if can_add_electron() and target_shell() then
+            list[#list + 1] = { id = "electron", description = ACTION_TEXT.electron }
+        end
+        if M.decay and (stabilizes("n") or stabilizes("p")) then
+            list[#list + 1] = { id = "quench", description = ACTION_TEXT.quench }
+        end
+    end
+
+    local snap = {}
+    for i = 1, #list do
+        snap[list[i].id] = list[i].description
+    end
+    M.last_ids = snap
+
+    local hold = M.act_hold
+    if hold then
+        M.act_hold = nil
+        local have = snap
+        for i = 1, #ACTION_ORDER do
+            local id = ACTION_ORDER[i]
+            if hold[id] and not have[id] then
+                list[#list + 1] = { id = id, description = hold[id] }
+            end
+        end
+    end
+    return list
+end
+
+function M.apply(id)
+    M.pulse = id
+    apply_pulse()
+    settle_quench()
+end
+
+function M.reset_match(seed)
+    if type(seed) == "number" then
+        math.randomseed(seed)
+    end
+    reset_atom()
+    M.target = { kind = "el", z = 2 }
+    M.gtoast = nil
 end
 
 return M
