@@ -1,0 +1,71 @@
+------------------------------------------------------------------ 03b_levels: campaign (Greece -> Balkans -> Europe -> beyond)
+local D = G.D
+-- region roles per map (1-based region indices into BB_MAPS[map].regions); starting regions become capitals
+D.MAPINFO = {
+    greece = { title = "Greece", sky = "table", ports = { 1, 10, 11, 13 }, mines = { 7, 4 }, forts = { 2, 3 } },
+    balkans = { title = "The Balkans", ports = { 2, 15, 5 }, mines = { 6, 13 }, forts = { 3, 9, 11, 14 } },
+    italy = { title = "Italy", ports = { 6, 13, 17, 4 }, mines = { 18, 8 }, forts = { 1, 3, 12, 15 } },
+    iberia = { title = "Iberia", ports = { 16, 5, 12, 13 }, mines = { 10, 11 }, forts = { 2, 3, 4 } },
+    europe = { title = "Europe", ports = { 38, 3, 1, 37, 41, 46, 2 }, mines = { 10, 44, 30 }, forts = { 5, 12, 13, 25, 11 } },
+    usa = { title = "United States", ports = { 3, 40, 33, 22, 1 }, mines = { 4, 10, 17, 37 }, forts = { 5, 6, 8, 7 } },
+}
+-- p = player starts, ai = { faction, personality, starts }, par = seconds for 3 stars
+-- diff: aiprod = AI production multiplier, ivm = AI decision interval multiplier, delay = AI wakes after, ng = neutral garrison multiplier
+D.LEVELS = {
+    { name = "First Muster", map = "greece", tut = true, par = 40, active = { 5, 6, 7, 8, 9 }, p = { 8 },
+      ai = { { 2, "passive", { 5 } } }, diff = { aiprod = 0.6, ivm = 1.0, delay = 25, ng = 0.7 }, start = 14, aistart = 8,
+      blurb = "Learn to march: take the Peloponnese coast, then Thessaly." },
+    { name = "Hellenic Dawn", map = "greece", par = 110, p = { 8 }, ai = { { 2, "steady", { 1 } } },
+      soft = { aiprod = 0.7, ivm = 1.4, aistart = 0.8 }, diff = { aiprod = 0.85, ivm = 1.05, delay = 6, ng = 0.9 }, blurb = "The Crimson Pact holds the north. Unite Greece." },
+    { name = "Aegean Storm", map = "greece", par = 130, p = { 8 }, ai = { { 2, "warlord", { 4 } }, { 3, "steady", { 10 } } },
+      diff = { aiprod = 0.8, ivm = 1.1, delay = 6, ng = 1.0 }, blurb = "A Warlord marches from Thrace while Amber sails from Crete." },
+    { name = "Balkan Thunder", map = "balkans", par = 150, p = { 2 }, ai = { { 2, "steady", { 15 } }, { 3, "warlord", { 16 } } },
+      diff = { aiprod = 0.85, ivm = 1.05, delay = 5, ng = 1.0 }, blurb = "Mountains and passes: forts guard every valley." },
+    { name = "Roman Roads", map = "italy", par = 110, p = { 11 }, ai = { { 2, "warlord", { 16 } }, { 4, "vulture", { 3 } } },
+      diff = { aiprod = 0.8, ivm = 1.0, delay = 5, ng = 1.0 }, blurb = "Hold Rome between a Warlord and a Vulture." },
+    { name = "Iberian Tides", map = "iberia", par = 130, p = { 16 }, ai = { { 2, "steady", { 5 } }, { 3, "warlord", { 3 } }, { 4, "vulture", { 12 } } },
+      diff = { aiprod = 0.85, ivm = 1.0, delay = 5, ng = 1.0 }, blurb = "Three rivals, one peninsula. Ports sail at full speed." },
+    { name = "Continental Clash", map = "europe", par = 260, p = { 28 }, ai = { { 2, "warlord", { 33 } }, { 3, "steady", { 36 } }, { 4, "vulture", { 34 } } },
+      soft = { aiprod = 0.75, ivm = 1.3 }, diff = { aiprod = 0.85, ivm = 1.0, delay = 4, ng = 1.0 }, blurb = "Europe is up for grabs. Mines speed up your abilities." },
+    { name = "The Violet Empire", map = "europe", par = 150, boss = true, p = { 28 }, ai = { { 5, "empire", { 23, 45 } } },
+      soft = { aiprod = 0.7, ivm = 1.4, aicd = 1.5, aistart = 0.7, delay = 8 }, diff = { aiprod = 0.8, ivm = 1.15, delay = 8, ng = 1.0, aicd = 1.3 }, start = 30, aistart = 28, blurb = "An Emperor rises in the east and wields every ability." },
+    { name = "Gold Coast Gambit", map = "westafrica", par = 120, p = { "W" }, ai = { { 2, "steady", { "E" } }, { 4, "vulture", { "NE" } } },
+      diff = { aiprod = 0.85, ivm = 1.0, delay = 5, ng = 1.0 }, blurb = "Act II: Africa. Sweep the Gulf coast before the Jade Order wakes." },
+    { name = "Cape of Storms", map = "southafrica", par = 110, p = { "S" }, ai = { { 2, "warlord", { "N" } }, { 3, "steady", { "NW" } } },
+      diff = { aiprod = 0.85, ivm = 1.0, delay = 5, ng = 1.0 }, blurb = "Hold the Cape. A Warlord charges down from the Zambezi." },
+    { name = "Sahara to Savanna", map = "africa", par = 140, p = { "S" }, ai = { { 2, "warlord", { "N" } }, { 3, "steady", { "W" } }, { 4, "vulture", { "E" } } },
+      diff = { aiprod = 0.85, ivm = 1.0, delay = 4, ng = 1.0 }, blurb = "A whole continent and three rivals. Do not overreach in the desert." },
+    { name = "Monsoon Realms", map = "india", par = 140, p = { "S" }, ai = { { 2, "warlord", { "N" } }, { 3, "vulture", { "E" } } },
+      diff = { aiprod = 0.88, ivm = 1.0, delay = 4, ng = 1.0 }, blurb = "Act III: Asia. Push north from the southern capes." },
+    { name = "Island Shogunates", map = "japan", par = 240, p = { "SW" }, ai = { { 2, "steady", { "NE" } }, { 3, "warlord", { "C" } }, { 4, "vulture", { "N" } } },
+      diff = { aiprod = 0.9, ivm = 0.95, delay = 4, ng = 1.0 }, blurb = "A crowded archipelago: ports carry armies across the straits." },
+    { name = "Middle Kingdom", map = "china", par = 160, boss = true, p = { "E" }, ai = { { 5, "empire", { "W", "+" } }, { 3, "steady", { "N" } } },
+      soft = { aiprod = 0.8, ivm = 1.25, aicd = 1.3, aistart = 0.85, delay = 4 }, diff = { aiprod = 0.8, ivm = 1.15, delay = 8, ng = 1.0, aicd = 1.3 }, start = 26, aistart = 20, blurb = "The Violet Empire has fled east. Break its second throne." },
+    { name = "Silk Road", map = "asia", par = 220, p = { 21 }, ai = { { 2, "warlord", { "W" } }, { 3, "steady", { "NE" } } },
+      diff = { aiprod = 0.85, ivm = 1.0, delay = 5, ng = 1.0, spd = 1.25 }, blurb = "From the islands to Arabia, one road to rule them all." },
+    { name = "Sunburnt Country", map = "australia", par = 110, p = { "E" }, ai = { { 2, "warlord", { "W" } }, { 4, "vulture", { "N" } } },
+      diff = { aiprod = 0.86, ivm = 1.0, delay = 5, ng = 1.05 }, blurb = "Act IV: Oceania. Long marches over the empty heart." },
+    { name = "Long White Cloud", map = "nz", par = 160, p = { "N" }, ai = { { 2, "warlord", { "S" } }, { 3, "vulture", { "C" } } },
+      soft = { aiprod = 0.8, ivm = 1.3 }, diff = { aiprod = 0.9, ivm = 0.95, delay = 4, ng = 1.05 }, blurb = "Two islands, one strait. A short, sharp fight." },
+    { name = "Amazon Rivers", map = "brazil", par = 120, p = { "E" }, ai = { { 2, "steady", { "W" } }, { 3, "warlord", { "S" } } },
+      diff = { aiprod = 0.92, ivm = 0.95, delay = 4, ng = 1.05 }, blurb = "Act V: South America. The jungle hides many garrisons." },
+    { name = "Andes and Pampas", map = "southamerica", par = 150, p = { "NE" }, ai = { { 2, "warlord", { "W" } }, { 3, "steady", { "S" } }, { 4, "vulture", { "N" } } },
+      diff = { aiprod = 0.88, ivm = 1.0, delay = 4, ng = 1.05 }, blurb = "Mountain forts along the spine of a continent." },
+    { name = "Sierra Madre", map = "mexico", par = 130, p = { "SE" }, soft = { aiprod = 0.85, ivm = 1.2 }, ai = { { 2, "warlord", { "NW" } }, { 4, "vulture", { "N" } } },
+      diff = { aiprod = 0.95, ivm = 0.9, delay = 3, ng = 1.05 }, blurb = "Act VI: North America. Two sierras, one high plateau." },
+    { name = "New World", map = "usa", par = 370, p = { 40 }, ai = { { 2, "warlord", { 3 } }, { 3, "steady", { 17 } }, { 4, "vulture", { 18 } } },
+      diff = { aiprod = 0.92, ivm = 0.95, delay = 4, ng = 1.05 }, blurb = "Across the ocean: a continent of open plains." },
+    { name = "One World", map = "world", par = 320, boss = true, p = { 4 }, ai = { { 5, "empire", { 21, 23 } }, { 2, "warlord", { 29 } }, { 4, "vulture", { 34 } } },
+      soft = { aiprod = 0.75, ivm = 1.3, aicd = 1.4, aistart = 0.75, delay = 3 }, diff = { aiprod = 0.8, ivm = 1.1, delay = 8, ng = 1.0, aicd = 1.3, spd = 1.6 }, start = 30, aistart = 20, blurb = "The Emperor's last stand. Every border on Earth is in play." },
+}
+-- continent of each map (world campaign screen)
+D.CONT = { greece = "Europe", balkans = "Europe", italy = "Europe", iberia = "Europe", europe = "Europe", westafrica = "Africa", southafrica = "Africa",
+    africa = "Africa", india = "Asia", japan = "Asia", china = "Asia", asia = "Asia", australia = "Oceania", nz = "Oceania", brazil = "South America",
+    southamerica = "South America", mexico = "North America", usa = "North America", world = "World" }
+D.TUT = {
+    { key = "select", txt = "Press on your blue region and drag to a grey neutral region, then release.", arrow = "own" },
+    { key = "sent", txt = "Your troops march! Arriving soldiers fight the garrison one-for-one.", wait = 3.5 },
+    { key = "capture", txt = "Capture more regions: each one recruits troops up to its cap.", need = 3 },
+    { key = "multi", txt = "Drag across several of your regions to send them all at once. Space toggles 100% / 50%.", wait = 6 },
+    { key = "abil", txt = "Now take Thessaly from the Crimson Pact to win the region!", wait = 0 },
+}
