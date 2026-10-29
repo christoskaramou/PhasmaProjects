@@ -104,6 +104,22 @@
         "fix": "The posts are shorter in depth, inset from the outer face, and end inside the floor and the lintel.",
         "date": "2026-10-25"
       }
+    },
+    {
+      "id": "neon-invaders-steer",
+      "name": "Neon Invaders actions resolve the invader position",
+      "covers": "Neon Invaders aim_dx resolves an invader's world x through inv_pos(ox, formation.x) instead of reading a nonexistent iv.x, so actions() returns a steer instead of raising and making game_observe return callback_failed.",
+      "paths": ["Arcade/NeonInvaders/Assets/Scripts/game.lua"],
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/neon_invaders_steer.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\neon_invaders_steer.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": ["C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"],
+      "origin": {
+        "problem": "aim_dx read iv.x, which invaders never set (they store ox/oy), so every Jev action poll errored with nil arithmetic.",
+        "fix": "aim_dx resolves the invader's world position with inv_pos(iv) before comparing height and aiming.",
+        "date": "2026-10-26"
+      }
     }
   ]
 }
