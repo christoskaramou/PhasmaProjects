@@ -789,10 +789,10 @@ local function aim_dx()
   for i = 1, #invaders do
     local iv = invaders[i]
     if iv.alive then
-      local y = iv.y or 0
+      local x, y = inv_pos(iv)
       if not best or y < best then
         best = y
-        ax = iv.x
+        ax = x
       end
     end
   end
