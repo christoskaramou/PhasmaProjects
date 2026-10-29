@@ -1,0 +1,2 @@
+# Radiance HDR skyboxes contain no NUL bytes, so stop autocrlf from treating them as text.
+*.hdr binary

@@ -1,0 +1,28 @@
+--- a/Phasma/Runtime/Code/RenderPasses/TAAPass.cpp
++++ b/Phasma/Runtime/Code/RenderPasses/TAAPass.cpp
+@@ -81,7 +81,7 @@
+     void TAAPass::UpdatePassInfo()
+     {
+         m_passInfo->name = "TAA_pipeline";
+-        m_passInfo->pCompShader = Shader::Create({.sourcePath = Path::RuntimeAssets + "Shaders/TAA/TAA.hlsl", .entryPoint = "main", .stage = PE_SHADER_STAGE_COMPUTE, .defines = SceneUsesHDR() ? std::vector<Define>{{"HDR_SCENE", "1"}} : std::vector<Define>{}});
++        m_passInfo->pCompShader = Shader::Create({.sourcePath = Path::RuntimeAssets + "Shaders/TAA/TAA.hlsl", .entryPoint = "main", .stage = PE_SHADER_STAGE_COMPUTE, .defines = SceneUsesHDR() ? std::vector<Define>{{"HDR_SCENE", "1"}, {"TAA_DEPTH_DILATION", "1"}} : std::vector<Define>{{"TAA_DEPTH_DILATION", "1"}}});
+         m_passInfo->Update();
+     }
+ 
+@@ -105,7 +105,7 @@
+                 dset->SetImageView(0, m_viewportRT->GetSRV());
+                 dset->SetImageView(1, m_historyImage->GetSRV());
+                 dset->SetImageView(2, m_velocityRT->GetSRV());
+-                // dset->SetImageView(3, m_depthStencil->GetSRV()); // Depth unused
++                dset->SetImageView(3, m_depthStencil->GetSRV()); // nearest-depth velocity dilation (TAA_DEPTH_DILATION)
+                 dset->SetSampler(4, m_historyImage->GetSampler());
+                 dset->SetImageView(5, taaOutput->GetUAV(0));
+                 dset->Update();
+@@ -130,6 +130,7 @@
+         if (!m_resetHistory)
+             builder.ReadCompute(m_historyImage);
+         builder.ReadCompute(m_velocityRT);
++        builder.ReadCompute(m_depthStencil);
+         builder.WriteCompute(taaOutput);
+     }
+ 

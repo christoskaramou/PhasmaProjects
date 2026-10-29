@@ -1,0 +1,13 @@
+# Transient editor / runtime state - regenerated locally, not part of the game.
+project/Assets/Save/
+project/Assets/editor_config.json
+project/Assets/editor_windows.json
+project/Assets/imgui.ini
+project/Assets/Cache/
+project/Assets/ShadersCache/
+# MCP command channel: rewritten every session, never content.
+project/Assets/Agent/command.run
+# Jev's driver, copied in by the launcher or run.ps1.
+project/Assets/Bots/
+*.log
+__pycache__/
