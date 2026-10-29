@@ -1000,7 +1000,7 @@ jev = JevAuto.attach({
     actions = function()
         local a = tanks[1]
         local b = tanks[2]
-        if not a or not b or not a.alive or not b.alive then
+        if not a or not b then
             return { { id = "thrust_fire", description = "Drive and fire.", score = 1 } }
         end
         local dx = b.x - a.x

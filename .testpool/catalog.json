@@ -120,6 +120,22 @@
         "fix": "aim_dx resolves the invader's world position with inv_pos(iv) before comparing height and aiming.",
         "date": "2026-10-26"
       }
+    },
+    {
+      "id": "neon-combat-turn",
+      "name": "Neon Combat offers a turn toward the other tank",
+      "covers": "Neon Combat actions() no longer gates on tank.alive, which tanks never set, so left and right are offered when the heading error exceeds 8 degrees instead of only thrust_fire.",
+      "paths": ["Arcade/NeonCombat/Assets/Scripts/game.lua"],
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe .testpool/tests/neon_combat_turn.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe .testpool\\tests\\neon_combat_turn.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": ["C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"],
+      "origin": {
+        "problem": "The actions guard tested a.alive/b.alive, but tanks have no alive field, so the guard was always true and Jev could only thrust_fire.",
+        "fix": "The guard checks only that both tanks exist, leaving the heading-error turn logic reachable.",
+        "date": "2026-10-26"
+      }
     }
   ]
 }
