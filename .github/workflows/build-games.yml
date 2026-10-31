@@ -1,0 +1,291 @@
+# Builds every game in this repo as a standalone Windows build and bundles
+# them into one zip (PhasmaGames-<version>.zip) with tools/package_all.ps1.
+#
+#   Actions tab -> "Build games" -> Run workflow  : zip uploaded as a run artifact
+#   git tag v0.2.0 && git push origin v0.2.0      : zip attached to a GitHub Release
+#
+# The engine (christoskaramou/PhasmaEngine, public) is built from source at a
+# pinned commit (ENGINE_REF below, or the engine_ref input). Only the targets
+# the exporter needs are built, and the output is cached per engine commit, so
+# rebuilds happen only when the pin changes.
+
+name: Build games
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine_ref:
+        description: "PhasmaEngine commit, branch or tag (empty = pinned ENGINE_REF)"
+        required: false
+        default: ""
+        type: string
+      version:
+        description: "Version label for the zip (empty = <yyyyMMdd>-<short sha>)"
+        required: false
+        default: ""
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-games-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ENGINE_REPO: christoskaramou/PhasmaEngine
+  # Engine commit used for tag builds and when engine_ref is empty.
+  # Bump this when the games need newer engine features.
+  ENGINE_REF: eaadcec3de93f9004db56f5adbd1694ed259dd6c
+  # Player + exporter only: no editor, launcher, animator, profiler, WebGPU or
+  # Tracy. MCP stays on so the player matches the build the games are tested
+  # with. Assimp + MaterialX stay on: PhasmaCook generates the OpenPBR default
+  # shader module PhasmaPlayer depends on.
+  ENGINE_CMAKE_FLAGS: >-
+    -DPE_BUILD_EDITOR=OFF
+    -DPE_BUILD_LAUNCHER=OFF
+    -DPE_BUILD_ANIMATOR=OFF
+    -DPE_BUILD_PROFILER=OFF
+    -DPE_BUILD_MCP=ON
+    -DPE_BUILD_PLAYER=ON
+    -DPE_BUILD_EXPORTER=ON
+    -DPE_WEBGPU=OFF
+    -DPE_TRACY=OFF
+    -DPE_PHYSICS=ON
+    -DPE_ENABLE_ASSIMP=ON
+    -DPE_MATERIALX=ON
+  # Bump to throw away cached engine builds.
+  ENGINE_CACHE_VERSION: "1"
+  # PhasmaCore.dll links vulkan-1.dll. The runner has no GPU driver, so the
+  # exporter process needs a loader on PATH just to start (it never creates a
+  # Vulkan instance). The loader is NOT copied into the games.
+  VULKAN_RT_VERSION: 1.4.350.0
+  VULKAN_RT_SHA256: 23ce69f32cef3e2799617e2b1776cd0c71030d23a91f8375821cc40d76b185b9
+
+jobs:
+  build:
+    name: Export all games (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write # create/update the release on tag pushes
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      # ---------------------------------------------------------------- games
+      - name: Checkout PhasmaProjects (LFS pointers only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: projects
+          lfs: false
+
+      - name: List LFS objects
+        run: |
+          # One line per LFS object id; the cache key changes only when an
+          # LFS file is added or changed.
+          git -C projects lfs ls-files --long |
+            ForEach-Object { ($_ -split ' ')[0] } |
+            Sort-Object |
+            Set-Content -Path lfs-ids.txt -Encoding ascii
+          "LFS objects: $((Get-Content lfs-ids.txt).Count)"
+
+      - name: Restore LFS cache
+        id: lfs-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: projects/.git/lfs
+          key: lfs-${{ hashFiles('lfs-ids.txt') }}
+          # A partial hit means only new/changed LFS files are downloaded.
+          restore-keys: lfs-
+
+      - name: Fetch LFS files
+        run: |
+          git -C projects lfs pull
+          git -C projects lfs ls-files | Select-String ' - ' | ForEach-Object {
+            Write-Host "::error::LFS file not downloaded: $_"
+            $script:missing = $true
+          }
+          if ($script:missing) { exit 1 }
+
+      - name: Save LFS cache
+        if: steps.lfs-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: projects/.git/lfs
+          key: lfs-${{ hashFiles('lfs-ids.txt') }}
+
+      # --------------------------------------------------------------- engine
+      - name: Resolve engine commit and version
+        id: meta
+        env:
+          INPUT_ENGINE_REF: ${{ inputs.engine_ref }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          $ref = if ($env:INPUT_ENGINE_REF) { $env:INPUT_ENGINE_REF.Trim() } else { $env:ENGINE_REF }
+          if ($ref -match '^[0-9a-f]{40}$') {
+            $sha = $ref
+          } else {
+            $line = git ls-remote "https://github.com/$env:ENGINE_REPO.git" $ref "refs/heads/$ref" "refs/tags/$ref^{}" "refs/tags/$ref" |
+              Select-Object -First 1
+            if (-not $line) { Write-Host "::error::Engine ref '$ref' not found in $env:ENGINE_REPO"; exit 1 }
+            $sha = ($line -split '\s+')[0]
+          }
+
+          $sb = [Text.StringBuilder]::new()
+          $bytes = [Security.Cryptography.SHA256]::Create().ComputeHash(
+            [Text.Encoding]::UTF8.GetBytes("$env:ENGINE_CMAKE_FLAGS|$env:ENGINE_CACHE_VERSION"))
+          foreach ($b in $bytes[0..5]) { [void]$sb.Append($b.ToString('x2')) }
+
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $version = $env:GITHUB_REF_NAME
+          } elseif ($env:INPUT_VERSION) {
+            $version = $env:INPUT_VERSION.Trim()
+          } else {
+            $version = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd'), $env:GITHUB_SHA.Substring(0, 8)
+          }
+          $version = $version -replace '[^A-Za-z0-9._-]', '-'
+
+          "Engine  : $env:ENGINE_REPO@$sha (ref '$ref')"
+          "Version : $version"
+          "engine_sha=$sha"            >> $env:GITHUB_OUTPUT
+          "flags_hash=$($sb.ToString())" >> $env:GITHUB_OUTPUT
+          "version=$version"           >> $env:GITHUB_OUTPUT
+
+      - name: Restore engine build
+        id: engine-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: engine/build/Release
+          key: engine-release-${{ runner.os }}-${{ steps.meta.outputs.engine_sha }}-${{ steps.meta.outputs.flags_hash }}
+
+      - name: Checkout PhasmaEngine
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.ENGINE_REPO }}
+          ref: ${{ steps.meta.outputs.engine_sha }}
+          path: engine
+          fetch-depth: 1
+          lfs: false
+          submodules: false # only Tracy, which is off
+
+      # Also needed when the engine is cached: package_all.ps1 takes the C++
+      # runtime DLLs from the MSVC redist folder this sets up.
+      - name: MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+
+      - name: Install Ninja
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        uses: seanmiddleditch/gha-setup-ninja@3b1f8f94a2f8254bd26914c4ab9474d4f0015f67 # v6
+
+      - name: Configure engine
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        working-directory: engine
+        run: |
+          cmake --version
+          $flags = $env:ENGINE_CMAKE_FLAGS -split '\s+' | Where-Object { $_ }
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release @flags
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build PhasmaPlayer + PhasmaExport
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        working-directory: engine
+        run: |
+          cmake --build build --config Release --target PhasmaPlayer PhasmaExport --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem build/Release -File | Sort-Object Name | Format-Table Name, Length -AutoSize
+
+      - name: Save engine build
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: engine/build/Release
+          key: engine-release-${{ runner.os }}-${{ steps.meta.outputs.engine_sha }}-${{ steps.meta.outputs.flags_hash }}
+
+      # ---------------------------------------------------------------- export
+      - name: Vulkan loader for the exporter
+        run: |
+          if (Test-Path "$env:WINDIR\System32\vulkan-1.dll") {
+            "vulkan-1.dll already installed"
+            exit 0
+          }
+          $zip = Join-Path $env:RUNNER_TEMP 'vulkan-runtime.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'vulkan-runtime'
+          Invoke-WebRequest "https://sdk.lunarg.com/sdk/download/$env:VULKAN_RT_VERSION/windows/vulkan-runtime-components.zip" -OutFile $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($hash -ne $env:VULKAN_RT_SHA256) { Write-Host "::error::Vulkan runtime checksum mismatch ($hash)"; exit 1 }
+          Expand-Archive $zip -DestinationPath $dir -Force
+          $loader = Get-ChildItem $dir -Recurse -Filter vulkan-1.dll | Where-Object { $_.Directory.Name -eq 'x64' } | Select-Object -First 1
+          if (-not $loader) { Write-Host "::error::x64 vulkan-1.dll not found in the runtime archive"; exit 1 }
+          "Vulkan loader: $($loader.FullName)"
+          $loader.Directory.FullName >> $env:GITHUB_PATH
+
+      - name: Export and zip all games
+        id: package
+        env:
+          PHASMA_ENGINE_SHA: ${{ steps.meta.outputs.engine_sha }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          # Exits 1 if any game failed; the zip still holds the games that worked.
+          ./projects/tools/package_all.ps1 `
+            -Engine engine/build/Release `
+            -Out "$env:GITHUB_WORKSPACE/dist" `
+            -Version $env:VERSION
+
+      - name: Upload export logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: export-logs-${{ steps.meta.outputs.version }}
+          path: |
+            dist/logs/
+            dist/summary.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload zip artifact
+        # Also on a partial failure, so the games that did export can be tried.
+        if: ${{ !cancelled() && steps.package.outputs.zip != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          # archive: false uploads the zip as-is (no zip inside a zip); the
+          # artifact is named after the file.
+          path: ${{ steps.package.outputs.zip }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+
+      # --------------------------------------------------------------- release
+      - name: Check release asset size
+        if: github.ref_type == 'tag'
+        env:
+          ZIP_BYTES: ${{ steps.package.outputs.zip_bytes }}
+        run: |
+          $limit = 2GB
+          if ([long]$env:ZIP_BYTES -ge $limit) {
+            Write-Host "::error::Zip is $([math]::Round([long]$env:ZIP_BYTES / 1GB, 2)) GB; GitHub release assets must be under 2 GiB."
+            exit 1
+          }
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Phasma Games ${{ github.ref_name }}
+          body: |
+            All Phasma games as standalone Windows builds, one folder per game.
+            Unzip, open a game folder and run `<Game>.exe`. Needs 64-bit Windows 10/11 and a GPU with current Vulkan drivers.
+            See README.txt in the zip for the game list.
+
+            Built from PhasmaProjects ${{ github.sha }} with ${{ env.ENGINE_REPO }}@${{ steps.meta.outputs.engine_sha }}.
+          files: ${{ steps.package.outputs.zip }}
+          fail_on_unmatched_files: true
+          overwrite_files: true
