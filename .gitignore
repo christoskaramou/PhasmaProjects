@@ -69,3 +69,6 @@ Arcade/*/PhasmaEditorModule_*.dll
 Arcade/*/PhasmaEngine.log
 Arcade/*/arena_cap_screen*.png
 Arcade/*/arena_probe.png
+
+# Combined game builds (tools/package_all.ps1)
+/dist/
