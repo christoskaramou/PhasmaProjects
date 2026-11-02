@@ -22,6 +22,11 @@ local GOOD = { 0.4, 1.0, 0.65 }
 local WHITE = { 1, 1, 1, 1 }
 local DIM = { 0.62, 0.68, 0.8, 1 }
 local HEAD_IMG = { "Textures/head_up.png", "Textures/head_right.png", "Textures/head_down.png", "Textures/head_left.png" }
+-- Quarter-ring bend images, named by the image corner holding the circle centre. CORNER_R (cells) must
+-- match tools/make_assets.py, which draws the ring for that radius at the line thickness (0.13 cells).
+local CORNER_R = 0.28
+local CORNER_IMG = { tl = "Textures/corner_tl.png", tr = "Textures/corner_tr.png", bl = "Textures/corner_bl.png", br = "Textures/corner_br.png" }
+local slots = {} -- arrow id -> { bar quads, corner quads } used by its last draw
 
 local saved = tonumber(fs.read("Save/arrowout_level.txt") or "1") or 1
 local S = {
@@ -156,7 +161,15 @@ local function draw_arrow(id)
     local d = R.DIRS[a.dir]
     local hs = cs * 0.34
     local base = cs * 0.22                     -- arrowhead base distance from the head cell's centre
-    local k = 0
+    local k, kc = 0, 0
+    local function bar(x0, y0, x1, y1) -- axis-aligned bar with round ends, clipped to the board
+        x0, x1 = max(min(x0, x1) - th / 2, x_lo), min(max(x0, x1) + th / 2, x_hi)
+        y0, y1 = max(min(y0, y1) - th / 2, y_lo), min(max(y0, y1) + th / 2, y_hi)
+        if x1 - x0 > 0.5 and y1 - y0 > 0.5 then
+            k = k + 1
+            rect("a" .. id .. "_" .. k, x0, y0, x1 - x0, y1 - y0, c4, 5, th / 2)
+        end
+    end
     if visible then
         -- Polyline in pixels: tail, every cell centre passed, head, end of the lead-in.
         local pts = {}
@@ -174,18 +187,56 @@ local function draw_arrow(id)
         for j = floor(s) + 1, math.ceil(t_end) - 1 do push(cell_center(arrow_point(a, j))) end
         push(px, py)
         push(px + d[1] * (base + 1), py + d[2] * (base + 1))
-        -- Each bar has round ends (radius = half the thickness), so bends get a smooth rounded join.
-        for i = 2, #pts do
-            local p, q = pts[i - 1], pts[i]
-            local x0, x1 = max(min(p[1], q[1]) - th / 2, x_lo), min(max(p[1], q[1]) + th / 2, x_hi)
-            local y0, y1 = max(min(p[2], q[2]) - th / 2, y_lo), min(max(p[2], q[2]) + th / 2, y_hi)
-            if x1 - x0 > 0.5 and y1 - y0 > 0.5 then
-                k = k + 1
-                rect("a" .. id .. "_" .. k, x0, y0, x1 - x0, y1 - y0, c4, 5, th / 2)
+        -- Every bend is a quarter-circle fillet of radius CORNER_R cells. A fillet may use half of a
+        -- shared segment, or all of the tail / lead-in segment, so a bend near the tail shrinks
+        -- smoothly while the arrow slides away.
+        local m = #pts
+        local function dir(i) -- unit direction and length of segment pts[i] -> pts[i + 1] (axis-aligned)
+            local dx, dy = pts[i + 1][1] - pts[i][1], pts[i + 1][2] - pts[i][2]
+            local len = abs(dx) + abs(dy)
+            return dx / len, dy / len, len
+        end
+        local R0, rad = cs * CORNER_R, {}
+        for i = 2, m - 1 do
+            local _, _, la = dir(i - 1)
+            local _, _, lb = dir(i)
+            rad[i] = min(R0, i == 2 and la or la / 2, i + 1 == m and lb or lb / 2)
+        end
+        for i = 1, m - 1 do
+            local ux, uy = dir(i)
+            local ra, rb = rad[i] or 0, rad[i + 1] or 0
+            bar(pts[i][1] + ux * ra, pts[i][2] + uy * ra, pts[i + 1][1] - ux * rb, pts[i + 1][2] - uy * rb)
+        end
+        for i = 2, m - 1 do
+            local r = rad[i]
+            if r > 0.5 then
+                local ax, ay = dir(i - 1)
+                local bx, by = dir(i)
+                local cx, cy = pts[i][1] + (bx - ax) * r, pts[i][2] + (by - ay) * r -- fillet centre
+                local sx, sy = ax - bx, ay - by                                     -- centre -> corner
+                if r >= R0 - 0.01 then
+                    -- Full-size bend: one quarter-ring image whose circle centre is the image corner.
+                    local side = r + th / 2
+                    kc = kc + 1
+                    quad("c" .. id .. "_" .. kc, { style = "image", path = CORNER_IMG[(sy > 0 and "t" or "b") .. (sx > 0 and "l" or "r")],
+                        x = sx > 0 and cx or cx - side, y = sy > 0 and cy or cy - side, width = side, height = side, z = 5, image_tint = c4 })
+                else
+                    -- Shrinking bend: a chain of round dots along the arc (the bars' round ends close it).
+                    local steps = math.ceil(r * math.pi / 2 / (th * 0.45))
+                    for j = 1, steps - 1 do
+                        local f = j / steps * math.pi / 2
+                        local x = cx + (-bx * math.cos(f) + ax * math.sin(f)) * r
+                        local y = cy + (-by * math.cos(f) + ay * math.sin(f)) * r
+                        bar(x, y, x, y)
+                    end
+                end
             end
         end
     end
-    for j = k + 1, n + 2 do hide("a" .. id .. "_" .. j) end
+    local used = slots[id] or { 0, 0 }
+    for j = k + 1, used[1] do hide("a" .. id .. "_" .. j) end
+    for j = kc + 1, used[2] do hide("c" .. id .. "_" .. j) end
+    slots[id] = { k, kc }
     local cx, cy = px + d[1] * (base + hs / 2), py + d[2] * (base + hs / 2)
     if visible and cx > x_lo and cx < x_hi and cy > y_lo and cy < y_hi then
         quad("h" .. id, { style = "image", path = HEAD_IMG[a.dir], x = cx - hs / 2, y = cy - hs / 2, width = hs, height = hs,
@@ -273,7 +324,10 @@ end
 ------------------------------------------------------------------ flow
 local function clear_arrow_widgets(list)
     for id, a in ipairs(list or {}) do
-        for j = 1, #a.cells + 2 do hide("a" .. id .. "_" .. j) end
+        local used = slots[id] or { 0, 0 }
+        for j = 1, used[1] do hide("a" .. id .. "_" .. j) end
+        for j = 1, used[2] do hide("c" .. id .. "_" .. j) end
+        slots[id] = nil
         hide("h" .. id)
     end
 end
@@ -415,6 +469,7 @@ runtime_ui.clear(SCREEN)
 runtime_ui.set_screen_overlay(SCREEN, true)
 runtime_ui.show(SCREEN)
 pcall(runtime_ui.preload_images, HEAD_IMG)
+pcall(runtime_ui.preload_images, { CORNER_IMG.tl, CORNER_IMG.tr, CORNER_IMG.bl, CORNER_IMG.br })
 start_level(S.level)
 SET:apply()
 present()
