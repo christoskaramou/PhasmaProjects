@@ -261,9 +261,15 @@ function Game:tap_arrow(id)
     self.moves = self.moves + 1
     local steps, blocker = self:blocked(id)
     if steps then
-        self.lives = self.lives - 1
-        self.mistakes = self.mistakes + 1
-        return { ok = false, id = id, steps = steps, blocker = blocker }
+        -- One heart per (arrow, blocker) pair: tapping the same arrow into the same blocker again is free.
+        self.charged = self.charged or {}
+        local repeat_hit = self.charged[id] == blocker
+        if not repeat_hit then
+            self.charged[id] = blocker
+            self.lives = self.lives - 1
+            self.mistakes = self.mistakes + 1
+        end
+        return { ok = false, id = id, steps = steps, blocker = blocker, free = repeat_hit }
     end
     a.alive = false
     self.left = self.left - 1

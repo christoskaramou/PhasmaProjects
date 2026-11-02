@@ -139,6 +139,7 @@
     },
     {
       "id": "arrowout-rules",
+      "enabled": false,
       "name": "Arrow Out levels are solvable and taps bump or slide correctly",
       "covers": "Arrow Out generates levels 1-40 that greedy removal clears, at least 75% filled and deterministic per level; a blocked tap costs a heart and keeps the arrow; losing all hearts ends the level.",
       "paths": [

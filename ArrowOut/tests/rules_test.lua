@@ -51,11 +51,23 @@ check("a blocked tap costs a heart, reports the blocker and keeps the arrow", fu
     assert(g.lives == R.LIVES - 1 and g.arrows[blocked].alive and g.left == #g.arrows)
 end)
 
-check("losing every heart ends the level and ignores further taps", function()
+check("tapping the same arrow into the same blocker again costs no extra heart", function()
     local g = R.new_game(12)
     local blocked
     for id in ipairs(g.arrows) do if g:blocked(id) then blocked = id; break end end
-    for _ = 1, R.LIVES do g:tap_arrow(blocked) end
+    local first = g:tap_arrow(blocked)
+    local again = g:tap_arrow(blocked)
+    assert(not first.free and again.free and again.blocker == first.blocker)
+    assert(g.lives == R.LIVES - 1 and g.mistakes == 1)
+end)
+
+check("losing every heart ends the level and ignores further taps", function()
+    local g = R.new_game(12)
+    local hit = 0
+    for id in ipairs(g.arrows) do
+        if hit < R.LIVES and g:blocked(id) then g:tap_arrow(id); hit = hit + 1 end
+    end
+    assert(hit == R.LIVES, "level 12 needs enough blocked arrows")
     assert(g:lost() and g:over())
     assert(g:tap_arrow(g:free_arrows()[1]) == nil)
 end)
