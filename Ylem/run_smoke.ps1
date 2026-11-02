@@ -4,7 +4,7 @@
 # launches with the configured graphics API, waits, then checks the engine log.
 $ErrorActionPreference = "Stop"
 
-$project   = "C:\Users\Christos\repos\PhasmaProjects\Ylem"
+$project   = $PSScriptRoot
 $api       = "dx12"
 $startup   = "Assets/Scenes/main.pescene"
 
@@ -12,7 +12,7 @@ $startup   = "Assets/Scenes/main.pescene"
 # (build-ninja-full reads source, build-ninja-physics copies RuntimeAssets); a
 # stale player 0xC0000005-crashes loading any current scene, so always run the
 # most recently built one rather than a hardcoded (and possibly stale) path.
-$engine = "c:\Users\Christos\repos\PhasmaEngine"
+$engine = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\PhasmaEngine"))
 $exe = Get-ChildItem "$engine\build*\Release\PhasmaPlayer.exe" -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 if (-not $exe) { Write-Host "SMOKE FAIL: no PhasmaPlayer.exe found under $engine\build*\Release"; exit 3 }

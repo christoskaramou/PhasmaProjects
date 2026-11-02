@@ -16,6 +16,6 @@ If run.ps1 exists, copy PhasmaEngine/build-game-driver/Release/PhasmaGameDriver.
 
 If Assets/Scripts/game.lua is built from tools/src/0*.lua by tools/build_lua.sh, edit the tools/src part that owns input and the title menu, then concatenate tools/src/0*.lua in sorted name order into Assets/Scripts/game.lua.
 
-Syntax-check new and edited lua with C:\Users\Christos\repos\PhasmaEngine\build-ninja-physics\Release\luajit.exe -e "assert(loadfile([[path]]))".
+Syntax-check new and edited lua with the PhasmaEngine checkout's build-ninja-physics\Release\luajit.exe -e "assert(loadfile([[path]]))".
 
 Return: files changed, how the hold or pulse is applied, how the menu starts Jev, and any hook you could not find.

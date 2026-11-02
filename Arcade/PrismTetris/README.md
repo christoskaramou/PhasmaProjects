@@ -8,7 +8,7 @@ synthesized sound effects. No browser, network service or engine rebuild require
 
 PRISM runs the `PhasmaPlayer.exe` from a PhasmaEngine Release build (`build-ninja-physics/Release`).
 `run.ps1` finds it by searching upward from this game folder for a folder named `PhasmaEngine`
-(for example `C:\Users\Christos\repos\PhasmaEngine`), or uses the `PHASMA_ENGINE` environment variable. Run `Arcade/PrismTetris/run.cmd`, or
+(for example the `PhasmaEngine` checkout beside `PhasmaProjects`), or uses the `PHASMA_ENGINE` environment variable. Run `Arcade/PrismTetris/run.cmd`, or
 from the PhasmaProjects folder:
 
 ```powershell

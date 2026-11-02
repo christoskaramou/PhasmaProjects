@@ -73,3 +73,7 @@ Arcade/*/arena_probe.png
 # Combined game builds (tools/package_all.ps1)
 /dist/
 .testpool/
+/docs/wiki/
+/Warbound/docs/plans/
+/Warbound/docs/specs/
+PROGRESS.md
