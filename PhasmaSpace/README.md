@@ -28,9 +28,10 @@ Everything needed to run is tracked in this project directory; no asset fetch or
 3. Launch `PhasmaEditor.exe` (or `PhasmaPlayer.exe`) — the startup scene
    (`Assets/Scenes/solar_system.pescene`) loads automatically.
 
-> **Updating engine assets:** After pulling a newer PhasmaEngine build, re-copy
-> `Shaders/` and `PassInfo/` from the build's `Assets/` into this project's `Assets/` to
-> keep renderer behaviour in sync with the binary.
+> **Engine shaders:** Do not copy the engine's `Shaders/` or `PassInfo/` into this project.
+> Project files override the engine's, so stale copies break newer engine builds. The
+> project keeps only its own orbit-line shaders; their `../Common/...` includes resolve
+> from the engine's `RuntimeAssets`.
 
 ## In-game UI
 
