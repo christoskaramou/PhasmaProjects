@@ -6,6 +6,7 @@ local function module(path)
     return assert(load(source, "@" .. path, "t", _ENV))()
 end
 local R = module("Scripts/arrow_rules.lua")
+local SettingsMenu = module("Scripts/Lib/settings_menu.lua") -- shared menu, same copy as the Arcade games
 
 local SCREEN = "arrowout"
 local floor, min, max, abs, sin = math.floor, math.min, math.max, math.abs, math.sin
@@ -25,7 +26,7 @@ local HEAD_IMG = { "Textures/head_up.png", "Textures/head_right.png", "Textures/
 local saved = tonumber(fs.read("Save/arrowout_level.txt") or "1") or 1
 local S = {
     level = max(1, floor(saved)), best = max(1, floor(saved)),
-    mode = "play", muted = false, t = 0, shake = 0, hints = 0, card_t = 0,
+    mode = "play", t = 0, shake = 0, hints = 0, card_t = 0,
 }
 local game
 local anims, flashes, dirty, widgets = {}, {}, {}, {}
@@ -33,7 +34,14 @@ local hover_id, hint_id, hint_t = 0, 0, 0
 local L = {} -- layout: surface size, ui scale, board rect, cell size
 _G.arrowout = { S = S, R = R, game = function() return game end }
 
-local function sound(name) if not S.muted and audio and audio.play then pcall(audio.play, name .. ".wav") end end
+local function sound(name) if audio and audio.play then pcall(audio.play, name .. ".wav") end end -- volume and mute: settings menu
+local SET = SettingsMenu.new({ title = "SETTINGS", click = function() sound("click") end })
+_G.arrowout.settings = SET
+do -- Flat 2D game: bloom, ambient occlusion and particles change nothing, so drop those rows (shared lib untouched).
+    local keep, hidden = {}, { bloom = true, ssao = true, particles = true }
+    for _, row in ipairs(SET.rows) do if not hidden[row.id] then keep[#keep + 1] = row end end
+    SET.rows = keep
+end
 
 ------------------------------------------------------------------ widgets
 local function quad(id, o)
@@ -140,42 +148,41 @@ local function draw_arrow(id)
     local th, cs = L.th, L.cs
     local x_lo, x_hi, y_lo, y_hi = L.bx, L.bx + L.bw, L.by, L.by + L.bh
     local visible = (a.alive or anims[id]) and true or false
-    local k = 0
-    if visible then
-        local t_end = s + n - 1
-        for j = floor(s), math.ceil(t_end) - 1 do
-            local t0, t1 = max(j, s), min(j + 1, t_end)
-            if t1 > t0 then
-                local ax, ay = arrow_point(a, t0)
-                local bx, by = arrow_point(a, t1)
-                local px, py = cell_center(ax, ay)
-                local qx, qy = cell_center(bx, by)
-                local x0, x1 = min(px, qx) - th / 2, max(px, qx) + th / 2
-                local y0, y1 = min(py, qy) - th / 2, max(py, qy) + th / 2
-                x0, x1 = max(x0, x_lo), min(x1, x_hi)
-                y0, y1 = max(y0, y_lo), min(y1, y_hi)
-                if x1 - x0 > 0.5 and y1 - y0 > 0.5 then
-                    k = k + 1
-                    rect("a" .. id .. "_" .. k, x0, y0, x1 - x0, y1 - y0, c4, 5, th / 2)
-                end
-            end
-        end
-    end
-    -- Head: a straight stub leaves the head cell's centre in the head direction, and the arrowhead
-    -- sits at its end (tip on the cell edge). A body that turns in the head cell then meets the stub
-    -- at the corner instead of running under the arrowhead.
-    local hx, hy = arrow_point(a, s + n - 1)
+    -- Head: a straight lead-in leaves the head cell's centre in the head direction and the arrowhead
+    -- sits at its end, so a body that turns in the head cell bends well clear of the arrowhead.
+    local t_end = s + n - 1
+    local hx, hy = arrow_point(a, t_end)
     local px, py = cell_center(hx, hy)
     local d = R.DIRS[a.dir]
-    local hs = cs * 0.4
-    local base = cs * 0.1                      -- arrowhead base distance from the cell centre
+    local hs = cs * 0.34
+    local base = cs * 0.22                     -- arrowhead base distance from the head cell's centre
+    local k = 0
     if visible then
-        local qx, qy = px + d[1] * (base + 2), py + d[2] * (base + 2)
-        local x0, x1 = max(min(px, qx) - th / 2, x_lo), min(max(px, qx) + th / 2, x_hi)
-        local y0, y1 = max(min(py, qy) - th / 2, y_lo), min(max(py, qy) + th / 2, y_hi)
-        if x1 - x0 > 0.5 and y1 - y0 > 0.5 then
-            k = k + 1
-            rect("a" .. id .. "_" .. k, x0, y0, x1 - x0, y1 - y0, c4, 5, th / 2)
+        -- Polyline in pixels: tail, every cell centre passed, head, end of the lead-in.
+        local pts = {}
+        local function push(x, y)
+            local m = #pts
+            -- Drop the previous point when it sits in the middle of a straight run: one bar per run
+            -- means no seams where cells join.
+            if m >= 2 and ((pts[m - 1][1] == pts[m][1] and pts[m][1] == x) or (pts[m - 1][2] == pts[m][2] and pts[m][2] == y)) then
+                pts[m] = { x, y }
+            elseif m == 0 or pts[m][1] ~= x or pts[m][2] ~= y then
+                pts[m + 1] = { x, y }
+            end
+        end
+        push(cell_center(arrow_point(a, s)))
+        for j = floor(s) + 1, math.ceil(t_end) - 1 do push(cell_center(arrow_point(a, j))) end
+        push(px, py)
+        push(px + d[1] * (base + 1), py + d[2] * (base + 1))
+        -- Each bar has round ends (radius = half the thickness), so bends get a smooth rounded join.
+        for i = 2, #pts do
+            local p, q = pts[i - 1], pts[i]
+            local x0, x1 = max(min(p[1], q[1]) - th / 2, x_lo), min(max(p[1], q[1]) + th / 2, x_hi)
+            local y0, y1 = max(min(p[2], q[2]) - th / 2, y_lo), min(max(p[2], q[2]) + th / 2, y_hi)
+            if x1 - x0 > 0.5 and y1 - y0 > 0.5 then
+                k = k + 1
+                rect("a" .. id .. "_" .. k, x0, y0, x1 - x0, y1 - y0, c4, 5, th / 2)
+            end
         end
     end
     for j = k + 1, n + 2 do hide("a" .. id .. "_" .. j) end
@@ -193,8 +200,6 @@ local function draw_static()
     local k = L.k
     rect("bg", 0, 0, L.w, L.h, BG, 0)
     rect("board_bg", L.bx - 14 * k, L.by - 14 * k, L.bw + 28 * k, L.bh + 28 * k, BOARD, 1, 16 * k)
-    -- Input quads draw in their own layer above plain quads whatever their z, so the click catcher is transparent.
-    quad("board", { style = "text", label = "", x = L.bx, y = L.by, width = L.bw, height = L.bh, z = 1, no_input = false })
     -- Picture dots: show the level's shape faintly under the arrows.
     local ds = max(2, L.cs * 0.12)
     local used = 0
@@ -222,9 +227,17 @@ local function draw_hud()
         rect("life" .. i, w - 40 * k - (R.LIVES - i + 1) * (r + 12 * k), 40 * k, r, r,
             alive and { 1, 0.34, 0.42, 1 } or { 0.22, 0.24, 0.32, 1 }, 40, r / 2)
     end
-    local bw, bh, y = 190 * k, 62 * k, h - 88 * k
-    button("btn_hint", "HINT  (H)", w / 2 - bw - 12 * k, y, bw, bh, false)
-    button("btn_restart", "RESTART  (R)", w / 2 + 12 * k, y, bw, bh, false)
+    -- Input quads draw in their own layer above plain quads whatever their z, so the board's click
+    -- catcher is transparent, and every input quad hides while the settings menu is open.
+    if SET:is_open() then
+        for _, id in ipairs({ "board", "btn_hint", "btn_restart", "btn_settings", "btn_card" }) do hide(id) end
+    else
+        quad("board", { style = "text", label = "", x = L.bx0, y = L.by0, width = L.bw, height = L.bh, z = 1, no_input = false })
+        local bw, bh, y, gap = 210 * k, 62 * k, h - 88 * k, 24 * k
+        button("btn_hint", "HINT  (H)", w / 2 - bw * 1.5 - gap, y, bw, bh, false)
+        button("btn_restart", "RESTART  (R)", w / 2 - bw / 2, y, bw, bh, false)
+        button("btn_settings", "SETTINGS  (Esc)", w / 2 + bw / 2 + gap, y, bw, bh, false)
+    end
     text("help", "Tap an arrow to slide it out. Blocked arrows bump and cost a heart.", 0, 72 * k, w, 30 * k, 1.0, DIM)
 end
 
@@ -236,6 +249,7 @@ local function draw_card()
     end
     local k, w, h = L.k, L.w, L.h
     local a = min(1, S.card_t * 4)
+    local menu = SET:is_open()
     rect("card_dim", 0, 0, w, h, { 0, 0, 0, 0.55 * a }, 80)
     local pw, ph = 620 * k, 330 * k
     local px, py = (w - pw) / 2, (h - ph) / 2
@@ -250,7 +264,9 @@ local function draw_card()
         sub = game.left .. " arrows were still on the board"
     end
     text("card_sub", sub, px, py + 120 * k, pw, 50 * k, 1.3, { 0.85, 0.9, 1, a }, 82)
-    button("btn_card", won and "NEXT LEVEL  (Enter)" or "TRY AGAIN  (Enter)", px + 60 * k, py + ph - 110 * k, pw - 120 * k, 70 * k, true, 83)
+    if not menu then
+        button("btn_card", won and "NEXT LEVEL  (Enter)" or "TRY AGAIN  (Enter)", px + 60 * k, py + ph - 110 * k, pw - 120 * k, 70 * k, true, 83)
+    end
     hide("btn_card2")
 end
 
@@ -296,7 +312,7 @@ local function tap(id)
         anims[id] = { kind = "bump", t = 0, dur = 0.38, steps = r.steps }
         flashes[r.blocker] = 0.45
         dirty[r.blocker] = true
-        S.shake = 0.25
+        if not r.free then S.shake = 0.25 * SET:shake_scale() end -- a repeat into the same blocker costs nothing
         sound("bump")
     end
 end
@@ -332,7 +348,7 @@ local function update_hover()
 end
 
 local function controls()
-    if pressed("M") then S.muted = not S.muted end
+    if pressed("M") then SET:toggle_mute() end
     local enter = pressed("Return") or pressed("Space")
     if pressed("R") or clicked("btn_restart") then sound("click"); start_level(S.level); return end
     if S.mode == "play" then
@@ -400,13 +416,24 @@ runtime_ui.set_screen_overlay(SCREEN, true)
 runtime_ui.show(SCREEN)
 pcall(runtime_ui.preload_images, HEAD_IMG)
 start_level(S.level)
+SET:apply()
 present()
 
 script.on_update("arrowout", function()
     local dt = max(0, min(0.1, engine.get_metrics().delta_ms / 1000))
-    controls()
+    -- Poll Escape every frame so the press that closes the menu does not reopen it.
+    local esc = pressed("Escape")
+    if SET:update(dt) then
+        -- Keep the game's key edges current so keys used in the menu do not fire when it closes.
+        for _, key in ipairs({ "M", "R", "H", "Return", "Space", "PageUp", "PageDown" }) do pressed(key) end
+    elseif esc or clicked("btn_settings") then
+        sound("click")
+        SET:open()
+    else
+        controls()
+    end
     step(dt)
     present()
 end, "play")
 
-print("[ArrowOut] Ready. Click arrows to slide them out; H hint, R restart, M mute, PgUp/PgDn change level.")
+print("[ArrowOut] Ready. Click arrows to slide them out; H hint, R restart, Esc settings, M mute, PgUp/PgDn change level.")

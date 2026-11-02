@@ -16,9 +16,11 @@ Release `PhasmaPlayer.exe` (or uses `PHASMA_ENGINE`) and runs a private copy fro
 | R / RESTART | Restart the level |
 | Enter / Space | Next level or retry from the result card |
 | PgUp / PgDn | Skip to the next or previous level |
+| Esc / SETTINGS | Settings menu (volume, mute, screen shake, FPS counter) |
 | M | Mute |
 
 The game saves the furthest level reached in `Assets/Save/arrowout_level.txt` and resumes there.
+The settings menu is the shared `Scripts/Lib/settings_menu.lua` used by the Arcade games (unchanged copy). Arrow Out drops its bloom, ambient occlusion and particles rows, which do nothing in a flat 2D game. It saves to `Assets/Save/settings.cfg`.
 
 ## Levels
 
@@ -31,10 +33,12 @@ Every level can be solved. The generator places arrows one at a time, and each n
 Removing arrows in the reverse order therefore always works.
 After that, the generator grows arrows backwards from their tails into empty cells, as long as the new cell is not on the exit path of a later arrow.
 Removing an arrow never blocks another, so the board has no dead ends. Every lost heart comes from a wrong tap.
+A wrong tap costs one heart per arrow and blocker: tapping the same arrow into the same arrow again only bumps.
 
 ## Files
 
 - `Assets/Scripts/arrow_rules.lua`: pure rules and generator, with no engine calls
 - `Assets/Scripts/arrowout.lua`: runtime-UI view, animation and input. The scene's `on_play` script.
+- `Assets/Scripts/Lib/settings_menu.lua`: shared settings menu, copied unchanged from the Arcade games
 - `tools/make_assets.py`: arrowhead PNGs and synthesized WAV effects (needs PIL)
 - `tests/rules_test.lua`: `luajit tests/rules_test.lua` from this folder. Pool test `arrowout-rules`.
