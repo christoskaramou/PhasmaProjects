@@ -7,6 +7,9 @@ This index describes the sibling project collection, not the canonical AgainstTh
   TempestRemix, QbertRemix, DigDugRemix, JoustRemix, RobotronRemix, PongRemix, BattlezoneRemix,
   BubbleBobbleRemix), moved from the repo root on 2026-10-17. Their `run.ps1` walks up to find a sibling
   `PhasmaEngine` checkout (override with `PHASMA_ENGINE`).
+- `ArrowOut/`: runtime-UI arrow puzzle (tap arrows to slide them off the board), added 2026-11-02; see its README.
+  Input-enabled runtime-UI quads draw above plain quads whatever their `z`, so its board click catcher is transparent.
+  Its scene began as a copy of PRISM's. With PRISM's `"present_mode": 2` the Player logged 30 FPS; without that key it logged 60 (2026-11-02).
 - `Chess/`: separate project; inspect its manifest, source and local instructions.
 - `PhasmaSpace/`: separate project; inspect its manifest, source and local instructions.
 - `Arcade/PrismTetris/`: separate project; inspect its manifest, source and README. Moved here from the engine's
