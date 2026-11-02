@@ -136,6 +136,28 @@
         "fix": "The guard checks only that both tanks exist, leaving the heading-error turn logic reachable.",
         "date": "2026-10-26"
       }
+    },
+    {
+      "id": "arrowout-rules",
+      "name": "Arrow Out levels are solvable and taps bump or slide correctly",
+      "covers": "Arrow Out generates levels 1-40 that greedy removal clears, at least 75% filled and deterministic per level; a blocked tap costs a heart and keeps the arrow; losing all hearts ends the level.",
+      "paths": [
+        "ArrowOut/Assets/Scripts/arrow_rules.lua",
+        "ArrowOut/tests/rules_test.lua"
+      ],
+      "cwd": "ArrowOut",
+      "command": "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe tests/rules_test.lua",
+      "commandWindows": "C:\\Users\\Christos\\repos\\PhasmaEngine\\build-ninja-physics\\Release\\luajit.exe tests\\rules_test.lua",
+      "cost": "cheap",
+      "timeoutSec": 30,
+      "requires": [
+        "C:/Users/Christos/repos/PhasmaEngine/build-ninja-physics/Release/luajit.exe"
+      ],
+      "origin": {
+        "problem": "The new Arrow Out puzzle needs every generated level to be solvable",
+        "fix": "Reverse-order generator where each arrow's exit ray is clear of earlier arrows, plus a rules test",
+        "date": "2026-11-02"
+      }
     }
   ]
 }
