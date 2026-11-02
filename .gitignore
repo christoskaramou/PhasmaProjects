@@ -72,3 +72,4 @@ Arcade/*/arena_probe.png
 
 # Combined game builds (tools/package_all.ps1)
 /dist/
+.testpool/
