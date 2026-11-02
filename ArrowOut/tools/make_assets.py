@@ -25,6 +25,24 @@ def arrowheads():
         up.rotate(angle, resample=Image.BICUBIC).save(out / f"head_{name}.png")
 
 
+def corners(radius=0.28, thickness=0.13):
+    """Quarter-ring bend images; the file name says which corner holds the circle centre.
+    radius and thickness are in cells and must match CORNER_R and L.th in arrowout.lua."""
+    out = ROOT / "Textures"
+    s = 1024
+    outer = s
+    inner = s * (radius - thickness / 2) / (radius + thickness / 2)
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse([-outer, -outer, outer, outer], fill=(255, 255, 255, 255))
+    d.ellipse([-inner, -inner, inner, inner], fill=(0, 0, 0, 0))
+    tl = img.resize((128, 128), Image.LANCZOS)
+    tl.save(out / "corner_tl.png")
+    tl.transpose(Image.FLIP_LEFT_RIGHT).save(out / "corner_tr.png")
+    tl.transpose(Image.FLIP_TOP_BOTTOM).save(out / "corner_bl.png")
+    tl.transpose(Image.ROTATE_180).save(out / "corner_br.png")
+
+
 def write(path, samples, rate=22050):
     with wave.open(str(path), "wb") as f:
         f.setnchannels(1)
@@ -69,5 +87,6 @@ def sounds():
 
 if __name__ == "__main__":
     arrowheads()
+    corners()
     sounds()
     print("assets written to", ROOT)
