@@ -3,7 +3,7 @@
 Crowd Master is a crowd-runner in the style of Count Masters, written in Lua for the Phasma Engine. You steer a running stickman crowd through gates, traps and terrain. Along the way you smash red crowds, then climb a trophy staircase or topple a king.
 
 ## Run on Windows (PC)
-Location: `C:\Users\Christos\repos\PhasmaProjects\CrowdMaster`. The engine checkout is `..\..\PhasmaEngine` (`C:\Users\Christos\repos\PhasmaEngine`) and needs a Release build containing `build*\Release\PhasmaPlayer.exe`. You can override it with `$env:PHASMA_ENGINE`.
+Location: `PhasmaProjects\CrowdMaster`. The engine checkout is `..\..\PhasmaEngine`, beside `PhasmaProjects`, and needs a Release build containing `build*\Release\PhasmaPlayer.exe`. You can override it with `$env:PHASMA_ENGINE`.
 - `.\run.cmd`, or `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 [-Api vulkan] [-Display 1]`. This copies the Player into `%LOCALAPPDATA%\PhasmaGames\CrowdMaster` and points it at `project\Assets`, so the engine build's own `phasma_settings.json` is never touched.
 - In the editor, open `project\phasma_project.json`.
 - Rebuilding `game.lua` from `src\` uses `tools/build_lua.sh` (bash or Git Bash). The Linux-only box launch, screenshot and mesh-cook scripts are not included in the PC copy.

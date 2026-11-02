@@ -7,14 +7,16 @@
 # player access-violates while loading any scene, which reads as "the game is broken".
 $ErrorActionPreference = "Stop"
 
-$project = "C:\Users\Christos\repos\PhasmaProjects\Chess"
+$project = $PSScriptRoot
 $startup = "Assets/Scenes/chess.pescene"
 $api     = "vulkan"
 
+$engine = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\PhasmaEngine"))
+
 $candidates = @(
-    "C:\Users\Christos\repos\PhasmaEngine\build-ninja-physics\Release\PhasmaPlayer.exe",
-    "C:\Users\Christos\repos\PhasmaEngine\build-ninja-full\Release\PhasmaPlayer.exe",
-    "C:\Users\Christos\repos\PhasmaEngine\build-ninja\Release\PhasmaPlayer.exe"
+    "$engine\build-ninja-physics\Release\PhasmaPlayer.exe",
+    "$engine\build-ninja-full\Release\PhasmaPlayer.exe",
+    "$engine\build-ninja\Release\PhasmaPlayer.exe"
 ) | Where-Object { Test-Path $_ } | Sort-Object { (Get-Item $_).LastWriteTime } -Descending
 
 if (-not $candidates) { Write-Host "SMOKE FAIL: no PhasmaPlayer.exe found"; exit 3 }

@@ -6,7 +6,7 @@ from Greece to a final war for the whole planet.
 
 ## Run
 - Windows: `run.cmd` (or `powershell -ExecutionPolicy Bypass -File run.ps1 [-Api vulkan|dx12]`).
-- Expected layout: `C:\Users\Christos\repos\PhasmaProjects\BannersBorders\` with this folder's `project\`
+- Expected layout: `PhasmaProjects\BannersBorders\` with this folder's `project\`
   (`project\phasma_project.json`, `project\Assets\...`) and the engine at `..\..\PhasmaEngine` (override with
   `PHASMA_ENGINE`). The script copies the player into a private runtime folder, so editor settings are not touched.
 
@@ -137,4 +137,4 @@ The world-map backdrop is `tools/gen_worldmap.py` (Equal Earth, Natural Earth 1:
   `mcp.py`, and `cook_all.sh`, which needs the Linux `bin/PhasmaCook` and Xvfb). Cooked meshes are already in
   `project/Assets/Objects`. The copy also leaves out `meshsrc/` (38 MB of raw OBJ intermediates; `gen_maps.py`
   and `gen_meshes.py` regenerate them), the `_preview/` debug PNGs, the Linux `bin/` and the Natural Earth data.
-- `FUN.md` explains the design choices. `PROGRESS.md` is the build log.
+- `FUN.md` explains the design choices.

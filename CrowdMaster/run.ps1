@@ -5,8 +5,8 @@ param([string]$Api = 'vulkan', [int]$Display = 1)
 $ErrorActionPreference = 'Stop'
 # This game's project lives in .\project (project\phasma_project.json, project\Assets).
 $game = Split-Path $PSScriptRoot -Leaf
-# Find the PhasmaEngine checkout. Default layout: C:\Users\Christos\repos\PhasmaProjects\<Game>
-# -> ..\..\PhasmaEngine (C:\Users\Christos\repos\PhasmaEngine). Override with $env:PHASMA_ENGINE.
+# Find the PhasmaEngine checkout. Default layout: PhasmaProjects\<Game>
+# -> ..\..\PhasmaEngine (beside PhasmaProjects). Override with $env:PHASMA_ENGINE.
 # Otherwise walks up from this folder and uses the first sibling 'PhasmaEngine' with a Release build,
 # so the game folder works at any depth under repos\.
 $engineRoot = $env:PHASMA_ENGINE
