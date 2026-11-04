@@ -672,10 +672,13 @@ local function update(dt)
 end
 
 local function init()
+  -- Post-processing (bloom, TAA jitter, tonemapping, colour grading, SSR) only runs with a Scene
+  -- Settings node; this scene has none, so create one like the other Arcade games do.
+  local ss = scene.add_empty_node("NeonInvadersSceneSettings"); ss:set_scene_settings(true)
   cam = scene.get_active_camera()
   cam:set_fov(62)
   settings.set("bloom", true)
-  settings.set("bloom_strength", 4.5)
+  settings.set("bloom_strength", 1.3)  -- was 4.5, tuned before the Scene Settings node made bloom actually apply
   settings.set("bloom_range", 1.25)   -- tap spacing; >1.5 stair-steps (see common/RENDER_SETTINGS.md)
   settings.set("taa", true)
   settings.set("cas_sharpening", false) -- CAS overwrote the bloom when TAA was on (the old "wash out")
