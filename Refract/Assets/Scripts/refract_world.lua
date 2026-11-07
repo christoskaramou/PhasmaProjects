@@ -19,6 +19,20 @@ local board_nodes, piece_nodes, enemy_nodes = {}, {}, {}
 local lane_tiles = {}         -- cell index -> emissive floor tile in the lane
 local beam_pool, beam_used = {}, 0
 local LT = {}                 -- point light indices
+-- The engine copies each light's position from its scene node every frame, so set_point_light's position alone is
+-- overwritten and every lamp stays at the origin. Move the node too (looked up once per lamp), as 1942Remix does.
+local LNODE = {}
+local function point_light(i, pos, col, inten, rad)
+    pcall(lights.set_point_light, i, pos, col, inten, rad)
+    local n = LNODE[i]
+    if n == nil then
+        local l = lights.get_point_lights()[i + 1]
+        n = (l and scene.find_model and scene.find_model(l.name)) or false
+        LNODE[i] = n
+    end
+    if n then n:set_position(pos) end
+end
+local function light_off(i) point_light(i, v3(0, -50, 0), v3(0, 0, 0), 0, 0.1) end
 local core, gate = {}, {}
 local cursor = {}
 local ghost = { key = nil, nodes = {} }
@@ -79,6 +93,8 @@ function W.init(opts)
         W.settings_node = scene.add_empty_node("Scene Settings")
         pcall(function() W.settings_node:set_scene_settings(true) end)
     end
+    -- Raster: the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU.
+    pcall(settings.set_render_mode, "raster")
     settings.set("bloom", true)
     settings.set("bloom_strength", 1.0)       -- full strength now that the Scene Settings node enables it
     settings.set("bloom_range", 1.0)        -- tight tap spacing: wider spacing stair-steps the bloom
@@ -101,6 +117,8 @@ function W.init(opts)
         for _ = 1, MAX_BEAM_LIGHTS + 4 do lights.add_point() end
         for i = 0, MAX_BEAM_LIGHTS - 1 do LT[i + 1] = base + i end
         LT.core, LT.gate, LT.flash, LT.boss = base + MAX_BEAM_LIGHTS, base + MAX_BEAM_LIGHTS + 1, base + MAX_BEAM_LIGHTS + 2, base + MAX_BEAM_LIGHTS + 3
+        -- New lamps default to intensity 1, radius 10 at the origin; keep them dark until first set.
+        for i = base, base + MAX_BEAM_LIGHTS + 3 do light_off(i) end
     end)
 
     -- Deep space below and behind the board: a dark plane, stars and nebula glows.
@@ -590,9 +608,9 @@ local function update_beams(dt)
             if i and i <= beam_used then
                 local b = beam_pool[i]
                 local inten = (1.4 + 3.6 * vis(b.pw)) * norm * (S.surge > 0 and 1.5 or 1) * g
-                pcall(lights.set_point_light, LT[j], v3((b.x0 + b.x1) / 2, BEAM_Y + 0.35, (b.z0 + b.z1) / 2), v3(b.c[1], b.c[2], b.c[3]), inten, b.len / 2 + 1.6)
+                point_light(LT[j], v3((b.x0 + b.x1) / 2, BEAM_Y + 0.35, (b.z0 + b.z1) / 2), v3(b.c[1], b.c[2], b.c[3]), inten, b.len / 2 + 1.6)
             else
-                pcall(lights.set_point_light, LT[j], v3(0, -50, 0), v3(0, 0, 0), 0, 0.1)
+                light_off(LT[j])
             end
         end
     end
@@ -854,14 +872,14 @@ function W.update(dt, game)
     S.flash = max(0, S.flash - dt * 3)
     pcall(function()
         local ct = core.tint or { 0.5, 1, 1 }
-        lights.set_point_light(LT.core, v3(core.x or 0, 1.4, core.z or 0), v3(ct[1], ct[2], ct[3]), 7 + 1.5 * sin(S.t * 2.2), 4.5)
-        lights.set_point_light(LT.gate, v3(gate.x or 0, 0.9, gate.z or 0), v3(1, 0.25, 0.9), 5 + 1.2 * sin(S.t * 3), 3.5)
-        lights.set_point_light(LT.flash, v3(S.flash_x, 1.2, S.flash_z), v3(S.flash_c[1], S.flash_c[2], S.flash_c[3]), S.flash * 14, 5)
+        point_light(LT.core, v3(core.x or 0, 1.4, core.z or 0), v3(ct[1], ct[2], ct[3]), 7 + 1.5 * sin(S.t * 2.2), 4.5)
+        point_light(LT.gate, v3(gate.x or 0, 0.9, gate.z or 0), v3(1, 0.25, 0.9), 5 + 1.2 * sin(S.t * 3), 3.5)
+        point_light(LT.flash, v3(S.flash_x, 1.2, S.flash_z), v3(S.flash_c[1], S.flash_c[2], S.flash_c[3]), S.flash * 14, 5)
         if W.boss then
             local c = W.boss[3]
-            lights.set_point_light(LT.boss, v3(W.boss[1], 1.4, W.boss[2]), v3(c[1], c[2], c[3]), 10, 4)
+            point_light(LT.boss, v3(W.boss[1], 1.4, W.boss[2]), v3(c[1], c[2], c[3]), 10, 4)
         else
-            lights.set_point_light(LT.boss, v3(0, -50, 0), v3(0, 0, 0), 0, 0.1)
+            light_off(LT.boss)
         end
     end)
     -- Camera: framed on the board with a slow drift and shake.
@@ -889,12 +907,15 @@ local VC = {}
 function W.begin_frame()
     VC.vp, VC.inv = cam:get_view_projection(), cam:get_inv_view_projection()
     VC.sw, VC.sh = screen_size()
+    -- TAA shifts the projection by a new sub-pixel jitter every frame; overlay points projected through it trembled.
+    local ok, j = pcall(function() return cam:get_jitter() end)
+    VC.jx, VC.jy = ok and j and j.x or 0, ok and j and j.y or 0
 end
 function W.project(X, Y, Z)
     local vp = VC.vp or cam:get_view_projection()
     local c = vp * vec4(X, Y, Z, 1)
     if c.w <= 1e-5 then return nil end
-    local nx, ny = c.x / c.w, c.y / c.w
+    local nx, ny = c.x / c.w - (VC.jx or 0), c.y / c.w - (VC.jy or 0)   -- jitter-free, so the overlay holds still
     local sw, sh = VC.sw, VC.sh
     if not sw then sw, sh = screen_size() end
     if S.flip == nil then
@@ -913,8 +934,8 @@ function W.cell_at(mx, my)
     local sw, sh = VC.sw, VC.sh
     if not sw then sw, sh = screen_size() end
     if S.flip == nil then W.project(0, 0, 0) end
-    local nx = mx / sw * 2 - 1
-    local ny = S.flip and (1 - my / sh * 2) or (my / sh * 2 - 1)
+    local nx = mx / sw * 2 - 1 + (VC.jx or 0)                          -- back into the jittered space inv lives in
+    local ny = (S.flip and (1 - my / sh * 2) or (my / sh * 2 - 1)) + (VC.jy or 0)
     local a = inv * vec4(nx, ny, 0.25, 1)
     local b = inv * vec4(nx, ny, 0.75, 1)
     local ax, ay, az = a.x / a.w, a.y / a.w, a.z / a.w

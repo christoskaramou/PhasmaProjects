@@ -14,6 +14,14 @@ local PANE_W, PANE_H = 1.3, 1.9
 local cam
 local S = { t = 0, shake = 0 }
 local LT = {}
+-- The engine copies each light's position from its scene node every frame, so set_point_light's position alone is
+-- overwritten (all 16 lamps sat at the origin, flooding the panes at the strike rail). Move the node too, as PongRemix does.
+local function point_light(i, pos, col, inten, rad)
+    pcall(lights.set_point_light, i, pos, col, inten, rad)
+    local l = lights.get_point_lights()[i + 1]
+    local n = l and scene.find_model and scene.find_model(l.name)
+    if n then n:set_position(pos) end
+end
 
 local function mat(n, base, emis, metal, rough)
     pcall(material.set, n, "base_color", vec4(base[1], base[2], base[3], base[4] or 1))
@@ -45,6 +53,8 @@ function W.init()
         W.settings_node = scene.add_empty_node("Scene Settings")
         pcall(function() W.settings_node:set_scene_settings(true) end)
     end
+    -- Raster: the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU.
+    pcall(settings.set_render_mode, "raster")
     -- Natural look: tonemapped, gentle bloom only for real highlights (sun windows, lanterns).
     for k, v in pairs({ bloom = true, bloom_strength = 0.35, bloom_range = 1.0, render_scale = 1.0, taa = true, fxaa = false,
         cas_sharpening = false, motion_blur = false, tonemapping = true, ssao = true, ssr = true, IBL_intensity = 1.3,
@@ -54,6 +64,8 @@ function W.init()
         local base = #lights.get_point_lights()
         for _ = 1, 16 do lights.add_point() end
         for i = 0, 15 do LT[i + 1] = base + i end
+        -- Slots 1, 2, 8 and 16 are never configured below; left at the default (intensity 1, radius 10) at the origin.
+        for _, k in ipairs({ 1, 2, 8, 16 }) do point_light(LT[k], v3(0, -20, 0), v3(0, 0, 0), 0, 0.1) end
     end)
 
     -- Hall: wooden floor with plank seams, stone walls, pillars and arches, sunlit windows, lanterns.
@@ -65,9 +77,9 @@ function W.init()
     -- Daylight pooling on the floor under each window, and warm light at the forks.
     for k = 0, 5 do
         local li = LT[9 + k]
-        if li then pcall(lights.set_point_light, li, v3(-1.6, 4.2, -1.5 - k * 5.5), v3(1, 0.85, 0.65), k == 0 and 4 or 8 - k, 8) end
+        if li then point_light(li, v3(-1.6, 4.2, -1.5 - k * 5.5), v3(1, 0.85, 0.65), k == 0 and 4 or 8 - k, 8) end
     end
-    if LT[15] then pcall(lights.set_point_light, LT[15], v3(0, 3.2, 0.6), v3(1, 0.86, 0.7), 2.5, 6) end
+    if LT[15] then point_light(LT[15], v3(0, 3.2, 0.6), v3(1, 0.86, 0.7), 2.5, 6) end
     for k = 0, 13 do
         local z = -3.5 - k * 3.5
         for _, sx in ipairs({ -1, 1 }) do
@@ -84,7 +96,7 @@ function W.init()
             box(3.68, 2.6, z - 1.75, 0.12, 0.3, 0.2, LEAD, 0.8, 0.45)
             local f = primitives.sphere(0.05); f:set_position(v3(3.62, 2.6, z - 1.75)); mat(f, { 1, 0.6, 0.25 }, { 6, 3.2, 1.1 }, 0, 0.5)
             local li = LT[3 + k / 2]
-            if li then pcall(lights.set_point_light, li, v3(3.4, 2.6, z - 1.75), v3(1, 0.62, 0.3), 3.0, 5) end
+            if li then point_light(li, v3(3.4, 2.6, z - 1.75), v3(1, 0.62, 0.3), 3.0, 5) end
         end
     end
     -- Brass lane inlays and the strike rail.
@@ -119,11 +131,16 @@ local function new_pane()
     for i = 1, 7 do P.frame[i] = primitives.cube(1); mat(P.frame[i], LEAD, nil, 0.8, 0.5) end
     return P
 end
+-- Raster lights one unshadowed see-through layer, where hybrid ray tracing shadowed and blended two faces. So the
+-- glass takes little light (albedo 0.1 of the tint) and carries its colour as a soft glow, more opaque. Tuned against
+-- hybrid by measurement while the lamps were still stuck at the origin (see point_light); with them placed, the panes
+-- read as deeper stained glass (2026-11-07).
+local function glass_tint(tint, alpha) return { tint[1] * 0.1, tint[2] * 0.1, tint[3] * 0.1, alpha } end
 local function place_pane(P, x, z, tint, a)
     local y0 = 0.2
     P.glass:set_enabled(true)
     P.glass:set_position(v3(x, y0 + PANE_H / 2, z)); P.glass:set_scale(v3(PANE_W, PANE_H, 0.035))
-    mat(P.glass, { tint[1], tint[2], tint[3], 0.5 * a }, nil, 0, 0.06)
+    mat(P.glass, glass_tint(tint, 0.9 * a), { tint[1] * 0.45, tint[2] * 0.45, tint[3] * 0.45 }, 0, 0.06)
     local f = P.frame
     local parts = {
         { x, y0 + PANE_H, z, PANE_W + 0.05, 0.05, 0.06 }, { x, y0, z, PANE_W + 0.05, 0.05, 0.06 },
@@ -180,7 +197,7 @@ function W.shatter(lane, key)
         n:set_scale(v3(s, s * 0.7, 0.01))
         local px, py = x + (math.random() - 0.5) * PANE_W, 0.2 + math.random() * PANE_H
         n:set_position(v3(px, py, STRIKE_Z))
-        mat(n, { tint[1], tint[2], tint[3], 0.6 }, nil, 0, 0.05)
+        mat(n, glass_tint(tint, 0.92), { tint[1] * 0.45, tint[2] * 0.45, tint[3] * 0.45 }, 0, 0.05)
         W.shards[#W.shards + 1] = { n = n, x = px, y = py, z = STRIKE_Z, vx = (px - x) * 2.2 + (math.random() - 0.5),
             vy = 1 + math.random() * 2, vz = 1.5 + math.random() * 2.5, rx = math.random() * 360, ry = math.random() * 360,
             wx = (math.random() - 0.5) * 900, wy = (math.random() - 0.5) * 900, life = 1.1 + math.random() * 0.5 }
@@ -226,6 +243,9 @@ function W.update(dt, g)
     cam:set_position(v3(sx, 2.4 + sy, 3.2))
     cam:look_at(v3(sx * 0.3, 1.0, -12))
     W.vp = cam:get_view_projection()
+    -- TAA shifts the projection by a new sub-pixel jitter every frame; labels projected through it trembled.
+    local ok, j = pcall(function() return cam:get_jitter() end)
+    W.jx, W.jy = ok and j and j.x or 0, ok and j and j.y or 0
 end
 
 function W.screen_size()
@@ -243,9 +263,9 @@ function W.project(X, Y, Z)
         local b = vp * vec4(0, 0, -5, 1)
         W.flip = (a.y / a.w) > (b.y / b.w)    -- higher world point -> larger NDC y means y-up NDC
     end
-    local ny = c.y / c.w
+    local nx, ny = c.x / c.w - (W.jx or 0), c.y / c.w - (W.jy or 0)   -- jitter-free, so labels hold still
     local sy = W.flip and (0.5 - ny * 0.5) or (0.5 + ny * 0.5)
-    return (c.x / c.w * 0.5 + 0.5) * sw, sy * sh
+    return (nx * 0.5 + 0.5) * sw, sy * sh
 end
 W.STRIKE_Z, W.FORK_Z = STRIKE_Z, FORK_Z
 return W

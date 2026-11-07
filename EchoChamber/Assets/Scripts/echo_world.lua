@@ -29,6 +29,20 @@ local ghost = { key = nil, nodes = {} }
 local hint = { key = nil, nodes = {} }
 local cursor = {}
 local LT, LT_used = {}, 0
+-- The engine copies each light's position from its scene node every frame, so set_point_light's position alone is
+-- overwritten and every lamp stays at the origin. Move the node too (looked up once per lamp), as 1942Remix does.
+local LNODE = {}
+local function point_light(i, pos, col, inten, rad)
+    pcall(lights.set_point_light, i, pos, col, inten, rad)
+    local n = LNODE[i]
+    if n == nil then
+        local l = lights.get_point_lights()[i + 1]
+        n = (l and scene.find_model and scene.find_model(l.name)) or false
+        LNODE[i] = n
+    end
+    if n then n:set_position(pos) end
+end
+local function light_off(i) point_light(i, v3(0, -50, 0), v3(0, 0, 0), 0, 0.1) end
 local horn = {}
 local scale_particles = function() return 1 end
 local scale_shake = function() return 1 end
@@ -179,6 +193,8 @@ function W.init(opts)
         W.settings_node = scene.add_empty_node("Scene Settings")
         pcall(function() W.settings_node:set_scene_settings(true) end)
     end
+    -- Raster: the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU.
+    pcall(settings.set_render_mode, "raster")
     settings.set("bloom", true)
     settings.set("bloom_strength", 1.0)
     settings.set("bloom_range", 1.0)
@@ -198,6 +214,9 @@ function W.init(opts)
         local base = #lights.get_point_lights()
         for _ = 1, N_LIGHTS do lights.add_point() end
         for i = 0, N_LIGHTS - 1 do LT[i + 1] = base + i end
+        -- New lamps default to intensity 1, radius 10 at the origin. Slots 17-26 are never set below, and the horn,
+        -- pulse and bell lamps only once in use; keep them all dark until then.
+        for i = 1, N_LIGHTS do light_off(LT[i]) end
     end)
     -- Void around the chamber: a dark floor far below, faint nebula glows and drifting dust.
     local back = primitives.plane(240, 180)
@@ -394,8 +413,11 @@ local function build_piece(p, X, Z, list, alpha, variant)
     local function part(n, preset, arg)
         if alpha then
             pcall(material.set_render_type, n, "alpha_blend")
-            if variant == "hint" then mat(n, { 1, 0.75, 0.3, alpha }, { 0.8, 0.5, 0.1 }, 0.2, 0.4)
-            else mat(n, { 0.5, 0.85, 1, alpha }, { 0.2, 0.5, 0.7 }, 0.2, 0.4) end
+            -- Raster draws faint see-through surfaces much fainter than hybrid ray tracing did (these alphas were
+            -- tuned there), so lift them: matched to the hybrid look by measurement (2026-11-07).
+            local al = 0.2 + 1.2 * alpha
+            if variant == "hint" then mat(n, { 1, 0.75, 0.3, al }, { 0.8, 0.5, 0.1 }, 0.2, 0.4)
+            else mat(n, { 0.5, 0.85, 1, al }, { 0.2, 0.5, 0.7 }, 0.2, 0.4) end
         elseif preset then preset(n, arg) end
         set.parts[#set.parts + 1] = n
         return n
@@ -656,7 +678,7 @@ local function update_play(dt)
                 end
                 emis(h.core, { 0.85, 1, 1 }, 4 + 8 * str)
                 if LT[2 + used] and used <= 6 then
-                    pcall(lights.set_point_light, LT[2 + used], v3(X, BEAM_Y + 0.3, Z), v3(CYAN[1], CYAN[2], CYAN[3]), 2.5 + 4 * str, 2.6)
+                    point_light(LT[2 + used], v3(X, BEAM_Y + 0.3, Z), v3(CYAN[1], CYAN[2], CYAN[3]), 2.5 + 4 * str, 2.6)
                 end
             end
         end
@@ -665,7 +687,7 @@ local function update_play(dt)
         local h = head_pool[i]
         h.core:set_enabled(false); h.w1:set_enabled(false); h.w2:set_enabled(false)
     end
-    for i = used + 1, 6 do if LT[2 + i] then pcall(lights.set_point_light, LT[2 + i], v3(0, -50, 0), v3(0, 0, 0), 0, 0.1) end end
+    for i = used + 1, 6 do if LT[2 + i] then light_off(LT[2 + i]) end end
     head_used = max(used, 0)
     if used > 0 then P.live = live end
     if P.t >= ticks * TICK + 0.35 then
@@ -857,21 +879,21 @@ local function update_bells(dt)
                 rp:set_scale(v3(sc, 1, sc))
                 emis(rp, GOLD, (1.3 - i * 0.35) * (1 - ph * 0.6) + 3 * math.exp(-set.ring_t * 3))
             end
-            if LT[li] then pcall(lights.set_point_light, LT[li], v3(set.X, LIP + 0.25, set.Z), v3(1, 0.65, 0.3), 2.2 + 6 * math.exp(-set.ring_t * 2), 3) end
+            if LT[li] then point_light(LT[li], v3(set.X, LIP + 0.25, set.Z), v3(1, 0.65, 0.3), 2.2 + 6 * math.exp(-set.ring_t * 2), 3) end
         elseif set.state == "wrong" then
             emis(set.bell, RED, 0.8 + 0.6 * sin(S.t * 10))
-            if LT[li] then pcall(lights.set_point_light, LT[li], v3(set.X, LIP + 0.25, set.Z), v3(1, 0.2, 0.15), 4, 3) end
+            if LT[li] then point_light(LT[li], v3(set.X, LIP + 0.25, set.Z), v3(1, 0.2, 0.15), 4, 3) end
         else
             if set.state == "next" then
                 local s = 1 + 0.06 * sin(S.t * 4)
                 set.next_ring:set_scale(v3(s, 1, s))
                 emis(set.next_ring, CYAN, 1.4 + 0.9 * sin(S.t * 4))
             end
-            if LT[li] then pcall(lights.set_point_light, LT[li], v3(0, -50, 0), v3(0, 0, 0), 0, 0.1) end
+            if LT[li] then light_off(LT[li]) end
         end
         li = li + 1
     end
-    for i = li, 16 do if LT[i] then pcall(lights.set_point_light, LT[i], v3(0, -50, 0), v3(0, 0, 0), 0, 0.1) end end
+    for i = li, 16 do if LT[i] then light_off(LT[i]) end end
 end
 
 local function update_room(dt)
@@ -904,7 +926,7 @@ local function update_room(dt)
         e = e + 25 * horn.kick
         emis(horn.membrane, CYAN, e)
         emis(horn.lip, CYAN, e * 0.45)
-        if LT[1] then pcall(lights.set_point_light, LT[1], v3(horn.mx, BEAM_Y + 0.3, horn.mz), v3(CYAN[1], CYAN[2], CYAN[3]), 1.6 + e * 0.15, 2.4) end
+        if LT[1] then point_light(LT[1], v3(horn.mx, BEAM_Y + 0.3, horn.mz), v3(CYAN[1], CYAN[2], CYAN[3]), 1.6 + e * 0.15, 2.4) end
     end
 end
 
@@ -919,7 +941,7 @@ function W.update(dt, game)
     update_room(dt)
     -- Flash light.
     S.flash = max(0, S.flash - dt * 3)
-    if LT[2] then pcall(lights.set_point_light, LT[2], v3(S.flash_x, 1.0, S.flash_z), v3(S.flash_c[1], S.flash_c[2], S.flash_c[3]), S.flash * 10, 4.5) end
+    if LT[2] then point_light(LT[2], v3(S.flash_x, 1.0, S.flash_z), v3(S.flash_c[1], S.flash_c[2], S.flash_c[3]), S.flash * 10, 4.5) end
     -- Camera: flies in on a new chamber, then holds the framing with a slow drift; leans in when the
     -- chamber resonates; smooth shake.
     S.shake = max(0, S.shake - dt * 1.8)
@@ -968,12 +990,15 @@ local VC = {}
 function W.begin_frame()
     VC.vp, VC.inv = cam:get_view_projection(), cam:get_inv_view_projection()
     VC.sw, VC.sh = W.screen_size()
+    -- TAA shifts the projection by a new sub-pixel jitter every frame; badges projected through it trembled.
+    local ok, j = pcall(function() return cam:get_jitter() end)
+    VC.jx, VC.jy = ok and j and j.x or 0, ok and j and j.y or 0
 end
 function W.project(X, Y, Z)
     local vp = VC.vp or cam:get_view_projection()
     local c = vp * vec4(X, Y, Z, 1)
     if c.w <= 1e-5 then return nil end
-    local nx, ny = c.x / c.w, c.y / c.w
+    local nx, ny = c.x / c.w - (VC.jx or 0), c.y / c.w - (VC.jy or 0)   -- jitter-free, so badges hold still
     local sw, sh = VC.sw, VC.sh
     if not sw then sw, sh = W.screen_size() end
     if S.flip == nil then
@@ -990,8 +1015,8 @@ function W.cell_at(mx, my)
     local sw, sh = VC.sw, VC.sh
     if not sw then sw, sh = W.screen_size() end
     if S.flip == nil then W.project(0, 0, 0) end
-    local nx = mx / sw * 2 - 1
-    local ny = S.flip and (1 - my / sh * 2) or (my / sh * 2 - 1)
+    local nx = mx / sw * 2 - 1 + (VC.jx or 0)                          -- back into the jittered space inv lives in
+    local ny = (S.flip and (1 - my / sh * 2) or (my / sh * 2 - 1)) + (VC.jy or 0)
     local a = inv * vec4(nx, ny, 0.25, 1)
     local b = inv * vec4(nx, ny, 0.75, 1)
     local ax, ay, az = a.x / a.w, a.y / a.w, a.z / a.w

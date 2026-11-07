@@ -1098,6 +1098,7 @@ local function build_post()
     pcall(skybox.load, "dusk.hdr")
     local ok, node = pcall(scene.add_empty_node, "NC_SceneSettings")
     if ok and node then pcall(function() node:set_scene_settings(true) end) end
+    pcall(settings.set_render_mode, "raster")  -- the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU
     local function st(k, v) pcall(settings.set, k, v) end
     st("hdr", false); st("bloom", true); st("bloom_strength", 0.55); st("bloom_range", 1.25)  -- see common/RENDER_SETTINGS.md
     st("tonemapping", true); st("fxaa", false); st("taa", true); st("cas_sharpening", false); st("motion_blur", false); st("dof", false)

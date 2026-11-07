@@ -675,6 +675,7 @@ local function init()
   -- Post-processing (bloom, TAA jitter, tonemapping, colour grading, SSR) only runs with a Scene
   -- Settings node; this scene has none, so create one like the other Arcade games do.
   local ss = scene.add_empty_node("NeonInvadersSceneSettings"); ss:set_scene_settings(true)
+  pcall(settings.set_render_mode, "raster")  -- the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU
   cam = scene.get_active_camera()
   cam:set_fov(62)
   settings.set("bloom", true)

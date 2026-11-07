@@ -42,9 +42,13 @@ local function paint(n, base, emi, rough, metal)
     material.set(n, "roughness", rough or 0.6)
     material.set(n, "metallic", metal or 0.0)
 end
+-- The game renders raster (see build_sky_and_post); these alphas were tuned under hybrid ray tracing, where
+-- faint glows still showed. In raster a glow under ~0.35 alpha vanishes, so map each to the alpha that measured
+-- the same on screen (fit at two moments of an explosion halo, 2026-11-07).
+local function raster_alpha(a) return 0.23 + 1.34 * a end
 local function ghost(n, r, g, b, a)
     pcall(material.set_render_type, n, "alpha_blend")
-    material.set(n, "base_color", vec4(r, g, b, a))
+    material.set(n, "base_color", vec4(r, g, b, raster_alpha(a)))
     material.set(n, "emissive", vec3(r, g, b))
 end
 local function glow(n, r, g, b) material.set(n, "emissive", vec3(r, g, b)) end
@@ -83,6 +87,7 @@ local function build_sky_and_post()
     pcall(skybox.load, "night.hdr")  -- bare name: skybox.load resolves it to Assets/Skybox/ (a path with "/" is taken literally)
     local ok, node = pcall(scene.add_empty_node, "MC_SceneSettings")
     if ok and node then pcall(function() node:set_scene_settings(true) end) end
+    pcall(settings.set_render_mode, "raster")  -- the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU
     local function st(k, v) pcall(settings.set, k, v) end
     st("hdr", false)  -- HDR+bloom shows blocky holes on lavapipe (engine bug); LDR bloom is clean
     st("bloom", true); st("bloom_strength", 1.05); st("bloom_range", 0.55); st("cas_sharpening", true)  -- RENDER_SETTINGS.md
@@ -797,7 +802,7 @@ local function update_booms(dt)
             local hn = pool.halo[b.i]
             local hrr = r * 1.25
             place(hn, b.x, b.y, -0.3, 0, hrr, hrr, hrr)
-            material.set(hn, "base_color", vec4(hr / 1.5, hg / 1.5, hb / 1.5, 0.35 * (1 - life * 0.8)))
+            material.set(hn, "base_color", vec4(hr / 1.5, hg / 1.5, hb / 1.5, raster_alpha(0.35 * (1 - life * 0.8))))
             material.set(hn, "emissive", vec3(hr * 0.6, hg * 0.6, hb * 0.6))
             local rr = b.maxr * (0.3 + 1.8 * ease_out(min(1, b.t / 0.6)))
             local fade = max(0, 1 - b.t / 0.6)
