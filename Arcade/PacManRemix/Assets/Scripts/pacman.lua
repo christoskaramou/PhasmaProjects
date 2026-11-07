@@ -114,6 +114,7 @@ end
 local function build()
   local sn = scene.add_empty_node("PostFX")
   sn:set_scene_settings(true)
+  pcall(settings.set_render_mode, "raster")  -- the engine's hybrid default refits a ray-tracing TLAS every frame, which can fault the GPU
   local function set(k, v) pcall(settings.set, k, v) end
   set("hdr", true); set("bloom", true); set("bloom_strength", 0.55); set("bloom_range", 1.25)  -- see common/RENDER_SETTINGS.md
   set("tonemapping", true); set("fxaa", false); set("cas_sharpening", false); set("ssao", true); set("shadows", true)

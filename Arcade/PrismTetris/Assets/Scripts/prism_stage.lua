@@ -88,6 +88,8 @@ function Stage:apply_post()
     -- Without a scene-settings node the engine forces every post effect off.
     local node = scene.add_empty_node("PrismSceneSettings")
     node:set_scene_settings(true)
+    -- The scene file asks for hybrid; its per-frame ray-tracing TLAS refit can fault the GPU.
+    pcall(settings.set_render_mode, "raster")
 
     for _, entry in ipairs(POST) do
         settings.set(entry[1], entry[2])
