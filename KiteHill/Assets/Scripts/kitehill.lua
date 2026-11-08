@@ -188,7 +188,7 @@ local function on_event(ev)
     elseif ev.kind == "gust" then
         sound("gust")
         local g = race.gusts[ev.gust]
-        S.gust_fx = { vx = g.vx, vh = g.vh, until_t = race.t + g.dur }
+        S.gust_fx = { vx = g.vx, vh = g.vh, until_t = race.t + g.dur, race = race }
     elseif ev.kind == "finish" then
         if ev.k == 1 then sound("finish") end
         pop(k.x, k.h + 1.8, ordinal(ev.place), "big", ev.k == 1 and GOLD or CREAM)
@@ -278,9 +278,9 @@ local function controls(dt)
         end
         for i, d in ipairs(R.DESIGNS) do
             if not d.rival and clicked("ds" .. i) then
-                local was = save.design
+                local had = save.owned[d.id]
                 if R.buy(save, "design:" .. d.id) then
-                    sound(save.owned[d.id] and was ~= d.id and "click" or "coin"); write_save()
+                    sound(had and "click" or "coin"); write_save()
                 else sound("click"); S.deny = 1 end
             end
         end
@@ -297,7 +297,7 @@ local function step(dt)
         if q.t > (q.kind == "big" and 1.5 or 0.9) then table.remove(S.pops, i) end
     end
     S.deny = max(0, (S.deny or 0) - dt * 2)
-    if S.gust_fx and race and race.t < S.gust_fx.until_t then
+    if S.gust_fx and S.gust_fx.race == race and race.t < S.gust_fx.until_t then
         S.gust_acc = (S.gust_acc or 0) + dt
         if S.gust_acc > 0.12 then S.gust_acc = 0; World.gust_fx(S.gust_fx.vx, S.gust_fx.vh) end
     end

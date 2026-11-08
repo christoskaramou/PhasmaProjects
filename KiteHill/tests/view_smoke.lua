@@ -137,8 +137,12 @@ while frames < 60 * 900 and not seen.over do
         assert(sv.sail == lvl + 1 and sv.coins < c0, "clicking an upgrade buys it")
         local idx
         for i, d in ipairs(R.DESIGNS) do if d.id == "sunflower" then idx = i end end
+        local coins_heard = count("coin.wav")
         states["ds" .. idx] = { clicked = true }; frame(); states["ds" .. idx] = nil; frame()
         assert(sv.design == "sunflower" and sv.owned.sunflower, "clicking a kite buys and flies it")
+        assert(count("coin.wav") == coins_heard + 1, "buying a kite rings the till")
+        states["ds" .. idx] = { clicked = true }; frame(); states["ds" .. idx] = nil; frame()
+        assert(count("coin.wav") == coins_heard + 1, "choosing a kite you own costs nothing and only clicks")
         assert(labels():find("KITE WORKSHOP"), "workshop drawn")
         frame(20)
         press("Return")
@@ -167,4 +171,20 @@ api.autoplay = false
 press("Escape"); frame(2)
 assert(api.settings:is_open(), "Esc opens the settings")
 press("Escape"); frame(2)
+-- A gust's streaks belong to its race: the next race's countdown is calm.
+do
+    local real_fx, streaks = W.gust_fx, 0
+    W.gust_fx = function(...) streaks = streaks + 1; return real_fx(...) end
+    api.start_race()
+    local r1 = api.race()
+    r1.t = r1.gusts[1].t0 - 0.01
+    frame(12)
+    assert(streaks > 0, "a blowing gust draws streaks")
+    streaks = 0
+    api.start_race()
+    frame(60)
+    assert(api.race().t < 0, "still counting down")
+    assert(streaks == 0, "a gust from the last race blew through the countdown: " .. streaks .. " bursts")
+    W.gust_fx = real_fx
+end
 print("PASS view smoke")

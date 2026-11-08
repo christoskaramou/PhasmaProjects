@@ -185,6 +185,11 @@ function R.course(n, seed)
     -- ring stands with the R.SHOWN before it): rings must not overlap, and no pole may run through another's ring.
     local function clash(i, x, h)
         local worst = 0
+        if i == 1 then        -- nobody starts already inside the first ring (even with Keen Eye's wider reach)
+            for _, lx in ipairs(R.LAUNCH) do
+                worst = max(worst, (H.radius * 1.5 + 0.5) - sqrt((lx - x) ^ 2 + (R.floor(lx) + 3.0 - h) ^ 2))
+            end
+        end
         for j = max(1, i - R.SHOWN), i - 1 do
             local g = gates[j]
             local d = sqrt((g.x - x) ^ 2 + (g.h - h) ^ 2)
@@ -343,6 +348,7 @@ local function fly(race, k, turn, dt, wx, wh)
         k.boost = max(0, k.boost - dt)
     end
     local push = 1 - k.resist
+    local x0, h0 = k.x, k.h
     k.x = k.x + (cos(k.a) * v + wx * push) * dt
     k.h = k.h + (sin(k.a) * v + wh * push) * dt
     k.x = clamp(k.x, R.FIELD.x0, R.FIELD.x1)
@@ -357,9 +363,14 @@ local function fly(race, k, turn, dt, wx, wh)
     if k.finished then return end
     local g = race.gates[k.gate]
     if g then
-        local d = sqrt((k.x - g.x) ^ 2 + (k.h - g.h) ^ 2)
+        -- A ring is decided at the kite's closest approach to its middle, found along this step's whole path so it
+        -- holds at any frame rate: while the kite is still closing in (u == 1) it waits.
+        local sx, sh = k.x - x0, k.h - h0
+        local len2 = sx * sx + sh * sh
+        local u = len2 > 0 and clamp(((g.x - x0) * sx + (g.h - h0) * sh) / len2, 0, 1) or 0
+        local d = sqrt((x0 + sx * u - g.x) ^ 2 + (h0 + sh * u - g.h) ^ 2)
         local reach = g.r * (1 + k.eye)
-        if d < reach then
+        if d < reach and u < 1 then
             local bull = d < g.r * R.BULLSEYE
             k.passes = k.passes + 1
             if bull then k.bulls = k.bulls + 1 end
@@ -413,7 +424,6 @@ function R.step(race, dt, input)
         local turn
         if k.ai then
             turn = ai_turn(race, k)
-            -- Rivals spend their bursts only in later heats, on long straights.
         else
             if input.tx then turn = R.turn_toward(k, input.tx, input.th) else turn = input.turn or 0 end
             if input.boost and k.boosts > 0 and k.boost <= 0 and k.crashed <= 0 then

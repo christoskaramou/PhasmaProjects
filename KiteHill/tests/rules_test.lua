@@ -175,6 +175,42 @@ check("rings count only in order; a pass in the middle is a bullseye", function(
     assert(k2.gate == 2, "Keen Eye counts a pass just outside the rim")
 end)
 
+check("flown through a ring: the middle is a bullseye and the rim is not, at any frame rate", function()
+    for _, hz in ipairs({ 20, 30, 60, 144, 240 }) do
+        local function fly_at(offset)
+            local race = calm(1, 3)
+            local k, g = race.kites[1], race.gates[1]
+            place_kite(k, g.x - g.r * 1.6, g.h + g.r * offset, 0)
+            for _ = 1, hz * 10 do
+                R.step(race, 1 / hz, { turn = 0 })
+                if k.passes > 0 then break end
+            end
+            return k
+        end
+        local mid, rim = fly_at(0.1), fly_at(0.8)
+        assert(mid.passes == 1 and mid.bulls == 1, hz .. " Hz: through the middle is a bullseye")
+        assert(rim.passes == 1 and rim.bulls == 0, hz .. " Hz: near the rim is a pass only")
+    end
+end)
+
+check("nobody starts inside ring 1, so nobody gets a free ring at GO", function()
+    for n = 1, 12 do
+        for seed = 1, 300 do
+            local race = R.new_race(n, seed)
+            local g = race.gates[1]
+            for _, k in ipairs(race.kites) do
+                local d = math.sqrt((k.x - g.x) ^ 2 + (k.h - g.h) ^ 2)
+                assert(d > g.r * 1.5, "heat " .. n .. " seed " .. seed .. ": kite " .. k.i .. " starts " .. d .. " from ring 1")
+            end
+            while race.t <= 0 do R.step(race, DT, { turn = 0 }) end
+            R.step(race, DT, { turn = 0 })
+            for _, k in ipairs(race.kites) do
+                assert(k.passes == 0, "heat " .. n .. " seed " .. seed .. ": kite " .. k.i .. " passed ring 1 right after GO")
+            end
+        end
+    end
+end)
+
 check("the countdown ticks 3, 2, 1, then go, and nobody moves before it", function()
     local race = R.new_race(1, 1)
     local counts, go = {}, false
