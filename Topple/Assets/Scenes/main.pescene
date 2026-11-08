@@ -142,6 +142,9 @@
    "path": "../Objects/room_glass.pemesh"
   },
   {
+   "path": "../Objects/room_knob.pemesh"
+  },
+  {
    "path": "../Objects/room_pages.pemesh"
   },
   {
@@ -488,6 +491,10 @@
   },
   {
    "source": 59,
+   "source_mesh": 0
+  },
+  {
+   "source": 60,
    "source_mesh": 0
   }
  ],
@@ -2295,7 +2302,7 @@
    ]
   },
   {
-   "name": "T_room_pages",
+   "name": "T_room_knob",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2321,7 +2328,7 @@
    ]
   },
   {
-   "name": "T_room_rug",
+   "name": "T_room_pages",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2347,7 +2354,7 @@
    ]
   },
   {
-   "name": "T_room_shade",
+   "name": "T_room_rug",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2373,7 +2380,7 @@
    ]
   },
   {
-   "name": "T_room_trim_B",
+   "name": "T_room_shade",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2399,7 +2406,7 @@
    ]
   },
   {
-   "name": "T_room_trim_F",
+   "name": "T_room_trim_B",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2425,7 +2432,7 @@
    ]
   },
   {
-   "name": "T_room_trim_L",
+   "name": "T_room_trim_F",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2451,7 +2458,7 @@
    ]
   },
   {
-   "name": "T_room_trim_R",
+   "name": "T_room_trim_L",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2477,7 +2484,7 @@
    ]
   },
   {
-   "name": "T_room_wall_B",
+   "name": "T_room_trim_R",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2503,7 +2510,7 @@
    ]
   },
   {
-   "name": "T_room_wall_F",
+   "name": "T_room_wall_B",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2529,7 +2536,7 @@
    ]
   },
   {
-   "name": "T_room_wall_L",
+   "name": "T_room_wall_F",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2555,7 +2562,7 @@
    ]
   },
   {
-   "name": "T_room_wall_R",
+   "name": "T_room_wall_L",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2581,7 +2588,7 @@
    ]
   },
   {
-   "name": "T_room_walnut",
+   "name": "T_room_wall_R",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2607,7 +2614,7 @@
    ]
   },
   {
-   "name": "T_room_window",
+   "name": "T_room_walnut",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2630,6 +2637,32 @@
    "component_flags": 0,
    "mesh_refs": [
     76
+   ]
+  },
+  {
+   "name": "T_room_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    77
    ]
   },
   {

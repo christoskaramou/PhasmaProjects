@@ -57,6 +57,7 @@ return {
         { name = "room_curtains", color = { 0.52, 0.2, 0.1 }, rough = 0.95 },
         { name = "room_floor", color = { 1, 1, 1 }, rough = 0.38, tex = "Textures/room_floor.png" },
         { name = "room_glass", color = { 1, 1, 1 }, rough = 0.05, emis = { 0.9, 0.9, 0.9 }, emis_tex = "Textures/room_sky.png", transmission = 1 },
+        { name = "room_knob", color = { 0.86, 0.62, 0.3 }, rough = 0.25, metal = 1, group = "R" },
         { name = "room_pages", color = { 0.8, 0.75, 0.62 }, rough = 0.8 },
         { name = "room_rug", color = { 1, 1, 1 }, rough = 0.97, tex = "Textures/room_rug.png" },
         { name = "room_shade", color = { 0.92, 0.84, 0.68 }, rough = 0.9, emis = { 0.55, 0.36, 0.16 } },

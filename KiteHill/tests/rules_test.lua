@@ -197,6 +197,12 @@ check("nobody starts inside ring 1, so nobody gets a free ring at GO", function(
     for n = 1, 12 do
         for seed = 1, 300 do
             local race = R.new_race(n, seed)
+            for _, gate in ipairs(race.gates) do        -- a crashed kite relaunches 2.6 above its launch spot
+                for _, lx in ipairs(R.LAUNCH) do
+                    local d = math.sqrt((lx - gate.x) ^ 2 + (R.floor(lx) + 2.6 - gate.h) ^ 2)
+                    assert(d > gate.r * 1.24, "heat " .. n .. " seed " .. seed .. ": a relaunch at " .. lx .. " is inside ring " .. gate.i)
+                end
+            end
             local g = race.gates[1]
             for _, k in ipairs(race.kites) do
                 local d = math.sqrt((k.x - g.x) ^ 2 + (k.h - g.h) ^ 2)
