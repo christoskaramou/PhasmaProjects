@@ -185,10 +185,9 @@ function R.course(n, seed)
     -- ring stands with the R.SHOWN before it): rings must not overlap, and no pole may run through another's ring.
     local function clash(i, x, h)
         local worst = 0
-        if i == 1 then        -- nobody starts already inside the first ring (even with Keen Eye's wider reach)
-            for _, lx in ipairs(R.LAUNCH) do
-                worst = max(worst, (H.radius * 1.5 + 0.5) - sqrt((lx - x) ^ 2 + (R.floor(lx) + 3.0 - h) ^ 2))
-            end
+        -- Nobody starts or relaunches already inside a ring (even with Keen Eye's wider reach).
+        for _, lx in ipairs(R.LAUNCH) do
+            worst = max(worst, (H.radius * 1.5 + 0.5) - sqrt((lx - x) ^ 2 + (R.floor(lx) + 3.0 - h) ^ 2))
         end
         for j = max(1, i - R.SHOWN), i - 1 do
             local g = gates[j]

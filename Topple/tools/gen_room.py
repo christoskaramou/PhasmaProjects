@@ -426,7 +426,7 @@ def books():
 
 
 def brass():
-    """Brass: the table lamp's base, the curtain rod and finials, the door knob."""
+    """Brass: the table lamp's base, the curtain rod and finials (the door knob is knob(), hidden with its wall)."""
     m = MU()
     sd = SIDE
     prof = [(0, 0), (1.5, 0), (1.5, 0.3), (0.9, 0.6), (0.35, 1.2), (0.3, 5.0), (0.55, 5.4), (0.2, 5.8), (0.2, 7.0), (0, 7.0)]
@@ -438,6 +438,12 @@ def brass():
         m.mesh(G.ball(E(X0 + 2.0, y, hr), 0.6, 20, 12))
     for y in (w["y0"] - 8.0, w["y1"] + 8.0):
         m.mesh(G.tube(E(X0, y, hr), E(X0 + 2.0, y, hr), 0.15, 10))
+    return m
+
+
+def knob():
+    """The door knob, on its own so it hides with the door when the camera is behind that wall."""
+    m = MU()
     d = DOOR
     m.mesh(G.ball(E(X1 - 0.9, d["y1"] - 2.2, 19.0), 0.55, 20, 12))
     m.mesh(G.tube(E(X1 - 0.4, d["y1"] - 2.2, 19.0), E(X1 - 0.9, d["y1"] - 2.2, 19.0), 0.2, 10))
@@ -473,6 +479,7 @@ PIECES = {
     "room_rug": (rug, dict(color=(1, 1, 1), rough=0.97, tex="Textures/room_rug.png")),
     "room_walnut": (walnut, dict(color=(0.16, 0.08, 0.04), rough=0.42)),
     "room_brass": (brass, dict(color=(0.86, 0.62, 0.30), rough=0.25, metal=1.0)),
+    "room_knob": (knob, dict(color=(0.86, 0.62, 0.30), rough=0.25, metal=1.0, group="R")),
     "room_shade": (shade, dict(color=(0.92, 0.84, 0.68), rough=0.9, emis=(0.55, 0.36, 0.16))),
     "room_pages": (None, dict(color=(0.8, 0.75, 0.62), rough=0.8)),
 }
