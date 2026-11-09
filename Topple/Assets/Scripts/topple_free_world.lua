@@ -537,8 +537,9 @@ function FW.stand_all()
 end
 
 ------------------------------------------------------------------ a run
-local function ease_out(u) u = max(0, min(1, u)); return 1 - (1 - u) ^ 3 end
-local SETTLE = 0.15
+-- Starts gently: a domino can only lean further as fast as the one it struck gets out of the way.
+local function ease_out(u) u = max(0, min(1, u)); return u * u * (3 - 2 * u) end
+local SETTLE = 0.24         -- (long enough for the next domino to have made room, however close it stands)
 local function fall_angle(f, t)
     if t <= f.t then return 0 end
     if t < f.tc then
@@ -880,10 +881,10 @@ function FW.orbit(dx, dy)
     FW.goal.pitch = max(8, min(89, FW.goal.pitch + dy * 0.2))
 end
 local function clamp_goal()
-    local g, B = FW.goal, ROOM.bounds
+    local g, B = FW.goal, FW.limits or ROOM.bounds
     g.x = max(B.x0 - 10, min(B.x1 + 10, g.x))
     g.y = max(B.y0 - 10, min(B.y1 + 10, g.y))
-    g.dist = max(4, min(170, g.dist))
+    g.dist = max(B.dmin or 4, min(B.dmax or 170, g.dist))
 end
 -- Move the target along the floor: dx toward screen right, dy away from the camera (pixel-ish units, scaled by the
 -- distance). The camera sits at (cos yaw, sin yaw) from the target: screen right is (-sin yaw, cos yaw), away is
@@ -1041,9 +1042,7 @@ function FW.init()
     FW.reset_camera()
 end
 
-function FW.enter()
-    cam = scene.get_active_camera()
-    ROOM = F.ROOM
+local function remember_settings()
     if FW.saved_lod == nil then
         local ok, v = pcall(settings.get, "lod_enabled")
         FW.saved_lod = not ok or v ~= false
@@ -1052,6 +1051,98 @@ function FW.enter()
         local ok, v = pcall(settings.get, "shadow_map_size")
         FW.saved_map_size = ok and v or false
     end
+end
+local function restore_settings()
+    pcall(settings.set, "shadow_fixed_bounds", false)
+    pcall(settings.set, "lod_enabled", FW.saved_lod ~= false)
+    if FW.saved_map_size then pcall(settings.set, "shadow_map_size", FW.saved_map_size) end
+end
+
+-- The Great Hall (topple_hall.lua): a world of its own, sharing this camera, the look and the lights.
+local hall_root
+function FW.enter_hall(H)
+    cam = scene.get_active_camera()
+    ROOM = F.ROOM
+    remember_settings()
+    pcall(function() cam:set_projection_mode("perspective") end)
+    FW.limits = H.limits
+    FW.saved_near, FW.saved_far = cam:get_near(), cam:get_far()
+    cam:set_near(0.3)
+    cam:set_far(H.far)
+    save_lights()
+    if not hall_root then
+        hall_root = scene.add_empty_node("GreatHall")
+        for _, L in ipairs(H.pieces) do
+            local m = mesh_of(L.name)
+            if m then
+                local n = scene.add_empty_node("gh_" .. L.name)
+                n:add_mesh_ref(m)
+                n:set_parent(hall_root)
+                look(n, L)
+            end
+        end
+    end
+    pcall(function() hall_root:set_enabled(true) end)
+    light_on(H.sun, "Key")
+    light_on(H.fill, "Fill")
+    light_on({ intensity = 0 }, "Lamp")
+    light_on({ intensity = 0 }, "RoomLamp", "point")
+    if skybox and skybox.load then pcall(skybox.load, H.sky) end
+    FW.apply_look()
+    pcall(settings.set, "IBL_intensity", H.ibl)
+    FW.active = true
+end
+
+function FW.leave_hall()
+    restore_settings()
+    if FW.saved_far then cam:set_near(FW.saved_near); cam:set_far(FW.saved_far) end
+    FW.limits = nil
+    FW.set_cursor(nil)
+    FW.set_starter(nil)
+    if hall_root then pcall(function() hall_root:set_enabled(false) end) end
+    restore_lights()
+    FW.active = false
+end
+
+-- A bell on its frame for the hall, beside the line at table angle a: { root, swing }. Scale: twice a Table Run bell.
+function FW.make_bell()
+    local frame = scene.add_empty_node("gh_bell")
+    frame:set_parent(hall_root)
+    local g = mesh_of("gallows")
+    if g then frame:add_mesh_ref(g) end
+    look(frame, { color = { 0.42, 0.28, 0.16 }, rough = 0.55 })
+    frame:set_scale(v3(2, 2, 2))
+    local swing = scene.add_empty_node("gh_bell_swing")
+    swing:set_parent(frame)
+    swing:set_position(v3(0, 2.16, 0))
+    local b = mesh_of("bell")
+    if b then swing:add_mesh_ref(b) end
+    look(swing, { color = { 0.86, 0.62, 0.3 }, rough = 0.25, metal = 1, emis = { 0.05, 0.03, 0.01 } })
+    return { root = frame, swing = swing }
+end
+function FW.place_bell(v, x, y, a)
+    v.root:set_position(v3(x, 0, -y))
+    v.root:set_rotation(v3(0, deg(a) + 90, 0))
+    hide_node(v.root, true)
+    hide_node(v.swing, true)
+end
+function FW.hide_bell(v)
+    hide_node(v.root, false)
+    hide_node(v.swing, false)
+end
+
+-- One shadow map around where you are looking (x, h, z engine, radius).
+function FW.set_shadow_bounds(x, h, z, r)
+    for k, v in pairs({ shadow_bounds_x = x, shadow_bounds_y = h, shadow_bounds_z = z, shadow_bounds_radius = r }) do
+        pcall(settings.set, k, v)
+    end
+    pcall(settings.set, "shadow_fixed_bounds", true)
+end
+
+function FW.enter()
+    cam = scene.get_active_camera()
+    ROOM = F.ROOM
+    remember_settings()
     pcall(function() cam:set_projection_mode("perspective") end)
     save_lights()
     if not room_root then build_room() end
@@ -1096,9 +1187,7 @@ function FW.leave()
     if physics and physics.set_gravity then pcall(physics.set_gravity, 0, -9.81, 0) end
     if physics and physics.set_time_scale then pcall(physics.set_time_scale, 1) end
     if FW.saved_rate then pcall(settings.set, "physics_rate", FW.saved_rate) end
-    pcall(settings.set, "shadow_fixed_bounds", false)
-    pcall(settings.set, "lod_enabled", FW.saved_lod ~= false)
-    if FW.saved_map_size then pcall(settings.set, "shadow_map_size", FW.saved_map_size) end
+    restore_settings()
     FW.clear()
     FW.set_cursor(nil)
     FW.set_starter(nil)

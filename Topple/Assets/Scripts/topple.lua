@@ -14,6 +14,7 @@ local Free = module("Scripts/topple_free.lua")                -- Free Build: rul
 Free.set_room(module("Scripts/free_room.lua"))
 local FreeWorld = module("Scripts/topple_free_world.lua")(Free)
 local FreeView
+local Hall
 
 local SCREEN = "topple"
 local floor, min, max, abs, sin, cos, sqrt = math.floor, math.min, math.max, math.abs, math.sin, math.cos, math.sqrt
@@ -59,7 +60,7 @@ local SET = SettingsMenu.new({ title = "SETTINGS", subtitle = "TOPPLE", click = 
     theme = { accent = { 0.86, 0.66, 0.36, 1 }, accent2 = { 0.95, 0.8, 0.5, 1 }, text = { 0.97, 0.93, 0.82, 1 }, selected_text = { 1, 0.97, 0.88, 1 } },
     on_graphics = function(c)
         pcall(settings.set, "taa", true); pcall(settings.set, "fxaa", false)
-        if S.mode == "free" then FreeWorld.apply_look(c) end
+        if S.mode == "free" or S.mode == "hall" then FreeWorld.apply_look(c) end
     end })
 _G.topple.settings = SET
 World.particle_scale = function() return SET:particle_scale() end
@@ -256,7 +257,7 @@ local function edge()
     end
 end
 local pressed = edge()
-local KEYS = { "M", "Return", "Space", "F", "C", "Backspace", "1", "2", "3", "4", "5", "T" }
+local KEYS = { "M", "Return", "Space", "F", "C", "Backspace", "1", "2", "3", "4", "5", "T", "G" }
 
 -- Free Build gets the screen helpers; it keeps its own key edges (see FreeView.flush_keys).
 local TABLE_IDS = { "board", "btn_tip", "btn_speed", "btn_undo", "btn_clear", "btn_menu", "tool1", "tool2", "tool3", "tool4", "tool5",
@@ -269,17 +270,39 @@ FreeView = module("Scripts/topple_free_view.lua")(Free, FreeWorld, {
     C = { CREAM = CREAM, BRASS = BRASS, GOLD = GOLD, WALNUT = WALNUT, WALNUT_HI = WALNUT_HI, RIM = RIM, BAD = BAD, SAGE = SAGE, CLEAR = CLEAR },
 })
 _G.topple.free = FreeView
+Hall = module("Scripts/topple_hall.lua")(Free, FreeWorld, module("Scripts/topple_hall_core.lua")(Free), {
+    quad = quad, hide = hide, catcher = catcher, clicked = clicked, hovered = hovered, pid = pid, rect = rect, image = image,
+    text = text, panel = panel, col4 = col4, commas = commas, sound = sound, clack = clack, edge = edge, SET = SET, L = L,
+    u = function() return u end, back_to_menu = function() back_to_menu() end,
+    C = { CREAM = CREAM, BRASS = BRASS, GOLD = GOLD, WALNUT = WALNUT, WALNUT_HI = WALNUT_HI, RIM = RIM, BAD = BAD, SAGE = SAGE, CLEAR = CLEAR },
+})
+_G.topple.hall = Hall
 local function start_free()
     for _, id in ipairs(TABLE_IDS) do hide(id) end
-    hide("btn_card"); hide("btn_table")
+    hide("btn_card"); hide("btn_table"); hide("btn_hall")
     World.show(false)
     S.mode = "free"
     FreeView.enter()
     SET:apply()
 end
+local function start_hall()
+    if not hinge_field then return end     -- an engine build from before the hall can't draw it
+    for _, id in ipairs(TABLE_IDS) do hide(id) end
+    hide("btn_card"); hide("btn_table"); hide("btn_hall")
+    World.show(false)
+    S.mode = "hall"
+    Hall.enter()
+    SET:apply()
+end
+_G.topple.start_hall = start_hall
 back_to_menu = function()
-    FreeView.leave()
-    FreeView.hide_all()
+    if S.mode == "hall" then
+        Hall.leave()
+        Hall.hide_all()
+    else
+        FreeView.leave()
+        FreeView.hide_all()
+    end
     World.show(true)
     World.apply_look()
     S.mode, S.card_t = "title", 0
@@ -426,8 +449,13 @@ local function controls(dt)
     if pressed("M") then SET:toggle_mute() end
     local enter = pressed("Return") or pressed("Space")
     local tkey = pressed("T")
+    local gkey = pressed("G")
     if S.mode == "free" then
         FreeView.controls(dt)
+        return
+    end
+    if S.mode == "hall" then
+        Hall.controls(dt)
         return
     end
     if run and S.mode ~= "title" and clicked("btn_menu") then
@@ -437,6 +465,7 @@ local function controls(dt)
     end
     if S.mode == "title" then
         if S.card_t > 0.3 and (enter or clicked("btn_card")) then sound("click"); start_free()
+        elseif S.card_t > 0.3 and (gkey or clicked("btn_hall")) then sound("click"); start_hall()
         elseif S.card_t > 0.3 and (tkey or clicked("btn_table")) then sound("click"); new_run() end
     elseif S.mode == "build" then
         if _G.topple.autoplay then autoplay() else build_input(enter) end
@@ -692,7 +721,7 @@ local function draw_cards()
     local w, h = L.w, L.h
     local show = S.mode == "title" or S.mode == "cleared" or S.mode == "over" or S.mode == "shop"
     if not show or SET:is_open() then
-        hide("btn_card"); hide("btn_table"); for i = 1, 4 do hide("buy" .. i) end
+        hide("btn_card"); hide("btn_table"); hide("btn_hall"); for i = 1, 4 do hide("buy" .. i) end
         if S.mode == "tally" then
             local a = min(1, S.card_t * 4) * (1 - max(0, S.card_t - 1.3) / 0.4)
             local tw = 520 * u
@@ -718,8 +747,9 @@ local function draw_cards()
         text("Set up chain reactions of dominoes, then tip the first one.", cx, y + 160 * u, 22 * u, col4(CREAM, a), "center", 82, cw)
         text("FREE BUILD: thousands of dominoes anywhere in a living room. Lines, spirals,", cx, y + 210 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
         text("fields, up the books and onto the coffee table. Save your builds, tip, replay.", cx, y + 238 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
-        text("TABLE RUN: a toy chain on a games table, a score to beat, a toy shop between tables.", cx, y + 282 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
-        text(best > 0 and ("Best table run: table " .. best) or "", cx, y + 326 * u, 18 * u, col4(GOLD, a), "center", 82, cw)
+        text("THE GREAT HALL: a floor for five million. Tip a million dominoes and watch them go.", cx, y + 272 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
+        text("TABLE RUN: a toy chain on a games table, a score to beat, a toy shop between tables.", cx, y + 306 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
+        text(best > 0 and ("Best table run: table " .. best) or "", cx, y + 346 * u, 18 * u, col4(GOLD, a), "center", 82, cw)
         btn = "FREE BUILD"
     elseif S.mode == "cleared" then
         local tb = run.tb
@@ -771,21 +801,27 @@ local function draw_cards()
         btn = "NEXT TABLE"
     end
     if S.mode ~= "shop" then for i = 1, 4 do hide("buy" .. i) end end
-    local bw, bh = 340 * u, 70 * u
+    local bw, bh = S.mode == "title" and 270 * u or 340 * u, 70 * u
     local bx, by = cx - bw / 2, y + ch - 104 * u
-    if S.mode == "title" then bx = cx - bw - 12 * u end
+    if S.mode == "title" then bx = cx - bw * 1.5 - 12 * u end
     local hov = hovered("btn_card")
     panel(bx, by, bw, bh, 83, col4(hov and { 0.5, 0.3, 0.1, 1 } or { 0.42, 0.25, 0.09, 1 }, a), col4(GOLD, a), 14)
-    text(btn .. "  ·  Enter", bx + bw / 2, by + bh / 2, 26 * u, col4(GOLD, a), "center", 84, bw)
+    text(btn .. "  ·  Enter", bx + bw / 2, by + bh / 2, S.mode == "title" and 22 * u or 26 * u, col4(GOLD, a), "center", 84, bw)
     catcher("btn_card", bx, by, bw, bh, 85)
     if S.mode == "title" then
-        local tx2 = cx + 12 * u
+        local hx = cx - bw / 2
+        local hov3 = hovered("btn_hall")
+        panel(hx, by, bw, bh, 83, col4(hov3 and { 0.5, 0.3, 0.1, 1 } or { 0.34, 0.2, 0.08, 1 }, a), col4(GOLD, a), 14)
+        text("GREAT HALL  ·  G", hx + bw / 2, by + bh / 2, 22 * u, col4(GOLD, a), "center", 84, bw)
+        catcher("btn_hall", hx, by, bw, bh, 85)
+        local tx2 = cx + bw / 2 + 12 * u
         local hov2 = hovered("btn_table")
         panel(tx2, by, bw, bh, 83, col4(hov2 and { 0.3, 0.17, 0.08, 1 } or { 0.2, 0.11, 0.05, 1 }, a), col4(RIM, a), 14)
-        text("TABLE RUN  ·  T", tx2 + bw / 2, by + bh / 2, 24 * u, col4(CREAM, a), "center", 84, bw)
+        text("TABLE RUN  ·  T", tx2 + bw / 2, by + bh / 2, 22 * u, col4(CREAM, a), "center", 84, bw)
         catcher("btn_table", tx2, by, bw, bh, 85)
     else
         hide("btn_table")
+        hide("btn_hall")
     end
 end
 
@@ -798,6 +834,13 @@ local function present(dt, real)
     if S.mode == "free" then
         FreeView.update(dt, real)
         FreeView.draw()
+        draw_cards()
+        flush_pools()
+        return
+    end
+    if S.mode == "hall" then
+        Hall.update(dt, real)
+        Hall.draw()
         draw_cards()
         flush_pools()
         return
@@ -843,6 +886,7 @@ script.on_update("topple", function()
     if SET:update(dt) then
         for _, key in ipairs(KEYS) do pressed(key) end
         FreeView.flush_keys()
+        Hall.flush_keys()
     elseif esc then
         sound("click"); SET:open()
     else
