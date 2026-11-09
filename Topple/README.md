@@ -97,7 +97,8 @@ time-ordered event queue, then animated.
 | `tools/furniture_refs_scene.py`, `tools/concept_layout.lua`, `tools/make_room_concept.py` | the Free Build room concept: furniture reference pictures for Tripo, a mid-run domino layout from the game's rules, and the Cycles render with the Tripo furniture (outputs stay in the work folder you pass) |
 | `tools/make_icons.py` | tray, shop and Free Build tool icons from the game's own meshes (Blender 5.x) |
 | `tools/make_textures.py` | shadow sprites, placement markers, `Assets/Skybox/room.hdr` |
-| `tools/make_sounds.py` | `Assets/Audio/*.wav` |
+| `tools/make_sounds.py` | `Assets/Audio/*.wav`, except the domino hits |
+| `tools/make_clacks.py` | `Assets/Audio/clack*.wav`, cut from CC0 recordings (`Assets/Audio/CREDITS.txt`) |
 
 The camera numbers in `gen_meshes.py`, `backdrop_scene.py` and `topple_world.lua` (`W.CAM`) must stay identical.
 

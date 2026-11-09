@@ -13,6 +13,7 @@ local SettingsMenu = module("Scripts/Lib/settings_menu.lua") -- shared menu, sam
 local Free = module("Scripts/topple_free.lua")                -- Free Build: rules, the room, the view
 Free.set_room(module("Scripts/free_room.lua"))
 local FreeWorld = module("Scripts/topple_free_world.lua")(Free)
+World.F = Free                                                -- both modes' dominoes lean by the same rule
 local FreeView
 local Hall
 
@@ -41,9 +42,11 @@ _G.topple = { S = S, R = R, W = World, run = function() return run end, board = 
     F = Free, FW = FreeWorld }
 
 -- The engine aborts when about 32 sounds overlap; a long chain clacks fast. Cap voices and space the clacks.
-local LEN = { clack1 = 0.37, clack2 = 0.36, clack3 = 0.35, place = 0.4, remove = 0.37, tip = 0.52, bell = 2.58, boing = 0.91,
+local CLACK_VARIANTS = 12
+local LEN = { place = 0.4, remove = 0.37, tip = 0.52, bell = 2.58, boing = 0.91,
     launch = 1.09, pop = 0.68, roll = 1.33, thunk = 0.49, house = 0.6, wobble = 0.34, cheer = 2.23, over = 2.68, coin = 0.5, click = 0.07 }
-local MAX_VOICES, voices, clock, last_clack, last_place = 16, {}, 0, -1, -1
+for i = 1, CLACK_VARIANTS do LEN["clack" .. i] = 0.06 end
+local MAX_VOICES, voices, clock, last_clack, clack_gap, last_place = 16, {}, 0, -1, 0, -1
 local function sound(name)
     if not (audio and audio.play) then return end
     for i = #voices, 1, -1 do if voices[i] <= clock then table.remove(voices, i) end end
@@ -52,9 +55,9 @@ local function sound(name)
     pcall(audio.play, name .. ".wav")
 end
 local function clack()
-    if clock - last_clack < 0.035 then return end
-    last_clack = clock
-    sound("clack" .. math.random(1, 3))
+    if clock - last_clack < clack_gap then return end
+    last_clack, clack_gap = clock, 0.015 + math.random() * 0.02    -- hits in recorded chains land about 17-24 ms apart, never evenly
+    sound("clack" .. math.random(1, CLACK_VARIANTS))
 end
 local SET = SettingsMenu.new({ title = "SETTINGS", subtitle = "TOPPLE", click = function() sound("click") end,
     theme = { accent = { 0.86, 0.66, 0.36, 1 }, accent2 = { 0.95, 0.8, 0.5, 1 }, text = { 0.97, 0.93, 0.82, 1 }, selected_text = { 1, 0.97, 0.88, 1 } },

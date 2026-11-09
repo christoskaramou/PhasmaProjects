@@ -523,7 +523,7 @@ function FV.controls(dt)
 end
 
 ------------------------------------------------------------------ per frame
-local CLACK_GAP = 0.03
+local CLACK_GAP = 0.016
 -- real: the time that actually passed this frame; a run's clock follows it, so frame rate never slows the chain.
 function FV.update(dt, real)
     S.t = S.t + dt
