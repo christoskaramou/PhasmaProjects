@@ -166,7 +166,12 @@ local res = api.S.res
 assert(res.score > 0 and api.S.tip_pts == res.score, "live points " .. api.S.tip_pts .. " vs " .. res.score)
 local clacks, bells = 0, 0
 for _, n in ipairs(played) do
-    if n:match("^clack") then clacks = clacks + 1 end
+    if n:match("^clack") then
+        clacks = clacks + 1
+        local wav = io_open("Assets/Audio/" .. n, "rb")
+        assert(wav, "no sound file for " .. n)
+        wav:close()
+    end
     if n == "bell.wav" then bells = bells + 1 end
 end
 assert(clacks > 5, "the chain should clack")

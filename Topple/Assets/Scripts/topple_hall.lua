@@ -160,7 +160,7 @@ local function tip()
     local _, x, y = HC.starter()
     hinge_field.stand_all()
     S.mode, S.run_t, S.speed, S.front = "running", 0, 1, { x = x, y = y }
-    S.last_clack, S.new_best, S.milestone = nil, false, nil
+    S.new_best, S.milestone = false, nil
     FW.set_starter(nil)
     FW.set_cursor(nil)
     if S.follow then
@@ -490,7 +490,7 @@ function H.update(dt, real)
             local k = min(1, dt * 4)
             S.front.x, S.front.y = S.front.x + (x - S.front.x) * k, S.front.y + (y - S.front.y) * k
             S.front_width = S.front_width and S.front_width + (width - S.front_width) * min(1, dt * 1.2) or width
-            if S.clock - (S.last_clack or -1) > 0.04 then S.last_clack = S.clock; ctx.clack() end
+            ctx.clack()
             -- A little dust where they land, while you are close enough to see it.
             local scale = FW.particle_scale and FW.particle_scale() or 1
             if FW.goal.dist < 500 and scale > 0 and particles and particles.emit_burst then

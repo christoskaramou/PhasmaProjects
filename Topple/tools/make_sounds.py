@@ -3,13 +3,14 @@
     python tools/make_sounds.py
 
 Synthesized with numpy / scipy, stereo 32 kHz (modal models, as Ricochet Parlour's):
-- clack1..3: one domino striking the next (bright, woody, three pitches so a long chain does not drone)
+- (clack*.wav, the domino hits, are real recordings: see tools/make_clacks.py)
 - place / remove / tip: a domino set down on felt, picked up, and the flick that starts the chain
 - bell: the brass bell on its gallows; boing: the spring launcher; launch / pop: a toy rocket going up and landing
 - roll: a glass marble down its wooden chute and across the felt; thunk: a domino against a wooden block
 - house: a toy house tipping over; wobble: a domino nudged edge-on that rocks and stays up
 - cheer: table cleared (a rising brass arpeggio); over: the run ends (falling chimes); coin; click
 """
+import sys
 import wave
 from pathlib import Path
 
@@ -52,11 +53,11 @@ def room(x, wet=0.2):
     return out + y * wet * 1.5
 
 
-def write(name, x, peak):
+def write(name, x, peak, floor_db=-54):
     x = np.asarray(x, float)
     if x.ndim == 1: x = np.stack([x, x], 1)
     env = np.abs(x).max(1); m = env.max()
-    idx = np.nonzero(env > m * 10 ** (-54 / 20))[0]
+    idx = np.nonzero(env > m * 10 ** (floor_db / 20))[0]
     x = x[: idx[-1] + int(0.03 * SR)]
     f = min(len(x), int(0.02 * SR)); x[-f:] *= np.linspace(1, 0, f)[:, None]
     x = x / m * peak
@@ -93,10 +94,9 @@ def clack(f):
 def main():
     global IR
     OUT.mkdir(parents=True, exist_ok=True)
-    for old in OUT.glob("*.wav"): old.unlink()
     IR = make_ir()
-    for i, f in enumerate((1850, 2150, 2450), 1):
-        write(f"clack{i}", room(clack(f), 0.12), 0.42)
+    for old in OUT.glob("*.wav"):
+        if not old.name.startswith("clack"): old.unlink()
     t = t_axis(0.2)
     write("place", room(modal(900, [1, 2.4], [0.6, 0.3], [90, 140], 0.2) + lowpass(noise(0.2), 900) * np.exp(-t * 70) * 0.5, 0.1), 0.25)
     write("remove", room(modal(1300, [1, 2.2], [0.5, 0.2], [60, 110], 0.2) + band(noise(0.2), 400, 2500) * np.exp(-t * 50) * 0.4, 0.1), 0.22)
