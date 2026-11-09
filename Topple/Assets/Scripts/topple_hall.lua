@@ -323,6 +323,8 @@ local function canvas_layout()
     return u, c, (w - gw) / 2, (h - gh) / 2 - 40 * u, gw, gh
 end
 
+H.canvas_layout = canvas_layout
+
 local function canvas_input()
     local cv = S.canvas
     for i = 1, #HC.DRAW_COLORS do
@@ -339,9 +341,10 @@ local function canvas_input()
         say("Now press on the floor and drag to lay it out.")
         return
     end
-    local mx, my = raw_mouse()
-    local down = input.is_left_mouse_down and input.is_left_mouse_down()
-    if not (mx and down) then cv.lx = nil; return end
+    -- The canvas covers the screen, so the UI holds the mouse: input.* reports no button and 0, 0 here.
+    local st = ctx.state("gh_canvas")
+    local mx, my = st and st.mouse_x, st and st.mouse_y
+    if not (mx and st.down) then cv.lx, cv.ly = nil, nil; return end
     local _, c, gx, gy = canvas_layout()
     local x, y = floor((mx - gx) / c), floor((my - gy) / c)
     local x0, y0 = cv.lx or x, cv.ly or y
