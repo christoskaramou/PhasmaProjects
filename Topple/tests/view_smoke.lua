@@ -447,6 +447,20 @@ do
     assert(Hall.S.canvas, "the drawing canvas opens")
     click("gh_cv_col3")
     assert(Hall.S.canvas.brush == 3, "a colour is chosen")
+    -- While the UI holds the mouse the engine reports no button and 0, 0, so a stroke must come from the canvas's own state.
+    do
+        local _, c, gx, gy = Hall.canvas_layout()
+        M.x, M.y, M.left = 0, 0, false
+        local function stroke(col, down, row) states.gh_canvas = { hovered = true, down = down, mouse_x = gx + (col + 0.5) * c, mouse_y = gy + ((row or 2) + 0.5) * c }; frame() end
+        stroke(3, true); stroke(9, true); stroke(9, false)
+        -- A new click starts where it lands, not joined to the row or column the last stroke ended on.
+        stroke(20, true, 12); stroke(20, false, 12); states.gh_canvas = nil
+        local cells = Hall.S.canvas.cells
+        assert(cells[12 * 48 + 20 + 1] == "2", "a click paints its own cell")
+        for row = 2, 11 do assert(cells[row * 48 + 20 + 1] == "0", "a new click drew a line from the last stroke's row: row " .. row) end
+        for x = 3, 9 do assert(cells[2 * 48 + x + 1] == "2", "the stroke paints cell " .. x .. ": " .. cells[2 * 48 + x + 1]) end
+        assert(cells[2 * 48 + 11] == "0" and cells[2 * 48 + 12] == "0", "only the stroke is painted")
+    end
     click("gh_cv_done")
     assert(not Hall.S.canvas and Hall.S.pic:match("^draw:48:30:"), "the drawing becomes the picture")
     press("8")

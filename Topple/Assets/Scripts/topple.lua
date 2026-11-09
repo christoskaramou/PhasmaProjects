@@ -271,7 +271,7 @@ FreeView = module("Scripts/topple_free_view.lua")(Free, FreeWorld, {
 })
 _G.topple.free = FreeView
 Hall = module("Scripts/topple_hall.lua")(Free, FreeWorld, module("Scripts/topple_hall_core.lua")(Free), {
-    quad = quad, hide = hide, catcher = catcher, clicked = clicked, hovered = hovered, pid = pid, rect = rect, image = image,
+    quad = quad, hide = hide, catcher = catcher, state = state, clicked = clicked, hovered = hovered, pid = pid, rect = rect, image = image,
     text = text, panel = panel, col4 = col4, commas = commas, sound = sound, clack = clack, edge = edge, SET = SET, L = L,
     u = function() return u end, back_to_menu = function() back_to_menu() end,
     C = { CREAM = CREAM, BRASS = BRASS, GOLD = GOLD, WALNUT = WALNUT, WALNUT_HI = WALNUT_HI, RIM = RIM, BAD = BAD, SAGE = SAGE, CLEAR = CLEAR },
