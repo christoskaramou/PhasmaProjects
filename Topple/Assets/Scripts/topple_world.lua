@@ -341,6 +341,23 @@ local SPARK = { 1.0, 0.55, 0.18 }
 ------------------------------------------------------------------ playing a tip
 -- res: R.simulate's result. Poses come from its fall records; effects fire as their events come due.
 function W.play(res)
+    -- Dominoes that strike dominoes come to lean on them.
+    local F, list = W.F, {}
+    if F then
+        for _, f in pairs(res.falls) do
+            if f.lean then
+                f.lean.final = f.lean.on_id and F.rest_angle(f.lean.contact) or f.lean.final
+                list[#list + 1] = f.lean
+            end
+        end
+        table.sort(list, function(a, b) if a.t ~= b.t then return a.t < b.t end return a.id < b.id end)
+        local seen, waiting = {}, {}
+        for _, l in ipairs(list) do
+            seen[l.id] = l
+            F.attach_fall(l, seen, waiting)
+        end
+        for id in pairs(waiting) do F.fall_missed(id, waiting) end
+    end
     W.anim = { res = res, t = 0, next_ev = 1, rung = {}, launched = {}, rolled = {}, sprung = {} }
 end
 function W.playing() return W.anim ~= nil and W.anim.t <= (W.anim.res.duration or 0) + 0.6 end
@@ -401,7 +418,7 @@ local function animate(dt)
     for id, f in pairs(A.res.falls) do
         local v = W.vis[id]
         if v and t >= f.t then
-            local a = faller_angle(f, t)
+            local a = (f.lean and W.F) and deg(W.F.fall_angle(f.lean, t)) or faller_angle(f, t)
             pose(v, a, f.dx, f.dy)
             if not v.landed and t >= f.t_contact then
                 v.landed = true

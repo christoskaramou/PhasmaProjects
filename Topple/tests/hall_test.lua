@@ -42,7 +42,10 @@ do
     HC.advance(1e9)
     check(HC.toppled == res.toppled, "the whole line falls alike: " .. HC.toppled .. " vs " .. res.toppled)
     check(HC.finished(1e9), "and the run ends")
-    check(#falls == HC.toppled, "the engine hears of every fall once")
+    local ids, distinct = {}, 0
+    for _, f in ipairs(falls) do if not ids[f.id] then ids[f.id], distinct = true, distinct + 1 end end
+    check(distinct == HC.toppled, "the engine hears of every fall")
+    check(#falls - distinct <= 2, "and again only for the few whose resting place turned out different: " .. (#falls - distinct))
     check(math.abs(HC.last_t - res.duration) < 0.2, "over the same time: " .. HC.last_t .. " vs " .. res.duration)
 end
 
@@ -248,11 +251,27 @@ end
 do
     local FW = assert(load(read("Scripts/topple_free_world.lua"), "@topple_free_world.lua", "t", _G))()(F)
     local T, H = F.DOM.t, F.DOM.h
-    local function fall_of(d, t0)
+    local function fall_of(id, d, t0)
         local c = math.max(d - T, 0.02)
         local contact = math.asin(c / H)
         local tc = t0 + F.fall_time(contact)
-        return { t = t0, tc = tc, contact = contact, final = F.rest_angle(contact), t_end = tc + 0.15 }
+        return { id = id, t = t0, tc = tc, contact = contact, final = F.rest_angle(contact), t_end = tc + 10 * (tc - t0), on_id = id + 1, S = c + T, dz = 0 }
+    end
+    -- A row: gaps d1, d2, d2, d2 and a last domino with nothing ahead, connected the way a run connects them.
+    local function row(d1, d2)
+        local falls, waiting, out, t = {}, {}, {}, 0
+        for i, d in ipairs({ d1, d2, d2, d2 }) do
+            local f = fall_of(i, d, t)
+            out[i], t = f, f.tc
+        end
+        local REST = math.rad(F.REST)
+        local tc = t + F.fall_time(REST)
+        out[5] = { id = 5, t = t, tc = tc, contact = REST, final = REST, t_end = tc + 0.15 }
+        for _, f in ipairs(out) do
+            falls[f.id] = f
+            F.attach_fall(f, falls, waiting)
+        end
+        return out
     end
     local function corners(x, a)
         local out = {}
@@ -278,18 +297,72 @@ do
         return math.max(0, depth)
     end
     local worst, at = 0, ""
-    for d1 = 0.45, 1.2001, 0.05 do
-        for d2 = 0.45, 1.2001, 0.05 do
-            local f1 = fall_of(d1, 0)
-            local f2 = fall_of(d2, f1.tc)
-            for t = 0, f2.t_end + 0.5, 0.001 do
-                local o = overlap(corners(0, FW.fall_angle(f1, t)), corners(d1, FW.fall_angle(f2, t)))
-                if o > worst then worst, at = o, string.format("gaps %.2f, %.2f at %.3f s", d1, d2, t) end
+    local float, float_at = 0, ""
+    -- (from about 1.0 apart two flat dominoes meet end to end, within 0.01; that is the widest gap a chain crosses)
+    for d1 = 0.45, 0.9501, 0.05 do
+        for d2 = 0.45, 0.9501, 0.05 do
+            local fs = row(d1, d2)
+            local x = { 0, d1, d1 + d2, d1 + 2 * d2, d1 + 3 * d2 }
+            for t = 0, fs[5].t_end + 1, 0.002 do
+                for k = 1, 4 do
+                    local o = overlap(corners(x[k], FW.fall_angle(fs[k], t)), corners(x[k + 1], FW.fall_angle(fs[k + 1], t)))
+                    if o > worst then worst, at = o, string.format("gaps %.2f, %.2f, domino %d at %.3f s", d1, d2, k, t) end
+                end
+            end
+            -- At rest each one lies on the next: its top edge within a hair of the next one's back.
+            for k = 1, 3 do
+                local S, a, b = x[k + 1] - x[k], fs[k].final, fs[k + 1].final
+                local gap = H * math.abs(F.lean(b, S) - a)      -- how far its top is from where it would touch
+                if gap > float then float, float_at = gap, string.format("gaps %.2f, %.2f, domino %d", d1, d2, k) end
             end
         end
     end
     print(string.format("  deepest overlap between falling dominoes: %.4f (%s)", worst, at))
+    print(string.format("  widest gap between resting dominoes: %.4f (%s)", float, float_at))
     check(worst < 0.002, "a domino never passes through the next: " .. worst .. " at " .. at)
+    check(float < 0.02, "a fallen domino rests on the next, it does not hang in the air: " .. float .. " at " .. float_at)
+
+    -- The numbers a real row gives: at the game's spacing they lie at cos(tilt) = 0.15 / 0.62, and the last lies flat.
+    local fs = row(0.62, 0.62)
+    check(math.abs(math.deg(fs[1].final) - 76) < 1, "they end at about 76 degrees: " .. math.deg(fs[1].final))
+    check(math.deg(fs[5].final) > 89 and math.abs(math.deg(fs[4].final) - 76) < 1.5, "the last lies flat and the one before rests on its back edge: " .. math.deg(fs[4].final))
+
+    -- A run ends the same: what it says at the end is what the view shows.
+    local b = F.new_board()
+    b:begin_action(); b:place_line(-30, -32, 30, -32, nil, 0); b:end_action()
+    local res = F.simulate(b)
+    check(res.toppled >= 95, "a straight line all falls: " .. res.toppled)
+    local bad = 0
+    for k = 1, #res.order - 2 do
+        local f = res.order[k]
+        if f.final < math.rad(74) or f.final > math.rad(84) or not f.on then bad = bad + 1 end
+    end
+    check(bad == 0, "each rests on the next in a real run: " .. bad .. " do not")
+
+    -- The field's shader runs the same contact without the links: mirrored here from HingeField.hlsl.
+    local function shader_angle(f, t)
+        if t <= f.t then return 0 end
+        local span = f.tc - f.t
+        if t < f.tc then return f.contact * ((t - f.t) / span) ^ 1.6 end
+        local steps = (t - f.tc) / span
+        if steps >= 10 then return f.final end
+        local S = H * math.sin(f.contact) + T
+        local row_a = math.acos(T / S)
+        local n = math.floor(steps)
+        local lean = f.contact * (steps - n) ^ 1.6
+        for _ = 0, n do lean = F.lean(lean, S) end
+        return math.min(f.final, f.contact + (lean - f.contact) * (f.final - f.contact) / math.max(row_a - f.contact, 0.01))
+    end
+    local deep = 0
+    for d = 0.45, 0.9, 0.05 do
+        local f1 = fall_of(1, d, 0)
+        local f2 = fall_of(2, d, f1.tc)
+        for t = 0, f2.t_end + 0.5, 0.001 do
+            deep = math.max(deep, overlap(corners(0, shader_angle(f1, t)), corners(d, shader_angle(f2, t))))
+        end
+    end
+    print(string.format("  deepest overlap in the field's shader curve: %.4f", deep))
+    check(deep < 0.008, "the hall's dominoes do not pass through each other either: " .. deep)
 end
 
 -- The sample comes out near its size, on the floor, in time; and a million fall.

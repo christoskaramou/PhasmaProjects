@@ -593,24 +593,25 @@ function H.deserialize(text)
 end
 
 ------------------------------------------------------------------ a run
-local HT, HQ, HX, HY, hn = {}, {}, {}, {}, 0
+local HT, HQ, HX, HY, HF, hn = {}, {}, {}, {}, {}, 0     -- HF: the domino that struck it (0: the tip)
 local run = 0
 local fall, nfall = {}, 0
 local hit_q, hit_th = {}, {}
+local lies_flat = {}                                      -- the sparse few a run left flat: [id] = run
 
-local function heap_push(t, q, dx, dy)
+local function heap_push(t, q, dx, dy, from)
     hn = hn + 1
     local i = hn
     while i > 1 do
         local p = floor(i / 2)
         if HT[p] <= t then break end
-        HT[i], HQ[i], HX[i], HY[i] = HT[p], HQ[p], HX[p], HY[p]
+        HT[i], HQ[i], HX[i], HY[i], HF[i] = HT[p], HQ[p], HX[p], HY[p], HF[p]
         i = p
     end
-    HT[i], HQ[i], HX[i], HY[i] = t, q, dx, dy
+    HT[i], HQ[i], HX[i], HY[i], HF[i] = t, q, dx, dy, from
 end
 local function heap_pop()
-    local t, q, dx, dy = HT[hn], HQ[hn], HX[hn], HY[hn]
+    local t, q, dx, dy, from = HT[hn], HQ[hn], HX[hn], HY[hn], HF[hn]
     hn = hn - 1
     local i, n = 1, hn
     while true do
@@ -618,10 +619,28 @@ local function heap_pop()
         if c > n then break end
         if c < n and HT[c + 1] < HT[c] then c = c + 1 end
         if HT[c] >= t then break end
-        HT[i], HQ[i], HX[i], HY[i] = HT[c], HQ[c], HX[c], HY[c]
+        HT[i], HQ[i], HX[i], HY[i], HF[i] = HT[c], HQ[c], HX[c], HY[c], HF[c]
         i = c
     end
-    if n > 0 then HT[i], HQ[i], HX[i], HY[i] = t, q, dx, dy end
+    if n > 0 then HT[i], HQ[i], HX[i], HY[i], HF[i] = t, q, dx, dy, from end
+end
+
+-- A fall went out assuming the next domino rests like it does. When that turns out wrong (the line ends, the spacing
+-- changes, the next one stays standing) its striker's record goes out again with the true resting angle; the shader
+-- carries on smoothly from there. qc: q's own gap (nil: it has none); q_final: nil if q stayed up.
+local function refit(from, q, dx, dy, tc, q_final, qc)
+    local rx, ry = X[q] - X[from], Y[q] - Y[from]
+    local qax, qay = CA[q], SA[q]
+    local cq, sq = abs(qax * dx + qay * dy), abs(qax * dy - qay * dx)
+    local c = max(rx * dx + ry * dy - T / 2 - (cq * T / 2 + sq * W / 2), 0.02)
+    if c >= DH or (qc and abs(qc - c) < 0.01) then return end
+    local th = asin(c / DH)
+    local want = q_final and max(th, min(REST, F.lean(q_final, c + T) - F.LEAN_GAP)) or th
+    if abs(want - F.rest_angle(th)) < rad(1) then return end
+    local b = nfall * 6
+    fall[b + 1], fall[b + 2], fall[b + 3], fall[b + 4], fall[b + 5], fall[b + 6] =
+        from - 1, tc - F.fall_time(th), tc, th, want, dx * CA[from] + dy * SA[from] > 0 and 1 or -1
+    nfall = nfall + 1
 end
 
 H.toppled, H.last_t = 0, 0
@@ -640,7 +659,7 @@ function H.tip()
     run, hn = run + 1, 0
     H.toppled, H.last_t = 0, 0
     H.rung, H.rung_total = {}, 0
-    heap_push(0, i, CA[i] * dir, SA[i] * dir)
+    heap_push(0, i, CA[i] * dir, SA[i] * dir, 0)
     return true
 end
 
@@ -653,13 +672,17 @@ function H.advance(t)
     local half_t, half_w = T / 2, W / 2
     nfall = 0
     while hn > 0 and HT[1] <= t do
-        local t0, p, dx, dy = HT[1], HQ[1], HX[1], HY[1]
+        local t0, p, dx, dy, from = HT[1], HQ[1], HX[1], HY[1], HF[1]
         heap_pop()
         local px, py = xs[p], ys[p]
-        if stamp[p] ~= run and not dead[p] then
+        if stamp[p] == run then
+            if from ~= 0 and lies_flat[p] == run then refit(from, p, dx, dy, t0, REST) end
+        elseif not dead[p] then
             local ax, ay = cas[p], sas[p]
             local d = dx * ax + dy * ay
-            if abs(d) >= 0.3 then
+            if abs(d) < 0.3 then
+                if from ~= 0 then refit(from, p, dx, dy, t0, nil) end
+            else
                 local sgn = d > 0 and 1 or -1
                 local fx, fy = ax * sgn, ay * sgn
                 stamp[p] = run
@@ -683,13 +706,14 @@ function H.advance(t)
                         end
                     end
                 end
-                local nh, best = 0, nil
+                local nh, best, best_c = 0, nil, nil
+                local lean_th                   -- nothing left standing ahead: what it comes down on
                 for j = cj - 1, cj + 1 do
                     local base = j * GRID
                     for i = ci - 1, ci + 1 do
                         local q = head[base + i + 1]
                         while q ~= 0 do
-                            if q ~= p and stamp[q] ~= run and not dead[q] then
+                            if q ~= p and not dead[q] then
                                 local rx, ry = xs[q] - px, ys[q] - py
                                 local along = rx * fx + ry * fy
                                 if along > 0.02 and along < REACH then
@@ -699,9 +723,13 @@ function H.advance(t)
                                         local c = max(along - half_t - (cq * half_t + sq * half_w), 0.02)
                                         if c < DH then
                                             local th = asin(c / DH)
-                                            nh = nh + 1
-                                            hit_q[nh], hit_th[nh] = q, th
-                                            if not best or th < best then best = th end
+                                            if stamp[q] == run then
+                                                if not lean_th or th < lean_th then lean_th = th end
+                                            else
+                                                nh = nh + 1
+                                                hit_q[nh], hit_th[nh] = q, th
+                                                if not best or th < best then best, best_c = th, c end
+                                            end
                                         end
                                     end
                                 end
@@ -715,16 +743,21 @@ function H.advance(t)
                     contact, final = best, F.rest_angle(best)
                     local tc = t0 + F.fall_time(contact)
                     for i = 1, nh do
-                        if hit_th[i] <= best + LIMIT_HIT then heap_push(tc, hit_q[i], fx, fy) end
+                        if hit_th[i] <= best + LIMIT_HIT then heap_push(tc, hit_q[i], fx, fy, p) end
                     end
+                elseif lean_th then
+                    contact, final = lean_th, F.rest_angle(lean_th)
                 else
                     contact, final = REST, REST
+                    lies_flat[p] = run
                 end
                 local tc = t0 + F.fall_time(contact)
                 local b = nfall * 6
                 fall[b + 1], fall[b + 2], fall[b + 3], fall[b + 4], fall[b + 5], fall[b + 6] = p - 1, t0, tc, contact, final, sgn
                 nfall = nfall + 1
-                if tc + 0.15 > H.last_t then H.last_t = tc + 0.15 end
+                if from ~= 0 then refit(from, p, dx, dy, t0, final, best_c) end
+                local stop = tc + (final < REST and max(0.15, 10 * (tc - t0)) or 0.15)
+                if stop > H.last_t then H.last_t = stop end
             end
         end
     end
