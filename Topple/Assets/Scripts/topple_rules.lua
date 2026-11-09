@@ -23,6 +23,7 @@ local asin, pi = math.asin, math.pi
 local atan2 = math.atan2 or math.atan
 
 R.DOM = { w = 0.5, t = 0.15, h = 1.0 }
+local DOMINO_T = 0.15                                       -- thickness (as in tools/gen_meshes.py)
 R.SPACING = 0.62                                            -- along a drawn line
 R.TABLE = { x0 = -12.0, x1 = 11.0, y0 = -6.5, y1 = 12.0 }   -- where toys may stand
 R.LAYOUT = { x0 = -9.5, x1 = 7.5, y0 = -1.5, y1 = 11.0 }    -- where a table sets its houses and blocks
@@ -453,6 +454,20 @@ function R.simulate(board, run)
                     else
                         fall.t_contact = t + R.fall_time(K.h, K.h)
                         fall.contact = 88
+                    end
+                    -- How the view poses it: a domino that strikes a domino comes to lean on it (see F.fall_angle).
+                    local struck = hits[1] and hits[1].q
+                    if p.kind == "domino" and (not struck or struck.kind == "domino") then
+                        local lean = { id = p.id, t = t, tc = fall.t_contact, contact = math.rad(88), final = math.rad(88), t_end = fall.t_contact + 0.3 }
+                        if struck then
+                            local rx, ry = struck.x - p.x, struck.y - p.y
+                            local qa, qb = cos(struck.a), sin(struck.a)
+                            local cq, sq = abs(qa * fx + qb * fy), abs(qa * fy - qb * fx)
+                            local c = max(0.02, rx * fx + ry * fy - DOMINO_T / 2 - (cq * DOMINO_T / 2 + sq * K.half))
+                            lean.contact, lean.S, lean.dz, lean.on_id = asin(min(0.98, c / K.h)), c + DOMINO_T, 0, struck.id
+                            lean.t_end = fall.t_contact + 10 * (fall.t_contact - t)
+                        end
+                        fall.lean = lean
                     end
                     fall.t_end = fall.t_contact + 0.3
                     res.falls[p.id] = fall

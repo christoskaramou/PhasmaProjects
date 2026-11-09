@@ -537,23 +537,7 @@ function FW.stand_all()
 end
 
 ------------------------------------------------------------------ a run
--- Starts gently: a domino can only lean further as fast as the one it struck gets out of the way.
-local function ease_out(u) u = max(0, min(1, u)); return u * u * (3 - 2 * u) end
-local SETTLE = 0.24         -- (long enough for the next domino to have made room, however close it stands)
-local function fall_angle(f, t)
-    if t <= f.t then return 0 end
-    if t < f.tc then
-        local u = (t - f.t) / max(1e-3, f.tc - f.t)
-        return f.contact * u ^ 1.6
-    end
-    local u = (t - f.tc) / SETTLE
-    local a = f.contact + (f.final - f.contact) * ease_out(u)
-    if f.final >= rad(85) and u > 0 and u < 1.6 then
-        local k = min(1, u / 1.6)
-        a = a - rad(5) * sin(k * pi) * (1 - k)
-    end
-    return a
-end
+local fall_angle = F.fall_angle
 FW.fall_angle = fall_angle
 
 -- Everything solid for this run gets its rigid body (no-op for the ones that have one).
@@ -1129,14 +1113,6 @@ end
 function FW.hide_bell(v)
     hide_node(v.root, false)
     hide_node(v.swing, false)
-end
-
--- One shadow map around where you are looking (x, h, z engine, radius).
-function FW.set_shadow_bounds(x, h, z, r)
-    for k, v in pairs({ shadow_bounds_x = x, shadow_bounds_y = h, shadow_bounds_z = z, shadow_bounds_radius = r }) do
-        pcall(settings.set, k, v)
-    end
-    pcall(settings.set, "shadow_fixed_bounds", true)
 end
 
 function FW.enter()

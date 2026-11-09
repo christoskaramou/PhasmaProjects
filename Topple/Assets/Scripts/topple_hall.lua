@@ -28,6 +28,8 @@ local WORLD = {
 }
 local NEAR_LOD = 170            -- within this the dominoes are whole boxes; beyond it, two quads each
 local SHADOW_MAX_DIST = 320     -- a camera further out than this sees dominoes smaller than a shadow texel
+local SHADOW_REACH, SHADOW_MIN, SHADOW_PULL = 420, 100, 220     -- how far they reach; and at SHADOW_MAX_DIST, drawn in from this camera distance
+local SHADOW_FADE = 0.4         -- the far part of that reach they fade over
 
 local SAVE, BEST = "Save/hall_autosave.txt", "Save/hall_best.txt"
 local MILESTONES = { 100000, 500000, 1000000, 2500000, 5000000 }
@@ -459,20 +461,23 @@ local function run_job()
     end
 end
 
--- One shadow map around where you are looking. From far out, where a domino is smaller than a texel, they cast none:
--- their contact shade in the shader keeps them grounded.
+-- The sun's shadows follow the camera in cascades and fade out at their far end. From far out, where a domino is smaller
+-- than a texel, they cast none (their contact shade in the shader keeps them grounded): as the camera pulls back the
+-- shadows draw in toward it, so they are out of sight by the time they stop.
 local function aim_shadows()
-    local g = FW.goal
-    local r = max(50, min(260, g.dist * 1.15))
-    local casts = g.dist <= SHADOW_MAX_DIST
+    local dist = FW.goal.dist
+    local casts = dist <= SHADOW_MAX_DIST
     if casts ~= S.casts then
         S.casts = casts
         hinge_field.set_casts_shadows(casts)
     end
-    local moved = not S.sx or abs(g.x - S.sx) > r * 0.2 or abs(g.y - S.sy) > r * 0.2 or abs(r - S.sr) > S.sr * 0.15
-    if moved then
-        S.sx, S.sy, S.sr = g.x, g.y, r
-        FW.set_shadow_bounds(g.x, 8, -g.y, r)
+    local reach = SHADOW_REACH
+    if dist > SHADOW_PULL then
+        reach = max(SHADOW_MIN, SHADOW_REACH - (dist - SHADOW_PULL) * (SHADOW_REACH - SHADOW_MIN) / (SHADOW_MAX_DIST - SHADOW_PULL))
+    end
+    if not S.reach or abs(reach - S.reach) > 6 then
+        S.reach = reach
+        pcall(settings.set, "shadow_distance", reach)
     end
 end
 
@@ -544,12 +549,16 @@ end
 
 function H.enter()
     FW.enter_hall(WORLD)
+    pcall(settings.set, "shadow_fixed_bounds", false)
+    local read_ok, fade = pcall(settings.get, "shadow_fade_fraction")
+    S.saved_fade = read_ok and fade or nil
+    pcall(settings.set, "shadow_fade_fraction", SHADOW_FADE)
     hinge_field.set_enabled(true)
     hinge_field.set_near_distance(NEAR_LOD)
     FW.follow = false
     FW.goal.x, FW.goal.y, FW.goal.h, FW.goal.yaw, FW.goal.pitch, FW.goal.dist = 0, 0, 0, -90, 42, 1500
     for k, v in pairs(FW.goal) do FW.cam[k] = v end
-    S.sx, S.casts = nil, nil
+    S.reach, S.casts = nil, nil
     S.mode, S.press, S.front = "build", nil, nil
     H.flush_keys()
     if S.entered then show_starter(); sync_bells(); return end
@@ -577,6 +586,8 @@ function H.leave()
     still_bells()
     for _, v in ipairs(bell_vis) do FW.hide_bell(v) end
     FW.follow = true
+    pcall(settings.set, "shadow_distance", FW.LOOK.shadow_distance)
+    if S.saved_fade then pcall(settings.set, "shadow_fade_fraction", S.saved_fade) end
     FW.leave_hall()
     S.press = nil
 end

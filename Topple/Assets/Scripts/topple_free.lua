@@ -14,7 +14,7 @@
 -- it and can replay it), and the same simulation gives the build preview.
 local F = {}
 local floor, min, max, abs, sqrt, sin, cos = math.floor, math.min, math.max, math.abs, math.sqrt, math.sin, math.cos
-local asin, pi, rad, deg = math.asin, math.pi, math.rad, math.deg
+local asin, acos, pi, rad, deg = math.asin, math.acos, math.pi, math.rad, math.deg
 local atan2 = math.atan2 or math.atan
 
 F.DOM = { w = 0.5, t = 0.15, h = 1.0 }
@@ -1007,13 +1007,97 @@ function F.fall_time(theta, h)
     return F.TIME_K * (0.03 + 0.14 * (max(0, theta) / (pi / 2)) ^ 0.7) * sqrt(h or H)
 end
 
--- How far a domino that struck the next at this angle ends up leaning: no further than leaves room for the next one
--- however closely that one's own neighbour stands (it then rests at 26 degrees past its own, smallest, contact).
+-- Solid contact. A domino pivots on its front edge and leans on the back of the next, so how far it can lean follows
+-- from how far the next has gone. S: pivot to pivot along the fall; dz: how much higher the next one stands.
+local FLAT = rad(F.REST)
+F.LEAN_GAP = rad(0.5)       -- a hair between faces at rest: dominoes in a row end up lying face on face
+function F.lean(next_a, S, dz)
+    dz = dz or 0
+    local c, s = cos(next_a), sin(next_a)
+    local best = FLAT
+    -- Its top edge coming down on the next one's back...
+    local a = next_a + asin(max(-1, min(1, (S * c - dz * s - T) / H)))
+    local along = H * cos(a - next_a) - S * s - dz * c
+    if along >= 0 and along <= H then best = min(best, a) end
+    -- ...or its front face on the next one's two back corners, whichever comes first.
+    for k = 0, H, H do
+        local bx, bz = S - T * c + k * s, dz + T * s + k * c
+        if bx * bx + bz * bz <= H * H then best = min(best, atan2(bx, bz)) end
+    end
+    return best
+end
+
+-- Where a domino comes to rest in a row of evenly spaced ones, having struck the next at this angle: leaning on it
+-- with both at the same tilt, cos(tilt) = thickness / spacing. Past the widest spacing that can hold it, it lies flat.
 function F.rest_angle(contact)
-    local next_rest = asin((F.MIN_GAP - T) / H) + rad(26)
-    local gap = H * sin(contact) + T
-    -- (4 degrees in hand: the next one is still settling when this one arrives)
-    return min(rad(80), contact + rad(26), next_rest + asin(max(-1, min(1, (gap * cos(next_rest) - T) / H))) - rad(4))
+    local S = H * sin(contact) + T
+    if S * S >= H * H + T * T then return FLAT end
+    return max(contact, acos(T / S) - F.LEAN_GAP)
+end
+
+-- Connecting dominoes as the chain reaches them. f.on_id: what f leans on; falls: records by id; waiting: leaners
+-- whose target has not fallen yet. Each new fact runs back up the chain, shrinking fast, so this stays local.
+local function refit(i)
+    local j = i.on
+    local new = min(FLAT, F.lean(j.final, i.S, i.dz) - F.LEAN_GAP)
+    if abs(new - i.final) < 1e-4 then return end
+    i.final = new
+    for _, k in ipairs(i.leaners or {}) do refit(k) end
+end
+local function connect(i, j)
+    i.on = j
+    j.leaners = j.leaners or {}
+    j.leaners[#j.leaners + 1] = i
+    refit(i)
+end
+function F.attach_fall(f, falls, waiting)
+    local w = waiting[f.id]
+    if w then
+        waiting[f.id] = nil
+        for _, i in ipairs(w) do connect(i, f) end
+    end
+    if f.on_id then
+        local j = falls[f.on_id]
+        if j then connect(f, j)
+        else
+            waiting[f.on_id] = waiting[f.on_id] or {}
+            table.insert(waiting[f.on_id], f)
+        end
+    end
+end
+-- What they were leaning on stayed standing (struck edge-on): they stop against it.
+function F.fall_missed(id, waiting)
+    for _, i in ipairs(waiting[id] or {}) do
+        i.on_id, i.final = nil, i.contact
+        for _, k in ipairs(i.leaners or {}) do refit(k) end
+    end
+    waiting[id] = nil
+end
+
+-- A domino's tilt at time t. Struck dominoes follow the one they lean on, so they never pass through it or hang in
+-- the air; one with nothing to lean on tips on over and, if it lands flat, bounces a little.
+local SETTLE = 0.24
+function F.fall_angle(f, t)
+    if t <= f.t then return 0 end
+    local span = max(1e-3, f.tc - f.t)
+    if t < f.tc then return f.contact * ((t - f.t) / span) ^ 1.6 end
+    if f.on then
+        if t >= f.t_end then return f.final end
+        if f.ang_t == t then return f.ang end
+        f.ang_t, f.ang = t, f.final
+        -- (no faster than it was already going, if what it leans on started before it arrived)
+        local a = min(f.final, F.lean(F.fall_angle(f.on, t), f.S, f.dz), f.contact + (t - f.tc) * 1.6 * max(f.contact, 0.2) / span)
+        f.ang = a
+        return a
+    end
+    local u = (t - f.tc) / SETTLE
+    local s = max(0, min(1, u))
+    local a = f.contact + (f.final - f.contact) * s * s * (3 - 2 * s)
+    if f.final >= rad(85) and u > 0 and u < 1.6 then
+        local k = min(1, u / 1.6)
+        a = a - rad(5) * sin(k * pi) * (1 - k)
+    end
+    return a
 end
 
 -- The angle (radians) at which a faller of height h, pivoting on its front edge, first touches something whose near
@@ -1421,6 +1505,7 @@ function F.begin_run(board, ext)
             push_swing(t + dt, s)
         end
     end
+    local waiting = {}
     local function advance(limit)
     while hp.n > 0 and hp[1].t <= limit do
         local job = heap_pop(hp)
@@ -1438,6 +1523,7 @@ function F.begin_run(board, ext)
         elseif not done[p.id] then
             local d = job.dx * p.ax + job.dy * p.ay
             if abs(d) < 0.3 then
+                F.fall_missed(p.id, waiting)
                 if not wobbled[p.id] then
                     wobbled[p.id] = true
                     res.events[#res.events + 1] = { t = t, kind = "wobble", id = p.id }
@@ -1449,8 +1535,11 @@ function F.begin_run(board, ext)
                 res.toppled = res.toppled + 1
                 -- Dominoes ahead.
                 local nh, best = 0, nil
+                local best_on, best_c, best_dz          -- the one it comes to lean on
+                local lean_th, lean_on, lean_c, lean_dz -- or, with none left standing ahead, one already down
                 board:near(p.x, p.y, reach, function(q)
-                    if q ~= p and not done[q.id] then
+                    local down = done[q.id] and res.falls[q.id]
+                    if q ~= p and (not done[q.id] or (down and down.dx * fx + down.dy * fy > 0)) then
                         local rx, ry = q.x - p.x, q.y - p.y
                         local along = rx * fx + ry * fy
                         if along > 0.02 and along < reach then
@@ -1460,10 +1549,12 @@ function F.begin_run(board, ext)
                                 local c = along - T / 2 - (cq * T / 2 + sq * W / 2)
                                 local dz = q.z - p.z
                                 local th = F.contact_angle(c, dz, dz + H, H)
-                                if th then
+                                if th and down then
+                                    if not lean_th or th < lean_th then lean_th, lean_on, lean_c, lean_dz = th, q.id, c, dz end
+                                elseif th then
                                     nh = nh + 1
                                     hit_q[nh], hit_th[nh] = q, th
-                                    if not best or th < best then best = th end
+                                    if not best or th < best then best, best_on, best_c, best_dz = th, q.id, c, dz end
                                 end
                             end
                         end
@@ -1520,6 +1611,10 @@ function F.begin_run(board, ext)
                         end
                     end
                     fall.final = F.rest_angle(contact)
+                    fall.on_id, fall.S, fall.dz = best_on, max(best_c, 0.02) + T, best_dz
+                elseif lean_th and (not wall or lean_th <= wall) then
+                    contact, fall.final = lean_th, F.rest_angle(lean_th)
+                    fall.on_id, fall.S, fall.dz = lean_on, max(lean_c, 0.02) + T, lean_dz
                 elseif wall then
                     contact, fall.blocked, fall.final = wall, true, wall
                 else
@@ -1535,8 +1630,10 @@ function F.begin_run(board, ext)
                 for i = 1, nh do hit_q[i], hit_kick[i] = nil, nil end
                 fall.contact = contact
                 fall.tc = t + F.fall_time(contact)
-                fall.t_end = fall.tc + 0.15
+                -- (one leaning on the next only stops when the ones ahead have: the gap to its rest shrinks with each)
+                fall.t_end = fall.tc + (fall.on_id and max(0.15, 10 * (fall.tc - t)) or 0.15)
                 res.falls[p.id] = fall
+                F.attach_fall(fall, res.falls, waiting)
                 res.order[#res.order + 1] = fall
                 if fall.t_end > res.duration then res.duration = fall.t_end end
             end
