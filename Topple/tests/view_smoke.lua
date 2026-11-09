@@ -404,4 +404,68 @@ api.autoplay = false
 press("Escape"); frame(2)
 assert(api.settings:is_open(), "Esc opens the settings")
 press("Escape"); frame(2)
+
+-- The Great Hall: no engine support, no hall; with it, a million dominoes are laid, fall, stand up, and it leaves cleanly.
+do
+    states.btn_menu = { clicked = true }; frame(); states.btn_menu = nil; frame(40)
+    assert(api.S.mode == "title", "back at the title for the hall")
+    keys.G = true; frame(2); keys.G = false; frame()
+    assert(api.S.mode == "title", "an engine without the hinge field stays on the title card")
+    local appended, fell, stood, enabled, casts = 0, 0, 0, nil, nil
+    env.hinge_field = setmetatable({
+        append = function(_, n) appended = appended + n; return 0 end,
+        fall = function(_, n) fell = fell + n end,
+        stand_all = function() stood = stood + 1 end,
+        set_enabled = function(on) enabled = on end,
+        set_casts_shadows = function(on) casts = on end,
+    }, { __index = function() return function() end end })
+    keys.G = true; frame(2); keys.G = false; frame()
+    assert(api.S.mode == "hall", "G opens the Great Hall")
+    assert(enabled == true, "the hall switches the hinge field on")
+    local Hall = api.hall
+    local n = 0
+    while Hall.S.job and n < 400 do frame(); n = n + 1 end
+    assert(not Hall.S.job and appended == 1000000 and Hall.core.count() == 1000000, "the first visit lays exactly a million: " .. appended)
+    assert(n > 2, "laying them takes several frames, not one long one: " .. n)
+    assert(casts == false, "from the opening overview the dominoes are too small to cast shadows")
+    press("Space")
+    assert(Hall.S.mode == "running", "Space tips the million")
+    FRAME_MS = 500
+    n = 0
+    while Hall.S.mode == "running" and n < 600 do frame(); n = n + 1 end
+    FRAME_MS = 1000 / 60
+    assert(Hall.S.mode == "done" and Hall.core.toppled == 1000000, "a million fall: " .. Hall.core.toppled .. ", " .. Hall.S.mode)
+    assert(fell == 1000000, "the engine hears of each fall once: " .. fell)
+    assert(saved["Save/hall_best.txt"] == "1000000", "the best chain is kept")
+    local before = stood
+    press("R")
+    assert(Hall.S.mode == "build" and stood == before + 1, "R stands them all up at once")
+    -- The Picture tool: no pictures yet, draw one, and it becomes the current picture.
+    press("7")
+    assert(Hall.S.tool == "picture", "7 selects the Picture tool")
+    click("gh_pic_draw")
+    assert(Hall.S.canvas, "the drawing canvas opens")
+    click("gh_cv_col3")
+    assert(Hall.S.canvas.brush == 3, "a colour is chosen")
+    click("gh_cv_done")
+    assert(not Hall.S.canvas and Hall.S.pic:match("^draw:48:30:"), "the drawing becomes the picture")
+    press("8")
+    assert(Hall.S.tool == "split", "8 selects the splitter")
+    press("]")
+    assert(Hall.S.split_n == 4, "] adds a branch")
+    press("9")
+    assert(Hall.S.tool == "bell", "9 selects the bell")
+    press("1")
+    frame(120)
+    assert(saved["Save/hall_autosave.txt"] and #saved["Save/hall_autosave.txt"] < 200, "a million dominoes save in a few bytes")
+    click("gh_menu")
+    assert(api.S.mode == "title" and enabled == false, "MENU leaves the hall and hides its dominoes")
+    assert(setv.shadow_fixed_bounds == false, "leaving the hall gives the title its shadows back")
+    frame(30)
+    appended = 0
+    keys.G = true; frame(2); keys.G = false; frame(3)
+    assert(api.S.mode == "hall" and not Hall.S.job and appended == 0, "coming back finds the build still laid")
+    click("gh_menu")
+    env.hinge_field = nil
+end
 print("PASS view smoke")

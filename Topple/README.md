@@ -1,6 +1,6 @@
 # Topple
 
-Set up chain reactions of dominoes, then tip the first one. Two modes from the title card:
+Set up chain reactions of dominoes, then tip the first one. Three modes from the title card:
 
 ## Free Build (Enter)
 
@@ -23,7 +23,24 @@ run, with the camera following the falling front. A first visit opens on a ready
 - **Editing**: right-click removes one domino, `Backspace` / `Ctrl+Z` undo, `Ctrl+Y` redo, `C` twice clears.
 - **Saving**: the room autosaves; SAVE / LOAD keep three slots and the sample build. Your longest chain and the
   milestones (100, 500, 1,000, 2,500, 5,000 in one chain) are kept.
-- `H` hides the controls, `Esc` settings, `M` mute, MENU back to the title. The box holds 5,000 dominoes.
+- `H` hides the controls, `Esc` settings, `M` mute, MENU back to the title. The box holds 6,000 dominoes.
+
+## The Great Hall (G)
+
+A floor 120 m square for up to five million dominoes, and a sample of one million waiting on your first visit.
+
+- **Tools** (`1`-`9`, `8` is **Split**: press on the end of a line and drag, one wave becomes 2 to 6 branches, `[` `]`;
+  `9` is **Bell**: click beside a line and it rings when the wave goes past): **Field** (press where it starts, drag the way it runs; `[` `]` width, as wide as the hall),
+  **Line**, **Spiral**, **Draw**, **Erase** (`[` `]` brush), **Start** (click the domino the tip knocks over),
+  **Picture** (choose a picture or draw one, then press and drag across the floor to lay it out in dominoes; put your own
+  PNG or JPEG files in `Assets/Pictures`).
+- **Samples**: 1, 2.5 or 5 million dominoes in a fan painted as a sunburst.
+- **Run**: `Space` tips, the camera follows the wave and pulls back as it widens (`F` frees it), `Z` slow motion, `R` stands
+  everything up. `Backspace` / `Ctrl+Y` undo and redo, `C` twice clears.
+- A build is saved as the shapes that made it, so the autosave stays a few lines however many dominoes it holds.
+
+The hall's dominoes are not scene nodes: the engine's `hinge_field` draws them all from one buffer and animates each fall
+from the moment it starts, so the work per frame follows the wave, not the number of dominoes.
 
 ## Table Run (T)
 

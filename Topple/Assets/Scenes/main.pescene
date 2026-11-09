@@ -182,6 +182,18 @@
   },
   {
    "path": "../Objects/room_window.pemesh"
+  },
+  {
+   "path": "../Objects/hall_floor.pemesh"
+  },
+  {
+   "path": "../Objects/hall_walls.pemesh"
+  },
+  {
+   "path": "../Objects/hall_trim.pemesh"
+  },
+  {
+   "path": "../Objects/hall_wood.pemesh"
   }
  ],
  "meshes": [
@@ -495,6 +507,22 @@
   },
   {
    "source": 60,
+   "source_mesh": 0
+  },
+  {
+   "source": 61,
+   "source_mesh": 0
+  },
+  {
+   "source": 62,
+   "source_mesh": 0
+  },
+  {
+   "source": 63,
+   "source_mesh": 0
+  },
+  {
+   "source": 64,
    "source_mesh": 0
   }
  ],
@@ -2663,6 +2691,110 @@
    "component_flags": 0,
    "mesh_refs": [
     77
+   ]
+  },
+  {
+   "name": "T_hall_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    78
+   ]
+  },
+  {
+   "name": "T_hall_walls",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    79
+   ]
+  },
+  {
+   "name": "T_hall_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    80
+   ]
+  },
+  {
+   "name": "T_hall_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    81
    ]
   },
   {

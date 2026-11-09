@@ -22,7 +22,7 @@ local W, T, H = F.DOM.w, F.DOM.t, F.DOM.h
 F.SPACING = 0.62           -- along a drawn line
 F.MIN_GAP = 0.45           -- closest two dominoes may stand (centre to centre, same level)
 F.CLIMB = 0.6              -- a line steps up or down onto a surface at most this much higher or lower
-F.CAP = 5000               -- dominoes in the box
+F.CAP = 6000               -- dominoes in the box (60 FPS measured at 6,389 falling across the floor)
 F.FIELD_LAT = 0.6          -- side by side in a field row (staggered rows: each one strikes two ahead)
 F.SPIRAL_GAP = 0.95        -- between the turns of a spiral
 F.SPIRAL_MIN = 1.6         -- the spiral's innermost radius
@@ -1007,6 +1007,15 @@ function F.fall_time(theta, h)
     return F.TIME_K * (0.03 + 0.14 * (max(0, theta) / (pi / 2)) ^ 0.7) * sqrt(h or H)
 end
 
+-- How far a domino that struck the next at this angle ends up leaning: no further than leaves room for the next one
+-- however closely that one's own neighbour stands (it then rests at 26 degrees past its own, smallest, contact).
+function F.rest_angle(contact)
+    local next_rest = asin((F.MIN_GAP - T) / H) + rad(26)
+    local gap = H * sin(contact) + T
+    -- (4 degrees in hand: the next one is still settling when this one arrives)
+    return min(rad(80), contact + rad(26), next_rest + asin(max(-1, min(1, (gap * cos(next_rest) - T) / H))) - rad(4))
+end
+
 -- The angle (radians) at which a faller of height h, pivoting on its front edge, first touches something whose near
 -- face is c ahead and which spans heights zb..zt relative to the faller's base. nil if it never does.
 function F.contact_angle(c, zb, zt, h)
@@ -1510,7 +1519,7 @@ function F.begin_run(board, ext)
                             fall.hits = fall.hits + 1
                         end
                     end
-                    fall.final = min(rad(80), contact + rad(26))
+                    fall.final = F.rest_angle(contact)
                 elseif wall then
                     contact, fall.blocked, fall.final = wall, true, wall
                 else

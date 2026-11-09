@@ -490,7 +490,7 @@ def write_scene(names):
     # Free Build's room (tools/gen_room.py): one hidden template per piece, and the table lamp's light (dark until
     # Free Build switches it on; Free Build re-aims Key as the sun, since directional light 0 casts the shadows).
     import gen_room
-    for name in gen_room.ROOM_NAMES:
+    for name in gen_room.ROOM_NAMES + ["hall_floor", "hall_walls", "hall_trim", "hall_wood"]:   # (tools/gen_hall.py)
         if os.path.exists(os.path.join(OBJECTS, name + ".pemesh")):
             sc["sources"].append({"path": f"../Objects/{name}.pemesh"})
             sc["meshes"].append({"source": len(sc["sources"]) - 1, "source_mesh": 0})
