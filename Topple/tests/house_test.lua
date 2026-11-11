@@ -157,6 +157,17 @@ for _, l in ipairs(lines) do
 end
 check(#lines >= 60, "the fit audit ran over the rooms, " .. #lines .. " lines")
 check(#floating == 0, "nothing stands in the air:\n" .. table.concat(floating, "\n"))
+-- And nothing drawn rises out of a narrow surface at its edges: the bath's west rim end as it was (over the taps, no tap
+-- solids) is flagged.
+do
+    local bath = dofile("Assets/Scripts/rooms/bath.lua")
+    local kept = {}
+    for _, q in ipairs(bath.solids) do if q.name ~= "bathtub tap" then kept[#kept + 1] = q end end
+    bath.solids = kept
+    for _, s in ipairs(bath.surfaces) do if s.name == "bathtub rim end" and s.x0 < 0 then s.y0, s.y1 = 15.5, 16.75 end end
+    local _, n = FA.run({ "bath" }, { rooms = { bath = bath }, surfaces_only = true })
+    check(n >= 1, "the audit sees the taps rising out of the old west rim end")
+end
 
 print(checks .. " checks passed")
 print("PASS house")

@@ -346,6 +346,15 @@ local WOOD = { friction = 0.5, restitution = 0.4 }
 
 -- Balls: a few nodes, pooled like the dominoes.
 local ball_vis, ball_pool = {}, {}
+-- Where each ball is drawn now, in table axes (its centre): for checking live where a rolling ball turns.
+function FW.ball_points()
+    local out = {}
+    for id, v in pairs(ball_vis) do
+        local p = v.n:get_position()
+        if p then out[#out + 1] = { id = id, x = p.x, y = -p.z, h = p.y } end
+    end
+    return out
+end
 -- A ball rests on the highest top it can step onto, as in the rules: one set down at the floor's height over a play
 -- mat sits on the mat (inside the mat's board, its body was pushed out sideways and rolled off its line, measured).
 local function ball_rest(x, y, z)

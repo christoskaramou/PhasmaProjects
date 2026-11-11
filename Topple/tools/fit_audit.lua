@@ -142,7 +142,30 @@ function A.spot(S, x, y, h)
     return math.max(0, h - z), math.max(0, z - h), false
 end
 
--- Everything, for the rooms given (default all). Returns the lines and the count of flagged ones.
+-- Nothing drawn rises out of a surface where a domino may stand: over the whole surface, edges included (the grid
+-- above leaves A.INSET at each edge, most of a narrow surface), the highest mesh within A.RISE_H above it, at points
+-- no solid blocks (a tap with its own solid is no place for a domino; a tap without one is). Returns the most it
+-- rises (0 when nothing does) and where. Run for surfaces narrower than A.NARROW, where the edge margin hides most.
+A.NARROW, A.RISE_STEP, A.RISE_H = 1.5, 0.05, 2.5
+function A.rise(S, s, solids)
+    local worst, wx, wy = 0, nil, nil
+    for x = s.x0 + 0.02, s.x1 - 0.02 + 1e-9, A.RISE_STEP do
+        for y = s.y0 + 0.02, s.y1 - 0.02 + 1e-9, A.RISE_STEP do
+            local blocked = false
+            for _, q in ipairs(solids or {}) do
+                if q.z1 > s.h + 0.01 and q.z0 < s.h + 1 and x > q.x0 and x < q.x1 and y > q.y0 and y < q.y1 then blocked = true; break end
+            end
+            if not blocked then
+                local z = S.top(x, y, s.h + A.RISE_H)
+                if z and z - s.h > worst then worst, wx, wy = z - s.h, x, y end
+            end
+        end
+    end
+    return worst, wx, wy
+end
+
+-- Everything, for the rooms given (default all). Returns the lines and the count of flagged ones. opts.rooms: room
+-- tables to use instead of the files (by id), for checking a variant.
 function A.run(ids, opts)
     opts = opts or {}
     local objects = opts.objects or "Assets/Objects"
@@ -151,12 +174,15 @@ function A.run(ids, opts)
     local function put(bad, s) lines[#lines + 1] = (bad and "FLAG " or "     ") .. s; if bad then flagged = flagged + 1 end end
     local C
     for _, id in ipairs(ids or A.ROOMS) do
-        local room = dofile(id == "living" and "Assets/Scripts/free_room.lua" or ("Assets/Scripts/rooms/" .. id .. ".lua"))
+        local room = opts.rooms and opts.rooms[id] or dofile(id == "living" and "Assets/Scripts/free_room.lua" or ("Assets/Scripts/rooms/" .. id .. ".lua"))
         local S = A.scene(room, objects)
         for _, s in ipairs(room.surfaces) do
             if s.h > 0.2 then
                 local g, k, b, med = A.surface(S, s, room.solids)
-                put(g > A.TOL or k > A.TOL or b > A.BARE, string.format("%-8s surface %-18s h %6.2f  gap %5.2f  sink %5.2f  median %+5.2f  bare %3.0f%%", id, s.name, s.h, g, k, med, b * 100))
+                local r, rx, ry = 0, nil, nil
+                if math.min(s.x1 - s.x0, s.y1 - s.y0) < A.NARROW then r, rx, ry = A.rise(S, s, room.solids) end
+                put(g > A.TOL or k > A.TOL or b > A.BARE or r > A.TOL, string.format("%-8s surface %-18s h %6.2f  gap %5.2f  sink %5.2f  median %+5.2f  bare %3.0f%%%s",
+                    id, s.name, s.h, g, k, med, b * 100, rx and string.format("  rises %.2f at (%.2f, %.2f)", r, rx, ry) or ""))
             end
         end
         if not opts.surfaces_only then
