@@ -16,6 +16,12 @@ sys.path.insert(0, HERE)
 import gen_meshes as G  # noqa: E402
 import gen_room as R  # noqa: E402
 import make_houses as H  # noqa: E402
+import mesh_reduce as MR  # noqa: E402
+
+# Each model's weight once cooked (tools/mesh_reduce.py, meshoptimizer), by its largest side as tools/house_rooms.py
+# weight(): faces, texture px.
+WEIGHT = {"furn_sofa": (12000, 1024), "furn_coffeetable": (8000, 1024), "furn_bookshelf": (12000, 1024),
+          "furn_armchair": (8000, 1024), "furn_plant": (12000, 1024)}
 
 
 def main():
@@ -38,7 +44,11 @@ def main():
             if "DONE" not in r.stdout or not os.path.exists(obj):
                 print(r.stdout[-2000:], r.stderr[-2000:])
                 raise SystemExit("import failed: " + name)
-            lines.append(f"{obj}\t{os.path.join(G.OBJECTS, name + '.pemesh')}\n")
+            faces, px = WEIGHT[name]
+            light = obj[:-4] + "_light.obj"
+            print("   ", MR.run_obj(obj, light, faces))
+            print("   ", MR.run_tex(os.path.join(R.TEX, name + ".png"), px))
+            lines.append(f"{light}\t{os.path.join(G.OBJECTS, name + '.pemesh')}\n")
         manifest = os.path.join(tmp, "batch.txt")
         with open(manifest, "w", encoding="utf-8") as fo:
             fo.writelines(lines)

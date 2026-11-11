@@ -106,6 +106,33 @@
    "path": "../Objects/furn_sofa.pemesh"
   },
   {
+   "path": "../Objects/goal_bell.pemesh"
+  },
+  {
+   "path": "../Objects/goal_bell_base.pemesh"
+  },
+  {
+   "path": "../Objects/goal_toast.pemesh"
+  },
+  {
+   "path": "../Objects/goal_toaster.pemesh"
+  },
+  {
+   "path": "../Objects/goal_toaster_trim.pemesh"
+  },
+  {
+   "path": "../Objects/goal_tv_cab.pemesh"
+  },
+  {
+   "path": "../Objects/goal_tv_knobs.pemesh"
+  },
+  {
+   "path": "../Objects/goal_tv_screen.pemesh"
+  },
+  {
+   "path": "../Objects/goal_tv_set.pemesh"
+  },
+  {
    "path": "../Objects/room_art1.pemesh"
   },
   {
@@ -194,6 +221,705 @@
   },
   {
    "path": "../Objects/hall_wood.pemesh"
+  },
+  {
+   "path": "../Objects/hall_art_R1.pemesh"
+  },
+  {
+   "path": "../Objects/hall_art_R2.pemesh"
+  },
+  {
+   "path": "../Objects/hall_bell.pemesh"
+  },
+  {
+   "path": "../Objects/hall_bellbox.pemesh"
+  },
+  {
+   "path": "../Objects/hall_brass.pemesh"
+  },
+  {
+   "path": "../Objects/hall_ceiling.pemesh"
+  },
+  {
+   "path": "../Objects/hall_cord.pemesh"
+  },
+  {
+   "path": "../Objects/hall_door_B.pemesh"
+  },
+  {
+   "path": "../Objects/hall_door_L.pemesh"
+  },
+  {
+   "path": "../Objects/hall_door_R.pemesh"
+  },
+  {
+   "path": "../Objects/hall_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/hall_frames_R.pemesh"
+  },
+  {
+   "path": "../Objects/hall_glass.pemesh"
+  },
+  {
+   "path": "../Objects/hall_glow.pemesh"
+  },
+  {
+   "path": "../Objects/hall_knob_B.pemesh"
+  },
+  {
+   "path": "../Objects/hall_knob_L.pemesh"
+  },
+  {
+   "path": "../Objects/hall_knob_R.pemesh"
+  },
+  {
+   "path": "../Objects/hall_parcels.pemesh"
+  },
+  {
+   "path": "../Objects/hall_rug.pemesh"
+  },
+  {
+   "path": "../Objects/hall_tape.pemesh"
+  },
+  {
+   "path": "../Objects/hall_trim_B.pemesh"
+  },
+  {
+   "path": "../Objects/hall_trim_F.pemesh"
+  },
+  {
+   "path": "../Objects/hall_trim_L.pemesh"
+  },
+  {
+   "path": "../Objects/hall_trim_R.pemesh"
+  },
+  {
+   "path": "../Objects/hall_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/hall_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/hall_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/hall_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/hall_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_hall_bench.pemesh"
+  },
+  {
+   "path": "../Objects/furn_hall_shoes.pemesh"
+  },
+  {
+   "path": "../Objects/furn_hall_coatstand.pemesh"
+  },
+  {
+   "path": "../Objects/furn_hall_umbrellastand.pemesh"
+  },
+  {
+   "path": "../Objects/furn_hall_clock.pemesh"
+  },
+  {
+   "path": "../Objects/furn_hall_plant.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_ceiling.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_cord.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_door_L.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_glass.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_glow.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_iron.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_jars.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_knob_L.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_lids.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_rug.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_shade.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_shelf.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_toast.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_toaster.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_toaster_trim.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_trim_L.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/kitchen_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_counter.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_oven.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_fridge.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_table.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_chair.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_chair_2.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_chair_3.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_chair_4.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_kettle.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kitchen_herbs.pemesh"
+  },
+  {
+   "path": "../Objects/dining_art_B1.pemesh"
+  },
+  {
+   "path": "../Objects/dining_art_B2.pemesh"
+  },
+  {
+   "path": "../Objects/dining_brass.pemesh"
+  },
+  {
+   "path": "../Objects/dining_ceiling.pemesh"
+  },
+  {
+   "path": "../Objects/dining_cord.pemesh"
+  },
+  {
+   "path": "../Objects/dining_curtains.pemesh"
+  },
+  {
+   "path": "../Objects/dining_door_R.pemesh"
+  },
+  {
+   "path": "../Objects/dining_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/dining_frames_B.pemesh"
+  },
+  {
+   "path": "../Objects/dining_glass.pemesh"
+  },
+  {
+   "path": "../Objects/dining_glasses.pemesh"
+  },
+  {
+   "path": "../Objects/dining_glow.pemesh"
+  },
+  {
+   "path": "../Objects/dining_knob_R.pemesh"
+  },
+  {
+   "path": "../Objects/dining_rug.pemesh"
+  },
+  {
+   "path": "../Objects/dining_tray.pemesh"
+  },
+  {
+   "path": "../Objects/dining_trim_B.pemesh"
+  },
+  {
+   "path": "../Objects/dining_trim_F.pemesh"
+  },
+  {
+   "path": "../Objects/dining_trim_L.pemesh"
+  },
+  {
+   "path": "../Objects/dining_trim_R.pemesh"
+  },
+  {
+   "path": "../Objects/dining_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/dining_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/dining_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/dining_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/dining_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_table.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_sideboard.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_recordplayer.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_candelabra.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_chair.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_chair_2.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_chair_3.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_chair_4.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_chair_5.pemesh"
+  },
+  {
+   "path": "../Objects/furn_dining_chair_6.pemesh"
+  },
+  {
+   "path": "../Objects/kids_art_L1.pemesh"
+  },
+  {
+   "path": "../Objects/kids_blocks_blue.pemesh"
+  },
+  {
+   "path": "../Objects/kids_blocks_green.pemesh"
+  },
+  {
+   "path": "../Objects/kids_blocks_red.pemesh"
+  },
+  {
+   "path": "../Objects/kids_blocks_yellow.pemesh"
+  },
+  {
+   "path": "../Objects/kids_brass.pemesh"
+  },
+  {
+   "path": "../Objects/kids_bridge.pemesh"
+  },
+  {
+   "path": "../Objects/kids_ceiling.pemesh"
+  },
+  {
+   "path": "../Objects/kids_cord.pemesh"
+  },
+  {
+   "path": "../Objects/kids_curtains.pemesh"
+  },
+  {
+   "path": "../Objects/kids_door_R.pemesh"
+  },
+  {
+   "path": "../Objects/kids_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/kids_frames_L.pemesh"
+  },
+  {
+   "path": "../Objects/kids_glass.pemesh"
+  },
+  {
+   "path": "../Objects/kids_glow.pemesh"
+  },
+  {
+   "path": "../Objects/kids_grooves.pemesh"
+  },
+  {
+   "path": "../Objects/kids_knob_R.pemesh"
+  },
+  {
+   "path": "../Objects/kids_rug.pemesh"
+  },
+  {
+   "path": "../Objects/kids_track.pemesh"
+  },
+  {
+   "path": "../Objects/kids_trim_B.pemesh"
+  },
+  {
+   "path": "../Objects/kids_trim_F.pemesh"
+  },
+  {
+   "path": "../Objects/kids_trim_L.pemesh"
+  },
+  {
+   "path": "../Objects/kids_trim_R.pemesh"
+  },
+  {
+   "path": "../Objects/kids_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/kids_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/kids_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/kids_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/kids_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_bed.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_toybox.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_rockinghorse.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_crane.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_train.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_teddy.pemesh"
+  },
+  {
+   "path": "../Objects/furn_kids_drum.pemesh"
+  },
+  {
+   "path": "../Objects/bath_bracket.pemesh"
+  },
+  {
+   "path": "../Objects/bath_brass.pemesh"
+  },
+  {
+   "path": "../Objects/bath_ceiling.pemesh"
+  },
+  {
+   "path": "../Objects/bath_cord.pemesh"
+  },
+  {
+   "path": "../Objects/bath_door_R.pemesh"
+  },
+  {
+   "path": "../Objects/bath_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/bath_frosted.pemesh"
+  },
+  {
+   "path": "../Objects/bath_glow.pemesh"
+  },
+  {
+   "path": "../Objects/bath_knob_R.pemesh"
+  },
+  {
+   "path": "../Objects/bath_mirror.pemesh"
+  },
+  {
+   "path": "../Objects/bath_mirror_frame.pemesh"
+  },
+  {
+   "path": "../Objects/bath_rail.pemesh"
+  },
+  {
+   "path": "../Objects/bath_rug.pemesh"
+  },
+  {
+   "path": "../Objects/bath_towel.pemesh"
+  },
+  {
+   "path": "../Objects/bath_trim_R.pemesh"
+  },
+  {
+   "path": "../Objects/bath_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/bath_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/bath_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/bath_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/bath_weight.pemesh"
+  },
+  {
+   "path": "../Objects/bath_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_bathtub.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_sink.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_stool.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_musicbox.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_basket.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_towelrail.pemesh"
+  },
+  {
+   "path": "../Objects/furn_bath_fern.pemesh"
+  },
+  {
+   "path": "../Objects/study_art_R1.pemesh"
+  },
+  {
+   "path": "../Objects/study_books_green.pemesh"
+  },
+  {
+   "path": "../Objects/study_books_navy.pemesh"
+  },
+  {
+   "path": "../Objects/study_books_red.pemesh"
+  },
+  {
+   "path": "../Objects/study_books_tan.pemesh"
+  },
+  {
+   "path": "../Objects/study_brass.pemesh"
+  },
+  {
+   "path": "../Objects/study_ceiling.pemesh"
+  },
+  {
+   "path": "../Objects/study_curtains.pemesh"
+  },
+  {
+   "path": "../Objects/study_dict_gold.pemesh"
+  },
+  {
+   "path": "../Objects/study_dict_pages.pemesh"
+  },
+  {
+   "path": "../Objects/study_dictionary.pemesh"
+  },
+  {
+   "path": "../Objects/study_door_R.pemesh"
+  },
+  {
+   "path": "../Objects/study_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/study_frames_R.pemesh"
+  },
+  {
+   "path": "../Objects/study_glass.pemesh"
+  },
+  {
+   "path": "../Objects/study_glow.pemesh"
+  },
+  {
+   "path": "../Objects/study_hook.pemesh"
+  },
+  {
+   "path": "../Objects/study_iron.pemesh"
+  },
+  {
+   "path": "../Objects/study_knob_R.pemesh"
+  },
+  {
+   "path": "../Objects/study_plank.pemesh"
+  },
+  {
+   "path": "../Objects/study_rug.pemesh"
+  },
+  {
+   "path": "../Objects/study_shelf.pemesh"
+  },
+  {
+   "path": "../Objects/study_trim_B.pemesh"
+  },
+  {
+   "path": "../Objects/study_trim_F.pemesh"
+  },
+  {
+   "path": "../Objects/study_trim_L.pemesh"
+  },
+  {
+   "path": "../Objects/study_trim_R.pemesh"
+  },
+  {
+   "path": "../Objects/study_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/study_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/study_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/study_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/study_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_study_desk.pemesh"
+  },
+  {
+   "path": "../Objects/furn_study_chair.pemesh"
+  },
+  {
+   "path": "../Objects/furn_study_cabinet.pemesh"
+  },
+  {
+   "path": "../Objects/furn_study_globe.pemesh"
+  },
+  {
+   "path": "../Objects/furn_study_lamp.pemesh"
+  },
+  {
+   "path": "../Objects/attic_beams.pemesh"
+  },
+  {
+   "path": "../Objects/attic_beams_F.pemesh"
+  },
+  {
+   "path": "../Objects/attic_boxes.pemesh"
+  },
+  {
+   "path": "../Objects/attic_brass.pemesh"
+  },
+  {
+   "path": "../Objects/attic_conduit.pemesh"
+  },
+  {
+   "path": "../Objects/attic_cord.pemesh"
+  },
+  {
+   "path": "../Objects/attic_crates.pemesh"
+  },
+  {
+   "path": "../Objects/attic_flooring.pemesh"
+  },
+  {
+   "path": "../Objects/attic_glass.pemesh"
+  },
+  {
+   "path": "../Objects/attic_glow.pemesh"
+  },
+  {
+   "path": "../Objects/attic_grip.pemesh"
+  },
+  {
+   "path": "../Objects/attic_lever.pemesh"
+  },
+  {
+   "path": "../Objects/attic_roof.pemesh"
+  },
+  {
+   "path": "../Objects/attic_rug.pemesh"
+  },
+  {
+   "path": "../Objects/attic_skylight.pemesh"
+  },
+  {
+   "path": "../Objects/attic_switchbox.pemesh"
+  },
+  {
+   "path": "../Objects/attic_tape.pemesh"
+  },
+  {
+   "path": "../Objects/attic_ties.pemesh"
+  },
+  {
+   "path": "../Objects/attic_trim_B.pemesh"
+  },
+  {
+   "path": "../Objects/attic_trim_F.pemesh"
+  },
+  {
+   "path": "../Objects/attic_trim_L.pemesh"
+  },
+  {
+   "path": "../Objects/attic_trim_R.pemesh"
+  },
+  {
+   "path": "../Objects/attic_wall_B.pemesh"
+  },
+  {
+   "path": "../Objects/attic_wall_F.pemesh"
+  },
+  {
+   "path": "../Objects/attic_wall_L.pemesh"
+  },
+  {
+   "path": "../Objects/attic_wall_R.pemesh"
+  },
+  {
+   "path": "../Objects/attic_weight.pemesh"
+  },
+  {
+   "path": "../Objects/attic_window.pemesh"
+  },
+  {
+   "path": "../Objects/furn_attic_trunk.pemesh"
+  },
+  {
+   "path": "../Objects/furn_attic_lamp.pemesh"
+  },
+  {
+   "path": "../Objects/furn_attic_rockingchair.pemesh"
+  },
+  {
+   "path": "../Objects/furn_attic_dressform.pemesh"
+  },
+  {
+   "path": "../Objects/furn_attic_suitcases.pemesh"
   }
  ],
  "meshes": [
@@ -523,6 +1249,974 @@
   },
   {
    "source": 64,
+   "source_mesh": 0
+  },
+  {
+   "source": 65,
+   "source_mesh": 0
+  },
+  {
+   "source": 66,
+   "source_mesh": 0
+  },
+  {
+   "source": 67,
+   "source_mesh": 0
+  },
+  {
+   "source": 68,
+   "source_mesh": 0
+  },
+  {
+   "source": 69,
+   "source_mesh": 0
+  },
+  {
+   "source": 70,
+   "source_mesh": 0
+  },
+  {
+   "source": 71,
+   "source_mesh": 0
+  },
+  {
+   "source": 72,
+   "source_mesh": 0
+  },
+  {
+   "source": 73,
+   "source_mesh": 0
+  },
+  {
+   "source": 74,
+   "source_mesh": 0
+  },
+  {
+   "source": 75,
+   "source_mesh": 0
+  },
+  {
+   "source": 76,
+   "source_mesh": 0
+  },
+  {
+   "source": 77,
+   "source_mesh": 0
+  },
+  {
+   "source": 78,
+   "source_mesh": 0
+  },
+  {
+   "source": 79,
+   "source_mesh": 0
+  },
+  {
+   "source": 80,
+   "source_mesh": 0
+  },
+  {
+   "source": 81,
+   "source_mesh": 0
+  },
+  {
+   "source": 82,
+   "source_mesh": 0
+  },
+  {
+   "source": 83,
+   "source_mesh": 0
+  },
+  {
+   "source": 84,
+   "source_mesh": 0
+  },
+  {
+   "source": 85,
+   "source_mesh": 0
+  },
+  {
+   "source": 86,
+   "source_mesh": 0
+  },
+  {
+   "source": 87,
+   "source_mesh": 0
+  },
+  {
+   "source": 88,
+   "source_mesh": 0
+  },
+  {
+   "source": 89,
+   "source_mesh": 0
+  },
+  {
+   "source": 90,
+   "source_mesh": 0
+  },
+  {
+   "source": 91,
+   "source_mesh": 0
+  },
+  {
+   "source": 92,
+   "source_mesh": 0
+  },
+  {
+   "source": 93,
+   "source_mesh": 0
+  },
+  {
+   "source": 94,
+   "source_mesh": 0
+  },
+  {
+   "source": 95,
+   "source_mesh": 0
+  },
+  {
+   "source": 96,
+   "source_mesh": 0
+  },
+  {
+   "source": 97,
+   "source_mesh": 0
+  },
+  {
+   "source": 98,
+   "source_mesh": 0
+  },
+  {
+   "source": 99,
+   "source_mesh": 0
+  },
+  {
+   "source": 100,
+   "source_mesh": 0
+  },
+  {
+   "source": 101,
+   "source_mesh": 0
+  },
+  {
+   "source": 102,
+   "source_mesh": 0
+  },
+  {
+   "source": 103,
+   "source_mesh": 0
+  },
+  {
+   "source": 104,
+   "source_mesh": 0
+  },
+  {
+   "source": 105,
+   "source_mesh": 0
+  },
+  {
+   "source": 106,
+   "source_mesh": 0
+  },
+  {
+   "source": 107,
+   "source_mesh": 0
+  },
+  {
+   "source": 108,
+   "source_mesh": 0
+  },
+  {
+   "source": 109,
+   "source_mesh": 0
+  },
+  {
+   "source": 110,
+   "source_mesh": 0
+  },
+  {
+   "source": 111,
+   "source_mesh": 0
+  },
+  {
+   "source": 112,
+   "source_mesh": 0
+  },
+  {
+   "source": 113,
+   "source_mesh": 0
+  },
+  {
+   "source": 114,
+   "source_mesh": 0
+  },
+  {
+   "source": 115,
+   "source_mesh": 0
+  },
+  {
+   "source": 116,
+   "source_mesh": 0
+  },
+  {
+   "source": 117,
+   "source_mesh": 0
+  },
+  {
+   "source": 118,
+   "source_mesh": 0
+  },
+  {
+   "source": 119,
+   "source_mesh": 0
+  },
+  {
+   "source": 120,
+   "source_mesh": 0
+  },
+  {
+   "source": 121,
+   "source_mesh": 0
+  },
+  {
+   "source": 122,
+   "source_mesh": 0
+  },
+  {
+   "source": 123,
+   "source_mesh": 0
+  },
+  {
+   "source": 124,
+   "source_mesh": 0
+  },
+  {
+   "source": 125,
+   "source_mesh": 0
+  },
+  {
+   "source": 126,
+   "source_mesh": 0
+  },
+  {
+   "source": 127,
+   "source_mesh": 0
+  },
+  {
+   "source": 128,
+   "source_mesh": 0
+  },
+  {
+   "source": 129,
+   "source_mesh": 0
+  },
+  {
+   "source": 130,
+   "source_mesh": 0
+  },
+  {
+   "source": 131,
+   "source_mesh": 0
+  },
+  {
+   "source": 132,
+   "source_mesh": 0
+  },
+  {
+   "source": 133,
+   "source_mesh": 0
+  },
+  {
+   "source": 134,
+   "source_mesh": 0
+  },
+  {
+   "source": 135,
+   "source_mesh": 0
+  },
+  {
+   "source": 136,
+   "source_mesh": 0
+  },
+  {
+   "source": 137,
+   "source_mesh": 0
+  },
+  {
+   "source": 138,
+   "source_mesh": 0
+  },
+  {
+   "source": 139,
+   "source_mesh": 0
+  },
+  {
+   "source": 140,
+   "source_mesh": 0
+  },
+  {
+   "source": 141,
+   "source_mesh": 0
+  },
+  {
+   "source": 142,
+   "source_mesh": 0
+  },
+  {
+   "source": 143,
+   "source_mesh": 0
+  },
+  {
+   "source": 144,
+   "source_mesh": 0
+  },
+  {
+   "source": 145,
+   "source_mesh": 0
+  },
+  {
+   "source": 146,
+   "source_mesh": 0
+  },
+  {
+   "source": 147,
+   "source_mesh": 0
+  },
+  {
+   "source": 148,
+   "source_mesh": 0
+  },
+  {
+   "source": 149,
+   "source_mesh": 0
+  },
+  {
+   "source": 150,
+   "source_mesh": 0
+  },
+  {
+   "source": 151,
+   "source_mesh": 0
+  },
+  {
+   "source": 152,
+   "source_mesh": 0
+  },
+  {
+   "source": 153,
+   "source_mesh": 0
+  },
+  {
+   "source": 154,
+   "source_mesh": 0
+  },
+  {
+   "source": 155,
+   "source_mesh": 0
+  },
+  {
+   "source": 156,
+   "source_mesh": 0
+  },
+  {
+   "source": 157,
+   "source_mesh": 0
+  },
+  {
+   "source": 158,
+   "source_mesh": 0
+  },
+  {
+   "source": 159,
+   "source_mesh": 0
+  },
+  {
+   "source": 160,
+   "source_mesh": 0
+  },
+  {
+   "source": 161,
+   "source_mesh": 0
+  },
+  {
+   "source": 162,
+   "source_mesh": 0
+  },
+  {
+   "source": 163,
+   "source_mesh": 0
+  },
+  {
+   "source": 164,
+   "source_mesh": 0
+  },
+  {
+   "source": 165,
+   "source_mesh": 0
+  },
+  {
+   "source": 166,
+   "source_mesh": 0
+  },
+  {
+   "source": 167,
+   "source_mesh": 0
+  },
+  {
+   "source": 168,
+   "source_mesh": 0
+  },
+  {
+   "source": 169,
+   "source_mesh": 0
+  },
+  {
+   "source": 170,
+   "source_mesh": 0
+  },
+  {
+   "source": 171,
+   "source_mesh": 0
+  },
+  {
+   "source": 172,
+   "source_mesh": 0
+  },
+  {
+   "source": 173,
+   "source_mesh": 0
+  },
+  {
+   "source": 174,
+   "source_mesh": 0
+  },
+  {
+   "source": 175,
+   "source_mesh": 0
+  },
+  {
+   "source": 176,
+   "source_mesh": 0
+  },
+  {
+   "source": 177,
+   "source_mesh": 0
+  },
+  {
+   "source": 178,
+   "source_mesh": 0
+  },
+  {
+   "source": 179,
+   "source_mesh": 0
+  },
+  {
+   "source": 180,
+   "source_mesh": 0
+  },
+  {
+   "source": 181,
+   "source_mesh": 0
+  },
+  {
+   "source": 182,
+   "source_mesh": 0
+  },
+  {
+   "source": 183,
+   "source_mesh": 0
+  },
+  {
+   "source": 184,
+   "source_mesh": 0
+  },
+  {
+   "source": 185,
+   "source_mesh": 0
+  },
+  {
+   "source": 186,
+   "source_mesh": 0
+  },
+  {
+   "source": 187,
+   "source_mesh": 0
+  },
+  {
+   "source": 188,
+   "source_mesh": 0
+  },
+  {
+   "source": 189,
+   "source_mesh": 0
+  },
+  {
+   "source": 190,
+   "source_mesh": 0
+  },
+  {
+   "source": 191,
+   "source_mesh": 0
+  },
+  {
+   "source": 192,
+   "source_mesh": 0
+  },
+  {
+   "source": 193,
+   "source_mesh": 0
+  },
+  {
+   "source": 194,
+   "source_mesh": 0
+  },
+  {
+   "source": 195,
+   "source_mesh": 0
+  },
+  {
+   "source": 196,
+   "source_mesh": 0
+  },
+  {
+   "source": 197,
+   "source_mesh": 0
+  },
+  {
+   "source": 198,
+   "source_mesh": 0
+  },
+  {
+   "source": 199,
+   "source_mesh": 0
+  },
+  {
+   "source": 200,
+   "source_mesh": 0
+  },
+  {
+   "source": 201,
+   "source_mesh": 0
+  },
+  {
+   "source": 202,
+   "source_mesh": 0
+  },
+  {
+   "source": 203,
+   "source_mesh": 0
+  },
+  {
+   "source": 204,
+   "source_mesh": 0
+  },
+  {
+   "source": 205,
+   "source_mesh": 0
+  },
+  {
+   "source": 206,
+   "source_mesh": 0
+  },
+  {
+   "source": 207,
+   "source_mesh": 0
+  },
+  {
+   "source": 208,
+   "source_mesh": 0
+  },
+  {
+   "source": 209,
+   "source_mesh": 0
+  },
+  {
+   "source": 210,
+   "source_mesh": 0
+  },
+  {
+   "source": 211,
+   "source_mesh": 0
+  },
+  {
+   "source": 212,
+   "source_mesh": 0
+  },
+  {
+   "source": 213,
+   "source_mesh": 0
+  },
+  {
+   "source": 214,
+   "source_mesh": 0
+  },
+  {
+   "source": 215,
+   "source_mesh": 0
+  },
+  {
+   "source": 216,
+   "source_mesh": 0
+  },
+  {
+   "source": 217,
+   "source_mesh": 0
+  },
+  {
+   "source": 218,
+   "source_mesh": 0
+  },
+  {
+   "source": 219,
+   "source_mesh": 0
+  },
+  {
+   "source": 220,
+   "source_mesh": 0
+  },
+  {
+   "source": 221,
+   "source_mesh": 0
+  },
+  {
+   "source": 222,
+   "source_mesh": 0
+  },
+  {
+   "source": 223,
+   "source_mesh": 0
+  },
+  {
+   "source": 224,
+   "source_mesh": 0
+  },
+  {
+   "source": 225,
+   "source_mesh": 0
+  },
+  {
+   "source": 226,
+   "source_mesh": 0
+  },
+  {
+   "source": 227,
+   "source_mesh": 0
+  },
+  {
+   "source": 228,
+   "source_mesh": 0
+  },
+  {
+   "source": 229,
+   "source_mesh": 0
+  },
+  {
+   "source": 230,
+   "source_mesh": 0
+  },
+  {
+   "source": 231,
+   "source_mesh": 0
+  },
+  {
+   "source": 232,
+   "source_mesh": 0
+  },
+  {
+   "source": 233,
+   "source_mesh": 0
+  },
+  {
+   "source": 234,
+   "source_mesh": 0
+  },
+  {
+   "source": 235,
+   "source_mesh": 0
+  },
+  {
+   "source": 236,
+   "source_mesh": 0
+  },
+  {
+   "source": 237,
+   "source_mesh": 0
+  },
+  {
+   "source": 238,
+   "source_mesh": 0
+  },
+  {
+   "source": 239,
+   "source_mesh": 0
+  },
+  {
+   "source": 240,
+   "source_mesh": 0
+  },
+  {
+   "source": 241,
+   "source_mesh": 0
+  },
+  {
+   "source": 242,
+   "source_mesh": 0
+  },
+  {
+   "source": 243,
+   "source_mesh": 0
+  },
+  {
+   "source": 244,
+   "source_mesh": 0
+  },
+  {
+   "source": 245,
+   "source_mesh": 0
+  },
+  {
+   "source": 246,
+   "source_mesh": 0
+  },
+  {
+   "source": 247,
+   "source_mesh": 0
+  },
+  {
+   "source": 248,
+   "source_mesh": 0
+  },
+  {
+   "source": 249,
+   "source_mesh": 0
+  },
+  {
+   "source": 250,
+   "source_mesh": 0
+  },
+  {
+   "source": 251,
+   "source_mesh": 0
+  },
+  {
+   "source": 252,
+   "source_mesh": 0
+  },
+  {
+   "source": 253,
+   "source_mesh": 0
+  },
+  {
+   "source": 254,
+   "source_mesh": 0
+  },
+  {
+   "source": 255,
+   "source_mesh": 0
+  },
+  {
+   "source": 256,
+   "source_mesh": 0
+  },
+  {
+   "source": 257,
+   "source_mesh": 0
+  },
+  {
+   "source": 258,
+   "source_mesh": 0
+  },
+  {
+   "source": 259,
+   "source_mesh": 0
+  },
+  {
+   "source": 260,
+   "source_mesh": 0
+  },
+  {
+   "source": 261,
+   "source_mesh": 0
+  },
+  {
+   "source": 262,
+   "source_mesh": 0
+  },
+  {
+   "source": 263,
+   "source_mesh": 0
+  },
+  {
+   "source": 264,
+   "source_mesh": 0
+  },
+  {
+   "source": 265,
+   "source_mesh": 0
+  },
+  {
+   "source": 266,
+   "source_mesh": 0
+  },
+  {
+   "source": 267,
+   "source_mesh": 0
+  },
+  {
+   "source": 268,
+   "source_mesh": 0
+  },
+  {
+   "source": 269,
+   "source_mesh": 0
+  },
+  {
+   "source": 270,
+   "source_mesh": 0
+  },
+  {
+   "source": 271,
+   "source_mesh": 0
+  },
+  {
+   "source": 272,
+   "source_mesh": 0
+  },
+  {
+   "source": 273,
+   "source_mesh": 0
+  },
+  {
+   "source": 274,
+   "source_mesh": 0
+  },
+  {
+   "source": 275,
+   "source_mesh": 0
+  },
+  {
+   "source": 276,
+   "source_mesh": 0
+  },
+  {
+   "source": 277,
+   "source_mesh": 0
+  },
+  {
+   "source": 278,
+   "source_mesh": 0
+  },
+  {
+   "source": 279,
+   "source_mesh": 0
+  },
+  {
+   "source": 280,
+   "source_mesh": 0
+  },
+  {
+   "source": 281,
+   "source_mesh": 0
+  },
+  {
+   "source": 282,
+   "source_mesh": 0
+  },
+  {
+   "source": 283,
+   "source_mesh": 0
+  },
+  {
+   "source": 284,
+   "source_mesh": 0
+  },
+  {
+   "source": 285,
+   "source_mesh": 0
+  },
+  {
+   "source": 286,
+   "source_mesh": 0
+  },
+  {
+   "source": 287,
+   "source_mesh": 0
+  },
+  {
+   "source": 288,
+   "source_mesh": 0
+  },
+  {
+   "source": 289,
+   "source_mesh": 0
+  },
+  {
+   "source": 290,
+   "source_mesh": 0
+  },
+  {
+   "source": 291,
+   "source_mesh": 0
+  },
+  {
+   "source": 292,
+   "source_mesh": 0
+  },
+  {
+   "source": 293,
+   "source_mesh": 0
+  },
+  {
+   "source": 294,
+   "source_mesh": 0
+  },
+  {
+   "source": 295,
+   "source_mesh": 0
+  },
+  {
+   "source": 296,
+   "source_mesh": 0
+  },
+  {
+   "source": 297,
+   "source_mesh": 0
+  },
+  {
+   "source": 298,
+   "source_mesh": 0
+  },
+  {
+   "source": 299,
+   "source_mesh": 0
+  },
+  {
+   "source": 300,
+   "source_mesh": 0
+  },
+  {
+   "source": 301,
+   "source_mesh": 0
+  },
+  {
+   "source": 302,
+   "source_mesh": 0
+  },
+  {
+   "source": 303,
+   "source_mesh": 0
+  },
+  {
+   "source": 304,
+   "source_mesh": 0
+  },
+  {
+   "source": 305,
+   "source_mesh": 0
+  },
+  {
+   "source": 306,
    "source_mesh": 0
   }
  ],
@@ -2018,7 +3712,7 @@
    ]
   },
   {
-   "name": "T_room_art1",
+   "name": "T_goal_bell",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2044,7 +3738,7 @@
    ]
   },
   {
-   "name": "T_room_art2",
+   "name": "T_goal_bell_base",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2070,7 +3764,7 @@
    ]
   },
   {
-   "name": "T_room_books_mustard",
+   "name": "T_goal_toast",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2096,7 +3790,7 @@
    ]
   },
   {
-   "name": "T_room_books_navy",
+   "name": "T_goal_toaster",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2122,7 +3816,7 @@
    ]
   },
   {
-   "name": "T_room_books_plum",
+   "name": "T_goal_toaster_trim",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2148,7 +3842,7 @@
    ]
   },
   {
-   "name": "T_room_books_red",
+   "name": "T_goal_tv_cab",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2174,7 +3868,7 @@
    ]
   },
   {
-   "name": "T_room_books_sage",
+   "name": "T_goal_tv_knobs",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2200,7 +3894,7 @@
    ]
   },
   {
-   "name": "T_room_brass",
+   "name": "T_goal_tv_screen",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2226,7 +3920,7 @@
    ]
   },
   {
-   "name": "T_room_ceiling",
+   "name": "T_goal_tv_set",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2252,7 +3946,7 @@
    ]
   },
   {
-   "name": "T_room_curtains",
+   "name": "T_room_art1",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2278,7 +3972,7 @@
    ]
   },
   {
-   "name": "T_room_floor",
+   "name": "T_room_art2",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2304,7 +3998,7 @@
    ]
   },
   {
-   "name": "T_room_glass",
+   "name": "T_room_books_mustard",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2330,7 +4024,7 @@
    ]
   },
   {
-   "name": "T_room_knob",
+   "name": "T_room_books_navy",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2356,7 +4050,7 @@
    ]
   },
   {
-   "name": "T_room_pages",
+   "name": "T_room_books_plum",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2382,7 +4076,7 @@
    ]
   },
   {
-   "name": "T_room_rug",
+   "name": "T_room_books_red",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2408,7 +4102,7 @@
    ]
   },
   {
-   "name": "T_room_shade",
+   "name": "T_room_books_sage",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2434,7 +4128,7 @@
    ]
   },
   {
-   "name": "T_room_trim_B",
+   "name": "T_room_brass",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2460,7 +4154,7 @@
    ]
   },
   {
-   "name": "T_room_trim_F",
+   "name": "T_room_ceiling",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2486,7 +4180,7 @@
    ]
   },
   {
-   "name": "T_room_trim_L",
+   "name": "T_room_curtains",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2512,7 +4206,7 @@
    ]
   },
   {
-   "name": "T_room_trim_R",
+   "name": "T_room_floor",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2538,7 +4232,7 @@
    ]
   },
   {
-   "name": "T_room_wall_B",
+   "name": "T_room_glass",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2564,7 +4258,7 @@
    ]
   },
   {
-   "name": "T_room_wall_F",
+   "name": "T_room_knob",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2590,7 +4284,7 @@
    ]
   },
   {
-   "name": "T_room_wall_L",
+   "name": "T_room_pages",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2616,7 +4310,7 @@
    ]
   },
   {
-   "name": "T_room_wall_R",
+   "name": "T_room_rug",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2642,7 +4336,7 @@
    ]
   },
   {
-   "name": "T_room_walnut",
+   "name": "T_room_shade",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2668,7 +4362,7 @@
    ]
   },
   {
-   "name": "T_room_window",
+   "name": "T_room_trim_B",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2694,7 +4388,7 @@
    ]
   },
   {
-   "name": "T_hall_floor",
+   "name": "T_room_trim_F",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2720,7 +4414,7 @@
    ]
   },
   {
-   "name": "T_hall_walls",
+   "name": "T_room_trim_L",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2746,7 +4440,7 @@
    ]
   },
   {
-   "name": "T_hall_trim",
+   "name": "T_room_trim_R",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2772,7 +4466,7 @@
    ]
   },
   {
-   "name": "T_hall_wood",
+   "name": "T_room_wall_B",
    "parent": -1,
    "local_matrix": [
     1.0,
@@ -2795,6 +4489,6298 @@
    "component_flags": 0,
    "mesh_refs": [
     81
+   ]
+  },
+  {
+   "name": "T_room_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    82
+   ]
+  },
+  {
+   "name": "T_room_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    83
+   ]
+  },
+  {
+   "name": "T_room_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    84
+   ]
+  },
+  {
+   "name": "T_room_walnut",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    85
+   ]
+  },
+  {
+   "name": "T_room_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    86
+   ]
+  },
+  {
+   "name": "T_hall_floor",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    87
+   ]
+  },
+  {
+   "name": "T_hall_walls",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    88
+   ]
+  },
+  {
+   "name": "T_hall_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    89
+   ]
+  },
+  {
+   "name": "T_hall_wood",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    90
+   ]
+  },
+  {
+   "name": "T_hall_art_R1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    91
+   ]
+  },
+  {
+   "name": "T_hall_art_R2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    92
+   ]
+  },
+  {
+   "name": "T_hall_bell",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    93
+   ]
+  },
+  {
+   "name": "T_hall_bellbox",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    94
+   ]
+  },
+  {
+   "name": "T_hall_brass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    95
+   ]
+  },
+  {
+   "name": "T_hall_ceiling",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    96
+   ]
+  },
+  {
+   "name": "T_hall_cord",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    97
+   ]
+  },
+  {
+   "name": "T_hall_door_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    98
+   ]
+  },
+  {
+   "name": "T_hall_door_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    99
+   ]
+  },
+  {
+   "name": "T_hall_door_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    100
+   ]
+  },
+  {
+   "name": "T_hall_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    101
+   ]
+  },
+  {
+   "name": "T_hall_frames_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    102
+   ]
+  },
+  {
+   "name": "T_hall_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    103
+   ]
+  },
+  {
+   "name": "T_hall_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    104
+   ]
+  },
+  {
+   "name": "T_hall_knob_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    105
+   ]
+  },
+  {
+   "name": "T_hall_knob_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    106
+   ]
+  },
+  {
+   "name": "T_hall_knob_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    107
+   ]
+  },
+  {
+   "name": "T_hall_parcels",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    108
+   ]
+  },
+  {
+   "name": "T_hall_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    109
+   ]
+  },
+  {
+   "name": "T_hall_tape",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    110
+   ]
+  },
+  {
+   "name": "T_hall_trim_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    111
+   ]
+  },
+  {
+   "name": "T_hall_trim_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    112
+   ]
+  },
+  {
+   "name": "T_hall_trim_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    113
+   ]
+  },
+  {
+   "name": "T_hall_trim_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    114
+   ]
+  },
+  {
+   "name": "T_hall_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    115
+   ]
+  },
+  {
+   "name": "T_hall_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    116
+   ]
+  },
+  {
+   "name": "T_hall_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    117
+   ]
+  },
+  {
+   "name": "T_hall_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    118
+   ]
+  },
+  {
+   "name": "T_hall_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    119
+   ]
+  },
+  {
+   "name": "T_furn_hall_bench",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    120
+   ]
+  },
+  {
+   "name": "T_furn_hall_shoes",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    121
+   ]
+  },
+  {
+   "name": "T_furn_hall_coatstand",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    122
+   ]
+  },
+  {
+   "name": "T_furn_hall_umbrellastand",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    123
+   ]
+  },
+  {
+   "name": "T_furn_hall_clock",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    124
+   ]
+  },
+  {
+   "name": "T_furn_hall_plant",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    125
+   ]
+  },
+  {
+   "name": "T_kitchen_ceiling",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    126
+   ]
+  },
+  {
+   "name": "T_kitchen_cord",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    127
+   ]
+  },
+  {
+   "name": "T_kitchen_door_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    128
+   ]
+  },
+  {
+   "name": "T_kitchen_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    129
+   ]
+  },
+  {
+   "name": "T_kitchen_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    130
+   ]
+  },
+  {
+   "name": "T_kitchen_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    131
+   ]
+  },
+  {
+   "name": "T_kitchen_iron",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    132
+   ]
+  },
+  {
+   "name": "T_kitchen_jars",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    133
+   ]
+  },
+  {
+   "name": "T_kitchen_knob_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    134
+   ]
+  },
+  {
+   "name": "T_kitchen_lids",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    135
+   ]
+  },
+  {
+   "name": "T_kitchen_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    136
+   ]
+  },
+  {
+   "name": "T_kitchen_shade",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    137
+   ]
+  },
+  {
+   "name": "T_kitchen_shelf",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    138
+   ]
+  },
+  {
+   "name": "T_kitchen_toast",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    139
+   ]
+  },
+  {
+   "name": "T_kitchen_toaster",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    140
+   ]
+  },
+  {
+   "name": "T_kitchen_toaster_trim",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    141
+   ]
+  },
+  {
+   "name": "T_kitchen_trim_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    142
+   ]
+  },
+  {
+   "name": "T_kitchen_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    143
+   ]
+  },
+  {
+   "name": "T_kitchen_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    144
+   ]
+  },
+  {
+   "name": "T_kitchen_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    145
+   ]
+  },
+  {
+   "name": "T_kitchen_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    146
+   ]
+  },
+  {
+   "name": "T_kitchen_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    147
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_counter",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    148
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_oven",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    149
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_fridge",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    150
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_table",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    151
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_chair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    152
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_chair_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    153
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_chair_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    154
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_chair_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    155
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_kettle",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    156
+   ]
+  },
+  {
+   "name": "T_furn_kitchen_herbs",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    157
+   ]
+  },
+  {
+   "name": "T_dining_art_B1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    158
+   ]
+  },
+  {
+   "name": "T_dining_art_B2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    159
+   ]
+  },
+  {
+   "name": "T_dining_brass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    160
+   ]
+  },
+  {
+   "name": "T_dining_ceiling",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    161
+   ]
+  },
+  {
+   "name": "T_dining_cord",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    162
+   ]
+  },
+  {
+   "name": "T_dining_curtains",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    163
+   ]
+  },
+  {
+   "name": "T_dining_door_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    164
+   ]
+  },
+  {
+   "name": "T_dining_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    165
+   ]
+  },
+  {
+   "name": "T_dining_frames_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    166
+   ]
+  },
+  {
+   "name": "T_dining_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    167
+   ]
+  },
+  {
+   "name": "T_dining_glasses",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    168
+   ]
+  },
+  {
+   "name": "T_dining_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    169
+   ]
+  },
+  {
+   "name": "T_dining_knob_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    170
+   ]
+  },
+  {
+   "name": "T_dining_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    171
+   ]
+  },
+  {
+   "name": "T_dining_tray",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    172
+   ]
+  },
+  {
+   "name": "T_dining_trim_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    173
+   ]
+  },
+  {
+   "name": "T_dining_trim_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    174
+   ]
+  },
+  {
+   "name": "T_dining_trim_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    175
+   ]
+  },
+  {
+   "name": "T_dining_trim_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    176
+   ]
+  },
+  {
+   "name": "T_dining_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    177
+   ]
+  },
+  {
+   "name": "T_dining_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    178
+   ]
+  },
+  {
+   "name": "T_dining_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    179
+   ]
+  },
+  {
+   "name": "T_dining_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    180
+   ]
+  },
+  {
+   "name": "T_dining_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    181
+   ]
+  },
+  {
+   "name": "T_furn_dining_table",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    182
+   ]
+  },
+  {
+   "name": "T_furn_dining_sideboard",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    183
+   ]
+  },
+  {
+   "name": "T_furn_dining_recordplayer",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    184
+   ]
+  },
+  {
+   "name": "T_furn_dining_candelabra",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    185
+   ]
+  },
+  {
+   "name": "T_furn_dining_chair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    186
+   ]
+  },
+  {
+   "name": "T_furn_dining_chair_2",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    187
+   ]
+  },
+  {
+   "name": "T_furn_dining_chair_3",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    188
+   ]
+  },
+  {
+   "name": "T_furn_dining_chair_4",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    189
+   ]
+  },
+  {
+   "name": "T_furn_dining_chair_5",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    190
+   ]
+  },
+  {
+   "name": "T_furn_dining_chair_6",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    191
+   ]
+  },
+  {
+   "name": "T_kids_art_L1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    192
+   ]
+  },
+  {
+   "name": "T_kids_blocks_blue",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    193
+   ]
+  },
+  {
+   "name": "T_kids_blocks_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    194
+   ]
+  },
+  {
+   "name": "T_kids_blocks_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    195
+   ]
+  },
+  {
+   "name": "T_kids_blocks_yellow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    196
+   ]
+  },
+  {
+   "name": "T_kids_brass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    197
+   ]
+  },
+  {
+   "name": "T_kids_bridge",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    198
+   ]
+  },
+  {
+   "name": "T_kids_ceiling",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    199
+   ]
+  },
+  {
+   "name": "T_kids_cord",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    200
+   ]
+  },
+  {
+   "name": "T_kids_curtains",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    201
+   ]
+  },
+  {
+   "name": "T_kids_door_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    202
+   ]
+  },
+  {
+   "name": "T_kids_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    203
+   ]
+  },
+  {
+   "name": "T_kids_frames_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    204
+   ]
+  },
+  {
+   "name": "T_kids_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    205
+   ]
+  },
+  {
+   "name": "T_kids_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    206
+   ]
+  },
+  {
+   "name": "T_kids_grooves",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    207
+   ]
+  },
+  {
+   "name": "T_kids_knob_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    208
+   ]
+  },
+  {
+   "name": "T_kids_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    209
+   ]
+  },
+  {
+   "name": "T_kids_track",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    210
+   ]
+  },
+  {
+   "name": "T_kids_trim_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    211
+   ]
+  },
+  {
+   "name": "T_kids_trim_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    212
+   ]
+  },
+  {
+   "name": "T_kids_trim_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    213
+   ]
+  },
+  {
+   "name": "T_kids_trim_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    214
+   ]
+  },
+  {
+   "name": "T_kids_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    215
+   ]
+  },
+  {
+   "name": "T_kids_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    216
+   ]
+  },
+  {
+   "name": "T_kids_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    217
+   ]
+  },
+  {
+   "name": "T_kids_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    218
+   ]
+  },
+  {
+   "name": "T_kids_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    219
+   ]
+  },
+  {
+   "name": "T_furn_kids_bed",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    220
+   ]
+  },
+  {
+   "name": "T_furn_kids_toybox",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    221
+   ]
+  },
+  {
+   "name": "T_furn_kids_rockinghorse",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    222
+   ]
+  },
+  {
+   "name": "T_furn_kids_crane",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    223
+   ]
+  },
+  {
+   "name": "T_furn_kids_train",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    224
+   ]
+  },
+  {
+   "name": "T_furn_kids_teddy",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    225
+   ]
+  },
+  {
+   "name": "T_furn_kids_drum",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    226
+   ]
+  },
+  {
+   "name": "T_bath_bracket",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    227
+   ]
+  },
+  {
+   "name": "T_bath_brass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    228
+   ]
+  },
+  {
+   "name": "T_bath_ceiling",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    229
+   ]
+  },
+  {
+   "name": "T_bath_cord",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    230
+   ]
+  },
+  {
+   "name": "T_bath_door_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    231
+   ]
+  },
+  {
+   "name": "T_bath_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    232
+   ]
+  },
+  {
+   "name": "T_bath_frosted",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    233
+   ]
+  },
+  {
+   "name": "T_bath_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    234
+   ]
+  },
+  {
+   "name": "T_bath_knob_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    235
+   ]
+  },
+  {
+   "name": "T_bath_mirror",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    236
+   ]
+  },
+  {
+   "name": "T_bath_mirror_frame",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    237
+   ]
+  },
+  {
+   "name": "T_bath_rail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    238
+   ]
+  },
+  {
+   "name": "T_bath_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    239
+   ]
+  },
+  {
+   "name": "T_bath_towel",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    240
+   ]
+  },
+  {
+   "name": "T_bath_trim_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    241
+   ]
+  },
+  {
+   "name": "T_bath_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    242
+   ]
+  },
+  {
+   "name": "T_bath_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    243
+   ]
+  },
+  {
+   "name": "T_bath_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    244
+   ]
+  },
+  {
+   "name": "T_bath_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    245
+   ]
+  },
+  {
+   "name": "T_bath_weight",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    246
+   ]
+  },
+  {
+   "name": "T_bath_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    247
+   ]
+  },
+  {
+   "name": "T_furn_bath_bathtub",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    248
+   ]
+  },
+  {
+   "name": "T_furn_bath_sink",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    249
+   ]
+  },
+  {
+   "name": "T_furn_bath_stool",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    250
+   ]
+  },
+  {
+   "name": "T_furn_bath_musicbox",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    251
+   ]
+  },
+  {
+   "name": "T_furn_bath_basket",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    252
+   ]
+  },
+  {
+   "name": "T_furn_bath_towelrail",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    253
+   ]
+  },
+  {
+   "name": "T_furn_bath_fern",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    254
+   ]
+  },
+  {
+   "name": "T_study_art_R1",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    255
+   ]
+  },
+  {
+   "name": "T_study_books_green",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    256
+   ]
+  },
+  {
+   "name": "T_study_books_navy",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    257
+   ]
+  },
+  {
+   "name": "T_study_books_red",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    258
+   ]
+  },
+  {
+   "name": "T_study_books_tan",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    259
+   ]
+  },
+  {
+   "name": "T_study_brass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    260
+   ]
+  },
+  {
+   "name": "T_study_ceiling",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    261
+   ]
+  },
+  {
+   "name": "T_study_curtains",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    262
+   ]
+  },
+  {
+   "name": "T_study_dict_gold",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    263
+   ]
+  },
+  {
+   "name": "T_study_dict_pages",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    264
+   ]
+  },
+  {
+   "name": "T_study_dictionary",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    265
+   ]
+  },
+  {
+   "name": "T_study_door_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    266
+   ]
+  },
+  {
+   "name": "T_study_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    267
+   ]
+  },
+  {
+   "name": "T_study_frames_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    268
+   ]
+  },
+  {
+   "name": "T_study_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    269
+   ]
+  },
+  {
+   "name": "T_study_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    270
+   ]
+  },
+  {
+   "name": "T_study_hook",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    271
+   ]
+  },
+  {
+   "name": "T_study_iron",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    272
+   ]
+  },
+  {
+   "name": "T_study_knob_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    273
+   ]
+  },
+  {
+   "name": "T_study_plank",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    274
+   ]
+  },
+  {
+   "name": "T_study_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    275
+   ]
+  },
+  {
+   "name": "T_study_shelf",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    276
+   ]
+  },
+  {
+   "name": "T_study_trim_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    277
+   ]
+  },
+  {
+   "name": "T_study_trim_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    278
+   ]
+  },
+  {
+   "name": "T_study_trim_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    279
+   ]
+  },
+  {
+   "name": "T_study_trim_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    280
+   ]
+  },
+  {
+   "name": "T_study_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    281
+   ]
+  },
+  {
+   "name": "T_study_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    282
+   ]
+  },
+  {
+   "name": "T_study_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    283
+   ]
+  },
+  {
+   "name": "T_study_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    284
+   ]
+  },
+  {
+   "name": "T_study_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    285
+   ]
+  },
+  {
+   "name": "T_furn_study_desk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    286
+   ]
+  },
+  {
+   "name": "T_furn_study_chair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    287
+   ]
+  },
+  {
+   "name": "T_furn_study_cabinet",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    288
+   ]
+  },
+  {
+   "name": "T_furn_study_globe",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    289
+   ]
+  },
+  {
+   "name": "T_furn_study_lamp",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    290
+   ]
+  },
+  {
+   "name": "T_attic_beams",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    291
+   ]
+  },
+  {
+   "name": "T_attic_beams_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    292
+   ]
+  },
+  {
+   "name": "T_attic_boxes",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    293
+   ]
+  },
+  {
+   "name": "T_attic_brass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    294
+   ]
+  },
+  {
+   "name": "T_attic_conduit",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    295
+   ]
+  },
+  {
+   "name": "T_attic_cord",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    296
+   ]
+  },
+  {
+   "name": "T_attic_crates",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    297
+   ]
+  },
+  {
+   "name": "T_attic_flooring",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    298
+   ]
+  },
+  {
+   "name": "T_attic_glass",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    299
+   ]
+  },
+  {
+   "name": "T_attic_glow",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    300
+   ]
+  },
+  {
+   "name": "T_attic_grip",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    301
+   ]
+  },
+  {
+   "name": "T_attic_lever",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    302
+   ]
+  },
+  {
+   "name": "T_attic_roof",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    303
+   ]
+  },
+  {
+   "name": "T_attic_rug",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    304
+   ]
+  },
+  {
+   "name": "T_attic_skylight",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    305
+   ]
+  },
+  {
+   "name": "T_attic_switchbox",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    306
+   ]
+  },
+  {
+   "name": "T_attic_tape",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    307
+   ]
+  },
+  {
+   "name": "T_attic_ties",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    308
+   ]
+  },
+  {
+   "name": "T_attic_trim_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    309
+   ]
+  },
+  {
+   "name": "T_attic_trim_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    310
+   ]
+  },
+  {
+   "name": "T_attic_trim_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    311
+   ]
+  },
+  {
+   "name": "T_attic_trim_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    312
+   ]
+  },
+  {
+   "name": "T_attic_wall_B",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    313
+   ]
+  },
+  {
+   "name": "T_attic_wall_F",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    314
+   ]
+  },
+  {
+   "name": "T_attic_wall_L",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    315
+   ]
+  },
+  {
+   "name": "T_attic_wall_R",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    316
+   ]
+  },
+  {
+   "name": "T_attic_weight",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    317
+   ]
+  },
+  {
+   "name": "T_attic_window",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    318
+   ]
+  },
+  {
+   "name": "T_furn_attic_trunk",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    319
+   ]
+  },
+  {
+   "name": "T_furn_attic_lamp",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    320
+   ]
+  },
+  {
+   "name": "T_furn_attic_rockingchair",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    321
+   ]
+  },
+  {
+   "name": "T_furn_attic_dressform",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    322
+   ]
+  },
+  {
+   "name": "T_furn_attic_suitcases",
+   "parent": -1,
+   "local_matrix": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    -1000.0,
+    0,
+    1.0
+   ],
+   "component_flags": 0,
+   "mesh_refs": [
+    323
    ]
   },
   {

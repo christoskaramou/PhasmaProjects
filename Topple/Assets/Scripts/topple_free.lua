@@ -31,6 +31,16 @@ F.REST = 89.3              -- a domino with nothing in reach lies flat
 F.LEDGE = 0.6              -- solids no taller than this above a faller's base are ledges it slides over
 F.PAINTS = { "brick", "mustard", "sage", "navy", "cream" }
 F.FIELD_WIDTH = { min = 1.2, max = 24, default = 6 }
+-- Sizes: every measure of a domino times s. A falling domino tips one up to KNOCK times its own size; against anything
+-- bigger it only comes to lean. So a chain steps up a size at a time, and a big one coming down flattens the small ones
+-- under it. A stroke that grows makes each domino GROW times the one before.
+F.SIZES = { 2 / 3, 1, 1.5, 2.25, 3.375 }
+F.SIZE_NAMES = { "Mini", "Standard", "Large", "Giant", "Titan" }
+F.KNOCK = 1.5
+F.GROW = 1.25
+-- Off an edge: a domino that lies down with its middle past the edge of what it stands on tips off and tumbles to
+-- whatever is below, at least min_drop lower, and knocks over what it lands on. speed: how fast it leaves, per sqrt(size).
+F.DIVE = { min_drop = 0.8, speed = 3.2, margin = 0.12 }
 -- A ball: pushed by a falling domino it rolls, drops off edges, bounces and knocks over what it meets.
 -- step: the highest lip it rolls up onto (the rug); max_t: a run never waits on a ball longer than this.
 -- Real values at this scale (1 unit = 5 cm): g 9.81 m/s2 = 196.2. The ball weighs what a table-tennis ball does, so a
@@ -70,10 +80,11 @@ end
 ------------------------------------------------------------------ surfaces and solids
 -- Half extents (x, y) of a domino's footprint facing a (thin along its facing, wide across it), with a hair of
 -- clearance; facing unknown: the widest.
-local function extents(a)
-    if not a then return W / 2 + 0.02, W / 2 + 0.02 end
+local function extents(a, k)
+    k = k or 1
+    if not a then return k * W / 2 + 0.02, k * W / 2 + 0.02 end
     local c, s = abs(cos(a)), abs(sin(a))
-    return c * T / 2 + s * W / 2 + 0.02, s * T / 2 + c * W / 2 + 0.02
+    return k * (c * T / 2 + s * W / 2) + 0.02, k * (s * T / 2 + c * W / 2) + 0.02
 end
 F.extents = extents
 
@@ -83,8 +94,8 @@ local function in_rect(x, y, r, ex, ey)
 end
 
 -- Surfaces under (x, y) that a domino facing a could stand on (whole footprint inside a raised one), highest first.
-function F.surfaces_at(x, y, a, list)
-    local ex, ey = extents(a)
+function F.surfaces_at(x, y, a, list, k)
+    local ex, ey = extents(a, k)
     local out = {}
     for _, s in ipairs(list or ROOM.surfaces) do
         if (s.edge and in_rect(x, y, s, ex, ey)) or (not s.edge and in_rect(x, y, s)) then out[#out + 1] = s end
@@ -93,8 +104,9 @@ function F.surfaces_at(x, y, a, list)
 end
 
 -- The solid (furniture, walls) a domino facing a, standing at (x, y) on height h, would intersect, if any.
-local function solid_at(x, y, h, a, list)
-    local ex, ey = extents(a)
+local function solid_at(x, y, h, a, list, k)
+    local ex, ey = extents(a, k)
+    local H = H * (k or 1)
     for _, s in ipairs(list or ROOM.solids) do
         if s.z0 < h + H - 0.01 and s.z1 > h + 0.01 and x + ex > s.x0 and x - ex < s.x1 and y + ey > s.y0 and y - ey < s.y1 then
             return s
@@ -110,7 +122,7 @@ Board.__index = Board
 
 function F.new_board()
     return setmetatable({ pieces = {}, balls = {}, ball_count = 0, swings = {}, swing_count = 0, switches = {}, switch_count = 0, ramps = {}, ramp_count = 0, grid = {}, count = 0, next_id = 0, order = 0, start = nil,
-        undo_stack = {}, redo_stack = {}, act = nil, rev = 0 }, Board)
+        undo_stack = {}, redo_stack = {}, act = nil, rev = 0, traps = {}, trap_order = {}, preset_count = 0 }, Board)
 end
 
 local function cell_of(x, y) return floor(x / GRID), floor(y / GRID) end
@@ -143,12 +155,16 @@ end
 
 -- The room's surfaces and furniture plus this board's ramps (the room's own lists when there are none).
 function Board:all_surfaces()
-    if self.ramp_count == 0 then return ROOM.surfaces end
+    if self.ramp_count == 0 and not self.support_count then return ROOM.surfaces end
     if not self._surf then
         local list = {}
         for _, s in ipairs(ROOM.surfaces) do list[#list + 1] = s end
         for _, r in pairs(self.ramps) do
             for _, s in ipairs(r.steps) do list[#list + 1] = s end
+        end
+        -- (a support's top: only presets stand on it)
+        for _, tr in ipairs(self.trap_order) do
+            if tr.kind == "support" then list[#list + 1] = { name = "support", x0 = tr.x0, x1 = tr.x1, y0 = tr.y0, y1 = tr.y1, h = tr.z1, edge = true, trap = tr } end
         end
         table.sort(list, function(a, b) return a.h > b.h end)
         self._surf = list
@@ -156,11 +172,24 @@ function Board:all_surfaces()
     return self._surf
 end
 
+-- How many of a kind the box holds: a challenge's budget where it has one, else the default.
+function Board:limit(kind, default)
+    if self.limits then return self.limits[kind] or 0 end
+    return default
+end
+
 function Board:all_solids()
-    if self.ramp_count == 0 then return ROOM.solids end
+    if self.ramp_count == 0 and not self.props and #self.trap_order == 0 then return ROOM.solids end
     if not self._sol then
         local list = {}
         for _, s in ipairs(ROOM.solids) do list[#list + 1] = s end
+        for _, s in ipairs(self.props or {}) do list[#list + 1] = s end
+        -- (a trap's body is solid while it is in place: the run skips it once it is gone)
+        for _, tr in ipairs(self.trap_order) do
+            for _, b in ipairs(tr.boxes) do
+                list[#list + 1] = { name = tr.kind, x0 = b.x0, x1 = b.x1, y0 = b.y0, y1 = b.y1, z0 = b.z0, z1 = b.z1, trap = tr }
+            end
+        end
         local ids = {}
         for id in pairs(self.ramps) do ids[#ids + 1] = id end
         table.sort(ids)
@@ -202,6 +231,8 @@ function Board:_insert(p)
         return
     end
     self.pieces[p.id] = p
+    p.s = p.s or 1
+    if p.s > (self.smax or 1) then self.smax = p.s end
     local cx, cy = cell_of(p.x, p.y)
     local k = key(cx, cy)
     local c = self.grid[k]
@@ -309,21 +340,70 @@ function Board:near_switch(x, y, h, r)
 end
 
 -- Why a domino cannot stand at (x, y) on a surface of height h (nil if it can).
-function Board:blocked(x, y, h, a)
-    if self.count >= F.CAP then return "full" end
+-- True if two dominoes' footprints (centre, facing, size) come within a hair of each other.
+local function feet_touch(x1, y1, a1, k1, x2, y2, a2, k2)
+    local c1, s1, c2, s2 = cos(a1), sin(a1), cos(a2), sin(a2)
+    local t1, w1, t2, w2 = k1 * T / 2 + 0.03, k1 * W / 2 + 0.03, k2 * T / 2, k2 * W / 2
+    local dx, dy = x2 - x1, y2 - y1
+    local cc, ss = abs(c1 * c2 + s1 * s2), abs(c1 * s2 - s1 * c2)
+    if abs(dx * c1 + dy * s1) > t1 + cc * t2 + ss * w2 then return false end
+    if abs(-dx * s1 + dy * c1) > w1 + ss * t2 + cc * w2 then return false end
+    if abs(dx * c2 + dy * s2) > t2 + cc * t1 + ss * w1 then return false end
+    if abs(-dx * s2 + dy * c2) > w2 + ss * t1 + cc * w1 then return false end
+    return true
+end
+
+-- The height a piece set down at h on (x, y) really stands at: a thin surface lying over that spot (a rug, a play
+-- mat: its top less than clear above h and nothing solid under it) is stood on, not under. Tables, bridges, ramps
+-- and gaps under furniture have a solid top or room enough, so they are left as they are.
+function Board:rest(x, y, h, clear)
+    for _ = 1, 4 do
+        local up
+        for _, s in ipairs(self:all_surfaces()) do
+            if s.h > h + 1e-4 and s.h - h < clear and not s.trap and in_rect(x, y, s) and (not up or s.h > up.h) then up = s end
+        end
+        if not up then return h end
+        for _, q in ipairs(self:all_solids()) do
+            if q.z1 > h + 0.01 and q.z0 < up.h - 0.01 and in_rect(x, y, q) then return h end
+        end
+        h = up.h
+    end
+    return h
+end
+
+function Board:blocked(x, y, h, a, k)
+    k = k or 1
+    h = self:rest(x, y, h, H * k)
+    if self.count - self.preset_count >= self:limit("domino", F.CAP) then return "full" end
     local ok = false
-    local ex, ey = extents(a)
+    local ex, ey = extents(a, k)
+    if #self.trap_order > 0 then
+        local why = self:trap_block(x - ex, x + ex, y - ey, y + ey, h, h + H * k)
+        if why then return why end
+    end
     for _, s in ipairs(self:all_surfaces()) do
-        if abs(s.h - h) < 1e-4 and ((s.edge and in_rect(x, y, s, ex, ey)) or (not s.edge and in_rect(x, y, s))) then ok = true; break end
+        if abs(s.h - h) < 1e-4 and ((s.edge and in_rect(x, y, s, ex, ey)) or (not s.edge and in_rect(x, y, s))) then
+            -- (only a challenge's own pieces stand on a fragile support)
+            if s.trap and not self._installing then return "support" end
+            ok = true; break
+        end
     end
     if not ok then return "air" end
-    if solid_at(x, y, h, a, self:all_solids()) then return "furniture" end
+    if solid_at(x, y, h, a, self:all_solids(), k) then return "furniture" end
     local crowded = false
-    self:near(x, y, F.MIN_GAP, function(q)
-        if not crowded and abs(q.z - h) < 0.9 and (q.x - x) ^ 2 + (q.y - y) ^ 2 < F.MIN_GAP * F.MIN_GAP then crowded = true end
+    local smax = self.smax or 1
+    self:near(x, y, max(F.MIN_GAP * k, (k + smax) * W / 2 + 0.1), function(q)
+        if crowded then return end
+        local d2 = (q.x - x) ^ 2 + (q.y - y) ^ 2
+        -- (same size: the old rule, which lets a field stand shoulder to shoulder; mixed sizes: their footprints)
+        if q.s == k then
+            if abs(q.z - h) < 0.9 * k and d2 < (F.MIN_GAP * k) ^ 2 then crowded = true end
+        elseif q.z < h + k * H and q.z + q.s * H > h and (d2 < (F.MIN_GAP * min(k, q.s)) ^ 2 or feet_touch(x, y, a or 0, k, q.x, q.y, q.a, q.s)) then
+            crowded = true
+        end
     end)
     if crowded then return "crowded" end
-    local gap = F.BALL.r + F.BALL.clear
+    local gap = F.BALL.r + F.BALL.clear + (k - 1) * W / 2
     for _, b in pairs(self.balls) do
         if abs(b.z - h) < 0.9 and (b.x - x) ^ 2 + (b.y - y) ^ 2 < gap * gap then return "crowded" end
     end
@@ -331,19 +411,20 @@ function Board:blocked(x, y, h, a)
     return nil
 end
 
-function Board:can_place(x, y, h, a) return self:blocked(x, y, h, a) == nil end
+function Board:can_place(x, y, h, a, k) return self:blocked(x, y, h, a, k) == nil end
 
 function Board:_record(kind, p)
     local a = self.act
     if a then a[kind][#a[kind] + 1] = p end
 end
 
-function Board:place(x, y, a, h, paint)
-    local why = self:blocked(x, y, h, a)
+function Board:place(x, y, a, h, paint, k)
+    h = self:rest(x, y, h, H * (k or 1))
+    local why = self:blocked(x, y, h, a, k)
     if why then return nil, why end
     self.next_id = self.next_id + 1
     self.order = self.order + 1
-    local p = { id = self.next_id, x = x, y = y, z = h, a = a or 0, paint = paint or "cream", order = self.order }
+    local p = { id = self.next_id, x = x, y = y, z = h, a = a or 0, paint = paint or "cream", order = self.order, s = k or 1 }
     self:_insert(p)
     self:_record("added", p)
     return p
@@ -351,15 +432,15 @@ end
 
 -- Place on whichever surface under (x, y) suits: the one nearest near_h within a climb (a line stepping onto the
 -- rug or up a book), or the highest when near_h is nil.
-function Board:place_auto(x, y, a, paint, near_h)
-    local cands = F.surfaces_at(x, y, a, self:all_surfaces())
+function Board:place_auto(x, y, a, paint, near_h, k)
+    local cands = F.surfaces_at(x, y, a, self:all_surfaces(), k)
     if near_h then
         table.sort(cands, function(p, q) return abs(p.h - near_h) < abs(q.h - near_h) end)
     end
     local why = "air"
     for _, s in ipairs(cands) do
         if near_h and abs(s.h - near_h) > F.CLIMB then break end
-        local p, w = self:place(x, y, a, s.h, paint)
+        local p, w = self:place(x, y, a, s.h, paint, k)
         if p then return p end
         if why == "air" or w == "full" then why = w end
     end
@@ -369,7 +450,10 @@ end
 -- Why a ball cannot rest at (x, y) on a surface of height h (nil if it can).
 function Board:ball_blocked(x, y, h)
     local B = F.BALL
-    if self.ball_count >= B.cap then return "full" end
+    h = self:rest(x, y, h, 2 * B.r)
+    if self.ball_count >= self:limit("ball", B.cap) then return "full" end
+    local tw = self:trap_block(x - B.r, x + B.r, y - B.r, y + B.r, h, h + 2 * B.r)
+    if tw then return tw end
     local ok = false
     for _, s in ipairs(ROOM.surfaces) do
         if abs(s.h - h) < 1e-4 and in_rect(x, y, s, s.edge and 0.2 or 0) then ok = true; break end
@@ -395,6 +479,7 @@ end
 function Board:can_place_ball(x, y, h) return self:ball_blocked(x, y, h) == nil end
 
 function Board:place_ball(x, y, h)
+    h = self:rest(x, y, h, 2 * F.BALL.r)
     local why = self:ball_blocked(x, y, h)
     if why then return nil, why end
     self.next_id = self.next_id + 1
@@ -419,7 +504,8 @@ end
 -- Why a swing cannot hang at (x, y) over a surface of height h, swinging along a (nil if it can).
 function Board:swing_blocked(x, y, h, a)
     local S, B = F.SWING, F.BALL
-    if self.swing_count >= S.cap then return "full" end
+    h = self:rest(x, y, h, S.post)
+    if self.swing_count >= self:limit("swing", S.cap) then return "full" end
     local function on_surface(px, py, tol, margin)
         for _, s in ipairs(ROOM.surfaces) do
             if abs(s.h - h) <= tol and in_rect(px, py, s, s.edge and margin or 0) then return true end
@@ -436,6 +522,12 @@ function Board:swing_blocked(x, y, h, a)
     end
     local x1, y1, x2, y2 = F.swing_posts(x, y, a)
     local posts = hang == "stand" and { { x1, y1 }, { x2, y2 } } or {}
+    local tw = self:trap_block(x - S.r, x + S.r, y - S.r, y + S.r, z0, z1)
+    if tw then return tw end
+    for _, c in ipairs(posts) do
+        tw = self:trap_block(c[1] - S.post_r, c[1] + S.post_r, c[2] - S.post_r, c[2] + S.post_r, h, h + L + S.lift + S.r)
+        if tw then return tw end
+    end
     for _, c in ipairs(posts) do
         if not on_surface(c[1], c[2], 0.2, S.post_r) then return "air" end
         for _, s in ipairs(self:all_solids()) do
@@ -447,6 +539,8 @@ function Board:swing_blocked(x, y, h, a)
     -- The latch stands on the surface under the held bob.
     local lx, ly = F.swing_latch(x, y, a, L, hang)
     local SW = F.SWITCH
+    tw = self:trap_block(lx - SW.r, lx + SW.r, ly - SW.r, ly + SW.r, h, h + 2 * SW.r)
+    if tw then return tw end
     if not on_surface(lx, ly, 0.2, SW.r) then return "air" end
     for _, s in ipairs(self:all_solids()) do
         if s.z0 < h + 2 * SW.r - 0.01 and s.z1 > h + 0.01 and lx + SW.r > s.x0 and lx - SW.r < s.x1 and ly + SW.r > s.y0 and ly - SW.r < s.y1 then
@@ -483,6 +577,7 @@ end
 function Board:can_place_swing(x, y, h, a) return self:swing_blocked(x, y, h, a) == nil end
 
 function Board:place_swing(x, y, h, a)
+    h = self:rest(x, y, h, F.SWING.post)
     local why = self:swing_blocked(x, y, h, a)
     if why then return nil, why end
     local L, hang = F.swing_mount(x, y, h)
@@ -536,7 +631,10 @@ end
 -- Why a switch cannot stand at (x, y) on a surface of height h (nil if it can).
 function Board:switch_blocked(x, y, h)
     local W_ = F.SWITCH
-    if self.switch_count >= W_.cap then return "full" end
+    h = self:rest(x, y, h, 2 * W_.r)
+    if self.switch_count >= self:limit("switch", W_.cap) then return "full" end
+    local tw = self:trap_block(x - W_.r, x + W_.r, y - W_.r, y + W_.r, h, h + 2 * W_.r)
+    if tw then return tw end
     local ok = false
     for _, s in ipairs(ROOM.surfaces) do
         if abs(s.h - h) < 1e-4 and in_rect(x, y, s, s.edge and W_.r or 0) then ok = true; break end
@@ -561,6 +659,7 @@ end
 function Board:can_place_switch(x, y, h) return self:switch_blocked(x, y, h) == nil end
 
 function Board:place_switch(x, y, h)
+    h = self:rest(x, y, h, 2 * F.SWITCH.r)
     local why = self:switch_blocked(x, y, h)
     if why then return nil, why end
     self.next_id = self.next_id + 1
@@ -576,7 +675,7 @@ function Board:pick_switch(x, y, h, reach)
     local best, bd
     for _, s in pairs(self.switches) do
         local d = (s.x - x) ^ 2 + (s.y - y) ^ 2
-        if (not h or abs(s.z - h) < 0.8) and d <= reach * reach and (not bd or d < bd or (d == bd and s.id < best.id)) then best, bd = s, d end
+        if not s.fixed and (not h or abs(s.z - h) < 0.8) and d <= reach * reach and (not bd or d < bd or (d == bd and s.id < best.id)) then best, bd = s, d end
     end
     return best
 end
@@ -605,7 +704,9 @@ function Board:fit_ramp(x0, y0, h0, x1, y1, h1)
     local R = F.RAMP
     if abs(h1 - h0) < 0.01 then return nil, "flat" end
     if h1 < h0 then x0, y0, h0, x1, y1, h1 = x1, y1, h1, x0, y0, h0 end
-    if self.ramp_count >= R.cap then return nil, "full" end
+    h0 = self:rest(x0, y0, h0, H)                -- (the foot)
+    if h1 - h0 < 0.01 then return nil, "flat" end
+    if self.ramp_count >= self:limit("ramp", R.cap) then return nil, "full" end
     local dx, dy = x1 - x0, y1 - y0
     local on_x = abs(dx) >= abs(dy)
     local sgn = (on_x and dx or dy) >= 0 and 1 or -1
@@ -625,8 +726,12 @@ function Board:fit_ramp(x0, y0, h0, x1, y1, h1)
     if L < n * R.run then return nil, "steep" end
     local fit = { kind = "ramp", x0 = x0, y0 = y0, z0 = h0, x1 = on_x and rim or x0, y1 = on_x and y0 or rim, z1 = h1 }
     ramp_build(fit)
-    -- Clear of furniture, other ramps and everything standing there.
+    -- Clear of traps, furniture, other ramps and everything standing there.
     local e = 1e-3
+    for _, st in ipairs(fit.solids) do
+        local tw = self:trap_block(st.x0, st.x1, st.y0, st.y1, st.z0, st.z1 + 0.01)
+        if tw then return nil, tw end
+    end
     local solids = self:all_solids()
     for _, st in ipairs(fit.solids) do
         for _, s in ipairs(solids) do
@@ -701,7 +806,7 @@ end
 
 function Board:remove(id)
     local p = self.pieces[id] or self.balls[id] or self.swings[id] or self.switches[id] or self.ramps[id]
-    if not p then return nil end
+    if not p or p.fixed then return nil end     -- a challenge's first domino and goal stay put
     self:_extract(p)
     self:_record("removed", p)
     if p.kind == "ramp" then
@@ -728,9 +833,9 @@ end
 function Board:pick(x, y, h, reach)
     reach = reach or 0.45
     local best, bd
-    self:near(x, y, reach, function(q)
+    self:near(x, y, reach * (self.smax or 1), function(q)
         if not h or abs(q.z - h) < 0.8 then
-            local d = (q.x - x) ^ 2 + (q.y - y) ^ 2
+            local d = ((q.x - x) ^ 2 + (q.y - y) ^ 2) / (q.s * q.s)       -- (a big one is as easy to point at)
             if d <= reach * reach and (not bd or d < bd) then best, bd = q, d end
         end
     end)
@@ -843,51 +948,63 @@ end
 ------------------------------------------------------------------ shapes
 -- The next spot along a stroke from the last domino (lx, ly at height lz) toward the cursor: a full spacing on,
 -- nudged up to 0.3 farther when that spot is taken or blocked (a line climbing a book finds its footing).
-function Board:stroke_step(lx, ly, lz, cx, cy, paint)
+-- size: the new domino's; from: the size of the one before it (they stand half of each one's spacing apart).
+function Board:stroke_step(lx, ly, lz, cx, cy, paint, size, from)
+    size = size or 1
+    local sp = F.SPACING * (size + (from or size)) / 2
     local dx, dy = cx - lx, cy - ly
     local d = sqrt(dx * dx + dy * dy)
-    if d < F.SPACING then return nil, "wait" end
+    if d < sp then return nil, "wait" end
     dx, dy = dx / d, dy / d
     local a = atan2(dy, dx)
     local why
     for k = 0, 3 do
-        local s = F.SPACING + 0.1 * k
+        local s = sp + 0.1 * k * size
         if s > d then return nil, "wait" end
-        local p, w = self:place_auto(lx + dx * s, ly + dy * s, a, paint, lz)
+        local p, w = self:place_auto(lx + dx * s, ly + dy * s, a, paint, lz, size)
         if p then return p end
         why = w
     end
-    return nil, why, lx + dx * F.SPACING, ly + dy * F.SPACING
+    return nil, why, lx + dx * sp, ly + dy * sp
 end
 
-function F.line_spots(x0, y0, x1, y1)
+-- The size of the next domino in a stroke that grows from one of size `from` toward `to` (GROW at a time).
+function F.grow_size(from, to)
+    if to >= from then return min(to, from * F.GROW) end
+    return max(to, from / F.GROW)
+end
+
+-- (the shapes take a size k: the same shape, every measure times k)
+function F.line_spots(x0, y0, x1, y1, k)
+    k = k or 1
     local dx, dy = x1 - x0, y1 - y0
     local L = sqrt(dx * dx + dy * dy)
     local a = L > 1e-6 and atan2(dy, dx) or 0
     local out = {}
-    local n = floor(L / F.SPACING + 1e-6)
+    local n = floor(L / (F.SPACING * k) + 1e-6)
     for i = 0, n do
-        local s = i * F.SPACING
-        out[#out + 1] = { x = x0 + cos(a) * s, y = y0 + sin(a) * s, a = a }
+        local s = i * F.SPACING * k
+        out[#out + 1] = { x = x0 + cos(a) * s, y = y0 + sin(a) * s, a = a, s = k }
     end
     return out
 end
 
 -- An Archimedean spiral from radius R (starting on the side of (sx, sy)) winding in to SPIRAL_MIN, outer end
 -- first, each domino facing along the way the chain runs. cw winds clockwise.
-function F.spiral_spots(cx, cy, sx, sy, cw)
+function F.spiral_spots(cx, cy, sx, sy, cw, k)
+    k = k or 1
     local R = sqrt((sx - cx) ^ 2 + (sy - cy) ^ 2)
     local out = {}
-    if R < F.SPIRAL_MIN + 0.5 then return out end
-    local b = F.SPIRAL_GAP / (2 * pi)
+    if R < (F.SPIRAL_MIN + 0.5) * k then return out end
+    local b = F.SPIRAL_GAP * k / (2 * pi)
     local ang = atan2(sy - cy, sx - cx)
     local sgn = cw and -1 or 1
     local r = R
-    while r > F.SPIRAL_MIN and #out < 4000 do
+    while r > F.SPIRAL_MIN * k and #out < 4000 do
         local ca, sa = cos(ang), sin(ang)
         local tx, ty = -b * ca - r * sa * sgn, -b * sa + r * ca * sgn
-        out[#out + 1] = { x = cx + r * ca, y = cy + r * sa, a = atan2(ty, tx) }
-        local dphi = F.SPACING / sqrt(r * r + b * b)
+        out[#out + 1] = { x = cx + r * ca, y = cy + r * sa, a = atan2(ty, tx), s = k }
+        local dphi = F.SPACING * k / sqrt(r * r + b * b)
         ang = ang + dphi * sgn
         r = r - b * dphi
     end
@@ -896,24 +1013,25 @@ end
 
 -- A field: from its point at (ax, ay) it fans out row by row toward (bx, by) until it is `width` wide, then runs
 -- on at that width. Rows are staggered, so each domino strikes the two in the row ahead and the wave fills it all.
-function F.field_spots(ax, ay, bx, by, width)
+function F.field_spots(ax, ay, bx, by, width, k)
+    k = k or 1
     local dx, dy = bx - ax, by - ay
     local L = sqrt(dx * dx + dy * dy)
     local out = {}
-    if L < 1e-6 then return { { x = ax, y = ay, a = 0, row = 0 } } end
+    if L < 1e-6 then return { { x = ax, y = ay, a = 0, row = 0, s = k } } end
     local ux, uy = dx / L, dy / L
     local px, py = -uy, ux
     local a = atan2(uy, ux)
-    local nmax = max(1, floor(width / F.FIELD_LAT + 1e-6) + 1)
-    local rows = floor(L / F.SPACING + 1e-6) + 1
-    for k = 0, rows - 1 do
+    local nmax = max(1, floor(width / (F.FIELD_LAT * k) + 1e-6) + 1)
+    local rows = floor(L / (F.SPACING * k) + 1e-6) + 1
+    for row = 0, rows - 1 do
         local n
-        if k + 1 <= nmax then n = k + 1 else n = ((k - nmax) % 2 == 0) and (nmax - 1) or nmax end
+        if row + 1 <= nmax then n = row + 1 else n = ((row - nmax) % 2 == 0) and (nmax - 1) or nmax end
         if n < 1 then n = 1 end
         for i = 0, n - 1 do
-            local l = (-(n - 1) / 2 + i) * F.FIELD_LAT
-            local s = k * F.SPACING
-            out[#out + 1] = { x = ax + ux * s + px * l, y = ay + uy * s + py * l, a = a, row = k, col = i }
+            local l = (-(n - 1) / 2 + i) * F.FIELD_LAT * k
+            local s = row * F.SPACING * k
+            out[#out + 1] = { x = ax + ux * s + px * l, y = ay + uy * s + py * l, a = a, row = row, col = i, s = k }
         end
     end
     return out
@@ -930,7 +1048,7 @@ end
 function Board:place_spots(spots, paint, h0)
     local n, last = 0, h0
     for i, s in ipairs(spots) do
-        local p = self:place_auto(s.x, s.y, s.a, paint and paint(i, s) or "cream", s.row and h0 or last)
+        local p = self:place_auto(s.x, s.y, s.a, paint and paint(i, s) or "cream", s.row and h0 or last, s.s)
         if p then n = n + 1; last = p.z end
     end
     return n
@@ -938,15 +1056,19 @@ end
 
 -- A straight line from (x0, y0) to (x1, y1), walked like a stroke: each domino a spacing on from the last, nudged
 -- forward when its spot is taken (so it finds its footing on a book's step), skipping past anything solid.
-function Board:place_line(x0, y0, x1, y1, paint, h0)
+-- size: every domino's; grow: the size the line grows (or shrinks) to from there, a step at a time.
+function Board:place_line(x0, y0, x1, y1, paint, h0, size, grow)
     local n = 0
-    local first, why = self:place_auto(x0, y0, atan2(y1 - y0, x1 - x0), paint and paint(1) or "cream", h0)
+    size = size or 1
+    local first, why = self:place_auto(x0, y0, atan2(y1 - y0, x1 - x0), paint and paint(1) or "cream", h0, size)
     local lx, ly, lz = x0, y0, h0
     if first then n, lz = 1, first.z end
     for _ = 1, 10000 do
-        local p, w, gx, gy = self:stroke_step(lx, ly, lz, x1, y1, paint and paint(n + 1) or "cream")
+        local nxt = grow and F.grow_size(size, grow) or size
+        local p, w, gx, gy = self:stroke_step(lx, ly, lz, x1, y1, paint and paint(n + 1) or "cream", nxt, size)
         if p then
             n = n + 1
+            size = nxt
             lx, ly, lz = p.x, p.y, p.z
         elseif gx then
             lx, ly = gx, gy                 -- blocked here: leave a gap and carry on beyond it
@@ -959,8 +1081,9 @@ function Board:place_line(x0, y0, x1, y1, paint, h0)
 end
 
 -- Lay dominoes along a smooth path through waypoints (Catmull-Rom), walked like a stroke. Returns the last domino.
-function Board:place_path(pts, paint, h0)
-    local first = self:place_auto(pts[1][1], pts[1][2], atan2(pts[2][2] - pts[1][2], pts[2][1] - pts[1][1]), paint and paint(1) or "cream", h0)
+function Board:place_path(pts, paint, h0, size, grow)
+    size = size or 1
+    local first = self:place_auto(pts[1][1], pts[1][2], atan2(pts[2][2] - pts[1][2], pts[2][1] - pts[1][1]), paint and paint(1) or "cream", h0, size)
     local lx, ly, lz = pts[1][1], pts[1][2], first and first.z or h0
     local last, n = first, first and 1 or 0
     for i = 1, #pts - 1 do
@@ -971,8 +1094,9 @@ function Board:place_path(pts, paint, h0)
             local cx = 0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
             local cy = 0.5 * (2 * p1[2] + (-p0[2] + p2[2]) * t + (2 * p0[2] - 5 * p1[2] + 4 * p2[2] - p3[2]) * t2 + (-p0[2] + 3 * p1[2] - 3 * p2[2] + p3[2]) * t3)
             for _ = 1, 4 do
-                local p, _, gx, gy = self:stroke_step(lx, ly, lz, cx, cy, paint and paint(n + 1) or "cream")
-                if p then lx, ly, lz, last, n = p.x, p.y, p.z, p, n + 1
+                local nxt = grow and F.grow_size(size, grow) or size
+                local p, _, gx, gy = self:stroke_step(lx, ly, lz, cx, cy, paint and paint(n + 1) or "cream", nxt, size)
+                if p then lx, ly, lz, last, n, size = p.x, p.y, p.z, p, n + 1, nxt
                 elseif gx then lx, ly = gx, gy
                 else break end
             end
@@ -981,24 +1105,307 @@ function Board:place_path(pts, paint, h0)
     return last, n
 end
 
--- The build a first visit opens on: a line from the front of the room that winds across the floor, climbs the
--- staircase of books and comes down the other side, then swings round and fans out into a field across the open
--- floor.
+-- How far ahead of where it stood a domino of size k comes down after tipping off an edge `drop` high, and how long
+-- it is in the air.
+function F.dive_throw(drop, k)
+    k = k or 1
+    local td = sqrt(2 * drop / F.BALL.g) * 1.15
+    return (T + H) * k / 2 + F.DIVE.speed * sqrt(k) * td, td
+end
+
+-- The build a first visit opens on, a tour of the ways dominoes fall: a line from the front of the room winds across
+-- the floor, climbs the staircase of books and a ramp onto the coffee table, fans out across the table and pours off
+-- its front edge; one of the fallers starts a line that grows a size at a time into Titans, and the last Titan comes
+-- down on a fan of Minis.
 function F.demo(board)
     board:begin_action()
     local k = 0
     local function rainbow() k = k + 1; return F.PAINTS[floor((k - 1) / 6) % 5 + 1] end
+    local tbl
+    for _, s in ipairs(ROOM.surfaces) do if s.name == "coffee table" then tbl = s end end
+    local ym = (tbl.y0 + tbl.y1) / 2
+    board:place_ramp(25, ym, 0, tbl.x1, ym, tbl.h)
+    -- Along the front, over the books, up the right side, up the ramp and round the back of the table.
     local last = board:place_path({ { -26, -29 }, { -14, -29.5 }, { -2, -28.5 }, { 5, -25 }, { 8.5, -19.5 }, { 12, -19 },
-        { 24, -19 }, { 36.5, -19 }, { 37.6, -15 }, { 36, -10 }, { 31, -6 }, { 27, -3.5 } }, rainbow, 0)
-    if last then
-        local ax, ay = cos(last.a), sin(last.a)
-        local sx, sy = last.x + ax * F.SPACING, last.y + ay * F.SPACING
-        board:place_spots(F.field_spots(sx, sy, sx + ax * 26, sy + ay * 26, 9.6), F.field_paint, last.z)
+        { 24, -19 }, { 36.5, -19 }, { 37.6, -15 }, { 36, -10 }, { 32.5, -5 }, { 29.6, -0.6 }, { 27.6, ym - 0.1 }, { 26.4, ym },
+        { 20, ym }, { 10, ym }, { 2, ym }, { tbl.x1 - 1.2, ym }, { tbl.x1 - 3.6, ym + 0.6 }, { tbl.x1 - 6, ym + 2.8 }, { tbl.x1 - 8.6, ym + 4.5 },
+        { tbl.x1 - 11.2, ym + 4.7 }, { tbl.x1 - 12.9, ym + 4.1 }, { tbl.x1 - 13.5, ym + 3 } }, rainbow, 0)
+    if not last or last.z < tbl.h - 0.01 then last = { x = tbl.x1 - 13.5, y = ym + 3, z = tbl.h } end
+    -- A fan across the table to its front edge: the last row has nothing ahead of it but the drop.
+    local fx = last.x
+    local edge = tbl.y0 + 0.15
+    local rows = floor((last.y - edge - 0.47) / F.SPACING)
+    board:place_spots(F.field_spots(fx, edge + rows * F.SPACING, fx, edge, 9), F.field_paint, tbl.h)
+    -- Where the middle of that row lands a short row stands waiting, and behind it the line that grows...
+    local rug = 0
+    for _, s in ipairs(ROOM.surfaces) do if s.name == "rug" then rug = s.h end end
+    local ly = edge - F.dive_throw(tbl.h - rug) - 0.6      -- (just past where a faller's far end comes down, so it lands behind them)
+    for i = -2, 2 do board:place(fx + i * 0.62, ly, -pi / 2, rug, "cream") end
+    local turn = board:place_path({ { fx, ly - F.SPACING }, { fx, ly - 2.4 }, { fx + 0.9, ly - 4.2 }, { fx + 3, ly - 5 } }, rainbow, rug)
+    local ay = turn and turn.y or ly - 5
+    local ax = (turn and turn.x or fx + 3) + F.SPACING * (1 + F.GROW) / 2
+    board:place_line(ax, ay, ax + 16.2, ay, function() return "brick" end, rug, F.GROW, F.SIZES[5])
+    -- ...and the last Titan has a fan of Minis under it.
+    local titan
+    for _, p in pairs(board.pieces) do
+        if p.s > 3 and (not titan or p.x > titan.x) then titan = p end
+    end
+    if titan then
+        local sx = titan.x + T * titan.s / 2 + 0.55
+        board:place_spots(F.field_spots(sx, ay, sx + 7.6, ay, 8.2, F.SIZES[1]), F.field_paint, rug)
     end
     board.start = nil
     board:end_action()
     board.undo_stack, board.redo_stack = {}, {}
+    board.sample_rev = board.rev      -- tipped untouched, it is not your own build
     return board
+end
+
+------------------------------------------------------------------ traps
+-- TRAP API (for the world, the view and challenge authors). Units are table units (x, y, h up); angles in radians.
+--
+-- Installing (a challenge does this through C.new_board(def), from def.traps):
+--   board:add_trap(spec) -> trap      Copies spec; asserts on a bad one. Never recorded for undo, never saved, cannot be
+--                                     removed, erased or cleared. Install traps before presets and the player's pieces.
+--   board:check_traps()               Asserts that every string's holds names an installed weight, plank, gate or support.
+--   board:place_preset(x, y, a, h, paint, size) -> p | nil, why
+--                                     A challenge's fixed domino (size: a scale, default 1): p.fixed = p.preset = true,
+--                                     may stand on a support, not in the budget (board.preset_count), not saved.
+--   board.traps[id] -> trap           board.trap_order: every trap in install order (iterate this, it is deterministic).
+--   board:trap_block(x0, x1, y0, y1, z0, z1) -> "zone" | "trap" | nil   What refuses a box there.
+-- Specs (every trap but a zone needs a unique string id; a zone's defaults to "zone <n>"):
+--   { kind = "zone", x0, x1, y0, y1 [, z0, z1] }  Nothing may be placed overlapping it (at any height, or only within
+--       z0..z1 if given). It has no body and no events.
+--   { kind = "string", id, a = { x, y, h }, b = { x, y, h } [, holds = "<trap id>"] }  A taut string between a and b
+--       (points as { x, y, h } or { x = , y = , h = }). Cut once, by: a falling domino whose body sweeps through it, a
+--       domino diving off an edge through it, a ball or swing bob (preview or engine) crossing it, a dropped weight or
+--       a falling plank passing through it. Cutting it releases what it holds.
+--   { kind = "weight", id, x, y, h, r }  Hangs with its base at h; its body is the box x +- r, y +- r, h .. h + 2r.
+--       Released, it falls freely (F.BALL.g) to the highest surface or solid top under (x, y) and, as it lands, within r
+--       of (x, y) at that height: knocks over standing dominoes of any size (away from its middle, along their facing),
+--       presses switches, launches balls (F.TRAP.weight_kick, away from its middle) and collapses a support it lands on.
+--   { kind = "plank", id, x, y, h, a, len [, width = F.TRAP.plank_w] }  Stands upright, hinged on the line through
+--       (x, y, h) across a; its body is F.TRAP.plank_t thick behind that line, width wide, len tall. Released, it tips
+--       along a about the hinge like one tall domino (it may go past flat, down an edge) until its far end comes down
+--       on a surface or solid top, or meets furniture or a closed gate from the side (it stops there; a support it meets
+--       collapses). Standing dominoes its body reaches on the way go over as it reaches them; where its far end comes
+--       down (within max(F.TRAP.knock, width / 2)) it knocks over dominoes along a, presses switches, launches balls and
+--       collapses a support. It does not become a surface: it carries a chain across a gap by striking.
+--   { kind = "gate", id, x0, x1, y0, y1, z0, z1 }  Solid (to dominoes, balls, bobs, planks) until released, then gone.
+--       A domino that starts to fall while it is closed and meets it is blocked there for good, even if it opens later.
+--   { kind = "support", id, x0, x1, y0, y1, z0, z1 }  A fragile stack: solid, and its top (h = z1) is a surface only
+--       presets (and a challenge's locked pieces) may stand on. It collapses when a falling domino comes to rest against
+--       it (or slides over it as a ledge), a domino dives onto its top, a ball (>= F.TRAP.support_hit) or a bob
+--       (>= F.SWING.min_hit) strikes it, a weight or plank comes down on it, or a string holding it is cut. Then its body
+--       and top are gone, and every domino, ball and switch still standing on its top is lost: it never falls or acts.
+-- Placing (dominoes, balls, switches, swings, ramps) is refused with:
+--   "zone"     overlapping a zone;    "trap"  inside a trap's body or through a string;
+--   "support"  a domino on a support's top (place_preset and C.new_board's locked pieces are allowed).
+-- A run (F.simulate / F.begin_run, preview and live alike) steps the traps in its own event queue, never as engine bodies:
+--   res.traps  time-ordered events; every one has { t, id, kind, event }, and per event:
+--     string  "cut"       by = "domino" | "dive" | "ball" | "swing" | "weight" | "plank";  x, y, h: where it was cut;
+--                         holds: the id it held (released at the same t, its event follows)
+--     weight  "drop"      x, y; h: its base before, z: its base at rest; t1: when it lands. F.weight_height(e, t)
+--             "land"      x, y; h: its base at rest (= drop's z)
+--     plank   "fall"      angle: its final tilt from upright about the hinge, toward a (pi / 2 = flat; more = down an
+--                         edge); t1: when it gets there; x, y, h: its far end then. F.plank_angle(e, t)
+--             "land"      x, y, h: where its far end came down (only when it came down on something; not when it
+--                         stopped against furniture or a gate)
+--     gate    "open"      (nothing more: it is gone from t)
+--     support "collapse"  by = "domino" | "dive" | "ball" | "swing" | "weight" | "plank" | "string";
+--                         lost = { piece ids } (the same as res.lost entries at this t)
+--   res.lost   { { id, t }, ... } in time order: pieces lost with a support (dominoes, balls, switches).
+--   res.duration covers the trap events. In a live run (begin_run with ext) events arrive as advance() reaches them, and
+--   run.strike_ball / run.strike_bob also cut strings and collapse supports; the engine bodies themselves are the world's
+--   (a gate, plank, weight or support that should stop an engine ball needs a body the world removes on its event).
+F.TRAP = { string_r = 0.04, plank_t = 0.3, plank_w = 1.5, knock = 0.6, support_hit = 3.9, weight_kick = 10 }
+local TRAP_KINDS = { zone = true, string = true, weight = true, plank = true, gate = true, support = true }
+
+local function num(v, what)
+    assert(type(v) == "number" and v - v == 0, what .. " must be a finite number")
+    return v
+end
+
+-- A string's end: { x, y, h } or { x = , y = , h = }.
+local function trap_point(t, what)
+    assert(type(t) == "table", what .. " must be a point { x, y, h }")
+    return num(t.x or t[1], what .. ".x"), num(t.y or t[2], what .. ".y"), num(t.h or t[3], what .. ".h")
+end
+
+-- The boxes a trap fills while it is in place (what blocks placing and what a faller, a ball or a bob meets).
+local function trap_boxes(tr)
+    local k = tr.kind
+    if k == "gate" or k == "support" then
+        return { { x0 = tr.x0, x1 = tr.x1, y0 = tr.y0, y1 = tr.y1, z0 = tr.z0, z1 = tr.z1 } }
+    elseif k == "weight" then
+        return { { x0 = tr.x - tr.r, x1 = tr.x + tr.r, y0 = tr.y - tr.r, y1 = tr.y + tr.r, z0 = tr.h, z1 = tr.h + 2 * tr.r } }
+    elseif k == "plank" then
+        -- Upright on its hinge, its thickness behind the hinge line (like a domino on its front edge). (Its bounding box.)
+        local c, s, t, hw = cos(tr.a), sin(tr.a), F.TRAP.plank_t, tr.width / 2
+        local x0, x1, y0, y1 = 1e9, -1e9, 1e9, -1e9
+        for _, u in ipairs({ -t, 0 }) do
+            for _, v in ipairs({ -hw, hw }) do
+                local x, y = tr.x + c * u - s * v, tr.y + s * u + c * v
+                x0, x1, y0, y1 = min(x0, x), max(x1, x), min(y0, y), max(y1, y)
+            end
+        end
+        return { { x0 = x0, x1 = x1, y0 = y0, y1 = y1, z0 = tr.h, z1 = tr.h + tr.len } }
+    end
+    return {}
+end
+
+-- Install a trap from its spec (copied; the spec is not changed). Returns the trap. Traps sit outside the pieces, the
+-- undo history and the save: nothing the player does removes them.
+function Board:add_trap(spec)
+    local k = spec.kind
+    assert(TRAP_KINDS[k], "unknown trap kind " .. tostring(k))
+    local tr = {}
+    for key, v in pairs(spec) do tr[key] = v end
+    if k == "zone" then
+        tr.id = tr.id or ("zone " .. (#self.trap_order + 1))
+    else
+        assert(type(tr.id) == "string" and tr.id ~= "", k .. ": a trap needs a string id")
+    end
+    assert(not self.traps[tr.id], "two traps are called " .. tr.id)
+    if k == "zone" or k == "gate" or k == "support" then
+        for _, f in ipairs({ "x0", "x1", "y0", "y1" }) do num(tr[f], tr.id .. "." .. f) end
+        assert(tr.x0 < tr.x1 and tr.y0 < tr.y1, tr.id .. ": x0 < x1 and y0 < y1")
+        if k ~= "zone" or tr.z0 or tr.z1 then
+            num(tr.z0, tr.id .. ".z0"); num(tr.z1, tr.id .. ".z1")
+            assert(tr.z0 < tr.z1, tr.id .. ": z0 < z1")
+        end
+    elseif k == "string" then
+        tr.sx0, tr.sy0, tr.sz0 = trap_point(tr.a, tr.id .. ".a")
+        tr.sx1, tr.sy1, tr.sz1 = trap_point(tr.b, tr.id .. ".b")
+        local R = F.TRAP.string_r
+        tr.bx0, tr.bx1 = min(tr.sx0, tr.sx1) - R, max(tr.sx0, tr.sx1) + R
+        tr.by0, tr.by1 = min(tr.sy0, tr.sy1) - R, max(tr.sy0, tr.sy1) + R
+        tr.bz0, tr.bz1 = min(tr.sz0, tr.sz1) - R, max(tr.sz0, tr.sz1) + R
+        tr.len = sqrt((tr.sx1 - tr.sx0) ^ 2 + (tr.sy1 - tr.sy0) ^ 2 + (tr.sz1 - tr.sz0) ^ 2)
+        assert(tr.len > 0.05, tr.id .. ": a string needs two different ends")
+        assert(tr.holds == nil or type(tr.holds) == "string", tr.id .. ": holds names a trap id")
+    elseif k == "weight" then
+        for _, f in ipairs({ "x", "y", "h", "r" }) do num(tr[f], tr.id .. "." .. f) end
+        assert(tr.r > 0, tr.id .. ": r > 0")
+    elseif k == "plank" then
+        for _, f in ipairs({ "x", "y", "h", "a", "len" }) do num(tr[f], tr.id .. "." .. f) end
+        tr.width = num(tr.width or F.TRAP.plank_w, tr.id .. ".width")
+        assert(tr.len > 0 and tr.width > 0, tr.id .. ": len and width > 0")
+    end
+    tr.boxes = trap_boxes(tr)
+    self.traps[tr.id] = tr
+    self.trap_order[#self.trap_order + 1] = tr
+    if k == "support" then self.support_count = (self.support_count or 0) + 1 end
+    self._surf, self._sol = nil, nil
+    self.rev = self.rev + 1
+    return tr
+end
+
+-- Every string's holds names an installed weight, plank, gate or support (call once all traps are in).
+function Board:check_traps()
+    for _, tr in ipairs(self.trap_order) do
+        if tr.holds then
+            local h = self.traps[tr.holds]
+            assert(h and h.kind ~= "zone" and h.kind ~= "string", tr.id .. ": holds " .. tostring(tr.holds) .. ", not a weight, plank, gate or support")
+        end
+    end
+end
+
+-- A fixed piece of a challenge: like place, but it may stand on a support, cannot be removed and does not count
+-- against the budget. size: a scale (F.SIZES[i]), default 1.
+function Board:place_preset(x, y, a, h, paint, size)
+    self._installing = true
+    local p, why = self:place(x, y, a, h, paint, size)
+    self._installing = nil
+    if not p then return nil, why end
+    p.fixed, p.preset = true, true
+    self.preset_count = self.preset_count + 1
+    return p
+end
+
+-- Segment (x0, y0, z0)-(x1, y1, z1) through the box (open: touching a face is not through).
+local function seg_box(x0, y0, z0, x1, y1, z1, bx0, bx1, by0, by1, bz0, bz1)
+    local t0, t1 = 0, 1
+    local p, d, lo, hi = { x0, y0, z0 }, { x1 - x0, y1 - y0, z1 - z0 }, { bx0, by0, bz0 }, { bx1, by1, bz1 }
+    for i = 1, 3 do
+        if abs(d[i]) < 1e-12 then
+            if p[i] <= lo[i] or p[i] >= hi[i] then return false end
+        else
+            local a, b = (lo[i] - p[i]) / d[i], (hi[i] - p[i]) / d[i]
+            if a > b then a, b = b, a end
+            t0, t1 = max(t0, a), min(t1, b)
+            if t0 >= t1 then return false end
+        end
+    end
+    return true
+end
+
+-- Why nothing may fill the box x0..x1, y0..y1, z0..z1 (heights): "zone" or "trap" (a trap's body or string), or nil.
+function Board:trap_block(x0, x1, y0, y1, z0, z1)
+    local list = self.trap_order
+    if #list == 0 then return nil end
+    local e = 0.01
+    for i = 1, #list do
+        local tr = list[i]
+        if tr.kind == "zone" and x1 > tr.x0 and x0 < tr.x1 and y1 > tr.y0 and y0 < tr.y1 and (not tr.z0 or (z1 > tr.z0 and z0 < tr.z1)) then return "zone" end
+    end
+    local R = F.TRAP.string_r
+    for i = 1, #list do
+        local tr = list[i]
+        if tr.kind == "string" then
+            if seg_box(tr.sx0, tr.sy0, tr.sz0, tr.sx1, tr.sy1, tr.sz1, x0 - R, x1 + R, y0 - R, y1 + R, z0 + e - R, z1 - e + R) then return "trap" end
+        else
+            for _, b in ipairs(tr.boxes) do
+                if x1 > b.x0 + e and x0 < b.x1 - e and y1 > b.y0 + e and y0 < b.y1 - e and z1 > b.z0 + e and z0 < b.z1 - e then return "trap" end
+            end
+        end
+    end
+    return nil
+end
+
+-- Closest approach of segments P-Q and R-S: squared distance, and where on each (0..1).
+local function seg_seg(px, py, pz, qx, qy, qz, rx, ry, rz, sx, sy, sz)
+    local d1x, d1y, d1z = qx - px, qy - py, qz - pz
+    local d2x, d2y, d2z = sx - rx, sy - ry, sz - rz
+    local wx, wy, wz = px - rx, py - ry, pz - rz
+    local a = d1x * d1x + d1y * d1y + d1z * d1z
+    local e = d2x * d2x + d2y * d2y + d2z * d2z
+    local f = d2x * wx + d2y * wy + d2z * wz
+    local u, v
+    local function cl(x) return x < 0 and 0 or (x > 1 and 1 or x) end
+    if a <= 1e-12 and e <= 1e-12 then u, v = 0, 0
+    elseif a <= 1e-12 then u, v = 0, cl(f / e)
+    else
+        local c = d1x * wx + d1y * wy + d1z * wz
+        if e <= 1e-12 then u, v = cl(-c / a), 0
+        else
+            local b = d1x * d2x + d1y * d2y + d1z * d2z
+            local den = a * e - b * b
+            u = den > 1e-12 and cl((b * f - c * e) / den) or 0
+            v = (b * u + f) / e
+            if v < 0 then v, u = 0, cl(-c / a)
+            elseif v > 1 then v, u = 1, cl((b - c) / a) end
+        end
+    end
+    local dx = px + d1x * u - rx - d2x * v
+    local dy = py + d1y * u - ry - d2y * v
+    local dz = pz + d1z * u - rz - d2z * v
+    return dx * dx + dy * dy + dz * dz, u, v
+end
+F.seg_seg = seg_seg
+
+-- A plank's tilt (radians from upright) at time t, from its "fall" event: it tips like a domino.
+function F.plank_angle(e, t)
+    if t <= e.t then return 0 end
+    if t >= e.t1 then return e.angle end
+    return e.angle * ((t - e.t) / (e.t1 - e.t)) ^ 1.6
+end
+
+-- A dropped weight's base height at time t, from its "drop" event: free fall from h to z.
+function F.weight_height(e, t)
+    if t <= e.t then return e.h end
+    if t >= e.t1 then return e.z end
+    return max(e.z, e.h - 0.5 * F.BALL.g * (t - e.t) ^ 2)
 end
 
 ------------------------------------------------------------------ simulation
@@ -1011,35 +1418,38 @@ end
 -- from how far the next has gone. S: pivot to pivot along the fall; dz: how much higher the next one stands.
 local FLAT = rad(F.REST)
 F.LEAN_GAP = rad(0.5)       -- a hair between faces at rest: dominoes in a row end up lying face on face
-function F.lean(next_a, S, dz)
-    dz = dz or 0
+-- hi: the leaner's height; tj, hj: the thickness and height of the one it leans on (a standard domino's if not given).
+function F.lean(next_a, S, dz, hi, tj, hj)
+    dz, hi, tj, hj = dz or 0, hi or H, tj or T, hj or H
     local c, s = cos(next_a), sin(next_a)
     local best = FLAT
     -- Its top edge coming down on the next one's back...
-    local a = next_a + asin(max(-1, min(1, (S * c - dz * s - T) / H)))
-    local along = H * cos(a - next_a) - S * s - dz * c
-    if along >= 0 and along <= H then best = min(best, a) end
+    local a = next_a + asin(max(-1, min(1, (S * c - dz * s - tj) / hi)))
+    local along = hi * cos(a - next_a) - S * s - dz * c
+    if along >= 0 and along <= hj then best = min(best, a) end
     -- ...or its front face on the next one's two back corners, whichever comes first.
-    for k = 0, H, H do
-        local bx, bz = S - T * c + k * s, dz + T * s + k * c
-        if bx * bx + bz * bz <= H * H then best = min(best, atan2(bx, bz)) end
+    for k = 0, hj, hj do
+        local bx, bz = S - tj * c + k * s, dz + tj * s + k * c
+        if bx * bx + bz * bz <= hi * hi and bz > 1e-9 then best = min(best, atan2(bx, bz)) end
     end
     return best
 end
 
 -- Where a domino comes to rest in a row of evenly spaced ones, having struck the next at this angle: leaning on it
 -- with both at the same tilt, cos(tilt) = thickness / spacing. Past the widest spacing that can hold it, it lies flat.
-function F.rest_angle(contact)
-    local S = H * sin(contact) + T
-    if S * S >= H * H + T * T then return FLAT end
-    return max(contact, acos(T / S) - F.LEAN_GAP)
+function F.rest_angle(contact, hi, tj)
+    hi, tj = hi or H, tj or T
+    local S = hi * sin(contact) + tj
+    if S * S >= hi * hi + tj * tj then return FLAT end
+    return max(contact, acos(tj / S) - F.LEAN_GAP)
 end
 
 -- Connecting dominoes as the chain reaches them. f.on_id: what f leans on; falls: records by id; waiting: leaners
 -- whose target has not fallen yet. Each new fact runs back up the chain, shrinking fast, so this stays local.
 local function refit(i)
     local j = i.on
-    local new = min(FLAT, F.lean(j.final, i.S, i.dz) - F.LEAN_GAP)
+    -- (what it leaned on went off an edge: it is left lying flat)
+    local new = j.dive and FLAT or min(FLAT, F.lean(j.final, i.S, i.dz, i.hh, j.tt, j.hh) - F.LEAN_GAP)
     if abs(new - i.final) < 1e-4 then return end
     i.final = new
     for _, k in ipairs(i.leaners or {}) do refit(k) end
@@ -1081,16 +1491,25 @@ function F.fall_angle(f, t)
     if t <= f.t then return 0 end
     local span = max(1e-3, f.tc - f.t)
     if t < f.tc then return f.contact * ((t - f.t) / span) ^ 1.6 end
-    if f.on then
+    local j = f.on
+    if j then
         if t >= f.t_end then return f.final end
         if f.ang_t == t then return f.ang end
         f.ang_t, f.ang = t, f.final
-        -- (no faster than it was already going, if what it leans on started before it arrived)
-        local a = min(f.final, F.lean(F.fall_angle(f.on, t), f.S, f.dz), f.contact + (t - f.tc) * 1.6 * max(f.contact, 0.2) / span)
+        local a
+        if j.dive and t >= j.dive.t0 then
+            -- It lay on one that has just gone over an edge: it settles flat.
+            local a0 = min(FLAT, F.lean(FLAT, f.S, f.dz, f.hh, j.tt, j.hh))
+            local s = max(0, min(1, (t - j.dive.t0) / SETTLE))
+            a = a0 + (FLAT - a0) * s * s * (3 - 2 * s)
+        else
+            -- (no faster than it was already going, if what it leans on started before it arrived)
+            a = min(f.final, F.lean(F.fall_angle(j, t), f.S, f.dz, f.hh, j.tt, j.hh), f.contact + (t - f.tc) * 1.6 * max(f.contact, 0.2) / span)
+        end
         f.ang = a
         return a
     end
-    local u = (t - f.tc) / SETTLE
+    local u = (t - f.tc) / (SETTLE * sqrt(f.s or 1))
     local s = max(0, min(1, u))
     local a = f.contact + (f.final - f.contact) * s * s * (3 - 2 * s)
     if f.final >= rad(85) and u > 0 and u < 1.6 then
@@ -1190,11 +1609,13 @@ end
 -- The kick a domino falling through th gives a ball it meets at arm from its pivot: the domino's tip speed from the
 -- energy it has lost falling, the ball's share of a collision with the domino's effective mass there, and 5/7 of
 -- that left once the ball has stopped sliding and is rolling.
-function F.ball_kick(th, arm)
+function F.ball_kick(th, arm, k)
     local B = F.BALL
+    k = k or 1
+    local H = H * k
     arm = min(H, max(0.1, arm))
     local omega = sqrt(3 * B.g / H * (1 - cos(th)))
-    local eff = B.domino * H * H / (3 * arm * arm)
+    local eff = B.domino * k * k * k * H * H / (3 * arm * arm)
     return (1 + B.e) * eff / (eff + B.mass) * omega * arm * 5 / 7
 end
 
@@ -1202,7 +1623,8 @@ end
 -- ext.swing(p, t)) the engine's rigid bodies move the balls and swings, and strike_ball / strike_bob feed what they
 -- meet back into the chain; without it they are stepped here, which is what the tests and the build preview use.
 function F.begin_run(board, ext)
-    local res = { falls = {}, order = {}, events = {}, toppled = 0, total = board.count, duration = 0, gaps = {}, balls = {}, swings = {}, switches = {} }
+    local res = { falls = {}, order = {}, events = {}, toppled = 0, total = board.count, duration = 0, gaps = {}, balls = {}, swings = {}, switches = {}, balls_launched = 0, swings_released = 0,
+        traps = {}, lost = {} }
     local st, sdir = board:starter()
     if not st then
         return { res = res, advance = function() end, finish = function() end, pending = function() return false end,
@@ -1216,8 +1638,24 @@ function F.begin_run(board, ext)
     push(0, st, st.ax * sdir, st.ay * sdir)
     local done, wobbled = {}, {}
     local solids = board:all_solids()
-    local reach = H + W
+    local smax = board.smax or 1
     local hit_q, hit_th, hit_kick = {}, {}, {}
+    res.lands = {}
+    local gone = {}         -- traps no longer in place (cut, dropped, fallen, open, collapsed), by id
+    -- The highest thing under (x, y) that is no higher than z: where something dropped from there comes down.
+    local surfaces = board:all_surfaces()
+    local function ground_below(x, y, z)
+        local g = 0
+        for i = 1, #surfaces do
+            local s = surfaces[i]
+            if s.h > g and s.h <= z + 0.05 and x >= s.x0 and x <= s.x1 and y >= s.y0 and y <= s.y1 and not (s.trap and gone[s.trap.id]) then g = s.h end
+        end
+        for i = 1, #solids do
+            local s = solids[i]
+            if s.z1 > g and s.z1 <= z + 0.05 and x >= s.x0 and x <= s.x1 and y >= s.y0 and y <= s.y1 and not (s.trap and gone[s.trap.id]) then g = s.z1 end
+        end
+        return g
+    end
     local B = F.BALL
     local RP = F.RAMP
     local ramp_list = {}
@@ -1288,12 +1726,223 @@ function F.begin_run(board, ext)
         end
         solids = all
     end
+    local waiting = {}
+    ------------------------------------------------ traps, stepped in the same queue
+    local TR = F.TRAP
+    local strings = {}
+    for _, tr in ipairs(board.trap_order) do if tr.kind == "string" then strings[#strings + 1] = tr end end
+    local function trap_event(e)
+        res.traps[#res.traps + 1] = e
+        if e.t > res.duration then res.duration = e.t end
+    end
+    local function push_trap(t, tr, ev, info)
+        seq = seq + 1
+        heap_push(hp, { t = t, trap = tr, ev = ev, info = info, seq = seq })
+    end
+    local function cut(s, t, by, x, y, z)
+        if not gone[s.id] then push_trap(t, s, "cut", { by = by, x = x, y = y, z = z }) end
+    end
+    -- A sphere of radius r moving from (ax, ay, az) to (bx, by, bz) (centres) at time t cuts the strings it touches.
+    local function cut_sphere(ax, ay, az, bx, by, bz, r, t, by_what)
+        local R = r + TR.string_r
+        for i = 1, #strings do
+            local s = strings[i]
+            if not gone[s.id] and min(ax, bx) - r < s.bx1 and max(ax, bx) + r > s.bx0 and min(ay, by) - r < s.by1 and max(ay, by) + r > s.by0
+                and min(az, bz) - r < s.bz1 and max(az, bz) + r > s.bz0 then
+                local d2, _, v = seg_seg(ax, ay, az, bx, by, bz, s.sx0, s.sy0, s.sz0, s.sx1, s.sy1, s.sz1)
+                if d2 < R * R then
+                    cut(s, t, by_what, s.sx0 + (s.sx1 - s.sx0) * v, s.sy0 + (s.sy1 - s.sy0) * v, s.sz0 + (s.sz1 - s.sz0) * v)
+                end
+            end
+        end
+    end
+    -- Something tipping over like a domino (pivot on the front edge of the one standing at (px, py, pz), facing fx, fy,
+    -- thickness PT, width PW, height PH) as far as thmax, from time t, reaching `contact` at tc: the strings it sweeps.
+    local function sweep_strings(px, py, pz, fx, fy, PT, PW, PH, thmax, t, tc, contact, by_what)
+        local ox, oy = px + fx * PT / 2, py + fy * PT / 2
+        local reach = PH + PT
+        for i = 1, #strings do
+            local s = strings[i]
+            if not gone[s.id] and s.bx0 < px + reach and s.bx1 > px - reach and s.by0 < py + reach and s.by1 > py - reach and s.bz1 > pz and s.bz0 < pz + PH then
+                local n = max(2, math.ceil(s.len / 0.05))
+                local best, cx, cy, cz
+                for k = 0, n do
+                    local u = k / n
+                    local x, y, z = s.sx0 + (s.sx1 - s.sx0) * u, s.sy0 + (s.sy1 - s.sy0) * u, s.sz0 + (s.sz1 - s.sz0) * u
+                    local up = z - pz
+                    local rx, ry = x - ox, y - oy
+                    local along = rx * fx + ry * fy
+                    if up >= -TR.string_r and along >= -PT and abs(rx * fy - ry * fx) <= PW / 2 + TR.string_r and along * along + up * up <= (PH + TR.string_r) ^ 2 then
+                        local phi = max(0, atan2(along, max(up, 1e-6)))
+                        if phi <= thmax + 1e-6 and (not best or phi < best) then best, cx, cy, cz = phi, x, y, z end
+                    end
+                end
+                if best then
+                    local tcut = best <= contact and t + (tc - t) * (best / max(contact, 1e-6)) ^ (1 / 1.6) or tc
+                    cut(s, tcut, by_what, cx, cy, cz)
+                end
+            end
+        end
+    end
+    -- What a dropped weight or a plank's far end comes down on at (x, y), height g, within R: dominoes go over (along
+    -- fx, fy if given, else away from the middle), switches are pressed, balls launched, a support under it collapses.
+    local collapse
+    local function smash(x, y, g, R, t, fx, fy, by_what)
+        board:near(x, y, R + W * smax, function(q)
+            if not done[q.id] and abs(q.z - g) < 0.6 then
+                local rx, ry = q.x - x, q.y - y
+                if rx * rx + ry * ry < (R + q.s * W / 2) ^ 2 then
+                    local d = fx and fx * q.ax + fy * q.ay or 0
+                    if abs(d) < 0.3 then d = rx * q.ax + ry * q.ay end
+                    local sg = d >= 0 and 1 or -1
+                    push(t, q, q.ax * sg, q.ay * sg)
+                end
+            end
+        end)
+        for i = 1, #switch_list do
+            local q = switch_list[i]
+            if not done[q.id] and abs(q.z - g) < 1 then
+                local ox, oy = x - max(q.x - SW.r, min(q.x + SW.r, x)), y - max(q.y - SW.r, min(q.y + SW.r, y))
+                if ox * ox + oy * oy < R * R then push(t, q, fx or 1, fy or 0) end
+            end
+        end
+        for i = 1, #ball_list do
+            local q = ball_list[i]
+            local rx, ry = q.x - x, q.y - y
+            local d = sqrt(rx * rx + ry * ry)
+            if not done[q.id] and abs(q.z - g) < 1 and d < R + B.r then
+                local dx, dy = fx, fy
+                if not dx then
+                    if d > 1e-6 then dx, dy = rx / d, ry / d else dx, dy = 1, 0 end
+                end
+                push(t, q, dx, dy, TR.weight_kick)
+            end
+        end
+        for _, tr in ipairs(board.trap_order) do
+            if tr.kind == "support" and not gone[tr.id] and abs(tr.z1 - g) < 0.05 and x > tr.x0 - R and x < tr.x1 + R and y > tr.y0 - R and y < tr.y1 + R then
+                collapse(tr, t, by_what)
+            end
+        end
+    end
+    -- A support gives way: its top is gone and whatever still stands on it is lost.
+    function collapse(tr, t, by_what)
+        if gone[tr.id] then return end
+        gone[tr.id] = true
+        local lost = {}
+        local function on_top(q) return not done[q.id] and abs(q.z - tr.z1) < 0.05 and q.x >= tr.x0 and q.x <= tr.x1 and q.y >= tr.y0 and q.y <= tr.y1 end
+        local cx, cy = (tr.x0 + tr.x1) / 2, (tr.y0 + tr.y1) / 2
+        board:near(cx, cy, sqrt((tr.x1 - cx) ^ 2 + (tr.y1 - cy) ^ 2) + 0.1, function(q) if on_top(q) then lost[#lost + 1] = q.id end end)
+        for _, q in ipairs(ball_list) do if on_top(q) then lost[#lost + 1] = q.id end end
+        for _, q in ipairs(switch_list) do if on_top(q) then lost[#lost + 1] = q.id end end
+        table.sort(lost)
+        for _, id in ipairs(lost) do
+            done[id] = true
+            res.lost[#res.lost + 1] = { id = id, t = t }
+            F.fall_missed(id, waiting)
+        end
+        trap_event({ t = t, id = tr.id, kind = "support", event = "collapse", by = by_what, lost = lost })
+    end
+    -- A plank let go: it tips along a from its hinge until its far end comes down on something or meets furniture.
+    local function plank_fall(tr, t)
+        local fx, fy, L = cos(tr.a), sin(tr.a), tr.len
+        local th, lastz, step = 0, tr.h + L, rad(0.5)
+        local tx, ty, tz, landed, blocked_by = tr.x, tr.y, tr.h + L, nil, nil
+        while th < pi do
+            local nth = th + step
+            local x, y, z = tr.x + fx * L * sin(nth), tr.y + fy * L * sin(nth), tr.h + L * cos(nth)
+            for i = 1, #solids do
+                local s = solids[i]
+                if x > s.x0 and x < s.x1 and y > s.y0 and y < s.y1 and z > s.z0 + 0.01 and z < s.z1 - 0.01 and s.z1 > lastz + 0.05 and not (s.trap and (s.trap == tr or gone[s.trap.id])) then
+                    blocked_by = s; break
+                end
+            end
+            if blocked_by then break end
+            local g = ground_below(x, y, lastz)
+            if z <= g + 1e-6 then
+                th = abs(g - tr.h) <= L and acos(max(-1, min(1, (g - tr.h) / L))) or nth
+                tx, ty, tz, landed = tr.x + fx * L * sin(th), tr.y + fy * L * sin(th), g, true
+                break
+            end
+            th, lastz, tx, ty, tz = nth, z, x, y, z
+        end
+        local t1 = t + F.fall_time(th, L)
+        trap_event({ t = t, id = tr.id, kind = "plank", event = "fall", angle = th, t1 = t1, x = tx, y = ty, h = tz })
+        -- Standing dominoes in its way go over as it reaches them.
+        local hw = tr.width / 2
+        board:near(tr.x, tr.y, L + W * smax, function(q)
+            if not done[q.id] then
+                local rx, ry = q.x - tr.x, q.y - tr.y
+                local along = rx * fx + ry * fy
+                local qs = q.s
+                local cq, sq = abs(q.ax * fx + q.ay * fy), abs(q.ax * fy - q.ay * fx)
+                if along > 0 and abs(rx * fy - ry * fx) < hw + (sq * T / 2 + cq * W / 2) * qs then
+                    local dz = q.z - tr.h
+                    local c = along - (cq * T / 2 + sq * W / 2) * qs
+                    local cth = F.contact_angle(c, dz, dz + H * qs, L)
+                    if cth and cth < th - rad(1) then
+                        local d = fx * q.ax + fy * q.ay
+                        local sg = d >= 0 and 1 or -1
+                        if abs(d) < 0.3 then sg = (rx * q.ax + ry * q.ay) >= 0 and 1 or -1 end
+                        push(t + F.fall_time(cth, L), q, q.ax * sg, q.ay * sg)
+                    end
+                end
+            end
+        end)
+        sweep_strings(tr.x - fx * TR.plank_t / 2, tr.y - fy * TR.plank_t / 2, tr.h, fx, fy, TR.plank_t, tr.width, L, th, t, t1, th, "plank")
+        if blocked_by and blocked_by.trap and blocked_by.trap.kind == "support" then push_trap(t1, blocked_by.trap, "collapse", { by = "plank" }) end
+        if landed then push_trap(t1, tr, "land", { x = tx, y = ty, g = tz, fx = fx, fy = fy }) end
+    end
+    -- A string lets go of what it holds.
+    local function release(id, t)
+        local tr = board.traps[id]
+        if not tr or gone[tr.id] then return end
+        if tr.kind == "support" then collapse(tr, t, "string"); return end
+        gone[tr.id] = true
+        if tr.kind == "gate" then
+            trap_event({ t = t, id = tr.id, kind = "gate", event = "open" })
+        elseif tr.kind == "plank" then
+            plank_fall(tr, t)
+        elseif tr.kind == "weight" then
+            local g = ground_below(tr.x, tr.y, tr.h)
+            local t1 = t + sqrt(2 * max(0, tr.h - g) / B.g)
+            trap_event({ t = t, id = tr.id, kind = "weight", event = "drop", x = tr.x, y = tr.y, h = tr.h, z = g, t1 = t1 })
+            -- Strings under it: cut as it falls through them.
+            local r = tr.r
+            for i = 1, #strings do
+                local s = strings[i]
+                if not gone[s.id] then
+                    local d2, u, v = seg_seg(tr.x, tr.y, tr.h + r, tr.x, tr.y, g + r, s.sx0, s.sy0, s.sz0, s.sx1, s.sy1, s.sz1)
+                    if d2 < (r + TR.string_r) ^ 2 then
+                        local fallen = max(0, (tr.h - g) * u - r)
+                        cut(s, t + sqrt(2 * fallen / B.g), "weight", s.sx0 + (s.sx1 - s.sx0) * v, s.sy0 + (s.sy1 - s.sy0) * v, s.sz0 + (s.sz1 - s.sz0) * v)
+                    end
+                end
+            end
+            push_trap(t1, tr, "land", { x = tr.x, y = tr.y, g = g })
+        end
+    end
+    local function trap_job(job, t)
+        local tr, i = job.trap, job.info
+        if job.ev == "cut" then
+            if gone[tr.id] then return end
+            gone[tr.id] = true
+            trap_event({ t = t, id = tr.id, kind = "string", event = "cut", by = i.by, x = i.x, y = i.y, h = i.z, holds = tr.holds })
+            if tr.holds then release(tr.holds, t) end
+        elseif job.ev == "collapse" then
+            collapse(tr, t, i.by)
+        elseif job.ev == "land" then
+            trap_event({ t = t, id = tr.id, kind = tr.kind, event = "land", x = i.x, y = i.y, h = i.g })
+            if tr.kind == "weight" then smash(i.x, i.y, i.g, tr.r, t, nil, nil, "weight")
+            else smash(i.x, i.y, i.g, max(TR.knock, tr.width / 2), t, i.fx, i.fy, "plank") end
+        end
+    end
     local function push_ball(t, b)
         seq = seq + 1
         heap_push(hp, { t = t, ball = b, seq = seq })
     end
     local function launch(p, t, dx, dy, speed)
         done[p.id] = true
+        res.balls_launched = res.balls_launched + 1      -- counted here: a live run's real bodies are not in res.balls
         if ext then ext.ball(p, t, dx, dy, speed); return end
         local b = { id = p.id, p = p, x = p.x, y = p.y, z = p.z, vx = dx * speed, vy = dy * speed, vz = 0, air = false, t0 = t, n = 0,
             pts = { t, p.x, p.y, p.z }, bumps = {} }
@@ -1310,13 +1959,34 @@ function F.begin_run(board, ext)
     -- is really standing at that moment; dominoes already falling are rolled over.
     local function step_ball(b, t)
         local dt, r, z0 = B.dt, B.r, b.z
+        local x0, y0 = b.x, b.y
         if b.air then b.vz = b.vz - B.g * dt end
         local air = max(0, 1 - B.air * sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz) * dt)
         b.vx, b.vy, b.vz = b.vx * air, b.vy * air, b.vz * air
         b.x, b.y, b.z = b.x + b.vx * dt, b.y + b.vy * dt, b.z + b.vz * dt
+        if #strings > 0 then cut_sphere(x0, y0, z0 + r, b.x, b.y, b.z + r, r, t, "ball") end
         local g = ball_ground(b.x, b.y, max(z0, b.z))
         local rg, ramp = ramp_ground(b.x, b.y, max(z0, b.z))
         if rg and rg >= g then g = rg else ramp = nil end
+        -- Up a step (not a ramp): the climb costs 2 * grav * g * rise of v^2, as for a real rolling ball. Without that
+        -- much speed it rolls back off the lip (with what a hit on a domino leaves it). Stepping down gains nothing.
+        local rise = g - max(z0, b.z)
+        if rise > 1e-6 and not ramp and not b.ramp then
+            local cost, v2 = 2 * RP.grav * B.g * rise, b.vx * b.vx + b.vy * b.vy
+            if v2 > cost then
+                local k = sqrt((v2 - cost) / v2)
+                b.vx, b.vy = b.vx * k, b.vy * k
+            else
+                local bx, by = b.x, b.y
+                b.x, b.y, b.z = x0, y0, z0
+                local up_x = ball_ground(bx, y0, z0) > z0 + 1e-6
+                local up_y = ball_ground(x0, by, z0) > z0 + 1e-6
+                if not up_x and not up_y then up_x, up_y = true, true end
+                b.vx = (up_x and -B.rebound or 1) * b.vx
+                b.vy = (up_y and -B.rebound or 1) * b.vy
+                g = ball_ground(x0, y0, z0)
+            end
+        end
         b.ramp = ramp
         if b.air then
             if b.z <= g and b.vz <= 0 then
@@ -1347,10 +2017,13 @@ function F.begin_run(board, ext)
             local s = solids[i]
             -- A ball rolls a ramp as a slope, so its steps only stop it from the sides.
             local on_slope = s.ramp and (s.ramp.on_x and abs(b.y - s.ramp.y0) <= RP.width / 2 or (not s.ramp.on_x) and abs(b.x - s.ramp.x0) <= RP.width / 2)
-            if not on_slope and b.z < s.z1 - 0.01 and b.z + 2 * r > s.z0 then
+            if not on_slope and b.z < s.z1 - 0.01 and b.z + 2 * r > s.z0 and not (s.trap and gone[s.trap.id]) then
                 local nx, ny = b.x - max(s.x0, min(s.x1, b.x)), b.y - max(s.y0, min(s.y1, b.y))
                 local d2 = nx * nx + ny * ny
                 if d2 < r * r then
+                    if s.trap and s.trap.kind == "support" and sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz) >= TR.support_hit then
+                        collapse(s.trap, t, "ball")
+                    end
                     -- From any side or from above, a switch feels the whole speed of the ball.
                     if s.switch and not done[s.switch.id] and sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz) >= B.min_hit then
                         push(t, s.switch, 1, 0)
@@ -1376,7 +2049,8 @@ function F.begin_run(board, ext)
         end
         -- Standing dominoes: boxes, tested against the ball.
         local cz = b.z + r
-        board:near(b.x, b.y, r + W, function(q)
+        board:near(b.x, b.y, r + W * smax, function(q)
+            local T, W, H = T * q.s, W * q.s, H * q.s
             if not done[q.id] and cz + r > q.z and cz - r < q.z + H then
                 local rx, ry = b.x - q.x, b.y - q.y
                 local u, v = rx * q.ax + ry * q.ay, ry * q.ax - rx * q.ay
@@ -1386,7 +2060,8 @@ function F.begin_run(board, ext)
                 if du * du + dv * dv + dh * dh < r * r then
                     local s = sqrt(b.vx * b.vx + b.vy * b.vy)
                     local dx, dy = s > 1e-6 and b.vx / s or 0, s > 1e-6 and b.vy / s or 0
-                    if s * s + b.vz * b.vz >= B.min_hit * B.min_hit then      -- (falling on it counts as well)
+                    -- (falling on it counts as well; the bigger the domino, the harder it is to tip)
+                    if s * s + b.vz * b.vz >= (B.min_hit * q.s * q.s) ^ 2 then
                         push(t, q, dx, dy)
                         b.bumps[#b.bumps + 1] = t
                     end
@@ -1431,6 +2106,7 @@ function F.begin_run(board, ext)
     -- A hit on its latch lets the bob go: gravity does the rest.
     local function start_swing(p, t)
         done[p.id] = true
+        res.swings_released = res.swings_released + 1
         if ext then ext.swing(p, t); return end
         local s = { id = p.id, p = p, th = -p.amp, w = 0, t0 = t, n = 0, pts = { t, -p.amp }, bumps = {}, period = 2 * pi * sqrt(p.L / B.g) }
         res.swings[#res.swings + 1] = s
@@ -1439,20 +2115,23 @@ function F.begin_run(board, ext)
     -- One time step of a swing, in the same queue as everything else.
     local function step_swing(s, t)
         local p, L, dt, r = s.p, s.p.L, S.dt, S.r
+        local ox, oy, oz = F.swing_bob(p, s.th)
         s.w = s.w + (-(B.g / L) * sin(s.th) - S.damp * s.w) * dt
         s.th = s.th + s.w * dt
         local x, y, cz = F.swing_bob(p, s.th)
+        if #strings > 0 then cut_sphere(ox, oy, oz, x, y, cz, r, t, "swing") end
         local dir = s.w >= 0 and 1 or -1
         local dx, dy = p.ax * dir, p.ay * dir
         local speed = abs(s.w) * L * cos(s.th)
         -- Furniture turns it back.
         for i = 1, #solids do
             local q = solids[i]
-            if cz - r < q.z1 - 0.01 and cz + r > q.z0 then
+            if cz - r < q.z1 - 0.01 and cz + r > q.z0 and not (q.trap and gone[q.trap.id]) then
                 local cx, cy = max(q.x0, min(q.x1, x)), max(q.y0, min(q.y1, y))
                 local ox, oy = cx - x, cy - y
                 if ox * ox + oy * oy < r * r and ox * dx + oy * dy > 0 then
                     if q.switch and not done[q.switch.id] and speed >= S.min_hit then push(t, q.switch, dx, dy) end
+                    if q.trap and q.trap.kind == "support" and speed >= S.min_hit then collapse(q.trap, t, "swing") end
                     s.w = -s.w * 0.5
                     if speed > 1 then s.bumps[#s.bumps + 1] = t end
                     dir, dx, dy = -dir, -dx, -dy
@@ -1505,12 +2184,13 @@ function F.begin_run(board, ext)
             push_swing(t + dt, s)
         end
     end
-    local waiting = {}
     local function advance(limit)
     while hp.n > 0 and hp[1].t <= limit do
         local job = heap_pop(hp)
         local p, t = job.p, job.t
-        if job.ball then
+        if job.trap then
+            trap_job(job, t)
+        elseif job.ball then
             step_ball(job.ball, t)
         elseif job.swing then
             step_swing(job.swing, t)
@@ -1533,47 +2213,54 @@ function F.begin_run(board, ext)
                 local fx, fy = p.ax * sgn, p.ay * sgn
                 done[p.id] = true
                 res.toppled = res.toppled + 1
+                local ps = p.s
+                local PT, PW, PH = T * ps, W * ps, H * ps
+                local reach = PH + W * smax
                 -- Dominoes ahead.
                 local nh, best = 0, nil
-                local best_on, best_c, best_dz          -- the one it comes to lean on
-                local lean_th, lean_on, lean_c, lean_dz -- or, with none left standing ahead, one already down
+                local best_on, best_c, best_dz, best_s          -- the one it comes to lean on
+                local lean_th, lean_on, lean_c, lean_dz, lean_s -- or, with none left standing ahead, one already down
+                local wall, ledge, wall_s, ledge_s
                 board:near(p.x, p.y, reach, function(q)
                     local down = done[q.id] and res.falls[q.id]
-                    if q ~= p and (not done[q.id] or (down and down.dx * fx + down.dy * fy > 0)) then
+                    if q ~= p and (not done[q.id] or (down and not down.dive and down.dx * fx + down.dy * fy > 0)) then
                         local rx, ry = q.x - p.x, q.y - p.y
                         local along = rx * fx + ry * fy
                         if along > 0.02 and along < reach then
+                            local qs = q.s
                             local cq, sq = abs(q.ax * fx + q.ay * fy), abs(q.ax * fy - q.ay * fx)
                             local lat = abs(rx * fy - ry * fx)
-                            if lat < W / 2 + sq * T / 2 + cq * W / 2 - 0.02 then
-                                local c = along - T / 2 - (cq * T / 2 + sq * W / 2)
+                            if lat < PW / 2 + (sq * T / 2 + cq * W / 2) * qs - 0.02 then
+                                local c = along - PT / 2 - (cq * T / 2 + sq * W / 2) * qs
                                 local dz = q.z - p.z
-                                local th = F.contact_angle(c, dz, dz + H, H)
+                                local th = F.contact_angle(c, dz, dz + H * qs, PH)
                                 if th and down then
-                                    if not lean_th or th < lean_th then lean_th, lean_on, lean_c, lean_dz = th, q.id, c, dz end
+                                    if not lean_th or th < lean_th then lean_th, lean_on, lean_c, lean_dz, lean_s = th, q.id, c, dz, qs end
+                                elseif th and qs > ps * F.KNOCK * 1.01 then
+                                    -- Too big for it to tip: it stops against it, as against furniture.
+                                    if not wall or th < wall then wall, wall_s = th, nil end
                                 elseif th then
                                     nh = nh + 1
                                     hit_q[nh], hit_th[nh] = q, th
-                                    if not best or th < best then best, best_on, best_c, best_dz = th, q.id, c, dz end
+                                    if not best or th < best then best, best_on, best_c, best_dz, best_s = th, q.id, c, dz, qs end
                                 end
                             end
                         end
                     end
                 end)
                 -- Furniture and ledges.
-                local wall, ledge
-                local pvx, pvy = p.x + fx * T / 2, p.y + fy * T / 2
+                local pvx, pvy = p.x + fx * PT / 2, p.y + fy * PT / 2
                 for i = 1, #solids do
                     local s = solids[i]
-                    if s.z1 > p.z + 0.01 and s.z0 < p.z + H then
-                        local c = ray_box(pvx, pvy, fx, fy, W / 2 - 0.02, s, H)
+                    if s.z1 > p.z + 0.01 and s.z0 < p.z + PH and not (s.trap and gone[s.trap.id]) then
+                        local c = ray_box(pvx, pvy, fx, fy, PW / 2 - 0.02, s, PH)
                         if c then
                             local zt = s.z1 - p.z
-                            local th = F.contact_angle(c, s.z0 - p.z, zt, H)
+                            local th = F.contact_angle(c, s.z0 - p.z, zt, PH)
                             if th then
-                                if zt <= F.LEDGE then
-                                    if not ledge or th < ledge then ledge = th end
-                                elseif not wall or th < wall then wall = th end
+                                if zt <= F.LEDGE * ps then
+                                    if not ledge or th < ledge then ledge, ledge_s = th, s end
+                                elseif not wall or th < wall then wall, wall_s = th, s end
                             end
                         end
                     end
@@ -1587,34 +2274,39 @@ function F.begin_run(board, ext)
                         local qr, lift = (is_swing or q.kind == "switch") and SW.r or B.r, 0
                         local rx, ry = (is_swing and q.lx or q.x) - p.x, (is_swing and q.ly or q.y) - p.y
                         local along = rx * fx + ry * fy
-                        if along > 0.02 and along < H + qr and abs(rx * fy - ry * fx) < W / 2 + qr * 0.85 then
+                        if along > 0.02 and along < PH + qr and abs(rx * fy - ry * fx) < PW / 2 + qr * 0.85 then
                             local dz = q.z + lift - p.z
-                            local th = F.contact_angle(along - T / 2 - qr, dz, dz + 2 * qr, H)
+                            local th = F.contact_angle(along - PT / 2 - qr, dz, dz + 2 * qr, PH)
                             if th then
                                 nh = nh + 1
-                                local cc, zt = max(0.02, along - T / 2 - qr), dz + 2 * qr
-                                hit_q[nh], hit_th[nh], hit_kick[nh] = q, th, q.kind == "ball" and F.ball_kick(th, sqrt(cc * cc + zt * zt)) or nil
+                                local cc, zt = max(0.02, along - PT / 2 - qr), dz + 2 * qr
+                                hit_q[nh], hit_th[nh], hit_kick[nh] = q, th, q.kind == "ball" and F.ball_kick(th, sqrt(cc * cc + zt * zt), ps) or nil
                             end
                         end
                     end
                 end
-                local fall = { id = p.id, t = t, yaw = atan2(fy, fx), flip = sgn < 0, dx = fx, dy = fy }
+                local fall = { id = p.id, t = t, yaw = atan2(fy, fx), flip = sgn < 0, dx = fx, dy = fy, s = ps, hh = PH, tt = PT }
                 local contact
                 if best and (not wall or best <= wall) then
                     contact = best
                     fall.hits = 0
-                    local tc = t + F.fall_time(contact)
+                    local tc = t + F.fall_time(contact, PH)
+                    -- (as far as it can come down if the one it leans on ends up flat: what is under it by then is flattened)
+                    local sweep = F.lean(FLAT, max(best_c, 0.02) + T * best_s, best_dz, PH, T * best_s, H * best_s)
                     for i = 1, n_dom do
                         if hit_th[i] <= best + rad(3) then
                             push(tc, hit_q[i], fx, fy)
                             fall.hits = fall.hits + 1
+                        elseif hit_q[i].s * 1.2 < ps and hit_th[i] <= sweep then
+                            push(t + F.fall_time(hit_th[i], PH), hit_q[i], fx, fy)
+                            fall.hits = fall.hits + 1
                         end
                     end
-                    fall.final = F.rest_angle(contact)
-                    fall.on_id, fall.S, fall.dz = best_on, max(best_c, 0.02) + T, best_dz
+                    fall.final = F.rest_angle(contact, PH, T * best_s)
+                    fall.on_id, fall.S, fall.dz = best_on, max(best_c, 0.02) + T * best_s, best_dz
                 elseif lean_th and (not wall or lean_th <= wall) then
-                    contact, fall.final = lean_th, F.rest_angle(lean_th)
-                    fall.on_id, fall.S, fall.dz = lean_on, max(lean_c, 0.02) + T, lean_dz
+                    contact, fall.final = lean_th, F.rest_angle(lean_th, PH, T * lean_s)
+                    fall.on_id, fall.S, fall.dz = lean_on, max(lean_c, 0.02) + T * lean_s, lean_dz
                 elseif wall then
                     contact, fall.blocked, fall.final = wall, true, wall
                 else
@@ -1623,15 +2315,83 @@ function F.begin_run(board, ext)
                 end
                 for i = n_dom + 1, nh do
                     if hit_th[i] <= contact + rad(3) then
-                        push(t + F.fall_time(hit_th[i]), hit_q[i], fx, fy, hit_kick[i])
+                        push(t + F.fall_time(hit_th[i], PH), hit_q[i], fx, fy, hit_kick[i])
                         fall.hits = (fall.hits or 0) + 1
                     end
                 end
                 for i = 1, nh do hit_q[i], hit_kick[i] = nil, nil end
                 fall.contact = contact
-                fall.tc = t + F.fall_time(contact)
+                fall.tc = t + F.fall_time(contact, PH)
+                -- Nothing ahead and its middle past the edge of what it stands on: it tips off and tumbles down.
+                if not fall.on_id and not fall.blocked and not ledge then
+                    local D = F.DIVE
+                    local a0 = PT / 2 + PH / 2
+                    local g = ground_below(p.x + fx * a0, p.y + fy * a0, p.z)
+                    local drop = p.z - g
+                    if drop >= max(D.min_drop, 0.5 * PH) then
+                        local td = sqrt(2 * drop / B.g) * 1.15
+                        local a1 = a0 + D.speed * sqrt(ps) * td
+                        local lx, ly = p.x + fx * a1, p.y + fy * a1
+                        g = ground_below(lx, ly, p.z)
+                        drop = p.z - g
+                        td = sqrt(2 * drop / B.g) * 1.15
+                        local t1 = fall.tc + td
+                        -- (a long drop turns it right over onto its back; a short one only lets it flop down)
+                        fall.dive = { t0 = fall.tc, t1 = t1, a0 = a0, a1 = a1, z0 = p.z + PT / 2, z1 = g + PT / 2, flip = td >= 0.2, x = lx, y = ly, g = g }
+                        fall.t_end = t1 + 0.2
+                        res.lands[#res.lands + 1] = { t = t1, id = p.id, x = lx, y = ly, z = g, s = ps }
+                        -- (coming down on a fragile support breaks it)
+                        for _, tr in ipairs(board.trap_order) do
+                            if tr.kind == "support" and not gone[tr.id] and abs(tr.z1 - g) < 0.05 and lx >= tr.x0 and lx <= tr.x1 and ly >= tr.y0 and ly <= tr.y1 then
+                                push_trap(t1, tr, "collapse", { by = "dive" })
+                            end
+                        end
+                        -- What it lands on goes over.
+                        board:near(lx, ly, PH / 2 + W * smax + 0.2, function(q)
+                            if q ~= p and abs(q.z - g) < 0.6 and q.s <= ps * F.KNOCK * 1.01 then
+                                local rx, ry = q.x - lx, q.y - ly
+                                if abs(rx * fx + ry * fy) < PH / 2 + T * q.s / 2 + D.margin and abs(rx * fy - ry * fx) < PW / 2 + W * q.s / 2 - 0.02 then
+                                    local along = fx * q.ax + fy * q.ay
+                                    if abs(along) >= 0.3 then push(t1, q, fx, fy)
+                                    else
+                                        -- (side on: it goes over away from where the faller came down)
+                                        local away = (rx * q.ax + ry * q.ay) >= 0 and 1 or -1
+                                        push(t1, q, q.ax * away, q.ay * away)
+                                    end
+                                    fall.hits = (fall.hits or 0) + 1
+                                end
+                            end
+                        end)
+                        for i = 1, #target_list do
+                            local q = target_list[i]
+                            local qx, qy = q.kind == "swing" and q.lx or q.x, q.kind == "swing" and q.ly or q.y
+                            local rx, ry = qx - lx, qy - ly
+                            -- (a switch or a latch is solid: it comes down on top of it)
+                            if g - q.z < 1 and q.z - g < 0.6 and abs(rx * fx + ry * fy) < PH / 2 + 0.4 and abs(rx * fy - ry * fx) < PW / 2 + 0.3 then
+                                push(t1, q, fx, fy, q.kind == "ball" and D.speed * 2 * sqrt(ps) or nil)
+                                fall.hits = (fall.hits or 0) + 1
+                            end
+                        end
+                    end
+                end
+                -- Traps: a fragile support it strikes gives way; strings it sweeps through (or dives through) are cut.
+                local hit_s = (fall.blocked and wall_s) or (not fall.on_id and ledge and contact == ledge and ledge_s) or nil
+                if hit_s and hit_s.trap and hit_s.trap.kind == "support" then push_trap(fall.tc, hit_s.trap, "collapse", { by = "domino" }) end
+                if #strings > 0 then
+                    sweep_strings(p.x, p.y, p.z, fx, fy, PT, PW, PH, max(contact, fall.final), t, fall.tc, contact, "domino")
+                    local d = fall.dive
+                    if d then
+                        for k = 1, 24 do
+                            local u = k / 24
+                            local along, z = d.a0 + (d.a1 - d.a0) * u, d.z0 + (d.z1 - d.z0) * u * u
+                            local u0 = (k - 1) / 24
+                            local along0, z0 = d.a0 + (d.a1 - d.a0) * u0, d.z0 + (d.z1 - d.z0) * u0 * u0
+                            cut_sphere(p.x + fx * along0, p.y + fy * along0, z0, p.x + fx * along, p.y + fy * along, z, PH / 2, d.t0 + (d.t1 - d.t0) * u, "dive")
+                        end
+                    end
+                end
                 -- (one leaning on the next only stops when the ones ahead have: the gap to its rest shrinks with each)
-                fall.t_end = fall.tc + (fall.on_id and max(0.15, 10 * (fall.tc - t)) or 0.15)
+                fall.t_end = fall.dive and fall.t_end or fall.tc + (fall.on_id and max(0.15, 10 * (fall.tc - t)) or 0.15 * sqrt(ps))
                 res.falls[p.id] = fall
                 F.attach_fall(fall, res.falls, waiting)
                 res.order[#res.order + 1] = fall
@@ -1661,8 +2421,18 @@ function F.begin_run(board, ext)
     end
     -- A sphere moving from (x0, y0, c0) to (x1, y1, c1) (centres): start what it touches and report the normal of the
     -- first standing domino it struck, so the engine body can come off it. speed: its speed there.
-    local function strike(r, x0, y0, c0, x1, y1, c1, vx, vy, vz, t, min_hit)
+    local function strike(r, by_what, x0, y0, c0, x1, y1, c1, vx, vy, vz, t, min_hit)
         local speed = sqrt(vx * vx + vy * vy + vz * vz)
+        -- Traps: strings it passes through are cut; a support it strikes hard enough collapses (its body is the world's).
+        if #strings > 0 then cut_sphere(x0, y0, c0, x1, y1, c1, r, t, by_what) end
+        if speed >= (by_what == "ball" and TR.support_hit or min_hit) then
+            for _, tr in ipairs(board.trap_order) do
+                if tr.kind == "support" and not gone[tr.id] and min(c0, c1) - r < tr.z1 and max(c0, c1) + r > tr.z0
+                    and seg_box(x0, y0, c0, x1, y1, c1, tr.x0 - r, tr.x1 + r, tr.y0 - r, tr.y1 + r, tr.z0 - r, tr.z1 + r) then
+                    push_trap(t, tr, "collapse", { by = by_what })
+                end
+            end
+        end
         local hv = max(1e-6, sqrt(vx * vx + vy * vy))
         local dx, dy = vx / hv, vy / hv
         local len = sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2 + (c1 - c0) ^ 2)
@@ -1671,14 +2441,15 @@ function F.begin_run(board, ext)
         for k = 1, n do
             local u = k / n
             local x, y, c = x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, c0 + (c1 - c0) * u
-            board:near(x, y, r + W, function(q)
+            board:near(x, y, r + W * smax, function(q)
+                local T, W, H = T * q.s, W * q.s, H * q.s
                 if not done[q.id] and c + r > q.z and c - r < q.z + H then
                     local rx, ry = x - q.x, y - q.y
                     local qu, qv = rx * q.ax + ry * q.ay, ry * q.ax - rx * q.ay
                     local du, dv = qu - max(-T / 2, min(T / 2, qu)), qv - max(-W / 2, min(W / 2, qv))
                     local dh = c - max(q.z, min(q.z + H, c))
                     if du * du + dv * dv + dh * dh < r * r then
-                        if speed >= min_hit then push(t, q, dx, dy) end
+                        if speed >= min_hit * q.s * q.s then push(t, q, dx, dy) end
                         if not struck then
                             struck = true
                             nrx, nry = du * q.ax - dv * q.ay, du * q.ay + dv * q.ax
@@ -1700,7 +2471,7 @@ function F.begin_run(board, ext)
         return nrx, nry
     end
     return { res = res, advance = advance, finish = finish, pending = function() return hp.n > 0 end,
-        strike_ball = function(...) return strike(B.r, ...) end, strike_bob = function(...) return strike(S.r, ...) end }
+        strike_ball = function(...) return strike(B.r, "ball", ...) end, strike_bob = function(...) return strike(S.r, "swing", ...) end }
 end
 
 function F.simulate(board)
@@ -1714,12 +2485,17 @@ end
 -- A domino at (p.x, p.y, p.z) tipped theta radians along table yaw `yaw` (flip: it falls against its facing),
 -- pivoting on its front edge: engine position and Euler degrees (x, y, z) for node:set_rotation, whose convention is
 -- R = Rz * Ry * Rx. The domino mesh faces +X: R = Ry(yaw) * Rz(-theta) [* Ry(pi) when flipped].
-function F.pose(p, yaw, flip, theta)
+function F.pose(p, yaw, flip, theta, along, height)
     local ca, sa = cos(yaw), sin(yaw)
     local ct, st = cos(theta), sin(theta)
-    local e = T / 2
+    local e = T * (p.s or 1) / 2
     local k = e * (1 - ct)
     local x, y, h = p.x + ca * k, p.y + sa * k, p.z + e * st
+    if along then
+        -- In the air: its middle is `along` ahead of where it stood, at `height`.
+        local half = H * (p.s or 1) / 2
+        x, y, h = p.x + ca * (along - half * st), p.y + sa * (along - half * st), height - half * ct
+    end
     local cb, sb = ct, -st
     local rx, ry, rz
     if not flip then
@@ -1730,10 +2506,25 @@ function F.pose(p, yaw, flip, theta)
     return x, h, -y, deg(rx), deg(ry), deg(rz)
 end
 
+-- A falling domino at time t: tipping on its edge, then (off an edge) tumbling down to where it lands.
+function F.fall_pose(p, f, t)
+    local d = f.dive
+    if not d or t <= d.t0 then return F.pose(p, f.yaw, f.flip, F.fall_angle(f, t)) end
+    local u = min(1, (t - d.t0) / (d.t1 - d.t0))
+    local th = d.flip and FLAT + (1.5 * pi - FLAT) * u or FLAT + rad(30) * sin(pi * u)
+    local z = d.z0 + (d.z1 - d.z0) * u * u
+    if t > d.t1 then
+        local v = (t - d.t1) / 0.2
+        if v < 1 then z = z + min(0.35, 0.05 * (d.z0 - d.z1)) * sin(pi * v) * (1 - v) end
+    end
+    return F.pose(p, f.yaw, f.flip, th, d.a0 + (d.a1 - d.a0) * u, z)
+end
+
 ------------------------------------------------------------------ saving
 function F.serialize(board)
     local list = {}
-    for _, p in pairs(board.pieces) do list[#list + 1] = p end
+    -- (a challenge's presets and traps belong to the challenge, never to a save)
+    for _, p in pairs(board.pieces) do if not p.preset then list[#list + 1] = p end end
     table.sort(list, function(a, b) return a.order < b.order end)
     local out = { "TOPPLE-FREE 1" }
     local s = board.start
@@ -1762,7 +2553,7 @@ function F.serialize(board)
         out[#out + 1] = string.format("w %.3f %.3f %.3f %d %d %d", p.x, p.y, p.z, p.dir, p.lamp and 1 or 0, p.target and index[p.target] or 0)
     end
     for _, p in ipairs(list) do
-        out[#out + 1] = string.format("d %.3f %.3f %.3f %.4f %s", p.x, p.y, p.z, p.a, p.paint or "cream")
+        out[#out + 1] = string.format(p.s == 1 and "d %.3f %.3f %.3f %.4f %s" or "d %.3f %.3f %.3f %.4f %s %.4f", p.x, p.y, p.z, p.a, p.paint or "cream", p.s)
     end
     return table.concat(out, "\n") .. "\n"
 end
@@ -1792,7 +2583,7 @@ function F.deserialize(text)
         if wx then
             b.next_id = b.next_id + 1
             b.order = b.order + 1
-            local w = { kind = "switch", id = b.next_id, x = tonumber(wx), y = tonumber(wy), z = tonumber(wz), dir = tonumber(wd), lamp = wl == "1", order = b.order }
+            local w = { kind = "switch", id = b.next_id, x = tonumber(wx), y = tonumber(wy), z = b:rest(tonumber(wx), tonumber(wy), tonumber(wz), 2 * F.SWITCH.r), dir = tonumber(wd), lamp = wl == "1", order = b.order }
             b:_insert(w)
             if tonumber(wt) > 0 then wait_target[w] = tonumber(wt) end
         end
@@ -1800,20 +2591,22 @@ function F.deserialize(text)
         if sx then
             b.next_id = b.next_id + 1
             b.order = b.order + 1
-            b:_insert({ kind = "swing", id = b.next_id, x = tonumber(sx), y = tonumber(sy), z = tonumber(sz), a = tonumber(sa), L = tonumber(sl), hang = hang, order = b.order })
+            b:_insert({ kind = "swing", id = b.next_id, x = tonumber(sx), y = tonumber(sy), z = b:rest(tonumber(sx), tonumber(sy), tonumber(sz), F.SWING.post), a = tonumber(sa), L = tonumber(sl), hang = hang, order = b.order })
         end
         local bx, by, bz = line:match("^b (%S+) (%S+) (%S+)")
         if bx then
             b.next_id = b.next_id + 1
             b.order = b.order + 1
-            b:_insert({ kind = "ball", id = b.next_id, x = tonumber(bx), y = tonumber(by), z = tonumber(bz), order = b.order })
+            b:_insert({ kind = "ball", id = b.next_id, x = tonumber(bx), y = tonumber(by), z = b:rest(tonumber(bx), tonumber(by), tonumber(bz), 2 * F.BALL.r), order = b.order })
         end
-        local x, y, z, a, paint = line:match("^d (%S+) (%S+) (%S+) (%S+) (%S+)")
+        local x, y, z, a, paint, size = line:match("^d (%S+) (%S+) (%S+) (%S+) (%S+) ?(%S*)")
         if x then
             i = i + 1
             b.next_id = b.next_id + 1
             b.order = b.order + 1
             local p = { id = b.next_id, x = tonumber(x), y = tonumber(y), z = tonumber(z), a = tonumber(a), paint = paint, order = b.order }
+            if size ~= "" then p.s = max(0.25, min(8, tonumber(size))) end
+            p.z = b:rest(p.x, p.y, p.z, H * (p.s or 1))       -- (an old save's piece under a mat stands on it)
             if i == start_i then b.start = { id = p.id, dir = start_dir >= 0 and 1 or -1 } end
             b:_insert(p)
             dom_ids[i] = p.id

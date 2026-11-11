@@ -460,7 +460,119 @@ def shade():
     return m
 
 
+# ------------------------------------------------------------------ the House Challenges' appliances
+# Only shown during their own challenge. Where they stand matches the props in Assets/Scripts/topple_challenges.lua.
+BELL_AT = (38.65, -19.0)
+CAB = dict(x0=33.4, x1=39.4, y0=2.0, y1=22.0, h=6.0)
+TV = dict(x0=36.2, x1=37.6, y0=3.6, y1=20.4, h0=7.4, h1=17.2)
+TOASTER = dict(x0=-19.4, x1=-13.2, y0=-1.0, y1=3.0, h0=8.86, h1=12.6)
+
+
+def goal_bell_base():
+    x, y = BELL_AT
+    m = MU()
+    m.mesh(G.moved(G.lathe(G.smooth_profile([(0, 0), (0.86, 0), (0.92, 0.06), (0.92, 0.24), (0.8, 0.32), (0, 0.32)], 3), 40), E(x, y, 0)))
+    return m
+
+
+def goal_bell():
+    x, y = BELL_AT
+    m = MU()
+    # A counter bell: a brass dome with a flared lip, and the plunger on top.
+    dome = [(0, 1.42), (0.14, 1.41), (0.34, 1.34), (0.52, 1.14), (0.62, 0.86), (0.68, 0.58), (0.76, 0.42), (0.74, 0.38), (0.62, 0.52), (0.5, 0.82), (0.3, 1.2), (0, 1.3)]
+    m.mesh(G.moved(G.lathe(G.smooth_profile(dome, 4), 48), E(x, y, 0)))
+    m.mesh(G.tube(E(x, y, 1.38), E(x, y, 1.66), 0.07, 14))
+    m.mesh(G.ball(E(x, y, 1.72), 0.15, 20, 12))
+    return m
+
+
+def goal_tv_cab():
+    c = CAB
+    m = MU()
+    m.mesh(rbox_t(c["x0"], c["x1"], c["y0"], c["y1"], 1.0, c["h"], 0.18))
+    n = 3
+    w = (c["y1"] - c["y0"] - 0.8) / n
+    for i in range(n):            # three door panels on the side facing the room
+        y0 = c["y0"] + 0.4 + i * w + 0.08
+        m.mesh(rbox_t(c["x0"] - 0.12, c["x0"] + 0.1, y0, y0 + w - 0.16, 1.5, c["h"] - 0.5, 0.05))
+    for x in (c["x0"] + 0.8, c["x1"] - 0.8):
+        for y in (c["y0"] + 0.9, c["y1"] - 0.9):
+            m.mesh(G.tube(E(x, y, 0), E(x, y, 1.05), 0.3, 18))
+    return m
+
+
+def goal_tv_knobs():
+    c = CAB
+    m = MU()
+    w = (c["y1"] - c["y0"] - 0.8) / 3
+    for i in range(3):
+        y = c["y0"] + 0.4 + (i + 0.5) * w
+        m.mesh(G.ball(E(c["x0"] - 0.26, y, c["h"] - 1.3), 0.22, 18, 10))
+    return m
+
+
+def goal_tv_set():
+    t, c = TV, CAB
+    mx, my = (t["x0"] + t["x1"]) / 2, (t["y0"] + t["y1"]) / 2
+    m = MU()
+    m.mesh(rbox_t(t["x0"], t["x1"], t["y0"], t["y1"], t["h0"], t["h1"], 0.3))
+    m.mesh(rbox_t(mx - 0.32, mx + 0.32, my - 1.1, my + 1.1, c["h"] + 0.1, t["h0"] + 0.1, 0.1))
+    m.mesh(rbox_t(mx - 1.2, mx + 1.2, my - 4.0, my + 4.0, c["h"], c["h"] + 0.26, 0.1))
+    return m
+
+
+def goal_tv_screen():
+    t = TV
+    x = t["x0"] - 0.012
+    y0, y1, h0, h1 = t["y0"] + 0.42, t["y1"] - 0.42, t["h0"] + 0.42, t["h1"] - 0.42
+    m = MU()
+    m.quad([E(x, y0, h0), E(x, y0, h1), E(x, y1, h1), E(x, y1, h0)], EN(-1, 0, 0))
+    return m
+
+
+def goal_toaster():
+    t = TOASTER
+    m = MU()
+    # The chrome shell: two rounded halves with the slots' gap left open along the top.
+    my = (t["y0"] + t["y1"]) / 2
+    m.mesh(rbox_t(t["x0"], t["x1"], t["y0"], t["y1"], t["h0"] + 0.5, t["h1"] - 0.32, 0.5, 5))
+    for y0, y1 in ((t["y0"] + 0.16, my - 0.72), (my - 0.2, my + 0.2), (my + 0.72, t["y1"] - 0.16)):
+        m.mesh(rbox_t(t["x0"] + 0.2, t["x1"] - 0.2, y0, y1, t["h1"] - 0.6, t["h1"], 0.14))
+    for x0, x1 in ((t["x0"] + 0.2, t["x0"] + 0.62), (t["x1"] - 0.62, t["x1"] - 0.2)):
+        m.mesh(rbox_t(x0, x1, my - 0.8, my + 0.8, t["h1"] - 0.6, t["h1"], 0.1))
+    return m
+
+
+def goal_toaster_trim():
+    t = TOASTER
+    my = (t["y0"] + t["y1"]) / 2
+    m = MU()
+    m.mesh(rbox_t(t["x0"] + 0.1, t["x1"] - 0.1, t["y0"] + 0.1, t["y1"] - 0.1, t["h0"], t["h0"] + 0.56, 0.16))
+    # The lever and its dial on the end facing the room's middle.
+    m.mesh(rbox_t(t["x1"] - 0.02, t["x1"] + 0.34, my - 0.42, my + 0.42, t["h0"] + 2.2, t["h0"] + 2.56, 0.1))
+    m.mesh(G.tube(E(t["x1"] - 0.02, my, t["h0"] + 1.1), E(t["x1"] + 0.22, my, t["h0"] + 1.1), 0.46, 24))
+    return m
+
+
+def goal_toast():
+    t = TOASTER
+    my = (t["y0"] + t["y1"]) / 2
+    m = MU()
+    for y in (my - 0.46, my + 0.46):
+        m.mesh(rbox_t(t["x0"] + 0.9, t["x1"] - 0.9, y - 0.16, y + 0.16, t["h1"] - 3.0, t["h1"] - 0.08, 0.14, 4))
+    return m
+
+
 PIECES = {
+    "goal_bell": (goal_bell, dict(color=(0.86, 0.62, 0.3), rough=0.22, metal=1, challenge="doorbell")),
+    "goal_bell_base": (goal_bell_base, dict(color=(0.2, 0.1, 0.05), rough=0.38, challenge="doorbell")),
+    "goal_tv_cab": (goal_tv_cab, dict(color=(0.27, 0.14, 0.07), rough=0.4, challenge="tv")),
+    "goal_tv_knobs": (goal_tv_knobs, dict(color=(0.86, 0.62, 0.3), rough=0.25, metal=1, challenge="tv")),
+    "goal_tv_set": (goal_tv_set, dict(color=(0.035, 0.035, 0.04), rough=0.32, challenge="tv")),
+    "goal_tv_screen": (goal_tv_screen, dict(color=(0.012, 0.014, 0.018), rough=0.12, challenge="tv")),
+    "goal_toaster": (goal_toaster, dict(color=(0.88, 0.88, 0.9), rough=0.16, metal=1, challenge="toaster")),
+    "goal_toaster_trim": (goal_toaster_trim, dict(color=(0.04, 0.04, 0.045), rough=0.4, challenge="toaster")),
+    "goal_toast": (goal_toast, dict(color=(0.62, 0.38, 0.16), rough=0.85, challenge="toaster")),
     "room_floor": (floor, dict(color=(1, 1, 1), rough=0.38, tex="Textures/room_floor.png")),
     "room_wall_L": (wall_L, dict(color=(1, 1, 1), rough=0.9, tex="Textures/room_wallpaper.png", group="L")),
     "room_wall_R": (wall_R, dict(color=(1, 1, 1), rough=0.9, tex="Textures/room_wallpaper.png", group="R")),
@@ -528,6 +640,14 @@ def solids():
          dict(name="sofa", x0=SOFA["x0"], x1=SOFA["x1"], y0=SOFA["y0"], y1=SOFA["y1"], z0=0, z1=SOFA["h"]),
          dict(name="bookshelf", x0=SHELF["x0"], x1=SHELF["x1"], y0=SHELF["y0"], y1=SHELF["y1"], z0=0, z1=SHELF["h"]),
          dict(name="side table", x0=SIDE["x"] - 2.8, x1=SIDE["x"] + 2.8, y0=SIDE["y"] - 2.8, y1=SIDE["y"] + 2.8, z0=0, z1=SIDE["h"]),
+         # The table lamp on it (brass() foot and stem, shade()), boxed as measured from its mesh: nothing is built
+         # under its foot, and a domino or ball meets its stem and shade.
+         dict(name="table lamp foot", x0=round(SIDE["x"] - 1.6, 4), x1=round(SIDE["x"] + 1.65, 4), y0=round(SIDE["y"] - 1.65, 4),
+              y1=round(SIDE["y"] + 1.65, 4), z0=SIDE["h"], z1=round(SIDE["h"] + 0.8, 4)),
+         dict(name="table lamp stem", x0=round(SIDE["x"] - 0.4, 4), x1=round(SIDE["x"] + 0.4, 4), y0=round(SIDE["y"] - 0.4, 4),
+              y1=round(SIDE["y"] + 0.4, 4), z0=round(SIDE["h"] + 0.8, 4), z1=round(SIDE["h"] + 7.0, 4)),
+         dict(name="table lamp shade", x0=round(SIDE["x"] - 2.6, 4), x1=round(SIDE["x"] + 2.6, 4), y0=round(SIDE["y"] - 2.6, 4),
+              y1=round(SIDE["y"] + 2.6, 4), z0=round(SIDE["h"] + 5.6, 4), z1=round(SIDE["h"] + 9.5, 4)),
          dict(name="plant", x0=PLANT["x"] - PLANT["r"] - 0.4, x1=PLANT["x"] + PLANT["r"] + 0.4, y0=PLANT["y"] - PLANT["r"] - 0.4,
               y1=PLANT["y"] + PLANT["r"] + 0.4, z0=0, z1=PLANT["h"])]
     s += [dict(b) for b in SHELF_TOP]
@@ -586,7 +706,9 @@ def write_data():
               f"    lamp = {lua_val(dict(pos=E(*LAMP_AT), color=(1.0, 0.72, 0.42), intensity=3.0, radius=60.0))},",
               f"    camera = {lua_val(dict(target=(-2.0, -9.0, 1.0), yaw=-62.0, pitch=40.0, dist=96.0))},",
               "}", ""]
-    with open(DATA, "w", newline="\n") as f:
+    # Keep the file's own line endings (a checkout may have it with CRLF).
+    nl = "\r\n" if os.path.exists(DATA) and b"\r\n" in open(DATA, "rb").read() else "\n"
+    with open(DATA, "w", newline=nl) as f:
         f.write("\n".join(lines))
     print("data:", DATA)
 
@@ -815,14 +937,24 @@ def textures():
 
 
 # ------------------------------------------------------------------ cook
-def cook_room():
+def tex_star():
+    """The challenges' star: white, tinted in game, cut at 4x and shrunk for a smooth edge."""
+    from PIL import ImageDraw
+    n = 512
+    im = Image.new("RGBA", (n, n), (255, 255, 255, 0))
+    pts = [(n / 2 + (0.47 if k % 2 == 0 else 0.2) * n * math.sin(k * math.pi / 5), n * 0.53 - (0.47 if k % 2 == 0 else 0.2) * n * math.cos(k * math.pi / 5)) for k in range(10)]
+    ImageDraw.Draw(im).polygon(pts, fill=(255, 255, 255, 255))
+    im.resize((128, 128), Image.LANCZOS).save(os.path.join(TEX, "star.png"))
+
+
+def cook_room(only=None):
     cook = G.find_cook()
     meshes = build_all()
     os.makedirs(OBJECTS, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="topple-room-") as tmp:
         lines = []
         for name in ROOM_NAMES:
-            if name not in meshes:      # the Tripo furniture: tools/make_furniture.py
+            if name not in meshes or (only and not name.startswith(only)):      # the Tripo furniture: tools/make_furniture.py
                 continue
             src = os.path.join(tmp, name + ".obj")
             nv, nt = save_obj_uv(src, meshes[name])
@@ -839,10 +971,13 @@ def cook_room():
 
 
 def main():
-    textures()
+    only = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--only=")), None)     # rebuild just these meshes
+    if not only:
+        textures()
+    tex_star()
     write_data()
     if "--no-cook" not in sys.argv:
-        cook_room()
+        cook_room(only)
     G.write_scene(sorted(G.MESHES))
     print("scene:", G.SCENE)
 

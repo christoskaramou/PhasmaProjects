@@ -166,7 +166,7 @@ do
     end
     local worst = 0
     for _, yaw in ipairs({ 0, 0.4, pi / 2, 2.1, pi, -1.2, -pi / 2 }) do
-        for _, th in ipairs({ 0, 0.3, 0.9, 1.5 }) do
+        for _, th in ipairs({ 0, 0.3, 0.9, 1.5, 2.4, 3.6, 4.7 }) do      -- (past flat: a domino tumbling off an edge)
             for _, flip in ipairs({ false, true }) do
                 local _, _, _, ex, ey, ez = F.pose({ x = 0, y = 0, z = 0 }, yaw, flip, th)
                 local got = mul(mul(Rz(math.rad(ez)), Ry(math.rad(ey))), Rx(math.rad(ex)))
@@ -1078,6 +1078,222 @@ do
     local half = t_cross - t0
     local ideal_half = pi * sqrt(F.SWING.len / g)
     check(abs(half - ideal_half) < ideal_half * 0.1, "half a swing takes " .. half .. " s against " .. ideal_half)
+end
+
+------------------------------------------------------------------ sizes
+-- A line that grows from Mini to Titan falls end to end; each domino is at most GROW times the one before.
+do
+    local b = F.new_board()
+    local n = b:place_line(-26, -28, 30, -28, nil, 0, F.SIZES[1], F.SIZES[5])
+    local list = {}
+    for _, p in pairs(b.pieces) do list[#list + 1] = p end
+    table.sort(list, function(a, c) return a.x < c.x end)
+    check(near(list[1].s, F.SIZES[1]) and near(list[#list].s, F.SIZES[5]), "the line grows from Mini to Titan")
+    for i = 2, #list do
+        check(list[i].s <= list[i - 1].s * F.GROW + 1e-9 and list[i].s >= list[i - 1].s, "a step up is no more than GROW")
+        -- (their footprints never touch)
+        check(list[i].x - list[i - 1].x > F.DOM.t * (list[i].s + list[i - 1].s) / 2 + 0.1, "growing dominoes stand clear of each other")
+    end
+    local res = F.simulate(b)
+    check(res.toppled == n and n > 20, "the growing line falls end to end: " .. res.toppled .. " of " .. n)
+    -- The bigger, the slower: a Titan takes longer to come down than a Mini.
+    local fm, ft = res.falls[list[1].id], res.falls[list[#list - 1].id]
+    check((ft.tc - ft.t) > 1.5 * (fm.tc - fm.t), "a Titan falls slower than a Mini")
+    -- And it shrinks again just as well.
+    local b2 = F.new_board()
+    local n2 = b2:place_line(-26, -28, 30, -28, nil, 0, F.SIZES[5], F.SIZES[1])
+    check(F.simulate(b2).toppled == n2, "a line that shrinks falls end to end")
+end
+
+-- A domino tips one up to KNOCK times its size, and only leans on anything bigger.
+do
+    for _, c in ipairs({ { 1.5, true }, { 2.25, false }, { 3.375, false } }) do
+        local b = F.new_board()
+        local a = b:place(0, -28, 0, 0, "cream", 1)
+        local big = b:place(F.DOM.t * (1 + c[1]) / 2 + 0.45, -28, 0, 0, "cream", c[1])
+        check(a and big, "they stand side by side")
+        local res = F.simulate(b)
+        check((res.falls[big.id] ~= nil) == c[2], "a Standard " .. (c[2] and "tips" or "cannot tip") .. " one " .. c[1] .. " times its size")
+        if not c[2] then
+            local f = res.falls[a.id]
+            check(f.blocked and f.final < math.rad(70), "it comes to lean against the big one, at " .. math.deg(f.final))
+        end
+    end
+    -- The other way round is no trouble: a Titan takes a Mini with it.
+    local b = F.new_board()
+    local t = b:place(0, -28, 0, 0, "cream", F.SIZES[5])
+    local m = b:place(2.2, -28, 0, 0, "cream", F.SIZES[1])
+    check(F.simulate(b).falls[m.id] ~= nil, "a Titan knocks a Mini over")
+    -- Placement: nothing stands inside a Titan's footprint, but a Mini fits right beside it.
+    local _, why = b:place(0.2, -27.6, 0, 0, "cream", F.SIZES[1])
+    check(why == "crowded", "a Mini cannot stand inside a Titan, got " .. tostring(why))
+    check(b:place(0, -28 + 0.25 * F.SIZES[5] + 0.3, 0, 0, "cream", F.SIZES[1]) ~= nil, "a Mini stands beside a Titan")
+    local tbl = surface("coffee table")
+    _, why = b:place(tbl.x1 - 0.5, 1, pi / 2, tbl.h, "cream", F.SIZES[5])
+    check(why == "air", "a Titan too near the table's edge has nowhere to stand")
+end
+
+-- A Titan comes down on a fan of Minis: it flattens the ones under it and ends up resting on them, not in them.
+do
+    local b = F.new_board()
+    local S5, S1 = F.SIZES[5], F.SIZES[1]
+    local t = b:place(-10, -28, 0, 0, "cream", S5)
+    local m = b:place_spots(F.field_spots(-9.2, -28, 4, -28, 4, S1), nil, 0)
+    b.start = { id = t.id, dir = 1 }
+    local res = F.simulate(b)
+    local f = res.falls[t.id]
+    check(res.toppled == m + 1, "the Titan and every Mini fall: " .. res.toppled .. " of " .. (m + 1))
+    check(f.hits >= 8, "it flattens the Minis under it itself: " .. f.hits)
+    check(f.final > math.rad(60) and f.final < math.rad(89), "it rests on them at " .. math.deg(f.final))
+    -- No Mini's corner is inside the resting Titan.
+    local T = F.DOM.t
+    local px = t.x + T * S5 / 2
+    local worst = 0
+    for id, g in pairs(res.falls) do
+        local q = b.pieces[id]
+        if id ~= t.id and abs(q.y - t.y) < 0.25 * S5 + 0.25 * S1 then
+            local pv = q.x + T * S1 / 2
+            for _, c in ipairs({ { 0, 0 }, { -T * S1, 0 }, { 0, S1 }, { -T * S1, S1 } }) do
+                local cx = pv + c[1] * cos(g.final) + c[2] * sin(g.final) - px
+                local cz = -c[1] * sin(g.final) + c[2] * cos(g.final)
+                local d = cx * cos(f.final) - cz * sin(f.final)
+                local r = cx * sin(f.final) + cz * cos(f.final)
+                if r > 0 and r < S5 and d < 0 and d > -T * S5 then worst = math.max(worst, -d) end
+            end
+        end
+    end
+    check(worst < 0.01, "no Mini is inside the resting Titan (deepest " .. worst .. ")")
+end
+
+-- A size survives saving, and the build plays the same.
+do
+    local b = F.new_board()
+    b:place_line(-26, -28, 10, -28, nil, 0, F.SIZES[1], F.SIZES[4])
+    local b2, ok = F.deserialize(F.serialize(b))
+    check(ok and b2.count == b.count, "a build with sizes loads")
+    local big = 0
+    for _, p in pairs(b2.pieces) do big = math.max(big, p.s) end
+    check(near(big, F.SIZES[4], 1e-3), "the sizes come back: largest " .. big)
+    check(F.simulate(b2).toppled == F.simulate(b).toppled, "and it plays the same")
+    check(not F.serialize(F.demo(F.new_board())):match("\nd [^\n]+ cream 1%.0000\n"), "a Standard domino saves as it always did")
+end
+
+------------------------------------------------------------------ off an edge
+-- A line that runs to the edge of the coffee table: the last domino tips off, tumbles to the rug and knocks over the
+-- line waiting there.
+do
+    local tbl, rug = surface("coffee table"), surface("rug")
+    local b = F.new_board()
+    local n1 = line(b, -10, 1, tbl.x1 - 0.2, 1, tbl.h)
+    local last
+    for _, p in pairs(b.pieces) do if not last or p.x > last.x then last = p end end
+    local n2 = line(b, tbl.x1 + 1.4, 1, 12, 1, 0)
+    local res = F.simulate(b)
+    local f = res.falls[last.id]
+    check(f.dive ~= nil, "the last domino on the table goes off the edge")
+    check(#res.lands == 1 and near(res.lands[1].z, rug.h), "it lands on the rug")
+    check(res.toppled == n1 + n2, "and the line below carries on: " .. res.toppled .. " of " .. (n1 + n2))
+    check(f.dive.t1 - f.dive.t0 > 0.25 and f.dive.t1 - f.dive.t0 < 0.45, "the drop takes about a third of a second: " .. (f.dive.t1 - f.dive.t0))
+    -- In the air it is between the table and the rug, past the edge; landed, it lies flat on the rug.
+    local x, h = F.fall_pose(last, f, (f.dive.t0 + f.dive.t1) / 2)
+    check(h < tbl.h + 1 and h > rug.h and x > last.x, "half way down it is in the air beyond the edge (h " .. h .. ")")
+    local _, hm = F.fall_pose(last, f, f.dive.t0 + 1e-4)
+    local _, h0 = F.fall_pose(last, f, f.dive.t0)
+    check(abs(hm - h0) < 0.02, "it leaves the table smoothly")
+    local x1, h1, _, _, _, rz = F.fall_pose(last, f, 1e9)
+    check(near(h1, rug.h + F.DOM.t / 2, 1e-6) and x1 > tbl.x1, "landed it lies on the rug past the table (h " .. h1 .. ")")
+    check(near(abs(rz), 90, 0.01), "flat on its back")
+    -- The one behind it is left lying flat on the table.
+    local behind
+    for _, p in pairs(b.pieces) do if p.z > 1 and p ~= last and (not behind or p.x > behind.x) then behind = p end end
+    check(res.falls[behind.id].final > math.rad(89), "the one behind ends flat on the table")
+    -- Nothing waiting below: it still goes over, and the run ends there.
+    local b2 = F.new_board()
+    line(b2, -10, 1, tbl.x1 - 0.2, 1, tbl.h)
+    local r2 = F.simulate(b2)
+    check(#r2.lands == 1 and r2.toppled == b2.count, "with nothing below it simply lands")
+    -- A low step is no drop: a line coming down off the books lies as it always did.
+    local b3 = F.new_board()
+    line(b3, 22, -19, 37.5, -19, surface("book 5").h)
+    local r3 = F.simulate(b3)
+    check(#r3.lands == 0 and r3.toppled == b3.count, "stepping down the books is not a dive")
+end
+
+-- A fan that reaches the table's edge pours off it.
+do
+    local tbl = surface("coffee table")
+    local b = F.new_board()
+    local edge = tbl.y0 + 0.15
+    local m = b:place_spots(F.field_spots(-13, edge + 12 * F.SPACING, -13, edge, 8), nil, tbl.h)
+    local res = F.simulate(b)
+    check(res.toppled == m, "the fan falls: " .. res.toppled .. " of " .. m)
+    check(#res.lands >= 10, "its last row goes over the edge: " .. #res.lands)
+    for _, l in ipairs(res.lands) do check(l.y < tbl.y0 - 0.5 and l.z < 0.2, "each lands on the floor in front of the table") end
+end
+
+-- A domino that lands on a switch presses it.
+do
+    local tbl, rug = surface("coffee table"), surface("rug")
+    local b = F.new_board()
+    line(b, -10, 1, tbl.x1 - 0.2, 1, tbl.h)
+    local reach = F.dive_throw(tbl.h - rug.h)
+    local last
+    for _, p in pairs(b.pieces) do if not last or p.x > last.x then last = p end end
+    local sw = b:place_switch(last.x + reach, 1, rug.h)
+    check(sw ~= nil, "a switch stands where it will land")
+    local res = F.simulate(b)
+    check(#res.switches == 1, "the falling domino presses the switch")
+end
+
+-- The sample build shows them all: a ramp, a drop off the table, a line that grows and a Titan onto Minis.
+do
+    local b = F.demo(F.new_board())
+    local res = F.simulate(b)
+    local titans, minis = 0, 0
+    for _, p in pairs(b.pieces) do
+        if near(p.s, F.SIZES[5]) then titans = titans + 1 elseif near(p.s, F.SIZES[1]) then minis = minis + 1 end
+    end
+    check(b.ramp_count == 1 and titans >= 3 and minis > 100, "the sample has a ramp, " .. titans .. " Titans and " .. minis .. " Minis")
+    check(#res.lands >= 10, "its fan pours off the table: " .. #res.lands)
+    check(res.toppled == b.count, "and all of it falls")
+end
+do
+    -- A ball climbing a lip (the kids' play mat, 0.1 high, from x 11 west) loses 2 * 5/7 * g * 0.1 of v^2. Measured
+    -- live: 34.7 on the floor, 25.8 from the floor onto the mat, from the hardest hit (gap 1.35).
+    F.set_room(dofile("Assets/Scripts/rooms/kids.lua"))
+    local function roll(x, y, gap)
+        local b = F.new_board()
+        b:place(x, y, pi, 0, "cream")
+        local q = b:place_ball(x - gap, y, 0)
+        local r = ball_of(F.simulate(b), q)
+        return x - gap - r.x, r
+    end
+    local flat = roll(22, -31, 1.35)
+    local onto = roll(22, -26.1, 1.35)
+    check(onto < flat * 0.85, "a ball crossing the mat's lip ends shorter than on the floor: " .. onto .. " vs " .. flat)
+    check(abs(onto - 25.8) <= 25.8 * 0.15, "as far as the live ball (25.8 within 15%): " .. onto)
+    local _, slow = roll(12.9, -26.1, 0.9)
+    check(slow.x > 11 and slow.z < 1e-6, "a ball too slow for the lip does not get onto the mat: x " .. slow.x)
+    -- Set down at floor height on the play mat (0.1, nothing under it), a piece stands on the mat, not inside it.
+    local b = F.new_board()
+    local p = b:place(0, -20, 0, 0, "cream")
+    local q = b:place_ball(-2, -12, 0)
+    local n = b:place_line(-6, -15, -1, -15, nil, 0)
+    local low = 1
+    for _, d in pairs(b.pieces) do low = math.min(low, d.z) end
+    check(p and near(p.z, 0.1) and q and near(q.z, 0.1) and n > 3 and near(low, 0.1), "on the mat, not under it: domino, ball, line at " .. low)
+    local old = F.deserialize("TOPPLE-FREE 1\nd 0 -20 0 0 cream\nb -2 -12 0\n")
+    local od, ob
+    for _, d in pairs(old.pieces) do if d.kind == nil then od = d end end
+    for _, d in pairs(old.balls) do ob = d end
+    check(od and near(od.z, 0.1) and ob and near(ob.z, 0.1), "an old save's pieces under the mat are lifted onto it")
+end
+do
+    -- Under the coffee table (top 6.15 to 8.8 over the rug): still on the rug, not lifted onto the table.
+    F.set_room(dofile("Assets/Scripts/free_room.lua"))
+    local b = F.new_board()
+    local p, q = b:place(-13, 1, 0, 0.12, "cream"), b:place(-10, 1, 0, 0, "cream")
+    check(p and near(p.z, 0.12) and q and near(q.z, 0.12), "under the coffee table a domino stands on the rug")
 end
 
 print(checks .. " checks passed")

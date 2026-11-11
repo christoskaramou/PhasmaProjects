@@ -2,11 +2,24 @@
 
 Set up chain reactions of dominoes, then tip the first one. Three modes from the title card:
 
+**House Challenges** (the CHALLENGES button in Free Build): start from a locked first domino, set off a goal within a budget of dominoes and gadgets, and earn up to three stars for using fewer dominoes. Defined in `Assets/Scripts/topple_challenges.lua`; models from `tools/gen_room.py --only=goal_`.
+
 ## Free Build (Enter)
 
 Thousands of dominoes anywhere in a living room: across the oak floor and the rug, under and on top of the coffee
 table, up and over a staircase of books, on the side table and the bookshelf. Tip the first one and watch the chain
-run, with the camera following the falling front. A first visit opens on a ready-made chain to tip.
+run, with the camera following the falling front. A first visit opens on a ready-made chain to tip: along the floor, over
+the books, up a ramp, across the coffee table and off its edge, into a line that grows to Titans and a Titan onto Minis.
+
+- **Ways to fall**:
+  - **Sizes** (`-` `=` or the SIZE column: Mini, Standard, Large, Giant, Titan, each 1.5x the last). A domino tips one
+    up to 1.5x its own size and only leans on anything bigger, so a chain steps up a size at a time. Big ones fall
+    slower, reach farther, land with a thud and flatten the small ones under them.
+  - **Grow** (`G`): a stroke or line steps a size at a time (x1.25) toward the size you chose, from the domino it
+    carries on from (a fresh one starts at Mini).
+  - **Off an edge**: a domino that lies down with its middle past the edge of a table, the bookshelf or a ramp's side
+    tips off, tumbles down and knocks over what it lands on (dominoes, a ball, a switch). A field that reaches an edge
+    pours off it.
 
 - **Tools** (`1`-`9`, `0`): **Draw** (drag a path; start on a line's end to carry it on), **Line** (press, drag, release),
   **Spiral** (press at the middle, drag out to size it; Shift winds it the other way), **Field** (press where it starts,
@@ -73,7 +86,9 @@ re-aims `Key`, directional light 0, which casts the shadows; Table Run gets it b
 each other in a room this size, so the window light came and went as the camera moved. The window frame, curtains and
 pane are never hidden (a hidden node casts no shadow); only other wall decor is, when the camera is behind its wall.
 The chain is worked out up front in pure Lua (`topple_free.lua`): a binary-heap event queue over a spatial grid, each
-domino pivoting on its front edge onto whatever it meets first (dominoes, furniture, low ledges it slides over), so a
+domino pivoting on its front edge onto whatever it meets first (dominoes, furniture, low ledges it slides over; every
+measure scales with the domino's size, and one with nothing ahead and a drop under its middle gets a worked-out tumble
+to the ground below, `F.fall_pose`), so a
 4,000-domino chain simulates in about 12 ms (LuaJIT) / 16 ms (in the player). Every domino is one pooled scene node
 (body and pips as two mesh refs) shown with `set_visible` and posed in batches with `scene.set_positions` /
 `set_rotations`; only dominoes in motion are posed each frame.
@@ -103,7 +118,7 @@ time-ordered event queue, then animated.
 The camera numbers in `gen_meshes.py`, `backdrop_scene.py` and `topple_world.lua` (`W.CAM`) must stay identical.
 
 Tests (run from this folder with the engine's `luajit.exe`): `tests/rules_test.lua` (Table Run's chain rules,
-scoring, tables and shop), `tests/free_test.lua` (Free Build's placement, shapes, chain, saving and scale) and
+scoring, tables and shop), `tests/free_test.lua` (Free Build's placement, shapes, chain, sizes, edge drops, saving and scale) and
 `tests/view_smoke.lua` (the game script, both modes, against stubbed engine APIs).
 
 Font: Lilita One by Juan Montoreano, SIL Open Font License 1.1 (`Assets/Fonts/LilitaOne-OFL.txt`).

@@ -11,7 +11,28 @@ local R = module("Scripts/topple_rules.lua")
 local World = module("Scripts/topple_world.lua")(R)
 local SettingsMenu = module("Scripts/Lib/settings_menu.lua") -- shared menu, same copy as the other games
 local Free = module("Scripts/topple_free.lua")                -- Free Build: rules, the room, the view
-Free.set_room(module("Scripts/free_room.lua"))
+local House = module("Scripts/topple_house.lua")              -- the eight rooms: progress, what is open and unlocked
+-- A room's data (surfaces, solids, furniture, lights, camera): the living room's is free_room.lua, the others'
+-- Scripts/rooms/<id>.lua. nil while a room isn't made yet (the House map shows it as coming soon). fresh: read it again.
+local ROOMS = {}
+local function load_room(id, fresh)
+    if fresh then ROOMS[id] = nil end
+    if ROOMS[id] then return ROOMS[id] end
+    local path = id == "living" and "Scripts/free_room.lua" or ("Scripts/rooms/" .. id .. ".lua")
+    local okr, src = pcall(fs.read, path)
+    if not okr or not src then return nil end
+    local ok, room = pcall(function() return assert(load(src, "@" .. path, "t", _ENV))() end)
+    if not ok or type(room) ~= "table" or not (room.surfaces and room.solids and room.bounds) then
+        print("[Topple] The room " .. id .. " did not load: " .. tostring(room))
+        return nil
+    end
+    room.id = room.id or id
+    room.name = room.name or (House.BY_ID[id] and House.BY_ID[id].name) or id
+    room.pieces = room.pieces or {}
+    ROOMS[id] = room
+    return room
+end
+Free.set_room(load_room("living"))
 local FreeWorld = module("Scripts/topple_free_world.lua")(Free)
 World.F = Free                                                -- both modes' dominoes lean by the same rule
 local FreeView
@@ -46,6 +67,10 @@ local CLACK_VARIANTS = 12
 local LEN = { place = 0.4, remove = 0.37, tip = 0.52, bell = 2.58, boing = 0.91,
     launch = 1.09, pop = 0.68, roll = 1.33, thunk = 0.49, house = 0.6, wobble = 0.34, cheer = 2.23, over = 2.68, coin = 0.5, click = 0.07 }
 for i = 1, CLACK_VARIANTS do LEN["clack" .. i] = 0.06 end
+-- The House: traps, a new tool, and each room's goal.
+for name, d in pairs({ string_snap1 = 0.72, string_snap2 = 0.73, weight_drop = 0.5, plank_fall = 0.75, gate_open = 0.97, collapse_cards = 1.35,
+    collapse_blocks = 1.28, collapse_glass = 1.81, unlock = 1.65, goal_doorbell = 2.38, goal_tv = 2.0, goal_toaster = 0.69, goal_record = 3.28,
+    goal_train = 1.68, goal_musicbox = 3.5, goal_dictionary = 0.69, goal_lights = 2.45 }) do LEN[name] = d end
 local MAX_VOICES, voices, clock, last_clack, clack_gap, last_place = 16, {}, 0, -1, 0, -1
 local function sound(name)
     if not (audio and audio.play) then return end
@@ -142,6 +167,31 @@ local function commas(n)
     end
 end
 local function ease_back(t) t = max(0, min(1, t)); local c = 1.7; return 1 + (c + 1) * (t - 1) ^ 3 + c * (t - 1) ^ 2 end
+local function wrap(s, n)
+    local lines, cur = {}, ""
+    for word in s:gmatch("%S+") do
+        if #cur + #word + 1 > n and cur ~= "" then lines[#lines + 1] = cur; cur = word
+        else cur = cur == "" and word or (cur .. " " .. word) end
+    end
+    if cur ~= "" then lines[#lines + 1] = cur end
+    return lines
+end
+-- A brass padlock centred on (cx, cy); s: the width of its body.
+local function lock(cx, cy, s, a, z)
+    local c = col4(BRASS, a)
+    quad(pid("lk"), { style = "text", label = "", x = cx - s * 0.36, y = cy - s * 0.86, width = s * 0.72, height = s * 0.9, z = z, fill = c, corner_radius = s * 0.36 })
+    quad(pid("lk"), { style = "text", label = "", x = cx - s * 0.2, y = cy - s * 0.66, width = s * 0.4, height = s * 0.7, z = z + 0.1, fill = { 0.09, 0.05, 0.028, a }, corner_radius = s * 0.2 })
+    quad(pid("lk"), { style = "text", label = "", x = cx - s / 2, y = cy - s * 0.24, width = s, height = s * 0.78, z = z + 0.2, fill = c, border = { 1, 0.86, 0.55, 0.5 * a }, corner_radius = s * 0.14 })
+    quad(pid("lk"), { style = "text", label = "", x = cx - s * 0.08, y = cy + s * 0.02, width = s * 0.16, height = s * 0.3, z = z + 0.3, fill = { 0.09, 0.05, 0.028, a }, corner_radius = s * 0.08 })
+end
+-- How hovered a widget is, eased (0..1), for lifts and glows.
+local HV = {}
+local function hv(id)
+    local v = HV[id] or 0
+    v = v + ((hovered(id) and 1 or 0) - v) * min(1, (S.fdt or 1 / 60) * 14)
+    HV[id] = v
+    return v
+end
 
 ------------------------------------------------------------------ flow
 local function update_preview()
@@ -260,58 +310,149 @@ local function edge()
     end
 end
 local pressed = edge()
-local KEYS = { "M", "Return", "Space", "F", "C", "Backspace", "1", "2", "3", "4", "5", "T", "G" }
+local KEYS = { "M", "Return", "Space", "F", "C", "Backspace", "1", "2", "3", "4", "5", "T", "G", "Q" }
 
 -- Free Build gets the screen helpers; it keeps its own key edges (see FreeView.flush_keys).
-local TABLE_IDS = { "board", "btn_tip", "btn_speed", "btn_undo", "btn_clear", "btn_menu", "tool1", "tool2", "tool3", "tool4", "tool5",
+local TABLE_IDS = { "btn_card_back", "board", "btn_tip", "btn_speed", "btn_undo", "btn_clear", "btn_menu", "tool1", "tool2", "tool3", "tool4", "tool5",
     "buy1", "buy2", "buy3", "buy4" }
 local back_to_menu
+local Challenges = module("Scripts/topple_challenges.lua")(Free)
+local GLOBAL_SAVE = "Save/global_challenges.txt"
+Challenges.load_global(fs.read(GLOBAL_SAVE))
+-- The House's progress: the best stars of every room challenge (Save/house.txt; before the House, the living room's
+-- stars were kept in Save/challenges.txt, which seeds it).
+local house = House.new(Challenges.MAPS)
+house:load(fs.read("Save/house.txt") or fs.read("Save/challenges.txt"))
+_G.topple.house, _G.topple.House, _G.topple.load_room, _G.topple.Challenges = house, House, load_room, Challenges
+-- (testing) Open every room and unlock every tool and size for this session; nothing is saved.
+_G.topple.unlock_all = function(on) house.all = on ~= false; return house.all and "Every room and tool unlocked." or "Back to what you've earned." end
+local open_house
+-- Every mode reports its finished runs here. Returns what to announce, or nil.
+local function report_run(stats)
+    local new = Challenges.award(stats)
+    if #new == 0 then return nil end
+    if not (pcall(fs.write, GLOBAL_SAVE, Challenges.dump_global())) then return "Couldn't save your challenges." end
+    sound("coin")
+    return "Challenge complete: " .. new[1].name .. (#new > 1 and ("  (+" .. (#new - 1) .. " more)") or "")
+end
+-- The shared global challenges, as a 4-wide grid for any map's list. Four rows fill h.
+local function challenge_grid(map, x, y, w, h, z)
+    local gap = 10 * u
+    local cw, ch = (w - 3 * gap) / 4, (h - 3 * gap) / 4
+    for i, e in ipairs(Challenges.for_map(map).shared) do
+        local cx, cy = x + (i - 1) % 4 * (cw + gap), y + floor((i - 1) / 4) * (ch + gap)
+        panel(cx, cy, cw, ch, z, e.done and { 0.3, 0.18, 0.07, 0.98 } or { 0.17, 0.095, 0.05, 0.97 }, e.done and col4(GOLD, 0.8) or col4(RIM, e.here and 0.6 or 0.3), 10)
+        local a = (e.here or e.done) and 1 or 0.5
+        local sz = 40 * u
+        image("Textures/star.png", cx + 12 * u, cy + (ch - sz) / 2, sz, sz, e.done and { 1, 0.78, 0.3, 1 } or { 0.27, 0.18, 0.1, 1 }, z + 1)
+        local tx = cx + 62 * u
+        local tw = cw - 70 * u
+        text(e.g.name, tx, cy + ch * 0.26, 17 * u, col4(e.done and GOLD or CREAM, a), "left", z + 2, tw)
+        if e.here or e.done then
+            local line, n = "", 0
+            for word in e.g.brief:gmatch("%S+") do
+                if #line + #word + 1 > 34 then
+                    n = n + 1
+                    text(line, tx, cy + ch * 0.36 + n * 19 * u, 13 * u, col4(CREAM, 0.85), "left", z + 2, tw)
+                    line = word
+                else line = line == "" and word or (line .. " " .. word) end
+            end
+            text(line, tx, cy + ch * 0.36 + (n + 1) * 19 * u, 13 * u, col4(CREAM, 0.85), "left", z + 2, tw)
+        else
+            text("Needs " .. Challenges.MAPS[e.g.needs].name, tx, cy + ch * 0.62, 13 * u, col4(BRASS, 0.75), "left", z + 2, tw)
+        end
+    end
+end
 FreeView = module("Scripts/topple_free_view.lua")(Free, FreeWorld, {
+    Challenges = Challenges, report_run = report_run, challenge_grid = challenge_grid,
     quad = quad, hide = hide, catcher = catcher, state = state, clicked = clicked, hovered = hovered, pid = pid, rect = rect,
     image = image, text = text, panel = panel, col4 = col4, commas = commas, ease_back = ease_back, sound = sound, clack = clack,
     edge = edge, SET = SET, L = L, u = function() return u end, back_to_menu = function() back_to_menu() end,
+    house = house, House = House, load_room = load_room, lock = lock, open_house = function(tab, room) open_house(tab, room) end,
     C = { CREAM = CREAM, BRASS = BRASS, GOLD = GOLD, WALNUT = WALNUT, WALNUT_HI = WALNUT_HI, RIM = RIM, BAD = BAD, SAGE = SAGE, CLEAR = CLEAR },
 })
 _G.topple.free = FreeView
 Hall = module("Scripts/topple_hall.lua")(Free, FreeWorld, module("Scripts/topple_hall_core.lua")(Free), {
+    report_run = report_run, Challenges = Challenges, challenge_grid = challenge_grid,
     quad = quad, hide = hide, catcher = catcher, state = state, clicked = clicked, hovered = hovered, pid = pid, rect = rect, image = image,
     text = text, panel = panel, col4 = col4, commas = commas, sound = sound, clack = clack, edge = edge, SET = SET, L = L,
     u = function() return u end, back_to_menu = function() back_to_menu() end,
     C = { CREAM = CREAM, BRASS = BRASS, GOLD = GOLD, WALNUT = WALNUT, WALNUT_HI = WALNUT_HI, RIM = RIM, BAD = BAD, SAGE = SAGE, CLEAR = CLEAR },
 })
 _G.topple.hall = Hall
-local function start_free()
+local TITLE_IDS = { "btn_card", "btn_challenge", "btn_free", "btn_table", "btn_hall", "btn_quit" }
+local HOUSE_IDS = { "hm_back", "hm_block", "hm_build", "hm_card_block", "hm_tab1", "hm_tab2", "hm_tab3" }
+for i = 1, #House.ROOMS do HOUSE_IDS[#HOUSE_IDS + 1] = "hm_room" .. i end
+for k = 1, 3 do HOUSE_IDS[#HOUSE_IDS + 1] = "hm_tier" .. k end
+local function hide_title() for _, id in ipairs(TITLE_IDS) do hide(id) end end
+local function hide_house() for _, id in ipairs(HOUSE_IDS) do hide(id) end end
+local function house_say(s) if S.hz then S.hz.msg, S.hz.msg_t = s, 3 end end
+-- Free Build in a room (default: the last one built in), or one of its challenges. False if the room isn't made yet.
+local function start_free(room_id, def)
     for _, id in ipairs(TABLE_IDS) do hide(id) end
-    hide("btn_card"); hide("btn_table"); hide("btn_hall")
+    hide_title(); hide_house()
     World.show(false)
+    local was = S.mode
     S.mode = "free"
-    FreeView.enter()
+    if not FreeView.enter(room_id, def) then
+        S.mode = was
+        World.show(true)
+        house_say("That room isn't built yet: coming soon.")
+        return false
+    end
     SET:apply()
+    return true
 end
 local function start_hall()
     if not hinge_field then return end     -- an engine build from before the hall can't draw it
     for _, id in ipairs(TABLE_IDS) do hide(id) end
-    hide("btn_card"); hide("btn_table"); hide("btn_hall")
+    hide_title(); hide_house()
     World.show(false)
     S.mode = "hall"
     Hall.enter()
     SET:apply()
 end
 _G.topple.start_hall = start_hall
-back_to_menu = function()
+-- Out of Free Build or the hall, back to the table's world (the title and the House map show over it).
+local function leave_play(next_mode)
     if S.mode == "hall" then
         Hall.leave()
         Hall.hide_all()
-    else
+    elseif S.mode == "free" then
         FreeView.leave()
         FreeView.hide_all()
     end
     World.show(true)
     World.apply_look()
-    S.mode, S.card_t = "title", 0
+    S.mode, S.card_t = next_mode, 0
     SET:apply()
     pcall(settings.set, "shadows", true)
 end
+back_to_menu = function() hide_house(); leave_play("title") end
+-- What the map shows for each room: whether it is made, and how many dominoes its build holds.
+local function house_scan()
+    local hz = S.hz
+    hz.ready, hz.count = {}, {}
+    for _, r in ipairs(House.ROOMS) do
+        hz.ready[r.id] = load_room(r.id) ~= nil
+        local b = FreeView.boards[r.id]
+        local n = b and b.count
+        if not n then
+            local s = fs.read(FreeView.room_file("auto", nil, r.id))
+            if s then n = 0; for _ in s:gmatch("\nd ") do n = n + 1 end end
+        end
+        hz.count[r.id] = n
+    end
+end
+-- The House map. tab: "challenge" (the rooms' challenges), "free" (the rooms to build in) or "global"; room: open
+-- that room's three levels.
+open_house = function(tab, room)
+    if S.mode == "free" or S.mode == "hall" then leave_play("house") else S.mode = "house" end
+    hide_title()
+    S.hz = { tab = tab or "challenge", room = room, t = 0, rt = 0, tt = 1, shake = {}, msg_t = 0 }
+    house_scan()
+end
+_G.topple.open_house = function(tab, room) open_house(tab, room) end
 _G.topple.start_free, _G.topple.back_to_menu = start_free, function() back_to_menu() end
 local TOOLS = { "domino", "bell", "spring", "rocket", "marble" }
 local TOOL_ICON = { domino = "dominoes", bell = "bell", spring = "spring", rocket = "rocket", marble = "marble" }
@@ -448,6 +589,109 @@ local function autoplay()
     tip()
 end
 
+-- The House map's clicks: tabs, a room (its tiers, or Free Build there), a tier (its challenge), back.
+local function house_controls(enter)
+    local hz = S.hz
+    if hz.t < 0.2 then return end
+    local back = pressed("Backspace") or clicked("hm_back")
+    if hz.room then
+        if back then sound("click"); hz.room = nil; return end
+        for k = 1, 3 do
+            if clicked("hm_tier" .. k) then
+                local def = house:tiers(hz.room)[k]
+                if def then sound("place"); start_free(hz.room, def) else sound("click") end
+                return
+            end
+        end
+        if clicked("hm_build") and house:free_open(hz.room) then sound("click"); start_free(hz.room) end
+        return
+    end
+    if back then sound("click"); hide_house(); S.mode, S.card_t = "title", 0; return end
+    for i, tab in ipairs({ "challenge", "free", "global" }) do
+        if clicked("hm_tab" .. i) and hz.tab ~= tab then sound("click"); hz.tab, hz.tt = tab, 0 end
+    end
+    if hz.tab == "global" then return end
+    for i, r in ipairs(House.ROOMS) do
+        if clicked("hm_room" .. i) then
+            sound("click")
+            local prev = House.ROOMS[i - 1]
+            if not hz.ready[r.id] then
+                hz.shake[i] = 1; house_say("The " .. r.name .. " is coming soon.")
+            elseif hz.tab == "challenge" then
+                if house:is_open(r.id) then hz.room, hz.rt = r.id, 0
+                else hz.shake[i] = 1; house_say("The " .. r.name .. " opens when you clear level 1 in the " .. prev.name .. ".") end
+            elseif house:free_open(r.id) then
+                start_free(r.id)
+            else
+                hz.shake[i] = 1; house_say("Clear level 1 in the " .. r.name .. " to build there.")
+            end
+            return
+        end
+    end
+    if enter and hz.tab == "free" then
+        local id = FreeView.S.room
+        if house:free_open(id) then sound("click"); start_free(id) end
+    end
+end
+
+------------------------------------------------------------------ quit, pause and back
+-- Quit (engine.quit, as Echo Chamber's menu): what the mode autosaves is written first (a room's or the hall's build,
+-- through their own leave; House progress is written as each level is recorded), and no chain is tipped nor a run counted.
+local function quit_game()
+    sound("click")
+    if S.mode == "free" then FreeView.leave() elseif S.mode == "hall" then Hall.leave() end
+    pcall(engine.quit)
+end
+_G.topple.quit = function() quit_game() end
+-- Nothing held carries into the screen the player lands on.
+local function flush_all()
+    for _, key in ipairs(KEYS) do pressed(key) end
+    FreeView.flush_keys()
+    Hall.flush_keys()
+end
+-- To the title from anywhere: Free Build and the hall leave through their autosave; a table run is dropped as its MENU
+-- button drops it, never tipped or counted.
+local function to_menu()
+    if S.mode == "free" or S.mode == "hall" then back_to_menu(); return end
+    for _, id in ipairs(TABLE_IDS) do hide(id) end
+    if S.mode ~= "house" and S.mode ~= "title" then World.clear() end
+    hide_house()
+    S.mode, S.card_t = "title", 0
+end
+-- The pause card (Esc wherever Esc has nothing nearer to close): RESUME, SETTINGS, BACK TO MENU (not on the title),
+-- QUIT GAME. While it is up nothing moves: a running chain waits, and nothing under it takes a click.
+local PAUSE_IDS = { "pz_block", "pz_resume", "pz_settings", "pz_menu", "pz_quit" }
+local function open_pause() S.pause = { t = 0 }; flush_all() end
+local function close_pause() S.pause = nil; for _, id in ipairs(PAUSE_IDS) do hide(id) end; flush_all() end
+_G.topple.pause = function() open_pause() end
+local function pause_controls(dt, esc)
+    local P = S.pause
+    P.t = P.t + dt
+    if P.t < 0.12 then return end
+    if esc or clicked("pz_resume") then sound("click"); close_pause()
+    elseif pressed("Q") or clicked("pz_quit") then close_pause(); quit_game()
+    elseif clicked("pz_settings") then sound("click"); close_pause(); SET:open(function() open_pause() end)
+    elseif S.mode ~= "title" and clicked("pz_menu") then sound("click"); close_pause(); to_menu() end
+end
+-- Esc: up exactly one level. An open panel, card or canvas closes; the House map's level card goes to the map and the
+-- map to the title; anywhere else (the title, a room, a level, the hall, a table run) the pause card opens.
+-- A Table Run card: the tally closes (as if it had run out), the cleared, shop and game-over cards go back to the title
+-- (as MENU does: the run is left, nothing more counted).
+local function table_back()
+    if S.mode == "tally" then after_tally() else to_menu() end
+end
+local TABLE_CARDS = { tally = true, cleared = true, shop = true, over = true }
+local function go_back()
+    sound("click")
+    if TABLE_CARDS[S.mode] and run then table_back()
+    elseif S.mode == "free" then if not FreeView.back() then open_pause() end
+    elseif S.mode == "hall" then if not Hall.back() then open_pause() end
+    elseif S.mode == "house" and S.hz then
+        if S.hz.room then S.hz.room = nil else hide_house(); S.mode, S.card_t = "title", 0 end
+    else open_pause() end
+    flush_all()
+end
+
 local function controls(dt)
     if pressed("M") then SET:toggle_mute() end
     local enter = pressed("Return") or pressed("Space")
@@ -466,10 +710,18 @@ local function controls(dt)
         World.clear(); S.mode, S.card_t = "title", 0
         return
     end
+    if S.mode == "house" then
+        house_controls(enter)
+        return
+    end
+    if TABLE_CARDS[S.mode] and clicked("btn_card_back") then sound("click"); table_back(); return end
     if S.mode == "title" then
-        if S.card_t > 0.3 and (enter or clicked("btn_card")) then sound("click"); start_free()
+        local ckey = pressed("C")
+        if S.card_t > 0.3 and (ckey or clicked("btn_challenge")) then sound("click"); open_house("challenge")
+        elseif S.card_t > 0.3 and (enter or clicked("btn_free")) then sound("click"); open_house("free")
         elseif S.card_t > 0.3 and (gkey or clicked("btn_hall")) then sound("click"); start_hall()
-        elseif S.card_t > 0.3 and (tkey or clicked("btn_table")) then sound("click"); new_run() end
+        elseif S.card_t > 0.3 and (tkey or clicked("btn_table")) then sound("click"); new_run()
+        elseif S.card_t > 0.3 and (pressed("Q") or clicked("btn_quit")) then quit_game() end
     elseif S.mode == "build" then
         if _G.topple.autoplay then autoplay() else build_input(enter) end
         if S.dirty then S.dirty = false; changed() end
@@ -505,6 +757,12 @@ local function step(dt)
     end
     S.nudge = max(0, (S.nudge or 0) - dt * 1.5)
     S.deny = max(0, (S.deny or 0) - dt * 2)
+    local hz = S.hz
+    if S.mode == "house" and hz then
+        hz.t, hz.rt, hz.tt = hz.t + dt, hz.rt + dt, hz.tt + dt
+        hz.msg_t = max(0, hz.msg_t - dt)
+        for i, v in pairs(hz.shake) do hz.shake[i] = max(0, v - dt * 2.5) end
+    end
 end
 
 ------------------------------------------------------------------ HUD
@@ -622,7 +880,7 @@ local function top_left()
     panel(24 * u, 18 * u, 330 * u, 92 * u, 39, WALNUT, RIM, 14)
     text("TOPPLE", 44 * u, 50 * u, 40 * u, CREAM, "left", 41, 300 * u)
     text("table run", 46 * u, 88 * u, 15 * u, col4(BRASS, 0.95), "left", 41, 200 * u)
-    if S.mode ~= "title" then
+    if S.mode ~= "title" and S.mode ~= "house" then
         local hov = hovered("btn_menu")
         panel(270 * u, 34 * u, 70 * u, 60 * u, 41, hov and WALNUT_HI or { 0.17, 0.095, 0.05, 0.95 }, col4(RIM, 0.6), 10)
         text("MENU", 305 * u, 64 * u, 17 * u, CREAM, "center", 42, 70 * u)
@@ -720,41 +978,353 @@ local function cursor_marks()
     end
 end
 
+-- The title card: CHALLENGE and FREE BUILD the two ways in, the Great Hall and Table Run below them.
+local function draw_title(a)
+    local w, h = L.w, L.h
+    local cw, ch = 1000 * u, (best > 0 and 572 or 534) * u
+    local x, y = (w - cw) / 2, (h - ch) / 2 + (1 - ease_back(S.card_t * 2.5)) * 30 * u
+    panel(x, y, cw, ch, 81, col4({ 0.1, 0.055, 0.03, 0.97 }, a), col4(RIM, a), 20)
+    local cx = x + cw / 2
+    text("TOPPLE", cx, y + 80 * u, 86 * u, col4(CREAM, a), "center", 82, cw)
+    text("Set up chain reactions of dominoes, then tip the first one.", cx, y + 150 * u, 22 * u, col4(CREAM, a), "center", 82, cw)
+    local open_n = 0
+    for _, r in ipairs(House.ROOMS) do if house:is_open(r.id) then open_n = open_n + 1 end end
+    local nfree = #house:free_rooms()
+    local BIG = {
+        { "btn_challenge", "CHALLENGE", "C", "Textures/star.png", { 1, 0.78, 0.3, 1 }, { "Eight rooms of a house, three levels in each.", "Clear a room to unlock its tool." },
+            house:total_stars() .. " of 72 stars  ·  " .. open_n .. (open_n == 1 and " room open" or " rooms open"), { 0.42, 0.25, 0.09 }, { 0.52, 0.31, 0.11 } },
+        { "btn_free", "FREE BUILD", "Enter", "Textures/icon_tool_draw.png", { 1, 1, 1, 1 }, { "Thousands of dominoes in the rooms you've", "cleared, with the tools you've unlocked." },
+            nfree .. (nfree == 1 and " room to build in" or " rooms to build in"), { 0.3, 0.17, 0.07 }, { 0.4, 0.23, 0.09 } },
+    }
+    local bw, bh, gap = 452 * u, 214 * u, 24 * u
+    local by = y + 192 * u
+    for k, b in ipairs(BIG) do
+        local hvv = hv(b[1])
+        local bx = cx - bw - gap / 2 + (k - 1) * (bw + gap)
+        local e = ease_back(S.card_t * 3 - 0.25 - 0.12 * k)
+        local yy = by + (1 - e) * 24 * u - hvv * 6 * u
+        local f0, f1 = b[8], b[9]
+        local fill = { f0[1] + (f1[1] - f0[1]) * hvv, f0[2] + (f1[2] - f0[2]) * hvv, f0[3] + (f1[3] - f0[3]) * hvv, 1 }
+        if hvv > 0.02 then rect(bx - 6 * u, yy - 6 * u, bw + 12 * u, bh + 12 * u, CLEAR, 83, 20 * u, col4(GOLD, 0.35 * hvv * a)) end
+        panel(bx, yy, bw, bh, 83, col4(fill, a), col4(GOLD, a * (0.7 + 0.3 * hvv)), 16)
+        image(b[4], bx + 22 * u, yy + 20 * u, 58 * u, 58 * u, col4(b[5], a), 84)
+        text(b[2], bx + bw / 2, yy + 52 * u, 42 * u, col4(GOLD, a), "center", 85, bw - 150 * u)
+        text(b[3], bx + bw - 26 * u, yy + 30 * u, 15 * u, col4(BRASS, 0.9 * a), "right", 85, 100 * u)
+        text(b[6][1], bx + bw / 2, yy + 112 * u, 16 * u, col4(CREAM, 0.92 * a), "center", 85, bw - 30 * u)
+        text(b[6][2], bx + bw / 2, yy + 136 * u, 16 * u, col4(CREAM, 0.92 * a), "center", 85, bw - 30 * u)
+        rect(bx + 40 * u, yy + 160 * u, bw - 80 * u, 1.5 * u, col4(RIM, 0.45 * a), 84)
+        text(b[7], bx + bw / 2, yy + 186 * u, 16 * u, col4(GOLD, 0.95 * a), "center", 85, bw - 30 * u)
+        catcher(b[1], bx, yy, bw, bh, 86)
+    end
+    hide("btn_card")
+    local SMALL = { { "btn_hall", "GREAT HALL  ·  G", "five million dominoes on one floor" }, { "btn_table", "TABLE RUN  ·  T", "a toy chain, a score to beat" },
+        { "btn_quit", "QUIT  ·  Q", "close the game" } }
+    local sw2, sh2, sg = 296 * u, 62 * u, 16 * u
+    local sy = by + bh + 26 * u
+    for k, b in ipairs(SMALL) do
+        local hvv = hv(b[1])
+        local sx = cx - (#SMALL * sw2 + (#SMALL - 1) * sg) / 2 + (k - 1) * (sw2 + sg)
+        local yy = sy - hvv * 3 * u
+        panel(sx, yy, sw2, sh2, 83, col4(hvv > 0.5 and { 0.3, 0.17, 0.08, 1 } or { 0.2, 0.11, 0.05, 1 }, a), col4(hvv > 0.5 and GOLD or RIM, a), 12)
+        text(b[2], sx + sw2 / 2, yy + 23 * u, 19 * u, col4(CREAM, a), "center", 84, sw2)
+        text(b[3], sx + sw2 / 2, yy + 45 * u, 12 * u, col4(BRASS, 0.9 * a), "center", 84, sw2)
+        catcher(b[1], sx, yy, sw2, sh2, 85)
+    end
+    text(best > 0 and ("Best table run: table " .. best) or "", cx, y + ch - 36 * u, 17 * u, col4(GOLD, a), "center", 82, cw)
+end
+
+-- The pause card, over everything (but the settings menu it can open).
+local function draw_pause()
+    local P = S.pause
+    if not P or SET:is_open() then for _, id in ipairs(PAUSE_IDS) do hide(id) end; return end
+    local w, h = L.w, L.h
+    local a = min(1, P.t * 6)
+    rect(0, 0, w, h, { 0.02, 0.012, 0.006, 0.55 * a }, 150)
+    catcher("pz_block", 0, 0, w, h, 151)
+    local rows = { { "pz_resume", "RESUME", "Esc" }, { "pz_settings", "SETTINGS" } }
+    if S.mode ~= "title" then rows[#rows + 1] = { "pz_menu", "BACK TO MENU" } else hide("pz_menu") end
+    rows[#rows + 1] = { "pz_quit", "QUIT GAME", "Q" }
+    local where = ({ title = "TOPPLE", house = "the House", hall = "the Great Hall" })[S.mode]
+    if S.mode == "free" then where = FreeView.S.ch and ("Challenge  ·  " .. (FreeView.S.ch.name or "")) or "Free Build" end
+    where = where or "Table Run"
+    local saves = (S.mode == "free" and not FreeView.S.ch) or S.mode == "hall"
+    local bw, bh, gap = 380 * u, 62 * u, 14 * u
+    local cw = bw + 80 * u
+    local ch = 150 * u + #rows * (bh + gap) + 14 * u
+    local x, y = (w - cw) / 2, (h - ch) / 2 + (1 - ease_back(P.t * 3)) * 30 * u
+    panel(x, y, cw, ch, 152, col4({ 0.1, 0.055, 0.03, 0.97 }, a), col4(RIM, a), 20)
+    text("PAUSED", x + cw / 2, y + 54 * u, 46 * u, col4(CREAM, a), "center", 153, cw)
+    text(where, x + cw / 2, y + 98 * u, 17 * u, col4(GOLD, a), "center", 153, cw - 40 * u)
+    text(saves and "Your build is saved when you leave." or "Nothing is tipped or counted when you leave.", x + cw / 2, y + 124 * u, 14 * u,
+        col4(BRASS, 0.9 * a), "center", 153, cw - 40 * u)
+    for i, r in ipairs(rows) do
+        local hvv = hv(r[1])
+        local bx, by = x + 40 * u, y + 150 * u + (i - 1) * (bh + gap) - hvv * 3 * u
+        local quit = r[1] == "pz_quit"
+        if hvv > 0.02 then rect(bx - 5 * u, by - 5 * u, bw + 10 * u, bh + 10 * u, CLEAR, 153, 16 * u, col4(GOLD, 0.35 * hvv * a)) end
+        panel(bx, by, bw, bh, 154, col4(hvv > 0.5 and { 0.3, 0.17, 0.08, 1 } or { 0.2, 0.11, 0.05, 1 }, a), col4(hvv > 0.5 and GOLD or RIM, a), 12)
+        text(r[2], bx + bw / 2, by + bh / 2, 22 * u, col4(quit and BAD or CREAM, a), "center", 155, bw - 120 * u)
+        if r[3] then text(r[3], bx + bw - 20 * u, by + bh / 2, 14 * u, col4(BRASS, 0.9 * a), "right", 155, 70 * u) end
+        catcher(r[1], bx, by, bw, bh, 157)
+    end
+end
+
+-- The House map: a floor plan of the eight rooms (16 x 9 cells; the attic the strip upstairs), each with its name,
+-- its stars out of 9 and what it unlocks, a lock on the rooms not open yet; a chosen room's three levels on a card.
+local TIER_COL = { { 0.62, 0.8, 0.55, 1 }, { 0.88, 0.68, 0.38, 1 }, { 0.93, 0.45, 0.33, 1 } }
+local function unlock_words(r)
+    local t = {}
+    for _, id in ipairs(r.unlocks.tools or {}) do t[#t + 1] = id:upper() end
+    for _, s in ipairs(r.unlocks.sizes or {}) do t[#t + 1] = Free.SIZE_NAMES[s]:upper() end
+    return table.concat(t, ", ")
+end
+local function tier_card(hz)
+    local w, h = L.w, L.h
+    local r = House.BY_ID[hz.room]
+    local rt = hz.rt
+    local ka = min(1, rt * 5)
+    rect(0, 0, w, h, { 0.02, 0.012, 0.008, 0.55 * ka }, 92)
+    catcher("hm_card_block", 0, 0, w, h, 93)
+    local cw, ch = 1320 * u, 640 * u
+    local x, y = (w - cw) / 2, (h - ch) / 2 + (1 - ease_back(rt * 3)) * 40 * u
+    panel(x, y, cw, ch, 94, col4({ 0.1, 0.055, 0.03, 0.98 }, ka), col4(GOLD, 0.8 * ka), 20)
+    local cx = x + cw / 2
+    text(r.n .. "  ·  " .. r.name:upper(), cx, y + 54 * u, 44 * u, col4(GOLD, ka), "center", 95, cw - 300 * u)
+    local nxt = House.ROOMS[r.n + 1]
+    local why = house:cleared(r.id) and ("Cleared: " .. unlock_words(r) .. " unlocked, and you can build here.")
+        or ("Clear level 1 to unlock " .. unlock_words(r) .. (nxt and (" and open the " .. nxt.name) or "") .. ".")
+    text(why, cx, y + 102 * u, 17 * u, col4(CREAM, 0.95 * ka), "center", 95, cw - 80 * u)
+    image("Textures/star.png", x + cw - 170 * u, y + 34 * u, 40 * u, 40 * u, col4({ 1, 0.78, 0.3, 1 }, ka), 95)
+    text(house:stars(r.id) .. " / 9", x + cw - 122 * u, y + 54 * u, 26 * u, col4(CREAM, ka), "left", 95, 110 * u)
+    local tiers = house:tiers(r.id)
+    local tw, th, gap = 400 * u, 404 * u, 24 * u
+    local ty = y + 138 * u
+    if not house:has_challenges(r.id) then
+        for k = 1, 3 do hide("hm_tier" .. k) end
+        panel(x + 60 * u, ty, cw - 120 * u, th, 95, col4({ 0.14, 0.08, 0.04, 0.97 }, ka), col4(RIM, 0.5 * ka), 16)
+        lock(cx, ty + 150 * u, 46 * u, 0.6 * ka, 96)
+        text("No challenges in this room yet.", cx, ty + 230 * u, 30 * u, col4(CREAM, ka), "center", 96, cw - 160 * u)
+        text("The " .. r.name .. "'s three levels are still being built. Come back soon.", cx, ty + 274 * u, 17 * u, col4(BRASS, ka), "center", 96, cw - 160 * u)
+    else
+        for k = 1, 3 do
+            local def = tiers[k]
+            local id = "hm_tier" .. k
+            local e = ease_back(rt * 4 - 0.25 - 0.14 * k)
+            local hvv = def and hv(id) or 0
+            local tx = cx - (3 * tw + 2 * gap) / 2 + (k - 1) * (tw + gap)
+            local yy = ty + (1 - e) * 36 * u - hvv * 7 * u
+            local ca = ka * max(0, min(1, rt * 4 - 0.2 - 0.14 * k))
+            if hvv > 0.02 then rect(tx - 6 * u, yy - 6 * u, tw + 12 * u, th + 12 * u, CLEAR, 95, 20 * u, col4(GOLD, 0.35 * hvv * ca)) end
+            panel(tx, yy, tw, th, 95, col4(def and (hvv > 0.5 and WALNUT_HI or { 0.17, 0.095, 0.05, 0.98 }) or { 0.11, 0.06, 0.035, 0.97 }, ca),
+                col4(hvv > 0.5 and GOLD or TIER_COL[k], (def and 0.8 or 0.35) * ca), 16)
+            -- (the tier's ribbon)
+            local rw = 150 * u
+            panel(tx + (tw - rw) / 2, yy - 16 * u, rw, 34 * u, 96, col4({ 0.12, 0.065, 0.035, 1 }, ca), col4(TIER_COL[k], ca), 10)
+            text("LEVEL " .. k, tx + tw / 2, yy + 1 * u, 16 * u, col4(TIER_COL[k], ca), "center", 97, rw)
+            if def and k == 1 then
+                text("clear it to unlock " .. (def.unlock and tostring(def.unlock):upper() or unlock_words(r)), tx + tw / 2, yy + 30 * u, 12 * u, col4(GOLD, 0.9 * ca), "center", 96, tw - 20 * u)
+            end
+            if def then
+                text(def.name, tx + tw / 2, yy + 60 * u, 27 * u, col4(CREAM, ca), "center", 96, tw - 20 * u)
+                for i, line in ipairs(wrap(def.brief or "", 40)) do
+                    if i <= 3 then text(line, tx + tw / 2, yy + 84 * u + i * 22 * u, 15 * u, col4(CREAM, 0.88 * ca), "center", 96, tw - 20 * u) end
+                end
+                local B, extra = def.budget or {}, ""
+                for _, g in ipairs({ "ball", "swing", "switch", "ramp" }) do
+                    if (B[g] or 0) > 0 then extra = extra .. "  +  " .. B[g] .. " " .. g end
+                end
+                text((B.domino or 0) .. " dominoes" .. extra, tx + tw / 2, yy + 204 * u, 16 * u, col4(GOLD, ca), "center", 96, tw - 20 * u)
+                if def.tools then
+                    local names = {}
+                    for _, t in ipairs(def.tools) do names[#names + 1] = t:upper() end
+                    text("tools: " .. table.concat(names, "  ·  "), tx + tw / 2, yy + 230 * u, 13 * u, col4(BRASS, 0.9 * ca), "center", 96, tw - 20 * u)
+                end
+                -- (its challenges, 2, 3 or 4, a star each: gold for those held; then cleared or not, and the stars)
+                local got, list = house.best[def.id], def.challenges or {}
+                for i, c in ipairs(list) do
+                    local ry = yy + 262 * u + (i - 1) * 21 * u
+                    local held = house:done(def.id, c.id)
+                    image("Textures/star.png", tx + 34 * u, ry - 8 * u, 16 * u, 16 * u, col4(held and { 1, 0.78, 0.3, 1 } or { 0.3, 0.2, 0.12, 1 }, ca), 96)
+                    text(c.name, tx + 58 * u, ry, 14 * u, col4(held and GOLD or CREAM, (held and 1 or 0.75) * ca), "left", 96, tw - 80 * u)
+                end
+                local n = house:stars_for(def.id)
+                text(not got and "not cleared yet" or (n == 0 and #list > 0) and ("cleared  ·  0 of " .. #list .. " stars")
+                    or (#list > 0 and (n .. " of " .. #list .. " stars  ·  best " .. got.used .. " dominoes") or ("best: " .. got.used .. " dominoes")),
+                    tx + tw / 2, yy + 352 * u, 14 * u, col4(got and GOLD or BRASS, 0.9 * ca), "center", 96, tw)
+                text("PLAY", tx + tw / 2, yy + 380 * u, 20 * u, col4(GOLD, (0.45 + 0.55 * hvv) * ca), "center", 96, tw)
+                catcher(id, tx, yy, tw, th, 98)
+            else
+                hide(id)
+                lock(tx + tw / 2, yy + 170 * u, 34 * u, 0.45 * ca, 96)
+                text("Not built yet", tx + tw / 2, yy + 230 * u, 22 * u, col4(CREAM, 0.5 * ca), "center", 96, tw)
+                text("This puzzle is still being made.", tx + tw / 2, yy + 262 * u, 14 * u, col4(BRASS, 0.6 * ca), "center", 96, tw)
+            end
+        end
+    end
+    local bw2, bh2 = 220 * u, 54 * u
+    local by2 = y + ch - bh2 - 22 * u
+    local hb = hv("hm_back")
+    panel(x + 40 * u, by2, bw2, bh2, 96, col4(hb > 0.5 and WALNUT_HI or { 0.17, 0.095, 0.05, 1 }, ka), col4(hb > 0.5 and GOLD or RIM, ka), 12)
+    text("BACK  ·  Esc", x + 40 * u + bw2 / 2, by2 + bh2 / 2, 17 * u, col4(CREAM, ka), "center", 97, bw2)
+    catcher("hm_back", x + 40 * u, by2, bw2, bh2, 98)
+    if house:free_open(r.id) and hz.ready[r.id] then
+        local hb2 = hv("hm_build")
+        local bx3 = x + cw - 40 * u - bw2
+        panel(bx3, by2, bw2, bh2, 96, col4(hb2 > 0.5 and { 0.5, 0.3, 0.1, 1 } or { 0.34, 0.2, 0.08, 1 }, ka), col4(GOLD, ka), 12)
+        text("BUILD HERE", bx3 + bw2 / 2, by2 + bh2 / 2, 18 * u, col4(GOLD, ka), "center", 97, bw2)
+        catcher("hm_build", bx3, by2, bw2, bh2, 98)
+    else
+        hide("hm_build")
+    end
+end
+
+local function draw_house()
+    local w, h, hz = L.w, L.h, S.hz
+    local t = hz.t
+    local a = min(1, t * 4)
+    rect(0, 0, w, h, { 0.02, 0.015, 0.01, 0.62 * a }, 80)
+    catcher("hm_block", 0, 0, w, h, 81)
+    local pw, ph = 1600 * u, 950 * u
+    local px, py = (w - pw) / 2, (h - ph) / 2 + (1 - ease_back(t * 2.5)) * 30 * u
+    panel(px, py, pw, ph, 82, col4({ 0.1, 0.055, 0.03, 0.97 }, a), col4(RIM, a), 20)
+    text("THE HOUSE", px + 44 * u, py + 54 * u, 48 * u, col4(CREAM, a), "left", 84, 460 * u)
+    local open_n = 0
+    for _, r in ipairs(House.ROOMS) do if house:is_open(r.id) then open_n = open_n + 1 end end
+    image("Textures/star.png", px + 46 * u, py + 88 * u, 24 * u, 24 * u, col4({ 1, 0.78, 0.3, 1 }, a), 84)
+    text(house:total_stars() .. " of 72 stars  ·  " .. open_n .. " of 8 rooms open  ·  " .. #house:free_rooms() .. " to build in",
+        px + 78 * u, py + 100 * u, 16 * u, col4(BRASS, a), "left", 84, 600 * u)
+    -- The tabs.
+    local TABS = { { "challenge", "CHALLENGES" }, { "free", "FREE BUILD" }, { "global", "GLOBAL  " .. Challenges.global_count() .. " / " .. #Challenges.GLOBAL } }
+    local tw, th = 230 * u, 54 * u
+    for i, tb in ipairs(TABS) do
+        local id = "hm_tab" .. i
+        local on = hz.tab == tb[1]
+        local hvv = hz.room and 0 or hv(id)
+        local tx = px + pw - 44 * u - (4 - i) * (tw + 12 * u) + 12 * u
+        panel(tx, py + 34 * u - hvv * 3 * u, tw, th, 84, col4(on and { 0.42, 0.25, 0.09, 1 } or (hvv > 0.5 and WALNUT_HI or { 0.17, 0.095, 0.05, 1 }), a),
+            col4(on and GOLD or RIM, a), 12)
+        text(tb[2], tx + tw / 2, py + 34 * u + th / 2 - hvv * 3 * u, 18 * u, col4(on and GOLD or CREAM, a), "center", 85, tw)
+        catcher(id, tx, py + 34 * u, tw, th, 86)
+    end
+    -- The plan.
+    local ax, ay, aw, ah = px + 44 * u, py + 140 * u, pw - 88 * u, ph - 140 * u - 100 * u
+    local cs = min(aw / 16, ah / 9)
+    local gx, gy = ax + (aw - 16 * cs) / 2, ay + (ah - 9 * cs) / 2
+    local ta = a * min(1, hz.tt * 5)
+    if hz.tab == "global" then
+        for i = 1, #House.ROOMS do hide("hm_room" .. i) end
+        challenge_grid("room", gx, gy, 16 * cs, 9 * cs, 84)
+    else
+        -- (the walls of the house: upstairs, and the ground floor)
+        for _, b in ipairs({ { 0, 0, 16, 2.2 }, { 0, 2.6, 16, 6.4 } }) do
+            rect(gx + b[1] * cs - 7 * u, gy + b[2] * cs - 7 * u, b[3] * cs + 14 * u, b[4] * cs + 14 * u, col4({ 0.05, 0.028, 0.015, 1 }, ta), 83, 10 * u, col4(RIM, 0.8 * ta))
+        end
+        text("UPSTAIRS", gx - 4 * u, gy + 2.4 * cs, 11 * u, col4(BRASS, 0.7 * ta), "left", 84, 200 * u)
+        for i, r in ipairs(House.ROOMS) do
+            local id = "hm_room" .. i
+            local P = r.plan
+            local ready = hz.ready[r.id]
+            local open = hz.tab == "challenge" and house:is_open(r.id) or (hz.tab == "free" and house:free_open(r.id))
+            local usable = ready and open
+            local k = max(0, min(1, (hz.tt - 0.06 - 0.05 * i) * 4))
+            local e = ease_back(k)
+            local hvv = (hz.room or not usable) and 0 or hv(id)
+            local sh = hz.shake[i] or 0
+            local x0 = gx + P[1] * cs + 4 * u + sin(S.t * 46) * 7 * u * sh
+            local y0 = gy + P[2] * cs + 4 * u + (1 - e) * 28 * u - hvv * 5 * u
+            local cw, ch = P[3] * cs - 8 * u, P[4] * cs - 8 * u
+            local ra = ta * k
+            local cleared = house:cleared(r.id)
+            local fill = usable and (hvv > 0.5 and { 0.34, 0.2, 0.09, 1 } or { 0.24, 0.135, 0.065, 1 }) or { 0.12, 0.068, 0.038, 1 }
+            panel(x0, y0, cw, ch, 84, col4(fill, ra), col4(hvv > 0.5 and GOLD or (cleared and GOLD or RIM), ra * (usable and (0.65 + 0.35 * hvv) or 0.35)), 8)
+            if usable then image("Textures/room_floor.png", x0 + 3 * u, y0 + 3 * u, cw - 6 * u, ch - 6 * u, { 0.62, 0.42, 0.26, 0.16 * ra }, 84.5) end
+            -- (its number, in the corner)
+            local br = 15 * u
+            quad(pid("hmb"), { style = "text", label = "", x = x0 + 10 * u, y = y0 + 10 * u, width = 2 * br, height = 2 * br, z = 85,
+                fill = col4(usable and { 0.42, 0.25, 0.09, 1 } or { 0.16, 0.09, 0.05, 1 }, ra), border = col4(usable and GOLD or RIM, ra * 0.8), corner_radius = br })
+            text(tostring(i), x0 + 10 * u + br, y0 + 10 * u + br, 15 * u, col4(usable and GOLD or BRASS, ra), "center", 86, 2 * br, false)
+            if cleared then text("CLEARED", x0 + cw - 12 * u, y0 + 22 * u, 12 * u, col4(GOLD, ra), "right", 86, 120 * u) end
+            local ccx = x0 + cw / 2
+            local top = y0 + (ch - 96 * u) / 2
+            text(r.name, ccx, top + 14 * u, 25 * u, col4(CREAM, ra * (usable and 1 or 0.6)), "center", 86, cw - 70 * u)
+            local unl = unlock_words(r)
+            if not ready then
+                text("coming soon", ccx, top + 50 * u, 17 * u, col4(BRASS, 0.75 * ra), "center", 86, cw - 20 * u)
+                text("unlocks " .. unl, ccx, top + 82 * u, 13 * u, col4(BRASS, 0.5 * ra), "center", 86, cw - 20 * u)
+            elseif not open then
+                lock(ccx, top + 52 * u, 22 * u, 0.85 * ra, 86)
+                local prev = House.ROOMS[i - 1]
+                local need = hz.tab == "free" and "Clear its level 1 to build here" or ("Clear level 1 in the " .. (prev and prev.name or ""))
+                text(need, ccx, top + 84 * u, 13 * u, col4(BRASS, 0.8 * ra), "center", 86, cw - 20 * u)
+            elseif hz.tab == "challenge" then
+                local sx = ccx - 34 * u
+                image("Textures/star.png", sx - 12 * u, top + 36 * u, 26 * u, 26 * u, col4({ 1, 0.78, 0.3, 1 }, ra), 86)
+                text(house:stars(r.id) .. " / 9", sx + 20 * u, top + 49 * u, 21 * u, col4(CREAM, ra), "left", 86, 100 * u)
+                text((cleared and "unlocked " or "unlocks ") .. unl, ccx, top + 82 * u, 13 * u, col4(cleared and GOLD or BRASS, 0.9 * ra), "center", 86, cw - 20 * u)
+            else
+                local n = hz.count[r.id]
+                text(n and n > 0 and (commas(n) .. (n == 1 and " domino" or " dominoes")) or ((r.id == "living" and not n) and "a sample chain to tip" or "an empty room"), ccx, top + 50 * u, 18 * u, col4(GOLD, ra), "center", 86, cw - 20 * u)
+                text(r.id == FreeView.S.room and "where you last built  ·  Enter" or "build here", ccx, top + 82 * u, 13 * u, col4(BRASS, (0.6 + 0.4 * hvv) * ra), "center", 86, cw - 20 * u)
+            end
+            if hz.room then hide(id) else catcher(id, x0, y0, cw, ch, 87) end
+        end
+    end
+    -- Along the bottom: back, and what to do (or what a click said).
+    local bw2, bh2 = 220 * u, 54 * u
+    local by2 = py + ph - bh2 - 28 * u
+    if not hz.room then
+        local hb = hv("hm_back")
+        panel(px + 44 * u, by2, bw2, bh2, 84, col4(hb > 0.5 and WALNUT_HI or { 0.17, 0.095, 0.05, 1 }, a), col4(hb > 0.5 and GOLD or RIM, a), 12)
+        text("BACK  ·  Esc", px + 44 * u + bw2 / 2, by2 + bh2 / 2, 17 * u, col4(CREAM, a), "center", 85, bw2)
+        catcher("hm_back", px + 44 * u, by2, bw2, bh2, 86)
+    end
+    local hint = ({ challenge = "Choose a room and a level. Each room opens when you clear level 1 in the room before it.",
+        free = "Build in the living room and every room you've cleared, with the tools you've unlocked.",
+        global = "Challenges for any run you build yourself, in any room or the Great Hall." })[hz.tab]
+    local msg = hz.msg_t > 0 and hz.msg
+    text(msg or hint, px + pw / 2 + 120 * u, by2 + bh2 / 2, 16 * u, col4(msg and BAD or CREAM, a * (msg and min(1, hz.msg_t * 2) or 0.85)), "center", 85, pw - 400 * u)
+    if hz.room then tier_card(hz) else hide("hm_card_block"); for k = 1, 3 do hide("hm_tier" .. k) end; hide("hm_build") end
+end
+
+-- A Table Run card's way back, at its bottom-left like every other card's: CLOSE (the tally) or BACK (to the title).
+local function card_back(x, y, label, a, z)
+    local bw, bh = 220 * u, 54 * u
+    local hb = hv("btn_card_back")
+    panel(x, y, bw, bh, z, col4(hb > 0.5 and WALNUT_HI or { 0.17, 0.095, 0.05, 1 }, a), col4(hb > 0.5 and GOLD or RIM, a), 12)
+    text(label .. "  ·  Esc", x + bw / 2, y + bh / 2, 17 * u, col4(CREAM, a), "center", z + 1, bw)
+    catcher("btn_card_back", x, y, bw, bh, z + 2)
+end
 local function draw_cards()
     local w, h = L.w, L.h
     local show = S.mode == "title" or S.mode == "cleared" or S.mode == "over" or S.mode == "shop"
     if not show or SET:is_open() then
-        hide("btn_card"); hide("btn_table"); hide("btn_hall"); for i = 1, 4 do hide("buy" .. i) end
-        if S.mode == "tally" then
+        hide_title(); for i = 1, 4 do hide("buy" .. i) end
+        if S.mode == "tally" and not SET:is_open() then
             local a = min(1, S.card_t * 4) * (1 - max(0, S.card_t - 1.3) / 0.4)
             local tw = 520 * u
-            panel((w - tw) / 2, h * 0.3, tw, 110 * u, 70, col4(WALNUT, a), col4(RIM, a), 16)
+            panel((w - tw) / 2, h * 0.3, tw, 172 * u, 70, col4(WALNUT, a), col4(RIM, a), 16)
+            card_back((w - tw) / 2 + 20 * u, h * 0.3 + 104 * u, "CLOSE", a, 72)
             text("TIP " .. run.tb.tips_used .. "   +" .. commas(S.res.score), w / 2, h * 0.3 + 42 * u, 40 * u, col4(GOLD, a), "center", 71, tw)
             local tb = run.tb
             local msg = S.outcome == "cleared" and "Table cleared!" or (S.outcome == "over" and "Out of tips." or
                 (commas(tb.target - tb.score) .. " to go  ·  " .. tb.tips_left .. (tb.tips_left == 1 and " tip left" or " tips left")))
             text(msg, w / 2, h * 0.3 + 84 * u, 20 * u, col4(CREAM, a), "center", 71, tw)
+        else
+            hide("btn_card_back")
         end
         return
     end
     local a = min(1, S.card_t * 3)
     rect(0, 0, w, h, { 0.02, 0.015, 0.01, 0.55 * a }, 80)
+    if S.mode == "title" then hide("btn_card_back"); draw_title(a); return end
+    hide("btn_challenge"); hide("btn_free")
     local cw, ch = 900 * u, 500 * u
     if S.mode == "shop" then cw, ch = 1240 * u, 620 * u end
     local x, y = (w - cw) / 2, (h - ch) / 2 + (1 - ease_back(S.card_t * 2.5)) * 30 * u
     panel(x, y, cw, ch, 81, col4({ 0.1, 0.055, 0.03, 0.97 }, a), col4(RIM, a), 20)
     local cx = x + cw / 2
     local btn
-    if S.mode == "title" then
-        text("TOPPLE", cx, y + 80 * u, 86 * u, col4(CREAM, a), "center", 82, cw)
-        text("Set up chain reactions of dominoes, then tip the first one.", cx, y + 160 * u, 22 * u, col4(CREAM, a), "center", 82, cw)
-        text("FREE BUILD: thousands of dominoes anywhere in a living room. Lines, spirals,", cx, y + 210 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
-        text("fields, up the books and onto the coffee table. Save your builds, tip, replay.", cx, y + 238 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
-        text("THE GREAT HALL: a floor for five million. Tip a million dominoes and watch them go.", cx, y + 272 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
-        text("TABLE RUN: a toy chain on a games table, a score to beat, a toy shop between tables.", cx, y + 306 * u, 18 * u, col4(BRASS, a), "center", 82, cw)
-        text(best > 0 and ("Best table run: table " .. best) or "", cx, y + 346 * u, 18 * u, col4(GOLD, a), "center", 82, cw)
-        btn = "FREE BUILD"
-    elseif S.mode == "cleared" then
+    if S.mode == "cleared" then
         local tb = run.tb
         text("TABLE " .. tb.n .. " CLEARED", cx, y + 80 * u, 60 * u, col4(GOLD, a), "center", 82, cw)
         text(commas(tb.score) .. " / " .. commas(tb.target) .. "   in " .. tb.tips_used .. (tb.tips_used == 1 and " tip" or " tips"), cx, y + 160 * u, 28 * u, col4(CREAM, a), "center", 82, cw)
@@ -804,28 +1374,15 @@ local function draw_cards()
         btn = "NEXT TABLE"
     end
     if S.mode ~= "shop" then for i = 1, 4 do hide("buy" .. i) end end
-    local bw, bh = S.mode == "title" and 270 * u or 340 * u, 70 * u
+    local bw, bh = 340 * u, 70 * u
     local bx, by = cx - bw / 2, y + ch - 104 * u
-    if S.mode == "title" then bx = cx - bw * 1.5 - 12 * u end
+    card_back(x + 40 * u, by + (bh - 54 * u) / 2, "BACK", a, 83)
     local hov = hovered("btn_card")
     panel(bx, by, bw, bh, 83, col4(hov and { 0.5, 0.3, 0.1, 1 } or { 0.42, 0.25, 0.09, 1 }, a), col4(GOLD, a), 14)
-    text(btn .. "  ·  Enter", bx + bw / 2, by + bh / 2, S.mode == "title" and 22 * u or 26 * u, col4(GOLD, a), "center", 84, bw)
+    text(btn .. "  ·  Enter", bx + bw / 2, by + bh / 2, 26 * u, col4(GOLD, a), "center", 84, bw)
     catcher("btn_card", bx, by, bw, bh, 85)
-    if S.mode == "title" then
-        local hx = cx - bw / 2
-        local hov3 = hovered("btn_hall")
-        panel(hx, by, bw, bh, 83, col4(hov3 and { 0.5, 0.3, 0.1, 1 } or { 0.34, 0.2, 0.08, 1 }, a), col4(GOLD, a), 14)
-        text("GREAT HALL  ·  G", hx + bw / 2, by + bh / 2, 22 * u, col4(GOLD, a), "center", 84, bw)
-        catcher("btn_hall", hx, by, bw, bh, 85)
-        local tx2 = cx + bw / 2 + 12 * u
-        local hov2 = hovered("btn_table")
-        panel(tx2, by, bw, bh, 83, col4(hov2 and { 0.3, 0.17, 0.08, 1 } or { 0.2, 0.11, 0.05, 1 }, a), col4(RIM, a), 14)
-        text("TABLE RUN  ·  T", tx2 + bw / 2, by + bh / 2, 22 * u, col4(CREAM, a), "center", 84, bw)
-        catcher("btn_table", tx2, by, bw, bh, 85)
-    else
-        hide("btn_table")
-        hide("btn_hall")
-    end
+    hide("btn_table")
+    hide("btn_hall")
 end
 
 -- dt: the smoothed frame step (camera, cards, effects); real: the time that actually passed, which drives a chain's
@@ -834,10 +1391,13 @@ local function present(dt, real)
     if layout() then for id in pairs(widgets) do widgets[id] = true; hide(id) end end
     local w, h = L.w, L.h
     u = min(w / 1920, h / 1080)
+    S.fdt = dt
+    if S.pause then dt, real = 0, 0 end          -- (paused: nothing moves, a running chain waits)
     if S.mode == "free" then
         FreeView.update(dt, real)
         FreeView.draw()
         draw_cards()
+        draw_pause()
         flush_pools()
         return
     end
@@ -845,6 +1405,7 @@ local function present(dt, real)
         Hall.update(dt, real)
         Hall.draw()
         draw_cards()
+        draw_pause()
         flush_pools()
         return
     end
@@ -864,6 +1425,10 @@ local function present(dt, real)
         cursor_marks()
     end
     draw_cards()
+    if S.mode == "house" then
+        if SET:is_open() then hide_house() else draw_house() end
+    end
+    draw_pause()
     flush_pools()
 end
 
@@ -887,11 +1452,11 @@ script.on_update("topple", function()
     clock = clock + dt
     local esc = pressed("Escape")
     if SET:update(dt) then
-        for _, key in ipairs(KEYS) do pressed(key) end
-        FreeView.flush_keys()
-        Hall.flush_keys()
+        flush_all()
+    elseif S.pause then
+        pause_controls(dt, esc)
     elseif esc then
-        sound("click"); SET:open()
+        go_back()
     else
         controls(dt)
         step(dt)
@@ -899,4 +1464,4 @@ script.on_update("topple", function()
     present(dt, real)
 end, "play")
 
-print("[Topple] Ready. Enter: Free Build, T: Table Run. Esc settings, M mute.")
+print("[Topple] Ready. C: Challenges, Enter: Free Build, G: the Great Hall, T: Table Run. Esc pause or back, Q quit, M mute.")
