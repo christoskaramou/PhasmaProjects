@@ -1638,6 +1638,8 @@ function F.begin_run(board, ext)
     push(0, st, st.ax * sdir, st.ay * sdir)
     local done, wobbled = {}, {}
     local solids = board:all_solids()
+    local room_solid = {}
+    for _, s in ipairs(ROOM.solids) do room_solid[s] = true end
     local smax = board.smax or 1
     local hit_q, hit_th, hit_kick = {}, {}, {}
     res.lands = {}
@@ -1986,6 +1988,14 @@ function F.begin_run(board, ext)
                 b.vy = (up_y and -B.rebound or 1) * b.vy
                 g = ball_ground(x0, y0, z0)
             end
+        elseif rise < -1e-6 and -rise <= B.step and not b.air and not ramp and not b.ramp then
+            -- (down a step it could climb, it rolls on down and gets back what the climb costs)
+            local v2 = b.vx * b.vx + b.vy * b.vy
+            if v2 > 1e-12 then
+                local k = sqrt((v2 - 2 * RP.grav * B.g * rise) / v2)
+                b.vx, b.vy = b.vx * k, b.vy * k
+            end
+            b.z = g
         end
         b.ramp = ramp
         if b.air then
@@ -2017,7 +2027,9 @@ function F.begin_run(board, ext)
             local s = solids[i]
             -- A ball rolls a ramp as a slope, so its steps only stop it from the sides.
             local on_slope = s.ramp and (s.ramp.on_x and abs(b.y - s.ramp.y0) <= RP.width / 2 or (not s.ramp.on_x) and abs(b.x - s.ramp.x0) <= RP.width / 2)
-            if not on_slope and b.z < s.z1 - 0.01 and b.z + 2 * r > s.z0 and not (s.trap and gone[s.trap.id]) then
+            -- (a step of the room no higher than it can climb is no wall: it rolls up it, or back, as its centre gets there)
+            local climbable = room_solid[s] and not b.air and s.z1 <= b.z + B.step + 1e-6
+            if not on_slope and not climbable and b.z < s.z1 - 0.01 and b.z + 2 * r > s.z0 and not (s.trap and gone[s.trap.id]) then
                 local nx, ny = b.x - max(s.x0, min(s.x1, b.x)), b.y - max(s.y0, min(s.y1, b.y))
                 local d2 = nx * nx + ny * ny
                 if d2 < r * r then

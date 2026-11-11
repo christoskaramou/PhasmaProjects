@@ -1295,6 +1295,46 @@ do
     local p, q = b:place(-13, 1, 0, 0.12, "cream"), b:place(-10, 1, 0, 0, "cream")
     check(p and near(p.z, 0.12) and q and near(q.z, 0.12), "under the coffee table a domino stands on the rug")
 end
+do
+    -- The bath's floor (3.05) rises at each end; rooms/bath.lua draws that as low step boxes. A ball rolls up them while
+    -- it can pay each rise (as on the play mat's lip), rests or rolls back when it cannot, and gets it back rolling down.
+    -- Live (ToppleView3, engine balls from four Titans along y 16.1): they turn at x 3.81 east and x -21.33 west.
+    F.set_room(dofile("Assets/Scripts/rooms/bath.lua"))
+    local TITAN = F.SIZES[5]
+    local function kick(x0, a, k, n, gap, bx)
+        local b = F.new_board()
+        local c = math.cos(a)
+        for i = 0, n - 1 do b:place(x0 + c * F.SPACING * k * i, 16.1, a, 3.05, "cream", k) end
+        local q = b:place_ball(bx, 16.1, 3.05)
+        local r = ball_of(F.simulate(b), q)
+        local P, far, top = r.pts, nil, 0
+        for i = 1, #P, 4 do
+            if not far or P[i + 1] * c > far * c then far = P[i + 1] end
+            top = math.max(top, P[i + 3])
+        end
+        -- (its speed where it passes x at, going out and coming back)
+        local function speed_at(at, back)
+            for i = 5, #P, 4 do
+                local a0, a1 = P[i - 3], P[i + 1]
+                if (not back and (a0 - at) * c < 0 and (a1 - at) * c >= 0) or (back and (a0 - at) * c >= 0 and (a1 - at) * c < 0) then
+                    return math.abs(a1 - a0) / (P[i] - P[i - 4])
+                end
+            end
+        end
+        return far, top - 3.05, r, speed_at
+    end
+    local east = kick(-17.5, 0, TITAN, 4, nil, -9.8)
+    local west, wrise, wr, wspeed = kick(0.5, pi, TITAN, 4, nil, -7.4)
+    check(abs(east - 3.81) <= 0.1 * (3.81 + 9.8) and east >= 2.95, "east, it turns within 10% of the live ball's run, its centre at the first step (x 3), not its side: x " .. east .. " against 3.81")
+    check(abs(west + 21.33) <= 0.1 * (21.33 - 7.4), "west, it turns within 10% of the live ball's run: x " .. west .. " against -21.33")
+    local _, srise = kick(-17.5 + 3, 0, TITAN, 4, nil, -6.8)
+    check(srise > 0.13, "a harder kick climbs the first step (0.14) and more: rise " .. srise)
+    local slow, slrise = kick(-14.5 + F.SPACING * 3, pi, 1, 4, nil, -15.45)
+    check(slrise < wrise - 0.1 and slow > west, "a slower ball stops lower: rise " .. slrise .. " against " .. wrise)
+    check(wrise > 0.1 and near(wr.z, 3.05) and wr.x > -19.6, "having climbed, it rolls back down and ends on the tub's floor: x " .. wr.x .. ", h " .. wr.z)
+    local up, down = wspeed(-19.1, false), wspeed(-19.1, true)
+    check(up and down and down >= 0.6 * up and down <= up, "it gets back the climb rolling down, no more: " .. tostring(down) .. " of " .. tostring(up))
+end
 
 print(checks .. " checks passed")
 print("PASS free rules")
