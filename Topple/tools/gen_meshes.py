@@ -495,6 +495,13 @@ def write_scene(names):
             sc["sources"].append({"path": f"../Objects/{name}.pemesh"})
             sc["meshes"].append({"source": len(sc["sources"]) - 1, "source_mesh": 0})
             sc["nodes"].append({"name": "T_" + name, "parent": -1, "local_matrix": HIDDEN, "component_flags": 0, "mesh_refs": [len(sc["meshes"]) - 1]})
+    # The house's other rooms (tools/gen_house.py), after the living room's so its nodes stay as they were.
+    import gen_house
+    for name in gen_house.scene_names():
+        if os.path.exists(os.path.join(OBJECTS, name + ".pemesh")):
+            sc["sources"].append({"path": f"../Objects/{name}.pemesh"})
+            sc["meshes"].append({"source": len(sc["sources"]) - 1, "source_mesh": 0})
+            sc["nodes"].append({"name": "T_" + name, "parent": -1, "local_matrix": HIDDEN, "component_flags": 0, "mesh_refs": [len(sc["meshes"]) - 1]})
     lamp = [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0, *gen_room.E(*gen_room.LAMP_AT), 1.0]
     sc["nodes"].append({"name": "RoomLamp", "parent": -1, "local_matrix": lamp, "component_flags": 2,
                         "light": {"type": "point", "color": [1.0, 0.72, 0.42, 0.0], "radius": 60.0}})

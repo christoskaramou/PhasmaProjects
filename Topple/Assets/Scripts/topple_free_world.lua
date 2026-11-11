@@ -92,9 +92,15 @@ local function board_lift(h)
     end
     return 0
 end
-local room_root, room_nodes, decor = nil, {}, { L = {}, R = {}, B = {}, F = {} }
+local room_root, room_nodes, decor, built_for = nil, {}, { L = {}, R = {}, B = {}, F = {} }, nil
+-- The roof timbers that hide from above: beams (and a side's, "_beams_F"), rafters and tie beams.
+function FW.is_rafter(name) return name:match("_beams$") or name:match("_beams_%u$") or name:match("_rafters$") or name:match("_ties$") end
+FW.goal_nodes, FW.goal_by, FW.trap_nodes = {}, {}, {}
+FW.room_goal, FW.book, FW.glows, FW.goal_fb, FW.rafters = {}, {}, {}, {}, {}
+FW.rug_mesh = {}
+local build_goal_fallback
 local function build_room()
-    room_root = scene.add_empty_node("FreeRoom")
+    room_root, built_for = scene.add_empty_node("FreeRoom_" .. (ROOM.id or "living")), ROOM
     for _, L in ipairs(ROOM.pieces) do
         local m = mesh_of(L.name)
         if m then
@@ -102,13 +108,31 @@ local function build_room()
             n:add_mesh_ref(m)
             n:set_parent(room_root)
             look(n, L)
-            room_nodes[#room_nodes + 1] = n
+            if L.challenge then      -- a challenge's appliance: only there during that challenge, and it does not collide as a mesh
+                FW.goal_nodes[#FW.goal_nodes + 1] = { n = n, L = L }
+                FW.goal_by[L.name] = n
+                hide_node(n, false)
+                if L.challenge == FW.GOAL_KEY[ROOM.id or "living"] then FW.room_goal[#FW.room_goal + 1] = { n = n, L = L } end
+            elseif L.trap then       -- a trap's model: only there when a challenge installs that trap (the rules move it, not the physics)
+                FW.trap_nodes[#FW.trap_nodes + 1] = { n = n, L = L }
+                hide_node(n, false)
+            else
+                room_nodes[#room_nodes + 1] = n
+                if L.name:match("_rug$") then FW.rug_mesh[n] = true end
+                if L.goal then                                     -- the room's goal object (always there)
+                    FW.room_goal[#FW.room_goal + 1] = { n = n, L = L }
+                    if FW.GOAL_KEY[ROOM.id or "living"] == "dictionary" then FW.book[#FW.book + 1] = n end
+                end
+            end
+            if L.emis and (L.name:match("_glow$") or L.name:match("_shade$")) then FW.glows[#FW.glows + 1] = { n = n, L = L } end
+            if FW.is_rafter(L.name) then FW.rafters[#FW.rafters + 1] = n end
             if L.name == "room_shade" then FW.shade, FW.shade_emis = n, L.emis end
             if L.group and not L.name:match("^room_wall_") then table.insert(decor[L.group], n) end
         end
     end
+    if #FW.room_goal == 0 then build_goal_fallback(FW.GOAL_KEY[ROOM.id or "living"]) end
     -- The surfaces you build on are perfectly flat for the balls: the scanned tops have tiny facets that would nudge one.
-    FW.boards = {}
+    FW.boards, FW.low_ramps = {}, 0
     for _, s in ipairs(ROOM.surfaces) do
         if s.board then
             local n = primitives.cube(1)
@@ -117,12 +141,46 @@ local function build_room()
             n:set_position(v3((s.x0 + s.x1) / 2, s.h + BOARD_LIFT - 0.1, -(s.y0 + s.y1) / 2))
             hide_node(n, false)
             FW.boards[#FW.boards + 1] = n
+        elseif s.h > 0 and s.h <= F.BALL.step then
+            -- A rug or a play mat: the rules' ball steps up its lip, but its mesh's edge is a little wall to a rolling
+            -- body (measured in the kids' room: 9.1 u/s in, bounced straight back). So the engine ball gets a flat top
+            -- at the rug's height and a shallow ramp up each edge (1 long), all hidden.
+            local W, D, h = s.x1 - s.x0, s.y1 - s.y0, s.h + 0.005
+            local cx, cy = (s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2
+            local function box(sx, sy, sz, x, y, z, rx, rz)
+                local n = primitives.cube(1)
+                n:set_parent(room_root)
+                n:set_scale(v3(sx, sy, sz))
+                n:set_position(v3(x, y, z))
+                n:set_rotation(v3(rx or 0, 0, rz or 0))
+                hide_node(n, false)
+                FW.boards[#FW.boards + 1] = n
+                return n
+            end
+            -- (no box thinner than 0.1: the physics rounds a box's edges by 0.05 and a thinner one comes out thicker, its
+            -- top higher than drawn; 0.04 ramps stood a 0.06 lip at the mat's edge that threw the ball 0.08 up, measured)
+            box(W, 0.2, D, cx, h - 0.003 - 0.1, -cy)
+            -- Each ramp's top runs from just inside the rug (a hair above its board, so the ball steps down onto it) to
+            -- the floor 1 out, and on below the floor: a rolling body meets only faces, never a box's edge (an edge at
+            -- floor level knocked 40% off the ball's speed and set it hopping, measured).
+            local run, t, h_e = 1.0, 0.12, h + 0.003
+            local ta = h_e / run
+            local o0, o1 = -0.03, run + 0.6                       -- (outward from the edge: inside the rug .. under the floor)
+            local oc = (o0 + o1) / 2
+            local zc = h_e - oc * ta - t / 2 * cos(atan2(h_e, run))
+            local L = (o1 - o0) * sqrt(1 + ta * ta)
+            local a = deg(atan2(h_e, run))
+            FW.low_ramps = (FW.low_ramps or 0) + 4
+            box(L, t, D, s.x1 + oc, zc, -cy, 0, -a)              -- (east: down toward +x)
+            box(L, t, D, s.x0 - oc, zc, -cy, 0, a)               -- (west: up toward +x)
+            box(W, t, L, cx, zc, -(s.y1 + oc), -a, 0)            -- (north, table +y = engine -z)
+            box(W, t, L, cx, zc, -(s.y0 - oc), a, 0)             -- (south)
         end
     end
 end
 
 ------------------------------------------------------------------ lights
-local saved_lights
+local saved_lights, light_room, teardown_room
 local function find_light(name)
     local ok, r = pcall(lights.find, name)     -- finds by substring ("Lamp" also matches "RoomLamp"): take the exact one
     if not ok or not r then return nil end
@@ -148,6 +206,7 @@ end
 FW.euler_toward = euler_toward
 
 local function light_on(spec, name, kind)
+    spec = spec or { intensity = 0 }        -- (a room without this light keeps it dark)
     local l = find_light(name)
     if not l then return end
     if spec.dir then
@@ -158,6 +217,10 @@ local function light_on(spec, name, kind)
     if spec.color then pcall(lights.set_property, l.type, l.index, "color", v3(spec.color[1], spec.color[2], spec.color[3])) end
     pcall(lights.set_property, l.type, l.index, "intensity", spec.intensity or 0)
     if spec.radius and kind == "point" then pcall(lights.set_property, l.type, l.index, "radius", spec.radius) end
+    if spec.pos then          -- (engine coordinates: each room's lamp stands where that room has it)
+        local n = node_named(name)
+        if n then n:set_position(v3(spec.pos[1], spec.pos[2], spec.pos[3])) end
+    end
 end
 
 local function save_lights()
@@ -172,7 +235,7 @@ local function save_lights()
             local info = ok and all and all[l.index + 1]
             if info then rec.color, rec.intensity = info.color, info.intensity end
             local n = node_named(name)
-            if n then rec.node, rec.rot = n, n:get_rotation() end
+            if n then rec.node, rec.rot, rec.pos = n, n:get_rotation(), n:get_position() end
             saved_lights[name] = rec
         end
     end
@@ -180,6 +243,7 @@ end
 local function restore_lights()
     for _, rec in pairs(saved_lights or {}) do
         if rec.node and rec.rot then rec.node:set_rotation(rec.rot) end
+        if rec.node and rec.pos then rec.node:set_position(rec.pos) end
         if rec.color then pcall(lights.set_property, rec.l.type, rec.l.index, "color", rec.color) end
         if rec.intensity then pcall(lights.set_property, rec.l.type, rec.l.index, "intensity", rec.intensity) end
     end
@@ -208,6 +272,7 @@ function FW.apply_look(cfg)
     local x, y, z, r = shadow_bounds()
     for k, v in pairs({ shadow_bounds_x = x, shadow_bounds_y = y, shadow_bounds_z = z, shadow_bounds_radius = r }) do pcall(settings.set, k, v) end
     pcall(settings.set, "shadow_fixed_bounds", true)
+    if FW.glow_k and FW.glow_k ~= 1 then pcall(settings.set, "IBL_intensity", FW.LOOK.IBL_intensity * FW.ibl_f(FW.glow_k)) end   -- (a waiting attic stays at dusk)
 end
 
 ------------------------------------------------------------------ dominoes: a pool of nodes per paint
@@ -245,6 +310,12 @@ FW.made = function() return made end
 
 -- Batched poses: one crossing for all the nodes that move this frame.
 local BP, BR, bn = {}, {}, 0
+local function queue_xyz(nd, x, y, z, rx, ry, rz)
+    local i = bn * 4
+    bn = bn + 1
+    BP[i + 1], BP[i + 2], BP[i + 3], BP[i + 4] = nd, x, y, z
+    BR[i + 1], BR[i + 2], BR[i + 3], BR[i + 4] = nd, rx, ry, rz
+end
 local function queue_pose(nd, p, yaw, flip, th)
     local x, y, z, rx, ry, rz = F.pose(p, yaw, flip, th)
     local i = bn * 4
@@ -275,7 +346,17 @@ local WOOD = { friction = 0.5, restitution = 0.4 }
 
 -- Balls: a few nodes, pooled like the dominoes.
 local ball_vis, ball_pool = {}, {}
-local function ball_to(n, x, y, z) n:set_position(v3(x, z + board_lift(z) + F.BALL.r, -y)) end
+-- A ball rests on the highest top it can step onto, as in the rules: one set down at the floor's height over a play
+-- mat sits on the mat (inside the mat's board, its body was pushed out sideways and rolled off its line, measured).
+local function ball_rest(x, y, z)
+    local g = z
+    for _, s in ipairs(ROOM.surfaces) do
+        if s.h > g and s.h <= z + F.BALL.step and x >= s.x0 and x <= s.x1 and y >= s.y0 and y <= s.y1 then g = s.h end
+    end
+    return g
+end
+FW.ball_rest = ball_rest
+local function ball_to(n, x, y, z) z = ball_rest(x, y, z); n:set_position(v3(x, z + board_lift(z) + F.BALL.r, -y)) end
 local function ball_give(id, v)
     body_off(v.n)
     hide_node(v.n, false)
@@ -304,7 +385,7 @@ local function lamp_back_on() if FW.lamp_off then FW.set_lamp(true) end end
 -- Switches: a block with a button that sinks and turns green; a brass block works the lamp.
 local switch_vis, switch_pool = {}, {}
 local function switch_look(v)
-    look(v.base, v.p.lamp and { color = { 0.86, 0.62, 0.3 }, metal = 1, rough = 0.25 } or { color = { 0.34, 0.19, 0.09 }, rough = 0.5 })
+    look(v.base, (v.p.lamp or v.p.goal) and { color = { 0.86, 0.62, 0.3 }, metal = 1, rough = 0.25 } or { color = { 0.34, 0.19, 0.09 }, rough = 0.5 })
     v.lamp = v.p.lamp
 end
 local function switch_press(v, on)
@@ -449,7 +530,730 @@ end
 
 local last_rev, last_board
 -- Make the nodes match the board: new dominoes stand, removed ones go back to the pool.
+------------------------------------------------------------------ traps: drawn from primitives, played from the run's events
+-- Each installed trap (board.trap_order) gets a model of its own: a twine string between two brass tacks, an iron
+-- weight on a cord, a plank on its hinges, a painted gate, a fragile stack (a house of cards, a block tower or a
+-- tower of glasses, by the trap's look or the room's), and a dark red outline on the floor for a no-build zone. Built
+-- when a board is shown, posed from res.traps by the run's clock (so frame rate never changes them), stood back up by
+-- stand_all, and removed with the board (no pooling: a challenge has a handful). Room art for a trap (a room piece with
+-- trap = "<name>" that the def names as art) replaces its model and hides, or drops, on its event.
+local TL = {
+    twine = { color = { 0.78, 0.69, 0.52 }, rough = 0.9 },
+    brass = { color = { 0.86, 0.62, 0.3 }, metal = 1, rough = 0.28 },
+    iron = { color = { 0.12, 0.11, 0.1 }, metal = 1, rough = 0.48 },
+    plank = { color = { 0.5, 0.31, 0.16 }, rough = 0.62 },
+    walnut = { color = { 0.2, 0.1, 0.05 }, rough = 0.45 },
+    paint = { color = { 0.84, 0.79, 0.67 }, rough = 0.5 },
+    card = { color = { 0.97, 0.93, 0.83 }, rough = 0.42 },
+    cardback = { color = { 0.52, 0.12, 0.08 }, rough = 0.55 },
+    glass = { color = { 0.93, 0.97, 1 }, rough = 0.02, transmission = 1, emis = { 0.03, 0.04, 0.045 } },
+    zone = { color = { 0.4, 0.08, 0.05 }, rough = 0.75, emis = { 0.09, 0.012, 0.006 } },
+}
+local BLOCK_COLS = { { 0.6, 0.13, 0.08 }, { 0.13, 0.28, 0.55 }, { 0.82, 0.58, 0.13 }, { 0.2, 0.42, 0.22 }, { 0.8, 0.72, 0.56 } }
+-- A support's look when its spec gives none: the room's (contract: cards in the living room, blocks in the kids' room,
+-- glass in the dining room).
+local ROOM_LOOK = { living = "cards", kids = "blocks", dining = "glass", kitchen = "plates", attic = "blocks" }
+-- A support's look: its spec's look, else what its id names (a glass tower, a block or crate tower, cards, plates), else the room's.
+local function support_look(tr)
+    if tr.look then return tr.look end
+    local id = tostring(tr.id or ""):lower()
+    for _, k in ipairs({ { "glass", "glass" }, { "block", "blocks" }, { "crate", "blocks" }, { "card", "cards" }, { "plate", "plates" } }) do
+        if id:find(k[1], 1, true) then return k[2] end
+    end
+    return ROOM_LOOK[ROOM.id or "living"] or "cards"
+end
+-- The cord from a room's hook (the kids' crane) to its string: a thick, warm rope that reads against floor and mat.
+local ROPE = { color = { 0.74, 0.45, 0.2 }, rough = 0.8 }
+local PULLEY_R = 0.26
+FW.ROPE_W = 0.13
+local TV = {}            -- trap id -> its drawing
+FW.trap_vis = TV
+local trap_board
+FW.cues = {}             -- sounds the view plays (trap events)
+local function cue(name) FW.cues[#FW.cues + 1] = name end
+function FW.take_cues()
+    local c = FW.cues
+    FW.cues = {}
+    return c
+end
+local function rnd(i, k) local v = sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - floor(v) end
+-- Euler degrees (R = Rz * Ry * Rx) for the basis whose columns are X, Y, Z (engine axes).
+local function basis_euler(X, Y, Z)
+    return deg(atan2(Y[3], Z[3])), deg(math.asin(max(-1, min(1, -X[3])))), deg(atan2(X[2], X[1]))
+end
+local function prim(v, shape, L, parent)
+    local n
+    if shape == "cyl" then n = primitives.cylinder(1, 1)
+    elseif shape == "ball" then n = primitives.uv_sphere(1, 20, 14)
+    elseif shape == "torus" then n = primitives.torus(1, 0.22, 24, 10)
+    else n = primitives.cube(1) end
+    if parent then n:set_parent(parent) end
+    look(n, L)
+    v.nodes[#v.nodes + 1] = n
+    return n
+end
+local function root(v, name)
+    local n = scene.add_empty_node(name)
+    v.nodes[#v.nodes + 1] = n
+    return n
+end
+-- A box node along the segment from table point a to b (its local Y along it), w thick.
+local function seg_pose(n, ax, ay, ah, bx, by, bh, w)
+    local dx, dy, dz = bx - ax, bh - ah, -(by - ay)            -- engine axes
+    local L = sqrt(dx * dx + dy * dy + dz * dz)
+    if L < 1e-6 then n:set_scale(v3(w, 1e-3, w)); return end
+    -- (tipped from upright by rx, then turned by ry: local y = (sin rx sin ry, cos rx, sin rx cos ry). A roll about z
+    -- for a stick lying along x came out standing on end in the engine, measured: the kids' crane's floor rope.)
+    local rx = deg(math.acos(max(-1, min(1, dy / L))))
+    local ry = (abs(dx) + abs(dz) > 1e-9) and deg(atan2(dx, dz)) or 0
+    n:set_position(v3(ax + dx / 2, ah + dy / 2, -ay + dz / 2))
+    n:set_scale(v3(w, L, w))
+    n:set_rotation(v3(rx, ry, 0))
+end
+local function at(n, x, y, h) n:set_position(v3(x, h, -y)) end
+-- The highest room surface at or under height z at (x, y).
+local function ground(x, y, z)
+    local g = 0
+    for _, s in ipairs(ROOM.surfaces) do
+        if s.h > g and s.h <= z + 0.01 and x >= s.x0 and x <= s.x1 and y >= s.y0 and y <= s.y1 then g = s.h end
+    end
+    return g
+end
+local function dust(x, y, h, k)
+    if not (FW.particle_scale and FW.particle_scale() > 0 and particles and particles.emit_burst) then return end
+    pcall(particles.emit_burst, { position = v3(x, h + 0.05, -y), velocity = v3(0, 0.7 * k, 0),
+        color_start = vec4(0.62, 0.55, 0.45, 0.4), color_end = vec4(0.62, 0.55, 0.45, 0), gravity = v3(0, -0.6, 0),
+        count = max(1, floor(10 * k * FW.particle_scale())), size_min = 0.04, size_max = 0.12 * k, life_min = 0.4, life_max = 1.1,
+        spawn_radius = 0.5 * k, noise_strength = 0.8, drag = 3 })
+end
+
+-- The pieces of a fragile stack, each { n, x, y, z (its middle, table units), rx, ry, rz, rest (half height lying) }.
+local function stack_piece(v, L, x, y, z, sx, sy, sz, rx, ry, rz, rest, shape)
+    local n = prim(v, shape, L)
+    n:set_scale(v3(sx, sy, sz))
+    local q = { n = n, x = x, y = y, z = z, rx = rx or 0, ry = ry or 0, rz = rz or 0, rest = rest, shape = shape }
+    v.pieces[#v.pieces + 1] = q
+    return q
+end
+local function build_support(v, tr)
+    local W, D, H = tr.x1 - tr.x0, tr.y1 - tr.y0, tr.z1 - tr.z0
+    local cx, cy = (tr.x0 + tr.x1) / 2, (tr.y0 + tr.y1) / 2
+    local along_x = W >= D
+    local Lg, Dp = along_x and W or D, along_x and D or W
+    local lk = v.look
+    if lk == "plates" then
+        -- A stack of plates: cream discs, a hair apart, as wide as the stack allows (a row of stacks along a long one).
+        local n = max(1, min(24, floor(H / 0.2 + 0.5)))
+        local ph = H / n
+        local ns = max(1, min(4, floor(Lg / Dp + 0.5)))
+        local r = min(Lg / ns, Dp) / 2 * 0.94
+        for s = 1, ns do
+            local u = (along_x and tr.x0 or tr.y0) + (s - 0.5) * Lg / ns
+            local x, y = along_x and u or cx, along_x and cy or u
+            for i = 0, n - 1 do
+                stack_piece(v, (i % 5 == 4) and { color = { 0.36, 0.5, 0.62 }, rough = 0.25 } or { color = { 0.95, 0.92, 0.85 }, rough = 0.22 },
+                    x, y, tr.z0 + (i + 0.5) * ph, r, ph * 0.8, r, 0, 0, 0, ph * 0.4, "cyl").lie = { 0, 0 }
+            end
+        end
+    elseif lk == "blocks" then
+        -- Toy building blocks laid like bricks: each course a row of long blocks, turned a quarter every course, each a
+        -- little off true, never past the stack's footprint.
+        local nz = max(1, min(12, floor(H / 0.9 + 0.5)))
+        local bh = H / nz
+        local k = 0
+        for iz = 0, nz - 1 do
+            local across = iz % 2 == 1
+            local n = max(1, min(6, floor((across and D or W) / 1.0 + 0.5)))
+            for i = 0, n - 1 do
+                k = k + 1
+                local c = BLOCK_COLS[floor(rnd(k, 3) * #BLOCK_COLS) + 1]
+                local sx, sy = across and W or W / n, across and D / n or D
+                local x = across and cx or tr.x0 + (i + 0.5) * sx
+                local y = across and tr.y0 + (i + 0.5) * sy or cy
+                local jx, jy = (rnd(k, 7) - 0.5) * 0.08, (rnd(k, 11) - 0.5) * 0.08
+                stack_piece(v, { color = c, rough = 0.45 }, x + jx, y + jy, tr.z0 + (iz + 0.5) * bh,
+                    sx * 0.93, bh * 0.96, sy * 0.93, 0, (rnd(k, 5) - 0.5) * 4, 0, min(sx, bh, sy) * 0.47)
+            end
+        end
+    elseif lk == "glass" then
+        local nt = max(1, min(5, floor(H / 1.0 + 0.5)))
+        local th = H / nt
+        local tray = 0.1
+        local gx, gy = max(1, min(5, floor(W / 0.75))), max(1, min(4, floor(D / 0.75)))
+        local gr = min(W / gx, D / gy) * 0.33
+        local k = 0
+        for t = 0, nt - 1 do
+            local zb = tr.z0 + t * th
+            local gh = th - tray
+            for ix = 0, gx - 1 do
+                for iy = 0, gy - 1 do
+                    k = k + 1
+                    stack_piece(v, TL.glass, tr.x0 + (ix + 0.5) * W / gx, tr.y0 + (iy + 0.5) * D / gy, zb + gh / 2, gr, gh, gr, 0, 0, 0, gr, "cyl")
+                end
+            end
+            stack_piece(v, TL.walnut, cx, cy, zb + gh + tray / 2, W, tray, D, 0, 0, 0, tray / 2).lie = { 0, 0 }
+        end
+    else                                                         -- a house of cards
+        local lean = rad(20)
+        local nt = max(1, min(4, floor(H / 1.2 + 0.5)))
+        local th = H / nt
+        local flat = 0.03
+        local ch = (th - flat) / cos(lean)
+        local pw = 2 * ch * sin(lean)
+        local np = max(1, min(6, floor(Lg / (pw + 0.04))))
+        local rows = Dp > ch * 1.6 and 2 or 1
+        local cw = min(Dp / rows * 0.92, ch * 0.72)
+        local k = 0
+        for t = 0, nt - 1 do
+            local zb = tr.z0 + t * th
+            for r = 1, rows do
+                local across = (along_x and tr.y0 or tr.x0) + (r - 0.5) * Dp / rows
+                for i = 0, np - 1 do
+                    local mid = (along_x and tr.x0 or tr.y0) + (i + 0.5) * Lg / np
+                    for side = -1, 1, 2 do
+                        k = k + 1
+                        local u = mid + side * ch * sin(lean) / 2
+                        local L = (k % 3 == 0) and TL.cardback or TL.card
+                        local x, y = along_x and u or across, along_x and across or u
+                        -- (every card thin along its own z, turned to face along the stack: R = Rz Ry Rx keeps that axis
+                        -- upright under any turn once it lies flat)
+                        local q = stack_piece(v, L, x, y, zb + ch * cos(lean) / 2, cw, ch, flat, -side * deg(lean), along_x and 90 or 0, 0, flat)
+                        q.lie = { 90, 0 }
+                    end
+                    k = k + 1
+                    local x, y = along_x and mid or across, along_x and across or mid
+                    local q = stack_piece(v, (k % 4 == 0) and TL.cardback or TL.card, x, y, zb + th - flat / 2, along_x and pw * 1.1 or cw, flat, along_x and cw or pw * 1.1, 0, 0, 0, flat)
+                    q.lie = { 0, 0 }
+                end
+            end
+        end
+    end
+end
+
+local function pose_piece(q, x, y, z, rx, ry, rz)
+    q.n:set_position(v3(x, z, -y))
+    q.n:set_rotation(v3(rx, ry, rz))
+end
+
+-- The model of one trap.
+local function build_trap(tr, art)
+    local v = { tr = tr, kind = tr.kind, nodes = {}, pieces = {}, art = art, look = support_look(tr) }
+    local L
+    if tr.kind == "zone" then
+        local x0, x1, y0, y1 = tr.x0, tr.x1, tr.y0, tr.y1
+        local h = ground((x0 + x1) / 2, (y0 + y1) / 2, tr.z0 or 1e9) + 0.02
+        local w = 0.12
+        v.strips = {}
+        for _, e in ipairs({ { x0, y0, x1, y0 }, { x1, y0, x1, y1 }, { x1, y1, x0, y1 }, { x0, y1, x0, y0 } }) do
+            local n = prim(v, "cube", TL.zone)
+            local hx, hy = (e[1] + e[3]) / 2, (e[2] + e[4]) / 2
+            local lx, ly = abs(e[3] - e[1]) + w, abs(e[4] - e[2]) + w
+            n:set_scale(v3(max(lx, w), 0.025, max(ly, w)))
+            at(n, hx, hy, h)
+            v.strips[#v.strips + 1] = n
+        end
+        v.flash, v.shown_flash = 0, 0
+    elseif art then
+        -- (room art stands in for the model)
+    elseif tr.kind == "string" then
+        v.whole, v.h1, v.h2 = prim(v, "cube", TL.twine), prim(v, "cube", TL.twine), prim(v, "cube", TL.twine)
+        for _, e in ipairs({ { tr.sx0, tr.sy0, tr.sz0 }, { tr.sx1, tr.sy1, tr.sz1 } }) do
+            -- (a peg up to an end that stands clear of what is under it, so the string is a tripwire, not a line in the air)
+            local g = ground(e[1], e[2], e[3])
+            if e[3] - g > 0.15 then
+                local peg = prim(v, "cyl", TL.walnut)
+                peg:set_scale(v3(0.06, e[3] - g, 0.06))
+                at(peg, e[1], e[2], (e[3] + g) / 2)
+            end
+            local n = prim(v, "ball", TL.brass)
+            n:set_scale(v3(0.11, 0.11, 0.11))
+            at(n, e[1], e[2], e[3])
+        end
+        -- A room that hangs this string from something (spots.traps: a string spot with a hook, e.g. the toy crane's)
+        -- gets a cord from that hook down to the string's nearest point, tied with a brass knot.
+        local ex, ey, ez = tr.sx1 - tr.sx0, tr.sy1 - tr.sy0, tr.sz1 - tr.sz0
+        local el = ex * ex + ey * ey + ez * ez
+        for _, sp in ipairs(ROOM.spots and ROOM.spots.traps or {}) do
+            local hk = sp.kind == "string" and (sp.hook or sp.a)
+            if hk and not v.hcord then
+                local u = el > 0 and max(0, min(1, ((hk[1] - tr.sx0) * ex + (hk[2] - tr.sy0) * ey + (hk[3] - tr.sz0) * ez) / el)) or 0.5
+                local tx, ty, tz = tr.sx0 + ex * u, tr.sy0 + ey * u, tr.sz0 + ez * u
+                local hd = sqrt((hk[1] - tx) ^ 2 + (hk[2] - ty) ^ 2)
+                if hd <= 6 and hk[3] > tz + 1 then
+                    v.hook, v.tie = { hk[1], hk[2], hk[3] }, { tx, ty, tz }
+                    v.hcord = prim(v, "cube", ROPE)
+                    v.knot = prim(v, "ball", TL.brass)
+                    v.knot:set_scale(v3(0.16, 0.16, 0.16))
+                    v.low, v.low2 = v.tie, v.tie
+                    if hd > 1.5 then
+                        -- (a hook well off to the side: the cord drops to a pulley wheel standing on the floor a little in
+                        -- from under the hook, wraps over it and runs low along the floor to the string, not slanting
+                        -- through the air; it drops on the wheel's far side and leaves from its underside)
+                        local dx, dy = (tx - hk[1]) / hd, (ty - hk[2]) / hd
+                        local R = PULLEY_R
+                        local px, py = hk[1] + dx * (0.6 + R), hk[2] + dy * (0.6 + R)
+                        local g = ground(px, py, hk[3])
+                        local ch = g + R + 0.12
+                        v.pulley_at = { px, py, ch }
+                        v.low = { px - dx * R, py - dy * R, ch }
+                        v.low2 = { px, py, ch - R }
+                        v.fcord = prim(v, "cube", ROPE)
+                        local yaw = deg(atan2(dy, dx))
+                        local base = prim(v, "cube", TL.walnut)                  -- (a little walnut block, the post's foot)
+                        base:set_scale(v3(0.5, 0.06, 0.3)); base:set_rotation(v3(0, yaw, 0)); at(base, px, py, g + 0.03)
+                        for _, side in ipairs({ -1, 1 }) do                      -- (a fork either side of the wheel, the axle through)
+                            local post = prim(v, "cube", TL.walnut)
+                            post:set_scale(v3(0.07, ch - g, 0.05)); post:set_rotation(v3(0, yaw, 0))
+                            at(post, px - dy * side * 0.1, py + dx * side * 0.1, (ch + g) / 2)
+                        end
+                        local axle = prim(v, "cyl", TL.brass)
+                        axle:set_scale(v3(0.035, 0.26, 0.035)); axle:set_rotation(v3(90, yaw, 0)); at(axle, px, py, ch)
+                        v.pulley = prim(v, "torus", TL.brass)                     -- (the wheel: a brass rim round a dark web)
+                        v.pulley:set_scale(v3(R, R, R)); v.pulley:set_rotation(v3(90, yaw, 0)); at(v.pulley, px, py, ch)
+                        local web = prim(v, "cyl", TL.iron)
+                        web:set_scale(v3(R * 0.85, 0.05, R * 0.85)); web:set_rotation(v3(90, yaw, 0)); at(web, px, py, ch)
+                    end
+                end
+            end
+        end
+    elseif tr.kind == "weight" then
+        local r = tr.r
+        v.body = prim(v, "cyl", TL.iron)
+        v.body:set_scale(v3(r * 0.92, 2 * r * 0.86, r * 0.92))
+        v.cap = prim(v, "cyl", TL.iron)
+        v.cap:set_scale(v3(r * 0.62, 2 * r * 0.14, r * 0.62))
+        v.ring = prim(v, "torus", TL.brass)
+        v.ring:set_scale(v3(r * 0.32, r * 0.32, r * 0.32))
+        v.ring:set_rotation(v3(90, 0, 0))
+        local a = type(tr.a) == "table" and tr.a or nil
+        v.top = a and { a.x or a[1], a.y or a[2], a.h or a[3] } or { tr.x, tr.y, (ROOM.wall_h or 48) - 0.5 }      -- (no anchor: from the ceiling, not ending in the air)
+        v.cord = prim(v, "cube", TL.twine)
+        v.hook = prim(v, "cyl", TL.brass)
+        v.hook:set_scale(v3(0.3, 0.12, 0.3))
+        at(v.hook, v.top[1], v.top[2], v.top[3])
+    elseif tr.kind == "plank" then
+        v.root = root(v, "trap_plank_" .. tr.id)
+        local t = F.TRAP.plank_t
+        local b = prim(v, "cube", TL.plank, v.root)
+        b:set_scale(v3(tr.width, tr.len, t))
+        b:set_position(v3(0, tr.len / 2, -t / 2))
+        for _, s in ipairs({ -0.3, 0.3 }) do
+            local k = prim(v, "cyl", TL.iron, v.root)
+            k:set_scale(v3(0.09, tr.width * 0.18, 0.09))
+            k:set_rotation(v3(0, 0, 90))
+            k:set_position(v3(s * tr.width, 0.06, -t))
+        end
+        local eye = prim(v, "ball", TL.brass, v.root)
+        eye:set_scale(v3(0.1, 0.1, 0.1))
+        eye:set_position(v3(0, tr.len - 0.25, -t - 0.06))
+        v.yaw = deg(atan2(cos(tr.a), -sin(tr.a)))
+        at(v.root, tr.x, tr.y, tr.h)
+    elseif tr.kind == "gate" then
+        local W, D, H = tr.x1 - tr.x0, tr.y1 - tr.y0, tr.z1 - tr.z0
+        local along_x = W >= D
+        local len, thick = along_x and W or D, along_x and D or W
+        local post = min(0.22, len * 0.12)
+        -- The posts stay; the leaf (rails and slats) swings open about the first post.
+        for _, u in ipairs({ post / 2, len - post / 2 }) do
+            local n = prim(v, "cube", TL.walnut)
+            n:set_scale(v3(along_x and post or thick, H, along_x and thick or post))
+            at(n, along_x and (tr.x0 + u) or (tr.x0 + W / 2), along_x and (tr.y0 + D / 2) or (tr.y0 + u), tr.z0 + H / 2)
+        end
+        v.root = root(v, "trap_gate_" .. tr.id)
+        local leaf = len - 2 * post
+        for _, z in ipairs({ H * 0.12, H * 0.88 }) do
+            local n = prim(v, "cube", TL.paint, v.root)
+            n:set_scale(v3(leaf, H * 0.09, thick * 0.6))
+            n:set_position(v3(leaf / 2, z, 0))
+        end
+        local ns = max(2, min(9, floor(leaf / 0.4)))
+        for i = 1, ns do
+            local n = prim(v, "cube", TL.paint, v.root)
+            n:set_scale(v3(min(0.12, leaf / ns * 0.5), H * 0.8, thick * 0.45))
+            n:set_position(v3((i - 0.5) * leaf / ns, H / 2, 0))
+        end
+        v.yaw = along_x and 0 or 90
+        at(v.root, along_x and (tr.x0 + post) or (tr.x0 + W / 2), along_x and (tr.y0 + D / 2) or (tr.y0 + post), tr.z0)
+    elseif tr.kind == "support" then
+        build_support(v, tr)
+    end
+    -- What an engine ball meets while the trap stands: one hidden box over its body.
+    local b = tr.boxes and tr.boxes[1]
+    if b and tr.kind ~= "zone" and tr.kind ~= "string" then
+        v.col = prim(v, "cube", TL.walnut)
+        v.col:set_scale(v3(b.x1 - b.x0, b.z1 - b.z0, b.y1 - b.y0))
+        at(v.col, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.z0 + b.z1) / 2)
+        hide_node(v.col, false)
+    end
+    return v
+end
+
+-- Standing, as installed.
+local function trap_reset(v)
+    local tr = v.tr
+    v.ev, v.gone, v.cued, v.landed = nil, nil, nil, nil
+    if v.col then body_off(v.col) end
+    if v.art then for _, n in ipairs(v.art) do hide_node(n, true); n:set_position(v3(0, 0, 0)); n:set_rotation(v3(0, 0, 0)) end end
+    if v.kind == "string" and v.whole then
+        hide_node(v.whole, true); hide_node(v.h1, false); hide_node(v.h2, false)
+        seg_pose(v.whole, tr.sx0, tr.sy0, tr.sz0, tr.sx1, tr.sy1, tr.sz1, 0.07)
+        if v.hcord then
+            hide_node(v.hcord, true); hide_node(v.knot, true)
+            seg_pose(v.hcord, v.hook[1], v.hook[2], v.hook[3], v.low[1], v.low[2], v.low[3], FW.ROPE_W)
+            at(v.knot, v.tie[1], v.tie[2], v.tie[3])
+            if v.fcord then hide_node(v.fcord, true); seg_pose(v.fcord, v.low2[1], v.low2[2], v.low2[3], v.tie[1], v.tie[2], v.tie[3], FW.ROPE_W) end
+        end
+    elseif v.kind == "weight" and v.body then
+        local r = tr.r
+        at(v.body, tr.x, tr.y, tr.h + r * 0.86)
+        at(v.cap, tr.x, tr.y, tr.h + 2 * r * 0.86 + r * 0.14)
+        at(v.ring, tr.x, tr.y, tr.h + 2 * r + r * 0.2)
+        hide_node(v.cord, true)
+        seg_pose(v.cord, tr.x, tr.y, tr.h + 2 * r + r * 0.4, v.top[1], v.top[2], v.top[3], 0.06)
+    elseif v.kind == "plank" and v.root then
+        v.root:set_rotation(v3(0, v.yaw, 0))
+    elseif v.kind == "gate" and v.root then
+        v.root:set_rotation(v3(0, v.yaw, 0))
+    elseif v.kind == "support" then
+        for _, q in ipairs(v.pieces) do q.broke = nil; hide_node(q.n, true); pose_piece(q, q.x, q.y, q.z, q.rx, q.ry, q.rz) end
+    end
+end
+
+local function traps_destroy()
+    for id, v in pairs(TV) do
+        if v.col then body_off(v.col) end
+        for i = #v.nodes, 1, -1 do pcall(function() v.nodes[i]:remove() end) end
+        if v.art then for _, n in ipairs(v.art) do hide_node(n, false); n:set_position(v3(0, 0, 0)) end end
+        TV[id] = nil
+    end
+    trap_board = nil
+end
+FW.traps_destroy = traps_destroy
+
+------------------------------------------------------------------ START and END
+-- Beside the locked Start and End dominoes: a walnut plaque with a brass rim on the floor (the HUD writes START or END
+-- on it), and at its back a brass post with a cream (START) or gold (END) pennant. Beside, not in front or behind: the
+-- chain runs along the domino's fall line. It goes to the first side with clear floor of the domino's own height.
+FW.marks = {}
+local mark_set, mark_board = {}, nil
+local MARK_COL = { start = { color = { 0.9, 0.83, 0.66 }, rough = 0.5, emis = { 0.09, 0.08, 0.06 } },
+    finish = { color = { 0.95, 0.68, 0.24 }, metal = 0.6, rough = 0.3, emis = { 0.16, 0.1, 0.03 } } }
+local function marks_hide()
+    for _, set in pairs(mark_set) do for _, n in pairs(set) do hide_node(n, false) end end
+    FW.marks, mark_board = {}, nil
+end
+-- Whether a marker's footprint at (x, y) is clear floor of height h: same surface, no furniture or prop up to 2.6.
+local function mark_clear(def, x, y, h)
+    if math.abs(ground(x, y, h + 0.05) - h) > 0.02 then return false end
+    for _, list in ipairs({ ROOM.solids or {}, def and def.props or {}, def and def.traps or {} }) do      -- (a stack or gate too)
+        for _, o in ipairs(list) do
+            if o.x0 and x > o.x0 - 0.1 and x < o.x1 + 0.1 and y > o.y0 - 0.1 and y < o.y1 + 0.1 and (o.z1 or 99) > h + 0.01 and (o.z0 or 0) < h + 2.6 then return false end
+        end
+    end
+    local B = ROOM.bounds
+    return not B or (x > B.x0 + 0.4 and x < B.x1 - 0.4 and y > B.y0 + 0.4 and y < B.y1 - 0.4)
+end
+local function mark_place(key, p, def)
+    local dx, dy = cos(p.a), sin(p.a)
+    local sx, sy = -dy, dx
+    local h, w = p.z, (p.s or 1)
+    local cx, cy
+    for _, d in ipairs({ 1.5 * w + 0.3, 2.2 * w + 0.3 }) do
+        for _, side in ipairs({ 1, -1 }) do
+            local x, y = p.x + sx * side * d, p.y + sy * side * d
+            local ok = true
+            for _, o in ipairs({ { 0.9, 0.5 }, { 0.9, -0.5 }, { -0.9, 0.5 }, { -0.9, -0.5 }, { 0, 0 } }) do
+                if not mark_clear(def, x + dx * o[1] + sx * o[2], y + dy * o[1] + sy * o[2], h) then ok = false; break end
+            end
+            if ok then cx, cy = x, y; break end
+        end
+        if cx then break end
+    end
+    local set = mark_set[key]
+    if not set then
+        set = {}
+        local function mk(shape, L)
+            local n = shape == "cyl" and primitives.cylinder(1, 1) or shape == "ball" and primitives.uv_sphere(1, 16, 10) or primitives.cube(1)
+            look(n, L)
+            return n
+        end
+        set.rim, set.plaque = mk("cube", TL.brass), mk("cube", TL.walnut)
+        set.foot, set.post, set.knob = mk("cyl", TL.brass), mk("cyl", TL.brass), mk("ball", TL.brass)
+        set.flag = mk("cube", MARK_COL[key])
+        mark_set[key] = set
+    end
+    if not cx then
+        for _, n in pairs(set) do hide_node(n, false) end
+        FW.marks[key] = { x = p.x, y = p.y, h = h + w, piece = p.id, label_only = true, top = { x = p.x, y = p.y, h = h + w + 1.6 } }
+        return
+    end
+    local yaw = deg(p.a)
+    local function put(n, x, y, z, s1, s2, s3)
+        n:set_scale(v3(s1, s2, s3))
+        n:set_position(v3(x, z, -y))
+        n:set_rotation(v3(0, yaw, 0))
+        hide_node(n, true)
+    end
+    put(set.rim, cx, cy, h + 0.018, 1.86, 0.03, 0.96)
+    put(set.plaque, cx, cy, h + 0.032, 1.74, 0.05, 0.84)
+    local px, py = cx - dx * 0.62, cy - dy * 0.62
+    put(set.foot, px, py, h + 0.1, 0.15, 0.09, 0.15)
+    put(set.post, px, py, h + 1.1, 0.05, 2.0, 0.05)
+    put(set.knob, px, py, h + 2.14, 0.09, 0.09, 0.09)
+    put(set.flag, px - dx * 0.4, py - dy * 0.4, h + 1.83, 0.76, 0.44, 0.045)
+    FW.marks[key] = { x = cx, y = cy, h = h + 0.057, piece = p.id, post = { x = px, y = py }, top = { x = px - dx * 0.4, y = py - dy * 0.4, h = h + 2.4 } }
+end
+-- The board's Start and End (C.new_board's start_piece and end_piece); nothing for a free build.
+local function marks_build(board)
+    mark_board = board
+    FW.marks = {}
+    local s, e = board.start_piece and board.pieces[board.start_piece], board.end_piece and board.pieces[board.end_piece]
+    if not s then marks_hide(); mark_board = board; return end
+    mark_place("start", s, board.def)
+    if e then mark_place("finish", e, board.def)
+    elseif mark_set.finish then for _, n in pairs(mark_set.finish) do hide_node(n, false) end end
+end
+FW.marks_build = marks_build
+
+local function traps_build(board)
+    traps_destroy()
+    trap_board = board
+    for _, tr in ipairs(board.trap_order or {}) do
+        local art
+        if tr.art then
+            for _, g in ipairs(FW.trap_nodes) do
+                if g.L.trap == tr.art then art = art or {}; art[#art + 1] = g.n end
+            end
+        end
+        local v = build_trap(tr, art)
+        -- (a kind this file does not know yet still shows: a plain box over its body, so nothing solid is invisible)
+        local b = tr.boxes and tr.boxes[1]
+        if not art and b and #v.nodes - (v.col and 1 or 0) == 0 then
+            local n = prim(v, "cube", TL.walnut)
+            n:set_scale(v3(b.x1 - b.x0, b.z1 - b.z0, b.y1 - b.y0))
+            at(n, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.z0 + b.z1) / 2)
+            v.generic = n
+        end
+        TV[tr.id] = v
+        trap_reset(v)
+    end
+end
+local function traps_reset() for _, v in pairs(TV) do trap_reset(v) end end
+local function traps_arm()
+    for _, v in pairs(TV) do if v.col and not v.gone then physics.add_body(v.col, "static", "box", WOOD) end end
+end
+
+-- A refused placement in a no-build zone: the outline near (x, y) brightens (all of them if none is near or x is nil).
+function FW.flash_zone(x, y)
+    local hit = false
+    for _, v in pairs(TV) do
+        if v.kind == "zone" and x then
+            local tr = v.tr
+            if x >= tr.x0 - 1.5 and x <= tr.x1 + 1.5 and y >= tr.y0 - 1.5 and y <= tr.y1 + 1.5 then v.flash = 1; hit = true end
+        end
+    end
+    if not hit then for _, v in pairs(TV) do if v.kind == "zone" then v.flash = 1 end end end
+end
+local function zones_tick(dt)
+    for _, v in pairs(TV) do
+        if v.kind == "zone" and (v.flash > 0 or v.shown_flash > 0) then
+            v.flash = max(0, v.flash - dt * 1.4)
+            local k = v.flash
+            if abs(k - v.shown_flash) > 0.01 or k == 0 then
+                v.shown_flash = k
+                local e = TL.zone.emis
+                for _, n in ipairs(v.strips) do
+                    pcall(material.set, n, "emissive", v3(e[1] + 0.85 * k, e[2] + 0.16 * k, e[3] + 0.08 * k))
+                end
+            end
+        end
+    end
+end
+FW.zones_tick = zones_tick
+
+-- A trap's event begins (in run-time order); the pose itself follows from t in traps_pose.
+local function trap_event(e)
+    local v = TV[e.id]
+    if not v then return end
+    if e.kind == "string" and e.event == "cut" then
+        v.ev, v.gone = e, true
+        cue(rnd(e.t * 100, 1) < 0.5 and "string_snap1" or "string_snap2")
+        if v.whole then hide_node(v.whole, false); hide_node(v.h1, true); hide_node(v.h2, true) end
+        if v.art then for _, n in ipairs(v.art) do hide_node(n, false) end end
+    elseif e.event == "drop" then
+        v.ev, v.gone = e, true
+        if v.cord then hide_node(v.cord, false) end
+    elseif e.event == "fall" then
+        v.ev, v.gone = e, true
+    elseif e.event == "open" then
+        v.ev, v.gone = e, true
+        cue("gate_open")
+        if v.art then for _, n in ipairs(v.art) do hide_node(n, false) end end
+    elseif e.event == "collapse" then
+        v.ev, v.gone = e, true
+        cue("collapse_" .. (v.look == "glass" and "glass" or v.look == "blocks" and "blocks" or "cards"))
+        FW.shake(0.12)
+        dust((v.tr.x0 + v.tr.x1) / 2, (v.tr.y0 + v.tr.y1) / 2, v.tr.z0, 1.4)
+        if v.art then for _, n in ipairs(v.art) do hide_node(n, false) end end
+    elseif e.event == "land" then
+        v.landed = e
+        if e.kind == "weight" then cue("weight_drop"); FW.shake(0.18); FW.thud = max(FW.thud or 0, 2) end
+        if e.kind == "plank" then FW.shake(0.1) end
+        dust(e.x, e.y, e.h, e.kind == "weight" and 1.4 or 1)
+    end
+    if v.col and v.gone then body_off(v.col) end
+end
+
+local G = 30         -- (debris falls a little slower than free fall: it reads better)
+local function traps_pose(t)
+    for _, v in pairs(TV) do
+        local e = v.ev
+        if e then
+            local u = t - e.t
+            local tr = v.tr
+            if v.kind == "string" and v.h1 then
+                -- Each half whips round its tack and hangs (or lies on what is under it).
+                for k, half in ipairs({ { v.h1, tr.sx0, tr.sy0, tr.sz0 }, { v.h2, tr.sx1, tr.sy1, tr.sz1 } }) do
+                    local ax, ay, ah = half[2], half[3], half[4]
+                    local dx, dy, dz = e.x - ax, e.y - ay, e.h - ah
+                    local L = sqrt(dx * dx + dy * dy + dz * dz)
+                    if L > 1e-4 then
+                        dx, dy, dz = dx / L, dy / L, dz / L
+                        local g = ground(ax, ay, ah)
+                        local fx, fy, fz = 0, 0, -1
+                        local drop = ah - g - 0.03
+                        if L > drop then
+                            local hl = sqrt(max(0, L * L - drop * drop)) / L
+                            local hn = sqrt(dx * dx + dy * dy)
+                            if hn > 1e-4 then fx, fy = dx / hn * hl, dy / hn * hl end
+                            fz = -drop / L
+                        end
+                        local s = 1 - math.exp(-u * 9)
+                        local wig = sin(u * 30 + k) * math.exp(-u * 4.5) * 0.35
+                        local px, py = -fy, fx
+                        local ox, oy, oz = dx + (fx - dx) * s + px * wig, dy + (fy - dy) * s + py * wig, dz + (fz - dz) * s
+                        local ol = sqrt(ox * ox + oy * oy + oz * oz)
+                        seg_pose(half[1], ax, ay, ah, ax + ox / ol * L, ay + oy / ol * L, max(g + 0.02, ah + oz / ol * L), 0.07)
+                    end
+                end
+                if v.hcord then
+                    -- The hook's cord, let go, whips up toward its hook, swinging, and is gone into it; the floor run
+                    -- whips back to its pulley.
+                    local hk, ti = v.hook, v.low
+                    if v.fcord then
+                        local lo, tt = v.low2, v.tie
+                        local s3 = 1 - math.exp(-u * 7)
+                        local wg = sin(u * 30) * math.exp(-u * 4) * 0.4
+                        local ex2, ey2 = tt[1] + (lo[1] - tt[1]) * s3, tt[2] + (lo[2] - tt[2]) * s3 + wg
+                        if sqrt((ex2 - lo[1]) ^ 2 + (ey2 - lo[2]) ^ 2) < 0.2 then hide_node(v.fcord, false)
+                        else seg_pose(v.fcord, lo[1], lo[2], lo[3], ex2, ey2, tt[3] + (lo[3] - tt[3]) * s3, FW.ROPE_W) end
+                    end
+                    local s2 = 1 - math.exp(-u * 5)
+                    local wig = sin(u * 26) * math.exp(-u * 3) * 0.6
+                    local bx, by, bz = ti[1] + (hk[1] - ti[1]) * s2 + wig, ti[2] + (hk[2] - ti[2]) * s2, ti[3] + (hk[3] - ti[3]) * s2
+                    hide_node(v.knot, false)
+                    if hk[3] - bz < 0.15 then hide_node(v.hcord, false)
+                    else seg_pose(v.hcord, hk[1], hk[2], hk[3], bx, by, bz, FW.ROPE_W) end
+                end
+            elseif v.kind == "weight" and v.body then
+                local z = F.weight_height(e, t)
+                local r = tr.r
+                at(v.body, tr.x, tr.y, z + r * 0.86)
+                at(v.cap, tr.x, tr.y, z + 2 * r * 0.86 + r * 0.14)
+                at(v.ring, tr.x, tr.y, z + 2 * r + r * 0.2)
+            elseif v.kind == "weight" and v.art then
+                for _, n in ipairs(v.art) do n:set_position(v3(0, F.weight_height(e, t) - tr.h, 0)) end
+            elseif v.kind == "plank" and v.art then
+                local m = FW.axis_m(-sin(tr.a), 0, -cos(tr.a), F.plank_angle(e, t))
+                for _, n in ipairs(v.art) do FW.rigid(n, m, tr.x, tr.h, -tr.y) end
+                if not v.cued and t >= max(e.t, e.t1 - 0.25) then v.cued = true; cue("plank_fall") end
+            elseif v.kind == "plank" and v.root then
+                v.root:set_rotation(v3(deg(F.plank_angle(e, t)), v.yaw, 0))
+                if not v.cued and t >= max(e.t, e.t1 - 0.25) then v.cued = true; cue("plank_fall") end
+            elseif v.kind == "gate" and v.root then
+                local k = min(1, u / 0.5)
+                local swing = 94 * (1 - (1 - k) ^ 3) + 6 * sin(min(u, 1.2) * 14) * math.exp(-u * 5) * (k >= 1 and 1 or 0)
+                v.root:set_rotation(v3(0, v.yaw + swing, 0))
+            elseif v.kind == "support" then
+                local cx, cy = (tr.x0 + tr.x1) / 2, (tr.y0 + tr.y1) / 2
+                local floor_z = ground(cx, cy, tr.z0)
+                for i, q in ipairs(v.pieces) do
+                    local ox, oy = q.x - cx, q.y - cy
+                    local ol = sqrt(ox * ox + oy * oy)
+                    local ang = (ol > 1e-3 and atan2(oy, ox) or rnd(i, 1) * 2 * pi) + (rnd(i, 2) - 0.5) * 1.6
+                    local sp = 0.8 + rnd(i, 3) * 2.4
+                    local vx, vy, vz = cos(ang) * sp, sin(ang) * sp, 0.5 + rnd(i, 4) * 2.2
+                    local rest = floor_z + q.rest + (i % 16) * 0.004      -- (pieces landing on each other: no two at one height)
+                    -- (when it comes down: z0 + vz u - G u^2 / 2 = rest)
+                    local a, b, c = -G / 2, vz, q.z - rest
+                    local tl = (-b - sqrt(max(0, b * b - 4 * a * c))) / (2 * a)
+                    local uu = min(u, tl)
+                    local x, y, z = q.x + vx * uu, q.y + vy * uu, q.z + vz * uu - G / 2 * uu * uu
+                    local spin = { (rnd(i, 6) - 0.5) * 900, (rnd(i, 7) - 0.5) * 500, (rnd(i, 8) - 0.5) * 900 }
+                    local rx, ry, rz = q.rx + spin[1] * uu, q.ry + spin[2] * uu, q.rz + spin[3] * uu
+                    if u > tl and q.shape == "cyl" and v.look == "glass" then
+                        -- A glass that lands breaks: it is gone in a glint of shards.
+                        if not q.broke then
+                            q.broke = true
+                            hide_node(q.n, false)
+                            if FW.particle_scale and FW.particle_scale() > 0 and particles and particles.emit_burst then
+                                pcall(particles.emit_burst, { position = v3(x, rest, -y), velocity = v3(0, 1.4, 0),
+                                    color_start = vec4(0.95, 0.97, 1, 0.9), color_end = vec4(0.9, 0.95, 1, 0), gravity = v3(0, -9, 0),
+                                    count = max(1, floor(14 * FW.particle_scale())), size_min = 0.02, size_max = 0.06, life_min = 0.3, life_max = 0.8,
+                                    spawn_radius = 0.3, noise_strength = 0.5, drag = 2 })
+                            end
+                        end
+                    end
+                    if u > tl then
+                        local k = min(1, (u - tl) / 0.15)
+                        -- At rest: a card flat, a glass on its side, a block on its nearest face (a whole turn kept, so it does
+                        -- not spin back).
+                        local lx, lz
+                        if q.lie then lx, lz = q.lie[1], q.lie[2]
+                        elseif q.shape == "cyl" then lx, lz = 90, 0
+                        else lx, lz = floor(rx / 90 + 0.5) * 90, floor(rz / 90 + 0.5) * 90 end
+                        if q.lie or q.shape == "cyl" then lx, lz = lx + floor((rx - lx) / 180 + 0.5) * 180, lz + floor((rz - lz) / 180 + 0.5) * 180 end
+                        rx, rz = rx + (lx - rx) * k, rz + (lz - rz) * k
+                    end
+                    pose_piece(q, x, y, max(rest, z), rx, ry, rz)
+                end
+            end
+        end
+    end
+end
+
+-- Dominoes lost with a support: they tumble down off it and lie there (they never carry the chain).
+local function lost_pose(A, t)
+    local lost = A.res.lost
+    while lost and lost[A.lost_i] and lost[A.lost_i].t <= t do
+        local l = lost[A.lost_i]
+        A.lost_i = A.lost_i + 1
+        local v = vis[l.id]
+        if v then
+            local z0 = 0
+            for _, tv in pairs(TV) do
+                local tr = tv.tr
+                if tr.kind == "support" and v.p.x >= tr.x0 - 0.5 and v.p.x <= tr.x1 + 0.5 and v.p.y >= tr.y0 - 0.5 and v.p.y <= tr.y1 + 0.5 then z0 = ground((tr.x0 + tr.x1) / 2, (tr.y0 + tr.y1) / 2, tr.z0) + (tv.look == "glass" and 0.12 or tv.look == "cards" and 0.05 or 0) end      -- (on the trays or cards it came down with)
+            end
+            A.lost[#A.lost + 1] = { v = v, t = l.t, z0 = z0, dir = rnd(l.t * 37 + #A.lost, 9) < 0.5 }
+        end
+    end
+    for _, L in ipairs(A.lost) do
+        local u = t - L.t
+        if u <= 2 then
+            local p = L.v.p
+            local fallen = p.z - 0.5 * G * u * u
+            local z = max(L.z0, fallen)
+            local th = min(1, u / 0.45) * rad(88)
+            local q = setmetatable({ z = z }, { __index = p })
+            queue_pose(L.v.n, q, p.a, L.dir, th)
+        end
+    end
+end
+
 function FW.sync(board, force)
+    if board ~= trap_board then traps_build(board) end
+    if board ~= mark_board then marks_build(board) end
     if not force and board == last_board and board.rev == last_rev then return end
     last_board, last_rev = board, board.rev
     FW.board = board
@@ -471,8 +1275,10 @@ function FW.sync(board, force)
             local paint = p.paint or "cream"
             local nd = take(paint)
             vis[id] = { n = nd, paint = paint, p = p }
+            local k = p.s or 1
+            nd:set_scale(v3(k, k, k))       -- (pooled: the last one to use it may have been another size)
             queue_pose(nd, p, p.a, false, 0)
-            hide_node(nd, true)
+            hide_node(nd, not (id == board.goal_piece and #FW.book > 0))      -- (a goal domino the room draws as a book)
         end
     end
     for id, v in pairs(ball_vis) do
@@ -507,6 +1313,7 @@ function FW.clear()
     for id, v in pairs(swing_vis) do swing_give(id, v) end
     for id, v in pairs(switch_vis) do switch_give(id, v) end
     for id, v in pairs(ramp_vis) do ramp_give(id, v) end
+    traps_destroy()
     lamp_back_on()
     last_rev, last_board = nil, nil
     FW.A = nil
@@ -531,6 +1338,9 @@ function FW.stand_all()
     if physics and physics.set_time_scale then pcall(physics.set_time_scale, 1) end
     for _, v in pairs(switch_vis) do if v.pressed then switch_press(v, false) end end
     lamp_back_on()
+    FW.goal_reset()
+    traps_reset()
+    FW.cues = {}
     FW.settle = 2           -- a new body starts from the scene's per-frame transforms, so these moves need frames to land
     flush_poses()
     FW.A = nil
@@ -545,13 +1355,17 @@ local function arm_bodies()
     local B, S_ = F.BALL, F.SWING
     for _, v in pairs(ball_vis) do
         v.last = nil
-        physics.add_body(v.n, "dynamic", "sphere", { mass = B.mass, friction = 0.5, restitution = B.bounce })
+        -- (the physics keeps the larger of two bodies' restitutions, so the ball's own is what it bounces with off
+        -- everything: the rules' rebound off walls and props, not its 0.8 drop bounce, or it glanced off the kids' room
+        -- garage twice as steeply as the rules and missed the switch, and kept hopping on the play mat, measured)
+        physics.add_body(v.n, "dynamic", "sphere", { mass = B.mass, friction = 0.5, restitution = B.rebound })
     end
     for _, v in pairs(ramp_vis) do
         physics.add_body(v.slope, "static", "box", WOOD)
         for _, n in ipairs(v.n) do physics.add_body(n, "static", "box", WOOD) end
     end
     for _, v in pairs(switch_vis) do physics.add_body(v.base, "static", "box", WOOD) end
+    for i = 1, FW.prop_n or 0 do physics.add_body(FW.prop_boxes[i], "static", "box", WOOD) end
     for _, v in pairs(swing_vis) do
         physics.add_body(v.set.latch, "static", "box", WOOD)
         if v.p.hang == "stand" then
@@ -560,6 +1374,7 @@ local function arm_bodies()
         end
         physics.add_body(v.set.bob, "kinematic", "sphere", { mass = S_.mass, friction = 0.4, restitution = 0.5 })
     end
+    traps_arm()
 end
 
 -- What the rules call when a domino kicks a ball or a latch lets a bob go.
@@ -657,9 +1472,12 @@ end
 function FW.set_time(s) if physics and physics.set_time_scale then pcall(physics.set_time_scale, s) end end
 
 function FW.play(res, run)
-    local wait = run and (FW.settle or 0) > 0        -- "Again": the stand-up happened this very frame
+    -- Bodies wait for this frame's moves ("Again", a fresh build) and for the room's own colliders: tipped in the frames
+    -- right after entering a room, the ball started where the last board left it, over no floor (bath level 2, measured).
+    local wait = run and ((FW.settle or 0) > 0 or FW.statics_due ~= nil)
     if run and not wait then arm_bodies() end
-    FW.A = { res = res, t = 0, next = 1, active = {}, wob = {}, next_w = 1, clacked = {}, recent = {}, landed = 0, ball_i = {}, bump_i = {}, swing_i = {}, sbump_i = {}, switch_i = 1, run = run, arm_pending = wait or nil }
+    FW.A = { res = res, t = 0, next = 1, land_i = 1, active = {}, wob = {}, next_w = 1, clacked = {}, recent = {}, landed = 0, ball_i = {}, bump_i = {}, swing_i = {}, sbump_i = {}, switch_i = 1, run = run, arm_pending = wait or nil,
+        trap_i = 1, lost_i = 1, lost = {} }
 end
 function FW.playing()
     local A = FW.A
@@ -721,13 +1539,19 @@ function FW.take_bump()
     FW.ball_bump = nil
     return b
 end
+-- The size of the biggest domino that slammed down or landed since the last call (nil if none).
+function FW.take_thud()
+    local s = FW.thud
+    FW.thud = nil
+    return s
+end
 
 local DUST = { 0.62, 0.55, 0.45 }
 local function animate(dt)
     local A = FW.A
     if not A then return nil end
     if A.arm_pending then
-        if FW.settle > 0 then return nil end
+        if (FW.settle or 0) > 0 or FW.statics_due then return nil end
         A.arm_pending = nil
         arm_bodies()
     end
@@ -744,6 +1568,12 @@ local function animate(dt)
         local f = order[A.next]
         A.active[#A.active + 1] = f
         A.recent[#A.recent + 1] = f
+        -- A challenge whose goal is one of its own dominoes: it goes off as that one starts to fall.
+        local gb = FW.board
+        if gb and gb.goal_piece == f.id and vis[f.id] then
+            local p = vis[f.id].p
+            FW.goal_fire({ x = p.x, y = p.y, z = p.z, goal = gb.def and gb.def.id or "goal" })
+        end
         A.next = A.next + 1
     end
     local act = A.active
@@ -752,11 +1582,24 @@ local function animate(dt)
     while i <= #act do
         local f = act[i]
         local v = vis[f.id]
-        if v then queue_pose(v.n, v.p, f.yaw, f.flip, fall_angle(f, t)) end
+        if v then queue_xyz(v.n, F.fall_pose(v.p, f, t)) end
+        if v and FW.board and f.id == FW.board.goal_piece then FW.pose_book(v.p, f, t) end
         if not A.clacked[f.id] and t >= f.tc then
             A.clacked[f.id] = true
             due[#due + 1] = f
-            if v and f.final >= rad(85) and bursts < 2 and math.random() < 0.06 and FW.particle_scale and FW.particle_scale() > 0 then
+            -- A big one coming down is felt: the bigger, the more.
+            if (f.s or 1) >= 1.4 and v then
+                FW.thud = max(FW.thud or 0, f.s)
+                FW.shake(0.05 * f.s)
+                if FW.particle_scale and FW.particle_scale() > 0 then
+                    local p, r = v.p, f.s
+                    pcall(particles.emit_burst, { position = v3(p.x + f.dx * 0.8 * r, p.z + 0.05, -(p.y + f.dy * 0.8 * r)), velocity = v3(0, 0.5 * r, 0),
+                        color_start = vec4(DUST[1], DUST[2], DUST[3], 0.4), color_end = vec4(DUST[1], DUST[2], DUST[3], 0), gravity = v3(0, -0.6, 0),
+                        count = max(1, floor(6 * r * FW.particle_scale())), size_min = 0.04 * r, size_max = 0.1 * r, life_min = 0.5, life_max = 1.1,
+                        spawn_radius = 0.35 * r, noise_strength = 0.8, drag = 3 })
+                end
+            end
+            if v and f.final >= rad(85) and not f.dive and bursts < 2 and math.random() < 0.06 and FW.particle_scale and FW.particle_scale() > 0 then
                 bursts = bursts + 1
                 local p = v.p
                 pcall(particles.emit_burst, { position = v3(p.x + f.dx * 0.9, p.z + 0.05, -(p.y + f.dy * 0.9)), velocity = v3(0, 0.4, 0),
@@ -766,11 +1609,26 @@ local function animate(dt)
             end
         end
         if t > f.t_end + 0.25 then
-            if v then queue_pose(v.n, v.p, f.yaw, f.flip, f.final) end
+            if v then queue_xyz(v.n, F.fall_pose(v.p, f, 1e9)) end
+            if v and FW.board and f.id == FW.board.goal_piece then FW.pose_book(v.p, f, 1e9) end
             act[i] = act[#act]
             act[#act] = nil
         else
             i = i + 1
+        end
+    end
+    -- Dominoes that went off an edge come down.
+    local lands = A.res.lands
+    while lands and lands[A.land_i] and lands[A.land_i].t <= t do
+        local e = lands[A.land_i]
+        A.land_i = A.land_i + 1
+        FW.thud = max(FW.thud or 0, e.s)
+        FW.shake(0.06 * e.s)
+        if FW.particle_scale and FW.particle_scale() > 0 then
+            pcall(particles.emit_burst, { position = v3(e.x, e.z + 0.05, -e.y), velocity = v3(0, 0.6, 0),
+                color_start = vec4(DUST[1], DUST[2], DUST[3], 0.4), color_end = vec4(DUST[1], DUST[2], DUST[3], 0), gravity = v3(0, -0.6, 0),
+                count = max(1, floor(8 * e.s * FW.particle_scale())), size_min = 0.04, size_max = 0.1 * e.s, life_min = 0.4, life_max = 1.0,
+                spawn_radius = 0.4 * e.s, noise_strength = 0.8, drag = 3 })
         end
     end
     -- Dominoes pushed edge-on rock and settle.
@@ -808,7 +1666,10 @@ local function animate(dt)
     while sw[A.switch_i] and sw[A.switch_i].t <= t do
         local e = sw[A.switch_i]
         A.switch_i = A.switch_i + 1
-        if switch_vis[e.id] then switch_press(switch_vis[e.id], true) end
+        if switch_vis[e.id] then
+            switch_press(switch_vis[e.id], true)
+            if switch_vis[e.id].p.goal then FW.goal_fire(switch_vis[e.id].p) end
+        end
         if e.lamp_on ~= nil then FW.set_lamp(e.lamp_on) end
         FW.ball_bump = true
     end
@@ -817,6 +1678,14 @@ local function animate(dt)
     if not bx then bx, by, bz = live_x, live_y, live_h end
     if n > 0 then A.front = { x = sx / n, y = sy / n, h = sz / n }
     elseif bx then A.front = { x = bx, y = by, h = bz } end
+    -- The traps, from their events (a live run's arrive as it advances).
+    local tev = A.res.traps
+    while tev and tev[A.trap_i] and tev[A.trap_i].t <= t do
+        trap_event(tev[A.trap_i])
+        A.trap_i = A.trap_i + 1
+    end
+    traps_pose(t)
+    lost_pose(A, t)
     return due
 end
 
@@ -855,7 +1724,8 @@ end
 
 ------------------------------------------------------------------ camera
 function FW.reset_camera()
-    local c = ROOM.camera
+    local B = ROOM.bounds
+    local c = ROOM.camera or { target = { (B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2, 1 }, yaw = -62, pitch = 40, dist = max(B.x1 - B.x0, B.y1 - B.y0) * 1.2 }
     for _, k in ipairs({ "yaw", "pitch", "dist" }) do FW.goal[k] = c[k] end
     FW.goal.x, FW.goal.y, FW.goal.h = c.target[1], c.target[2], c.target[3]
     for k, v in pairs(FW.goal) do FW.cam[k] = v end
@@ -928,6 +1798,24 @@ local function update_camera(dt)
         end
     end
     FW.decor_hidden = out
+    -- Rafters (the attic's beams) between the camera and the room: hidden while the camera is above the lowest of
+    -- them (the engine's bounds, read once; the room's walls' height if it cannot say). Their shadows go with them.
+    if #FW.rafters > 0 then
+        if not FW.rafter_h then
+            FW.rafter_h = (ROOM.wall_h or 48) * 0.6
+            local ok, d = pcall(scene.digest)
+            if ok and type(d) == "table" then
+                for _, nd in ipairs(d.nodes or {}) do
+                    if nd.name and nd.name:match("^fr_") and FW.is_rafter(nd.name) and nd.aabb then FW.rafter_h = min(FW.rafter_h, nd.aabb.min.y) end
+                end
+            end
+        end
+        local above = ph > FW.rafter_h - 0.5
+        if FW.rafters_hidden ~= above then
+            FW.rafters_hidden = above
+            for _, n in ipairs(FW.rafters) do hide_node(n, not above) end
+        end
+    end
 end
 function FW.shake(a) S.shake = max(S.shake, a * (FW.shake_scale and FW.shake_scale() or 1)) end
 
@@ -1115,9 +2003,18 @@ function FW.hide_bell(v)
     hide_node(v.swing, false)
 end
 
+-- The room's own sun (re-aiming Key), fill and table lamp; Table Run's desk lamp off.
+light_room = function()
+    light_on(ROOM.sun, "Key")
+    light_on(ROOM.fill, "Fill")
+    light_on({ intensity = 0 }, "Lamp")
+    light_on(ROOM.lamp, "RoomLamp", "point")
+end
+
 function FW.enter()
     cam = scene.get_active_camera()
     ROOM = F.ROOM
+    if room_root and built_for ~= ROOM then teardown_room() end
     remember_settings()
     pcall(function() cam:set_projection_mode("perspective") end)
     save_lights()
@@ -1125,11 +2022,8 @@ function FW.enter()
     paint_templates()
     pcall(function() room_root:set_enabled(true) end)
     FW.decor_hidden = nil
-    light_on(ROOM.sun, "Key")
-    light_on(ROOM.fill, "Fill")
-    light_on({ intensity = 0 }, "Lamp")
-    light_on(ROOM.lamp, "RoomLamp", "point")
-    if skybox and skybox.load then pcall(skybox.load, "day.hdr") end
+    light_room()
+    if skybox and skybox.load then pcall(skybox.load, ROOM.sky or "day.hdr") end
     FW.apply_look()
     FW.active = true
     FW.statics_due = 3                 -- the room's colliders wait until its nodes have settled
@@ -1144,21 +2038,516 @@ function FW.enter()
 end
 
 -- Every mesh of the room collides as itself: floor, walls, the Tripo furniture, curtains, lamp.
-local statics_on
+local statics_on, remove_statics
 local function add_statics()
     if statics_on or not can_live() then return end
     statics_on = true
-    for _, n in ipairs(room_nodes) do pcall(physics.add_body, n, "static", "mesh", WOOD) end
+    -- (a rug's mesh is left out where a flat board and ramps stand in for it: rolling over the mesh's facets 2 mm under
+    -- that board kept the kids' room ball hopping 0.03..0.07 high and cost it a third of its speed, measured)
+    for _, n in ipairs(room_nodes) do
+        if not ((FW.low_ramps or 0) > 0 and FW.rug_mesh[n]) then pcall(physics.add_body, n, "static", "mesh", WOOD) end
+    end
     for _, n in ipairs(FW.boards or {}) do pcall(physics.add_body, n, "static", "box", WOOD) end
 end
-local function remove_statics()
+remove_statics = function()
     if not statics_on then return end
     statics_on = false
     for _, n in ipairs(room_nodes) do body_off(n) end
     for _, n in ipairs(FW.boards or {}) do body_off(n) end
 end
 
+-- ---------------------------------------------------------------- each room's goal object
+-- One per room, the same for its three tiers: the room's pieces flagged goal = true (in the living room, the TV pieces
+-- keyed challenge = "tv"). A room whose goal model is still a pending Tripo import gets one built from primitives over
+-- the goal's solid (a record player, a toy train, a music box, or a brass-trimmed box). Its win animation and sound
+-- follow the room, never the challenge's id.
+FW.GOAL_KEY = { hall = "doorbell", living = "tv", kitchen = "toaster", dining = "record", kids = "train", bath = "musicbox",
+    study = "dictionary", attic = "lights" }
+local GOAL_SOLID = { doorbell = "doorbell", toaster = "toaster", record = "record player", train = "toy train", musicbox = "music box",
+    dictionary = "dictionary", lights = "master switch" }
+local MOVIE = { { 0.9, 0.55, 0.25 }, { 0.25, 0.5, 0.95 }, { 0.95, 0.85, 0.7 }, { 0.3, 0.75, 0.55 }, { 0.85, 0.3, 0.35 } }
+FW.prop_boxes, FW.prop_vis, FW.goal_parts = {}, {}, {}
+local function goal_key() return FW.GOAL_KEY[ROOM and ROOM.id or "living"] end
+FW.goal_key = goal_key
+local function goal_node(pat)
+    for _, g in ipairs(FW.room_goal) do if g.L.name:match(pat) then return g.n end end
+end
+
+-- 3x3 rotation from Euler degrees (R = Rz * Ry * Rx), rows.
+local function euler_m(rx, ry, rz)
+    local a, b, c = rad(rx), rad(ry), rad(rz)
+    local ca, sa, cb, sb, cc, sc = cos(a), sin(a), cos(b), sin(b), cos(c), sin(c)
+    return { { cc * cb, cc * sb * sa - sc * ca, cc * sb * ca + sc * sa },
+             { sc * cb, sc * sb * sa + cc * ca, sc * sb * ca - cc * sa },
+             { -sb, cb * sa, cb * ca } }
+end
+local function m_euler(m) return basis_euler({ m[1][1], m[2][1], m[3][1] }, { m[1][2], m[2][2], m[3][2] }, { m[1][3], m[2][3], m[3][3] }) end
+local function m_mul_t(A, B)          -- A * B^T
+    local r = {}
+    for i = 1, 3 do r[i] = {}; for j = 1, 3 do r[i][j] = A[i][1] * B[j][1] + A[i][2] * B[j][2] + A[i][3] * B[j][3] end end
+    return r
+end
+local function m_vec(m, x, y, z) return m[1][1] * x + m[1][2] * y + m[1][3] * z, m[2][1] * x + m[2][2] * y + m[2][3] * z, m[3][1] * x + m[3][2] * y + m[3][3] * z end
+-- Rotation by th about the unit axis k (Rodrigues).
+local function axis_m(kx, ky, kz, th)
+    local c, s = cos(th), sin(th)
+    local t = 1 - c
+    return { { c + kx * kx * t, kx * ky * t - kz * s, kx * kz * t + ky * s },
+             { ky * kx * t + kz * s, c + ky * ky * t, ky * kz * t - kx * s },
+             { kz * kx * t - ky * s, kz * ky * t + kx * s, c + kz * kz * t } }
+end
+-- Move a room mesh (its vertices in room space, its node at rest at the origin) by rotation m about engine point (px, py, pz).
+local function rigid(n, m, px, py, pz)
+    local qx, qy, qz = m_vec(m, px, py, pz)
+    n:set_position(v3(px - qx, py - qy, pz - qz))
+    n:set_rotation(v3(m_euler(m)))
+end
+local IDENT = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } }
+FW.rigid, FW.axis_m = rigid, axis_m
+
+-- The room's art for a goal domino (the study's dictionary) follows that domino: its pose now against its pose standing.
+local function pose_book(p, f, t)
+    if #FW.book == 0 then return end
+    local x0, y0, z0, a0, b0, c0 = F.pose(p, p.a, false, 0)
+    local x1, y1, z1, a1, b1, c1 = F.fall_pose(p, f, t)
+    local m = m_mul_t(euler_m(a1, b1, c1), euler_m(a0, b0, c0))
+    local qx, qy, qz = m_vec(m, x0, y0, z0)
+    for _, n in ipairs(FW.book) do
+        n:set_position(v3(x1 - qx, y1 - qy, z1 - qz))
+        n:set_rotation(v3(m_euler(m)))
+    end
+    FW.book_moved = true
+end
+local function book_rest()
+    for _, n in ipairs(FW.book or {}) do n:set_position(v3(0, 0, 0)); n:set_rotation(v3(0, 0, 0)) end
+end
+
+-- A goal model built from primitives, for a room whose own is not made yet.
+local function solid_named(name)
+    for _, s in ipairs(ROOM.solids) do if s.name == name then return s end end
+end
+local function gprim(shape, L, parent)
+    local n
+    if shape == "cyl" then n = primitives.cylinder(1, 1)
+    elseif shape == "ball" then n = primitives.uv_sphere(1, 20, 14)
+    else n = primitives.cube(1) end
+    n:set_parent(parent or room_root)
+    look(n, L)
+    FW.goal_fb[#FW.goal_fb + 1] = n
+    return n
+end
+local function groot(name, x, y, z)
+    local n = scene.add_empty_node(name)
+    n:set_parent(room_root)
+    n:set_position(v3(x, z, -y))
+    FW.goal_fb[#FW.goal_fb + 1] = n
+    return n
+end
+local function box_at(n, x, y, z, sx, sy, sz) n:set_scale(v3(sx, sz, sy)); n:set_position(v3(x, z, -y)) end   -- (table x, y, h; sizes along them)
+local GL = { walnut = { color = { 0.2, 0.1, 0.05 }, rough = 0.42 }, brass = { color = { 0.86, 0.62, 0.3 }, metal = 1, rough = 0.25 },
+    black = { color = { 0.03, 0.03, 0.035 }, rough = 0.3 }, cream = { color = { 0.9, 0.84, 0.7 }, rough = 0.5 },
+    red = { color = { 0.58, 0.1, 0.07 }, rough = 0.35 }, navy = { color = { 0.1, 0.16, 0.32 }, rough = 0.35 }, green = { color = { 0.2, 0.36, 0.22 }, rough = 0.4 } }
+build_goal_fallback = function(key)
+    local s = solid_named(GOAL_SOLID[key] or "")
+    local sp = ROOM.spots and ROOM.spots.goal
+    if not s and sp then s = { x0 = sp.x - 1.5, x1 = sp.x + 1.5, y0 = sp.y - 1.5, y1 = sp.y + 1.5, z0 = sp.h or 0, z1 = (sp.h or 0) + 2.5 } end
+    if not s then return end
+    local W, D, H = s.x1 - s.x0, s.y1 - s.y0, s.z1 - s.z0
+    local cx, cy = (s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2
+    local P = FW.goal_parts
+    if key == "record" then
+        -- A walnut plinth, a black platter with a cream label (it spins), a brass tonearm that swings in.
+        local ph = H * 0.42
+        box_at(gprim("cube", GL.walnut), cx, cy, s.z0 + ph / 2, W, D, ph)
+        local r = min(W * 0.6, D) * 0.42
+        local px, py = s.x0 + r + W * 0.06, cy
+        P.platter = groot("goal_platter", px, py, s.z0 + ph)
+        local disc = gprim("cyl", GL.black, P.platter); disc:set_scale(v3(r, 0.18, r)); disc:set_position(v3(0, 0.09, 0))
+        local label = gprim("cyl", { color = { 0.62, 0.12, 0.08 }, rough = 0.5 }, P.platter); label:set_scale(v3(r * 0.32, 0.2, r * 0.32)); label:set_position(v3(0, 0.1, 0))
+        local mark = gprim("cube", GL.cream, P.platter); mark:set_scale(v3(r * 0.25, 0.21, 0.08)); mark:set_position(v3(r * 0.12, 0.1, 0))
+        P.arm = groot("goal_tonearm", s.x1 - W * 0.12, s.y1 - D * 0.2, s.z0 + ph)
+        local post = gprim("cyl", GL.brass, P.arm); post:set_scale(v3(0.22, 0.6, 0.22)); post:set_position(v3(0, 0.3, 0))
+        local arm = gprim("cube", GL.brass, P.arm); arm:set_scale(v3(r * 1.1, 0.08, 0.08)); arm:set_position(v3(-r * 0.55, 0.55, 0))
+        local knob = gprim("cube", GL.black, P.arm); knob:set_scale(v3(0.35, 0.2, 0.25)); knob:set_position(v3(-r * 1.1, 0.5, 0))
+        P.arm_yaw0 = -35
+        P.arm:set_rotation(v3(0, P.arm_yaw0, 0))
+    elseif key == "train" then
+        -- An engine and a coach on the track along the solid's long side; it rolls a short way when it goes.
+        local along_x = W >= D
+        local L = along_x and W or D
+        P.train = groot("goal_train", cx, cy, s.z0)
+        if not along_x then P.train:set_rotation(v3(0, 90, 0)) end
+        local hw = (along_x and D or W) * 0.8
+        local ew = L * 0.45
+        local function part(L_, x, y, z, sx, sy, sz, shape)
+            local n = gprim(shape or "cube", L_, P.train)
+            n:set_scale(v3(sx, sy, sz)); n:set_position(v3(x, y, z))
+            return n
+        end
+        -- (local x along the track, y up, z across)
+        part(GL.red, L / 2 - ew / 2, 0.55, 0, ew, 0.3, hw)                        -- footplate
+        local boiler = part(GL.black, L / 2 - ew * 0.62, 1.15, 0, hw * 0.42, ew * 0.62, hw * 0.42, "cyl")
+        boiler:set_rotation(v3(0, 0, 90))
+        part(GL.red, L / 2 - ew * 0.12, 1.45, 0, ew * 0.3, 1.5, hw * 0.95)       -- cab
+        part(GL.black, L / 2 - ew * 0.12, 2.25, 0, ew * 0.38, 0.12, hw)          -- cab roof
+        part(GL.black, L / 2 - ew * 0.86, 1.85, 0, 0.32, 0.7, 0.32, "cyl")       -- chimney
+        part(GL.brass, L / 2 - ew * 0.86, 2.22, 0, 0.42, 0.1, 0.42, "cyl")
+        part(GL.navy, -L / 2 + L * 0.24, 1.15, 0, L * 0.42, 1.5, hw * 0.95)      -- coach
+        part(GL.cream, -L / 2 + L * 0.24, 1.95, 0, L * 0.44, 0.12, hw)
+        P.wheels = {}
+        for i, wx in ipairs({ L / 2 - ew * 0.85, L / 2 - ew * 0.45, L / 2 - ew * 0.1, -L / 2 + L * 0.08, -L / 2 + L * 0.4 }) do
+            for _, wz in ipairs({ -hw / 2, hw / 2 }) do
+                local w = part(i <= 3 and GL.red or GL.black, wx, 0.4, wz, 0.38, 0.12, 0.38, "cyl")
+                w:set_rotation(v3(90, 0, 0))
+                P.wheels[#P.wheels + 1] = w
+            end
+        end
+        P.train_x, P.train_y, P.train_z, P.along_x = cx, cy, s.z0, along_x
+    elseif key == "musicbox" then
+        -- A walnut box with a brass corner trim; the lid opens on its back hinge and a brass cylinder turns inside.
+        local bh = H * 0.55
+        box_at(gprim("cube", GL.walnut), cx, cy, s.z0 + bh / 2, W, D, bh)
+        P.cyl = groot("goal_cylinder", cx, cy - D * 0.05, s.z0 + bh + 0.02)
+        local c = gprim("cyl", GL.brass, P.cyl); c:set_scale(v3(D * 0.16, W * 0.6, D * 0.16)); c:set_rotation(v3(0, 0, 90)); c:set_position(v3(0, D * 0.16, 0))
+        for i = 1, 6 do
+            local pin = gprim("cube", GL.cream, P.cyl)
+            pin:set_scale(v3(0.06, 0.06, 0.12)); pin:set_position(v3(-W * 0.25 + i * W * 0.08, D * 0.16 * (1 + (i % 2) * 0.9), (i % 2 == 0) and 0.05 or -0.05))
+        end
+        local comb = gprim("cube", GL.cream, nil); box_at(comb, cx, cy + D * 0.22, s.z0 + bh + 0.08, W * 0.55, D * 0.12, 0.08)
+        P.lid = groot("goal_lid", cx, s.y1, s.z0 + bh)
+        local lid = gprim("cube", GL.walnut, P.lid); lid:set_scale(v3(W, H - bh, D)); lid:set_position(v3(0, (H - bh) / 2, D / 2))
+        local inlay = gprim("cube", GL.brass, P.lid); inlay:set_scale(v3(W * 0.5, 0.04, D * 0.4)); inlay:set_position(v3(0, H - bh + 0.01, D / 2))
+    else
+        box_at(gprim("cube", GL.walnut), cx, cy, s.z0 + H / 2, W, D, H)
+        box_at(gprim("cube", GL.brass), cx, cy, s.z1 + 0.05, W * 1.02, D * 1.02, 0.1)
+    end
+end
+
+-- The room's lamps (pieces that glow, and its table lamp): dimmed while a lights challenge waits, full once it is won.
+-- k: 0.12 waiting, 1 normal; a little over 1 while they flare on. Waiting is dusk, not black (an attic you could not
+-- build in, seen): the bulbs are out, the room's lamp burns low, the fill turns evening blue at full strength and the
+-- ambient stays at 0.6, so dominoes, START and END, traps and furniture all read. The win takes the lamp from 0.3 to
+-- full (with a flare past it), the bulbs from out to lit, the fill back to day and the ambient to full.
+FW.DUSK = { lamp = 0.3, ibl = 0.6, fill = { 0.5, 0.62, 1 } }
+local function light_w(k) return max(0, min(1, (k - 0.12) / 0.88)), max(0, k - 1) end
+local function ibl_f(k) local w, over = light_w(k); return FW.DUSK.ibl + (1 - FW.DUSK.ibl) * w + 0.5 * over end
+FW.ibl_f = ibl_f
+local function lights_to(k)
+    FW.glow_k = k
+    for _, g in ipairs(FW.glows) do
+        local e = g.L.emis
+        mset(g.n, "emissive", v3(e[1] * k, e[2] * k, e[3] * k))
+    end
+    local function scaled(spec, f)
+        if not spec then return nil end
+        local L = {}
+        for key, val in pairs(spec) do L[key] = val end
+        L.intensity = (spec.intensity or 1) * f
+        return L
+    end
+    local w, over = light_w(k)
+    if ROOM.lamp then light_on(scaled(ROOM.lamp, FW.DUSK.lamp + (1 - FW.DUSK.lamp) * w + 1.5 * over), "RoomLamp", "point") end
+    if ROOM.fill then
+        local f, c, d = scaled(ROOM.fill, 1 + over), ROOM.fill.color or { 1, 1, 1 }, FW.DUSK.fill
+        f.color = { d[1] + (c[1] - d[1]) * w, d[2] + (c[2] - d[2]) * w, d[3] + (c[3] - d[3]) * w }
+        light_on(f, "Fill")
+    end
+    pcall(settings.set, "IBL_intensity", FW.LOOK.IBL_intensity * ibl_f(k))
+end
+FW.lights_to = lights_to
+
+function FW.goal_reset()
+    FW.goal_t, FW.goal_p, FW.goal_glow = nil, nil, nil
+    local bell = goal_node("_bell$")
+    if bell then for _, g in ipairs(FW.room_goal) do if g.n == bell then look(g.n, g.L) end end end
+    local P = FW.goal_parts
+    for _, pat in ipairs({ "_toast$", "_bell$" }) do local n = goal_node(pat); if n then n:set_position(v3(0, 0, 0)) end end
+    local lever = goal_node("_lever$")
+    if lever then lever:set_position(v3(0, 0, 0)); lever:set_rotation(v3(0, 0, 0)) end
+    local screen = goal_node("_tv_screen$")
+    if screen then
+        for _, g in ipairs(FW.room_goal) do if g.n == screen then look(g.n, g.L) end end
+    end
+    if P.platter then P.platter:set_rotation(v3(0, 0, 0)); P.arm:set_rotation(v3(0, P.arm_yaw0, 0)) end
+    for _, g in ipairs(FW.room_goal) do
+        if g.L.name:match("^furn_") then g.n:set_position(v3(0, 0, 0)); look(g.n, g.L) end
+    end
+    if P.train then
+        P.train:set_position(v3(P.train_x, P.train_z, -P.train_y))
+        for _, w in ipairs(P.wheels) do w:set_rotation(v3(90, 0, 0)) end
+    end
+    if P.lid then P.lid:set_rotation(v3(0, 0, 0)); P.cyl:set_rotation(v3(0, 0, 0)) end
+    book_rest()
+    FW.book_moved = nil
+    if goal_key() == "lights" and FW.ch_def then lights_to(0.12) elseif FW.glow_k and FW.glow_k < 1 then lights_to(1) end
+end
+
+-- A def's props: each gets a collider (for the engine's balls) and a drawn model by what it is called; one named after
+-- the room's goal object is drawn by that object.
+local GOAL_WORDS = { "tv", "doorbell", "toaster", "record", "train", "music", "dictionary", "switch" }
+local function prop_drawn_by_goal(name)
+    name = name:lower()
+    for _, w in ipairs(GOAL_WORDS) do if name:find(w, 1, true) then return true end end
+    return false
+end
+FW.prop_drawn_by_goal = prop_drawn_by_goal
+local PROP_LOOK = {
+    { "jar", "jar" }, { "inkwell", "ink" }, { "book", "books" }, { "ruler", { color = { 0.82, 0.66, 0.32 }, rough = 0.5 } },
+    { "cutting board", { color = { 0.68, 0.5, 0.3 }, rough = 0.6 } }, { "caddy", { color = { 0.55, 0.36, 0.2 }, rough = 0.5 } },
+    { "garage", "garage" }, { "bridge block", { color = { 0.13, 0.28, 0.55 }, rough = 0.45 } }, { "bridge", { color = { 0.78, 0.6, 0.38 }, rough = 0.5 } },
+    { "block", { color = { 0.6, 0.13, 0.08 }, rough = 0.45 } },
+}
+local function prop_node(shape, L)
+    local n = shape == "cyl" and primitives.cylinder(1, 1) or primitives.cube(1)
+    n:set_parent(room_root)
+    look(n, L)
+    FW.prop_vis[#FW.prop_vis + 1] = n
+    return n
+end
+local function draw_prop(s)
+    local W, D, H = s.x1 - s.x0, s.y1 - s.y0, s.z1 - s.z0
+    local cx, cy = (s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2
+    local lk = { color = { 0.36, 0.22, 0.12 }, rough = 0.5 }         -- (anything else: a wooden box)
+    local name = (s.name or ""):lower()
+    for _, e in ipairs(PROP_LOOK) do if name:find(e[1], 1, true) then lk = e[2]; break end end
+    if lk == "jar" or lk == "ink" then
+        local r = min(W, D) / 2 * 0.92
+        local body = prop_node("cyl", lk == "jar" and { color = { 0.92, 0.96, 1 }, rough = 0.05, transmission = 1 } or { color = { 0.04, 0.05, 0.1 }, rough = 0.1 })
+        body:set_scale(v3(r, H * 0.9, r)); body:set_position(v3(cx, s.z0 + H * 0.45, -cy))      -- (up to the collider's top, so what rests there touches it)
+        if lk == "jar" then
+            local jam = prop_node("cyl", { color = { 0.5, 0.08, 0.07 }, rough = 0.3 })
+            jam:set_scale(v3(r * 0.86, H * 0.6, r * 0.86)); jam:set_position(v3(cx, s.z0 + H * 0.31, -cy))
+        end
+        local cap = prop_node("cyl", lk == "jar" and { color = { 0.62, 0.12, 0.08 }, rough = 0.6 } or { color = { 0.86, 0.62, 0.3 }, metal = 1, rough = 0.25 })
+        cap:set_scale(v3(r * (lk == "jar" and 1.04 or 0.5), H * 0.12, r * (lk == "jar" and 1.04 or 0.5))); cap:set_position(v3(cx, s.z0 + H * 0.94, -cy))
+    elseif lk == "books" then
+        local cols = { { 0.42, 0.07, 0.05 }, { 0.06, 0.1, 0.22 }, { 0.25, 0.36, 0.23 }, { 0.66, 0.44, 0.1 } }
+        local n = max(1, min(4, floor(H / 0.28 + 0.5)))
+        for i = 1, n do
+            local b = prop_node("cube", { color = cols[(i - 1) % #cols + 1], rough = 0.55 })
+            local inset = (i % 2) * 0.06
+            b:set_scale(v3(W * (0.96 - inset), H / n * 0.96, D * (0.94 - inset)))
+            b:set_position(v3(cx, s.z0 + (i - 0.5) * H / n, -cy))
+        end
+    elseif lk == "garage" then
+        -- A toy garage: cream walls with a navy base band and a red trim band, a door opening (dark inside, the roller
+        -- door half up) on the side facing the room, a window each end, and a red gabled roof whose ridge runs along
+        -- the long side. Inside its box; the door faces away from the nearer wall.
+        local wall, base, trim = { color = { 0.86, 0.79, 0.62 }, rough = 0.55 }, { color = { 0.13, 0.22, 0.45 }, rough = 0.45 }, { color = { 0.62, 0.13, 0.08 }, rough = 0.45 }
+        local dark, roofc = { color = { 0.05, 0.04, 0.04 }, rough = 0.8 }, { color = { 0.6, 0.12, 0.07 }, rough = 0.4 }
+        local B = ROOM.bounds
+        local front = (B and (cy - B.y0) < (B.y1 - cy)) and 1 or -1          -- (+1: the door on the y1 side)
+        local z0, t = s.z0, 0.3
+        local rise = min(D / 2, H * 0.45)
+        local eave = H - rise
+        local function box(L, x, y, z, sx, sz, sy) local b = prop_node("cube", L); b:set_scale(v3(sx, sz, sy)); b:set_position(v3(x, z0 + z, -y)); return b end
+        -- (bands a hair proud of their wall; an end wall's a hair less, and lower, so no two faces meet in one plane)
+        local function wallpiece(x, y, sx, sy, h0, h1, band, alt)
+            box(wall, x, y, (h0 + h1) / 2, sx, h1 - h0, sy)
+            local d, bh, th = alt and 0.03 or 0.04, alt and 0.3 or 0.32, alt and 0.26 or 0.28
+            if h0 < 0.01 then box(base, x, y, bh / 2, sx + d, bh, sy + d) end
+            if band and h1 > eave - 0.01 then box(trim, x, y, eave - th / 2, sx + d, th, sy + d) end
+        end
+        local yf, yb = cy + front * (D / 2 - t / 2), cy - front * (D / 2 - t / 2)
+        local dw, dh = W * 0.56, eave * 0.74
+        wallpiece(cx, yb, W, t, 0, eave, true)                                            -- back
+        wallpiece(s.x0 + t / 2, cy, t, D - 2 * t - 0.02, 0, eave, true, true)              -- ends
+        wallpiece(s.x1 - t / 2, cy, t, D - 2 * t - 0.02, 0, eave, true, true)
+        local pw = (W - dw) / 2
+        wallpiece(s.x0 + pw / 2, yf, pw, t, 0, eave)                                       -- either side of the door
+        wallpiece(s.x1 - pw / 2, yf, pw, t, 0, eave)
+        wallpiece(cx, yf, dw + 0.02, t, dh, eave)                                          -- over it
+        box(trim, cx, yf, eave - 0.14, W + 0.04, 0.28, t + 0.04)                          -- (the front's trim, in one piece)
+        box(dark, cx, cy, eave / 2, W - 2 * t - 0.04, eave - 0.04, D - 2 * t - 0.04)       -- (the dark inside)
+        box(base, cx, yf - front * 0.06, dh - dh * 0.17, dw - 0.04, dh * 0.34, 0.08)       -- the roller door, half up
+        for k = 0, 2 do box(trim, cx, yf + front * 0.0, dh - 0.06 - k * dh * 0.11, dw - 0.06, 0.03, t + 0.02) end
+        for _, xe in ipairs({ s.x0 - 0.02, s.x1 + 0.02 }) do                               -- a window each end
+            box(dark, xe, cy, eave * 0.55, 0.06, eave * 0.32, D * 0.3)
+            box(wall, xe, cy, eave * 0.39 - 0.03, 0.1, 0.05, D * 0.3 + 0.1)              -- (its sill)
+        end
+        -- (the gables: a square turned 45 degrees inside each end wall, its lower half hidden in it)
+        local g = rise * math.sqrt(2)
+        for _, xe in ipairs({ s.x0 + t / 2, s.x1 - t / 2 }) do
+            local gb = box(wall, xe, cy, eave, t - 0.04, g, g)
+            gb:set_rotation(v3(45, 0, 0))
+        end
+        local slope = math.deg(math.atan(rise / (D / 2)))
+        local sl = math.sqrt(rise * rise + (D / 2) ^ 2) + 0.3
+        for _, side in ipairs({ 1, -1 }) do
+            local r = box(roofc, cx, cy + side * (D / 4 + 0.05), eave + rise / 2 + 0.1, W + 0.3, 0.16, sl)
+            r:set_rotation(v3(-side * slope, 0, 0))
+        end
+        local ridge = box(trim, cx, cy, H - 0.02, W + 0.34, 0.14, 0.14)
+        ridge:set_rotation(v3(45, 0, 0))
+    else
+        local b = prop_node("cube", lk)
+        b:set_scale(v3(W, H, D)); b:set_position(v3(cx, s.z0 + H / 2, -cy))
+        if name:find("caddy", 1, true) then
+            -- A bath caddy hangs on its two ends: a lip at each end down to what is under it (the tub's rims), so it
+            -- does not float over the gap left under it. Thin, 0.14 in from the ends (on the rim's outer edge), clear of the Minis' lane along it.
+            local along_y = D >= W
+            for _, e in ipairs({ -1, 1 }) do
+                local ex, ey = along_y and cx or (e < 0 and s.x0 + 0.14 or s.x1 - 0.14), along_y and (e < 0 and s.y0 + 0.14 or s.y1 - 0.14) or cy
+                local under
+                for _, q in ipairs(ROOM.surfaces or {}) do
+                    if q.h < s.z0 - 0.01 and ex >= q.x0 and ex <= q.x1 and ey >= q.y0 and ey <= q.y1 and (not under or q.h > under) then under = q.h end
+                end
+                if under and s.z0 - under > 0.05 then
+                    local lip = prop_node("cube", lk)
+                    lip:set_scale(v3(along_y and W or 0.16, s.z0 - under, along_y and 0.16 or D))
+                    lip:set_position(v3(ex, (under + s.z0) / 2, -ey))
+                end
+            end
+        end
+    end
+end
+
+-- Show one challenge's goal object, props and trap art (nil: none, back to Free Build).
+function FW.show_challenge(def)
+    FW.ch_def = def
+    local key = goal_key()
+    for _, g in ipairs(FW.goal_nodes) do hide_node(g.n, def ~= nil and (g.L.challenge == def.id or g.L.challenge == key)) end
+    local traps = {}          -- (room art a def names for one of its traps; the trap's own drawing shows and moves it)
+    for _, tr in ipairs(def and def.traps or {}) do if tr.art then traps[tr.art] = true end end
+    for _, g in ipairs(FW.trap_nodes) do hide_node(g.n, traps[g.L.trap] == true) end
+    for i = 1, FW.prop_n or 0 do body_off(FW.prop_boxes[i]) end
+    for i = #FW.prop_vis, 1, -1 do pcall(function() FW.prop_vis[i]:remove() end); FW.prop_vis[i] = nil end
+    FW.prop_n, FW.prop_drawn = 0, {}
+    for i, s in ipairs(def and def.props or {}) do
+        local n = FW.prop_boxes[i]
+        if not n then
+            n = primitives.cube(1)
+            n:set_parent(room_root)
+            hide_node(n, false)
+            FW.prop_boxes[i] = n
+        end
+        n:set_scale(v3(s.x1 - s.x0, s.z1 - s.z0, s.y1 - s.y0))
+        n:set_position(v3((s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2, -(s.y0 + s.y1) / 2))
+        FW.prop_n = i
+        if prop_drawn_by_goal(s.name or "") then FW.prop_drawn[i] = "goal"
+        else
+            local before = #FW.prop_vis
+            draw_prop(s)
+            FW.prop_drawn[i] = #FW.prop_vis - before        -- (how many nodes draw it: the tests want at least one)
+        end
+    end
+    FW.goal_reset()
+end
+
+-- The goal went off: the view is told once, and the appliance comes to life.
+function FW.goal_fire(p)
+    FW.goal_t, FW.goal_p, FW.goal_new = 0, p, p.goal
+    if particles and particles.emit_burst and (FW.particle_scale and FW.particle_scale() or 1) > 0 then
+        pcall(particles.emit_burst, { position = v3(p.x, p.z + 1.2, -p.y), velocity = v3(0, 7, 0),
+            color_start = vec4(1, 0.8, 0.35, 1), color_end = vec4(1, 0.55, 0.15, 0), gravity = v3(0, -14, 0),
+            count = 60, size_min = 0.06, size_max = 0.18, life_min = 0.5, life_max = 1.2, spawn_radius = 0.5, noise_strength = 3, drag = 1.5 })
+    end
+end
+
+function FW.take_goal()
+    local g = FW.goal_new
+    FW.goal_new = nil
+    return g
+end
+
+-- The win animation, by the room's goal object. FW.goal_sig() describes the goal's pose and glow (for the tests).
+function FW.goal_animate(dt)
+    if not FW.goal_t then return end
+    FW.goal_t = FW.goal_t + dt
+    local t, key, P = FW.goal_t, goal_key(), FW.goal_parts
+    if key == "doorbell" then
+        -- It rings: a rattle on its mount and a warm flash off the brass, twice (ding, dong).
+        local bell = goal_node("_bell$")
+        local ring = math.exp(-t * 2.2) + (t > 0.55 and 0.8 * math.exp(-(t - 0.55) * 2.2) or 0)
+        if bell then
+            bell:set_position(v3(sin(t * 80) * 0.1 * ring, 0, sin(t * 67) * 0.05 * ring))
+            mset(bell, "emissive", v3(0.5 * ring, 0.32 * ring, 0.1 * ring))
+        end
+        FW.goal_glow = ring
+    elseif key == "toaster" then
+        -- Thrown up on a spring, it falls back to stand proud of the slots.
+        local toast = goal_node("_toast$")
+        local v0, g, rest = 34, F.BALL.g, 2.3
+        local up = v0 * t - 0.5 * g * t * t
+        if t > v0 / g and up <= rest then up = rest end
+        if t > v0 / g * 2 then up = rest end
+        if toast then toast:set_position(v3(0, max(rest * min(1, t * 20), up), 0)) end
+    elseif key == "tv" then
+        -- The picture warms up from black, then the film's colours drift.
+        local screen = goal_node("_tv_screen$")
+        local warm = min(1, t * 1.4)
+        local k = t * 0.55
+        local i = floor(k) % #MOVIE + 1
+        local a, b, f = MOVIE[i], MOVIE[i % #MOVIE + 1], k - floor(k)
+        local c = {}
+        for j = 1, 3 do c[j] = (a[j] + (b[j] - a[j]) * f) * 0.75 * warm end
+        if screen then mset(screen, "emissive", v3(c[1], c[2], c[3])) end
+        FW.goal_glow = c[1] + 2 * c[2] + 4 * c[3]
+    elseif key == "record" and P.platter then
+        -- The arm swings in, then the record turns at 33 1/3.
+        local k = min(1, t / 0.7)
+        P.arm:set_rotation(v3(0, P.arm_yaw0 + 32 * (1 - (1 - k) ^ 3), 0))
+        P.platter:set_rotation(v3(0, -200 * max(0, t - 0.5), 0))
+    elseif key == "train" and P.train then
+        -- It pulls away a short way along its track and stops.
+        local d = 4 * (1 - math.exp(-t * 0.9))
+        local dx, dy = P.along_x and -d or 0, P.along_x and 0 or -d
+        P.train:set_position(v3(P.train_x + dx, P.train_z, -(P.train_y + dy)))
+        for _, w in ipairs(P.wheels) do w:set_rotation(v3(90, -deg(d / 0.38), 0)) end
+    elseif key == "musicbox" and P.lid then
+        local k = min(1, t / 0.9)
+        P.lid:set_rotation(v3(-105 * (1 - (1 - k) ^ 3), 0, 0))
+        P.cyl:set_rotation(v3(-70 * t, 0, 0))
+    elseif (key == "record" or key == "musicbox" or key == "train") and goal_node("^furn_") then
+        -- A Tripo model is one mesh: the train pulls away a short way along its track; the record player and the music
+        -- box keep time, a little lift and a warm glow on each beat, dying away after a few seconds.
+        local n = goal_node("^furn_")
+        if key == "train" then
+            local s = solid_named("toy train")
+            local along_x = not s or (s.x1 - s.x0) >= (s.y1 - s.y0)
+            local d = 4 * (1 - math.exp(-t * 0.9))
+            n:set_position(v3(along_x and -d or 0, 0, along_x and 0 or d))
+            FW.goal_glow = d
+        else
+            local beat = abs(sin(t * pi * 2)) * math.exp(-max(0, t - 3) * 0.8)
+            n:set_position(v3(0, 0.12 * beat, 0))
+            mset(n, "emissive", v3(0.12 * beat, 0.08 * beat, 0.03 * beat))
+            FW.goal_glow = beat
+        end
+    elseif key == "lights" then
+        -- The lever is thrown and the lamps come on, with a flicker.
+        local lever = goal_node("_lever$")
+        if lever then lever:set_position(v3(0, -0.8 * min(1, t / 0.25), 0)) end
+        -- (dark until the lever lands, a flicker, then up over about a second with a flare past full, settling at full)
+        local u = t - 0.2
+        local k
+        if u < 0 then k = 0.12
+        else
+            local rise = min(1, u / 1.0)
+            k = 0.12 + 0.88 * (1 - (1 - rise) ^ 2) + 0.35 * math.exp(-max(0, u - 1.0) * 3) * (u > 1.0 and 1 or rise)
+            if u < 0.35 then k = k * (0.55 + 0.45 * (0.5 + 0.5 * sin(u * 70))) end
+        end
+        if abs(k - (FW.glow_k or 0)) > 0.01 or (t > 3 and FW.glow_k ~= 1) then lights_to(t > 3 and 1 or k) end
+        FW.goal_glow = k
+    end
+    -- (the dictionary is posed by its domino's fall, in animate)
+end
+function FW.goal_sig()
+    local out = {}
+    local function add(n)
+        if type(n) ~= "table" then return end          -- (the test stub's nodes remember their pose; the engine's do not say)
+        local p, r = rawget(n, "pos") or { x = 0, y = 0, z = 0 }, rawget(n, "rot") or { x = 0, y = 0, z = 0 }
+        out[#out + 1] = string.format("%.3f,%.3f,%.3f/%.2f,%.2f,%.2f", p.x, p.y, p.z, r.x, r.y, r.z)
+    end
+    for _, g in ipairs(FW.room_goal) do add(g.n) end
+    for _, n in pairs(FW.goal_parts) do if type(n) == "table" and rawget(n, "pos") ~= nil then add(n) end end
+    out[#out + 1] = string.format("glow %.3f", FW.goal_glow or 0)
+    return table.concat(out, " ")
+end
+FW.pose_book = pose_book
+
 function FW.leave()
+    FW.show_challenge(nil)
     remove_statics()
     if physics and physics.set_gravity then pcall(physics.set_gravity, 0, -9.81, 0) end
     if physics and physics.set_time_scale then pcall(physics.set_time_scale, 1) end
@@ -1167,10 +2556,50 @@ function FW.leave()
     FW.clear()
     FW.set_cursor(nil)
     FW.set_starter(nil)
+    marks_hide()
     if room_root then pcall(function() room_root:set_enabled(false) end) end
     restore_lights()
     FW.active = false
 end
+
+-- Another room: the old one's colliders, nodes (furniture, flat boards, appliances, challenge prop boxes) and decor
+-- go; the new one is built the next time Free Build opens, or now if it is open, with its own lights and shadow bounds.
+teardown_room = function()
+    if not room_root then return end
+    traps_destroy()
+    FW.show_challenge(nil)
+    remove_statics()
+    for i = 1, #FW.prop_boxes do body_off(FW.prop_boxes[i]) end
+    local all = {}
+    for _, n in ipairs(room_nodes) do all[#all + 1] = n end
+    for _, g in ipairs(FW.goal_nodes) do all[#all + 1] = g.n end
+    for _, n in ipairs(FW.boards or {}) do all[#all + 1] = n end
+    for _, n in ipairs(FW.prop_boxes) do all[#all + 1] = n end
+    for _, g in ipairs(FW.trap_nodes) do all[#all + 1] = g.n end
+    for _, n in ipairs(FW.goal_fb) do all[#all + 1] = n end
+    for _, n in ipairs(FW.prop_vis) do all[#all + 1] = n end
+    for _, n in ipairs(all) do pcall(function() n:remove() end) end
+    pcall(function() room_root:remove() end)
+    room_root, room_nodes, decor, built_for = nil, {}, { L = {}, R = {}, B = {}, F = {} }, nil
+    FW.goal_nodes, FW.goal_by, FW.trap_nodes, FW.boards, FW.prop_boxes, FW.prop_n = {}, {}, {}, {}, {}, 0
+    FW.room_goal, FW.book, FW.glows, FW.goal_fb, FW.prop_vis, FW.goal_parts, FW.glow_k = {}, {}, {}, {}, {}, {}, nil
+    FW.rug_mesh = {}
+    FW.rafters, FW.rafter_h, FW.rafters_hidden = {}, nil, nil
+    FW.shade, FW.shade_emis, FW.decor_hidden, FW.lamp_off = nil, nil, nil, nil
+end
+function FW.set_room(room)
+    if room == ROOM and built_for == (room_root and room) and (room_root or not FW.active) then return end
+    teardown_room()
+    ROOM = room
+    if FW.active then
+        build_room()
+        light_room()
+        FW.apply_look()
+        FW.statics_due = 3
+    end
+end
+FW.room = function() return ROOM end
+FW.room_nodes = function() return room_root and (#room_nodes + #FW.goal_nodes + #FW.trap_nodes + #(FW.boards or {}) + #FW.prop_boxes + #FW.goal_fb + 1) or 0 end
 
 -- dt: real time (the camera); anim_dt: the run's time (slowed for slow motion, 0 while building).
 function FW.update(dt, anim_dt)
@@ -1182,6 +2611,8 @@ function FW.update(dt, anim_dt)
         if FW.statics_due <= 0 then FW.statics_due = nil; add_statics() end
     end
     local due = animate(anim_dt or dt)
+    zones_tick(dt)
+    FW.goal_animate(dt)
     update_camera(dt)
     flush_poses()
     return due or {}

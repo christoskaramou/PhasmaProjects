@@ -17,6 +17,9 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import gen_meshes as G  # noqa: E402
+import mesh_reduce as MR  # noqa: E402
+
+FACES = 6000        # each house once cooked (tools/mesh_reduce.py, meshoptimizer); its texture stays at house_import's 1024
 
 BLENDER = os.environ.get("BLENDER", r"C:\Program Files\Blender Foundation\Blender 5.1\blender.exe")
 TEX = os.path.join(G.ROOT, "Assets", "Textures")
@@ -81,7 +84,9 @@ def import_all(tripo_dir, sheet_dir):
                 print(r.stdout[-2000:], r.stderr[-2000:])
                 raise SystemExit("import failed: " + name)
             grade(tex, sat)
-            lines.append(f"{obj}\t{os.path.join(G.OBJECTS, name + '.pemesh')}\n")
+            light = obj[:-4] + "_light.obj"
+            print("   ", MR.run_obj(obj, light, FACES))
+            lines.append(f"{light}\t{os.path.join(G.OBJECTS, name + '.pemesh')}\n")
         manifest = os.path.join(tmp, "batch.txt")
         with open(manifest, "w", encoding="utf-8") as f:
             f.writelines(lines)

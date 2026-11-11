@@ -141,6 +141,7 @@ end
 local function canvas_source(cv) return "draw:" .. CANVAS_W .. ":" .. CANVAS_H .. ":" .. table.concat(cv.cells) end
 
 local function open_canvas()
+    if S.canvas_kept then S.canvas, S.canvas_kept = S.canvas_kept, nil; return end     -- (backed out of: nothing lost)
     local cells = {}
     for i = 1, CANVAS_W * CANVAS_H do cells[i] = S.drawn and S.drawn.cells[i] or "0" end
     S.canvas = { cells = cells, brush = 2 }
@@ -185,6 +186,14 @@ local function finish()
     end
     for _, m in ipairs(MILESTONES) do if n >= m then S.milestone = m end end
     sound("cheer")
+    -- A build counts as yours unless a ready-made sample is what it was laid on.
+    local own = true
+    for i = #HC.ops, 1, -1 do
+        if HC.ops[i].k == "clear" then break end
+        if HC.ops[i].k == "sample" then own = false; break end
+    end
+    local line = ctx.report_run({ own = own, fallen = n, total = HC.count(), duration = S.run_t, balls = 0, swings = 0, switches = 0, ramp = false, stars = 0 })
+    if line then say(line) end
 end
 
 ------------------------------------------------------------------ input
@@ -317,6 +326,17 @@ local function camera_input(dt, mx, my, ui)
 end
 
 function H.flush_keys() for _, k in ipairs(H.KEYS) do pressed(k) end end
+-- Esc or a BACK / CLOSE: up one level. The drawing canvas closes (its drawing kept for next time), the challenge list
+-- closes, a finished run's card closes (the dominoes stand up; nothing tipped or counted), the picture picker closes
+-- (back to the tool you had). False when nothing is open here (the game then opens its pause card).
+function H.back()
+    if S.canvas then S.canvas_kept, S.canvas = S.canvas, nil; return true end
+    if S.ch_open then S.ch_open = nil; return true end
+    if S.job then return false end
+    if S.mode == "done" then stand_up(); return true end
+    if S.mode == "build" and S.tool == "picture" then S.tool, S.press = S.tool_before_pic or "line", nil; return true end
+    return false
+end
 
 local function canvas_layout()
     local u, w, h = ctx.u(), ctx.L.w, ctx.L.h
@@ -336,7 +356,7 @@ local function canvas_input()
         for i = 1, #cv.cells do cv.cells[i] = "0" end
         sound("remove")
     end
-    if clicked("gh_cv_cancel") then S.canvas = nil; sound("click"); return end
+    if clicked("gh_cv_cancel") then sound("click"); H.back(); return end
     if clicked("gh_cv_done") then
         S.drawn, S.pic, S.canvas = cv, canvas_source(cv), nil
         sound("place")
@@ -368,7 +388,12 @@ function H.controls(dt)
     if pressed("H") then S.hud = not S.hud; sound("click") end
     if pressed("F") or clicked("gh_follow") then S.follow = not S.follow; sound("click") end
     if clicked("gh_menu") then sound("click"); ctx.back_to_menu(); return end
+    if S.ch_open then
+        if clicked("gh_ch_close") then sound("click"); H.back() end
+        return
+    end
     if S.job then return end
+    if S.mode ~= "running" and clicked("gh_ch") then S.ch_open = true; sound("click"); return end
 
     if S.mode == "running" then
         if pressed("Z") or clicked("gh_slow") then S.speed = S.speed < 1 and 1 or 0.25; sound("click") end
@@ -377,8 +402,10 @@ function H.controls(dt)
     else
         local enter = pressed("Space") or pressed("Return") or clicked("gh_tip")
         if S.mode == "done" and (pressed("R") or clicked("gh_stand")) then stand_up(); sound("remove") end
+        if S.mode == "done" and clicked("gh_res_close") then sound("click"); H.back(); return end
         for i, t in ipairs(TOOLS) do
             if pressed(tostring(i)) or clicked("gh_tool" .. i) then
+                if t.id == "picture" and S.tool ~= "picture" then S.tool_before_pic = S.tool end
                 S.tool = t.id; S.press = nil; sound("click")
                 if t.id == "picture" then find_pictures() end
             end
@@ -388,6 +415,7 @@ function H.controls(dt)
                 if clicked("gh_pic" .. i) then S.pic = name; sound("click") end
             end
             if clicked("gh_pic_draw") then sound("click"); open_canvas(); return end
+            if clicked("gh_pic_back") then sound("click"); H.back(); return end
         end
         for i, p in ipairs(PAINTS) do
             if clicked("gh_paint" .. i) then S.paint = p; sound("click") end
@@ -593,13 +621,14 @@ function H.leave()
 end
 
 ------------------------------------------------------------------ HUD
-local function button(id, x, y, w, h, label, sub, on, accent)
+local function button(id, x, y, w, h, label, sub, on, accent, z)
     local u = ctx.u()
     local hov = hovered(id)
-    panel(x, y, w, h, 51, on and { 0.34, 0.2, 0.09, 0.97 } or (hov and C.WALNUT_HI or { 0.17, 0.095, 0.05, 0.95 }), accent or (on and C.GOLD or col4(C.RIM, 0.6)), 10)
-    text(label, x + w / 2, y + h * (sub and 0.4 or 0.5), 16 * u, on and C.GOLD or C.CREAM, "center", 53, w)
-    if sub then text(sub, x + w / 2, y + h * 0.74, 12 * u, col4(C.BRASS, 0.85), "center", 53, w) end
-    catcher(id, x, y, w, h, 62)
+    z = z or 51
+    panel(x, y, w, h, z, on and { 0.34, 0.2, 0.09, 0.97 } or (hov and C.WALNUT_HI or { 0.17, 0.095, 0.05, 0.95 }), accent or (on and C.GOLD or col4(C.RIM, 0.6)), 10)
+    text(label, x + w / 2, y + h * (sub and 0.4 or 0.5), 16 * u, on and C.GOLD or C.CREAM, "center", z + 2, w)
+    if sub then text(sub, x + w / 2, y + h * 0.74, 12 * u, col4(C.BRASS, 0.85), "center", z + 2, w) end
+    catcher(id, x, y, w, h, z + 11)
     hot[id] = true
 end
 local function nohot(id) hide(id); hot[id] = nil end
@@ -610,6 +639,27 @@ local function top_left()
     text("TOPPLE", 44 * u, 50 * u, 40 * u, C.CREAM, "left", 41, 300 * u)
     text("the great hall", 46 * u, 88 * u, 15 * u, col4(C.BRASS, 0.95), "left", 41, 320 * u)
     button("gh_menu", 300 * u, 34 * u, 70 * u, 60 * u, "MENU", nil, false)
+    if S.mode ~= "running" then button("gh_ch", 24 * u, 118 * u, 210 * u, 50 * u, "CHALLENGES", nil, true, C.GOLD) else nohot("gh_ch") end
+end
+
+-- This map's list: it has no challenges of its own yet, so the shared set is all of it.
+local function challenge_list()
+    local u, w, h = ctx.u(), ctx.L.w, ctx.L.h
+    local pw, ph, gap = 1228 * u, 564 * u, 22 * u
+    local x, y = (w - pw) / 2, (h - ph) / 2
+    local Ch = ctx.Challenges
+    rect(0, 0, w, h, { 0.02, 0.012, 0.008, 0.68 }, 78)
+    catcher("gh_ch_block", 0, 0, w, h, 79); hot.gh_ch_block = true
+    panel(x, y, pw, ph, 80, C.WALNUT, C.RIM, 18)
+    text("CHALLENGES", w / 2, y + 42 * u, 36 * u, C.GOLD, "center", 82, pw)
+    text(Ch.MAPS.hall.name .. "   ·   global " .. Ch.global_count() .. " / " .. #Ch.GLOBAL, w / 2, y + 80 * u, 17 * u, C.CREAM, "center", 82, pw)
+    ctx.challenge_grid("hall", x + gap, y + 104 * u, pw - 2 * gap, 400 * u, 83)
+    local bw, bh = 170 * u, 44 * u
+    local bx, by = x + gap, y + ph - bh - 8 * u
+    local hov = hovered("gh_ch_close")
+    panel(bx, by, bw, bh, 88, hov and C.WALNUT_HI or { 0.17, 0.095, 0.05, 1 }, hov and C.GOLD or C.RIM, 10)
+    text("BACK  ·  Esc", bx + bw / 2, by + bh / 2, 18 * u, C.CREAM, "center", 89, bw)
+    catcher("gh_ch_close", bx, by, bw, bh, 90); hot.gh_ch_close = true
 end
 
 local function top_right()
@@ -730,7 +780,8 @@ local function result_card()
     local u, w, h = ctx.u(), ctx.L.w, ctx.L.h
     local cw = 620 * u
     local x = (w - cw) / 2
-    panel(x, 150 * u, cw, 120 * u, 70, C.WALNUT, C.RIM, 16)
+    panel(x, 150 * u, cw, 178 * u, 70, C.WALNUT, C.RIM, 16)
+    button("gh_res_close", x + 20 * u, (150 + 178 - 58) * u, 170 * u, 46 * u, "CLOSE", "Esc", false, nil, 72)
     local title = S.milestone and (commas(S.milestone) .. " IN ONE CHAIN!") or (commas(HC.toppled) .. " DOMINOES")
     text(title, w / 2, 192 * u, 36 * u, C.GOLD, "center", 71, cw)
     local sub = S.new_best and "A new best chain." or string.format("in %.1f seconds", HC.last_t)
@@ -810,14 +861,15 @@ local function picture_panel(ty)
     local u, w = ctx.u(), ctx.L.w
     local tile, gap = 112 * u, 10 * u
     local shown = S.pictures or {}
-    local pw = (#shown + 1) * (tile + gap) + gap
+    local pw = (#shown + 2) * (tile + gap) + gap
     local x, y = (w - pw) / 2, ty - 208 * u
     panel(x, y, pw, tile + 2 * gap, 50, C.WALNUT, C.RIM, 14)
     catcher("gh_pic_tray", x, y, pw, tile + 2 * gap, 55); hot.gh_pic_tray = true
+    button("gh_pic_back", x + gap, y + gap, tile, tile, "BACK", "Esc", false, nil, 56)
     for i = 1, MAX_PICTURES do
         local name = shown[i]
         if name then
-            local tx = x + gap + (i - 1) * (tile + gap)
+            local tx = x + gap + i * (tile + gap)
             image("Pictures/" .. name, tx, y + gap, tile, tile, { 1, 1, 1, 1 }, 52)
             quad(pid("ghs"), { style = "text", label = "", x = tx, y = y + gap, width = tile, height = tile, z = 53, fill = { 0, 0, 0, 0 },
                 border = S.pic == name and C.GOLD or col4(C.RIM, 0.6), corner_radius = 6 * u })
@@ -826,7 +878,7 @@ local function picture_panel(ty)
             nohot("gh_pic" .. i)
         end
     end
-    local dx = x + gap + #shown * (tile + gap)
+    local dx = x + gap + (#shown + 1) * (tile + gap)
     local mine = S.drawn and S.pic == canvas_source(S.drawn)
     panel(dx, y + gap, tile, tile, 51, mine and { 0.34, 0.2, 0.09, 0.97 } or { 0.17, 0.095, 0.05, 0.95 }, mine and C.GOLD or col4(C.RIM, 0.6), 8)
     text(S.drawn and "YOUR" or "DRAW", dx + tile / 2, y + gap + tile * 0.38, 18 * u, C.CREAM, "center", 53, tile)
@@ -867,20 +919,22 @@ local function canvas_draw()
         catcher(id, x, by, bw, bh, 95); hot[id] = true
     end
     cbtn("gh_cv_done", "USE IT", right - bw, true)
-    cbtn("gh_cv_cancel", "CANCEL", right - 2 * bw - 10 * u, false)
+    cbtn("gh_cv_cancel", "BACK  ·  Esc", right - 2 * bw - 10 * u, false)
     cbtn("gh_cv_clear", "CLEAR", right - 3 * bw - 20 * u, false)
 end
 
 local ALL_IDS = { "gh_menu", "gh_tray", "gh_tip", "gh_undo", "gh_redo", "gh_clear", "gh_follow", "gh_slow", "gh_stand",
-    "gh_sample1", "gh_sample2", "gh_sample3", "gh_pic_tray", "gh_pic_draw", "gh_canvas", "gh_cv_done", "gh_cv_cancel", "gh_cv_clear" }
+    "gh_sample1", "gh_sample2", "gh_sample3", "gh_pic_tray", "gh_pic_draw", "gh_canvas", "gh_cv_done", "gh_cv_cancel", "gh_cv_clear",
+    "gh_pic_back", "gh_res_close" }
 for i = 1, MAX_PICTURES do ALL_IDS[#ALL_IDS + 1] = "gh_pic" .. i end
 for i = 1, #HC.DRAW_COLORS do ALL_IDS[#ALL_IDS + 1] = "gh_cv_col" .. i end
-local PICTURE_IDS = { "gh_pic_tray", "gh_pic_draw" }
+local PICTURE_IDS = { "gh_pic_tray", "gh_pic_draw", "gh_pic_back" }
 for i = 1, MAX_PICTURES do PICTURE_IDS[#PICTURE_IDS + 1] = "gh_pic" .. i end
 local CANVAS_IDS = { "gh_canvas", "gh_cv_done", "gh_cv_cancel", "gh_cv_clear" }
 for i = 1, #HC.DRAW_COLORS do CANVAS_IDS[#CANVAS_IDS + 1] = "gh_cv_col" .. i end
 for i = 1, #TOOLS do ALL_IDS[#ALL_IDS + 1] = "gh_tool" .. i end
 for i = 1, #PAINTS do ALL_IDS[#ALL_IDS + 1] = "gh_paint" .. i end
+for _, id in ipairs({ "gh_ch", "gh_ch_block", "gh_ch_close" }) do ALL_IDS[#ALL_IDS + 1] = id end
 function H.hide_all() for _, id in ipairs(ALL_IDS) do nohot(id) end end
 
 function H.draw()
@@ -902,9 +956,10 @@ function H.draw()
         end
     end
     if S.canvas then canvas_draw() else for _, id in ipairs(CANVAS_IDS) do nohot(id) end end
+    if S.ch_open then challenge_list() else nohot("gh_ch_block"); nohot("gh_ch_close") end
     local ty
     if S.mode == "build" then
-        for _, id in ipairs({ "gh_slow", "gh_stand" }) do nohot(id) end
+        for _, id in ipairs({ "gh_slow", "gh_stand", "gh_res_close" }) do nohot(id) end
         ty = select(2, tray())
         shape_preview()
         if S.tool == "picture" then picture_panel(ty) else for _, id in ipairs(PICTURE_IDS) do nohot(id) end end
@@ -914,7 +969,7 @@ function H.draw()
         for i = 1, #PAINTS do nohot("gh_paint" .. i) end
         for _, id in ipairs({ "gh_undo", "gh_redo", "gh_clear", "gh_sample1", "gh_sample2", "gh_sample3" }) do nohot(id) end
         ty = select(2, run_bar())
-        if S.mode == "done" then result_card() end
+        if S.mode == "done" then result_card() else nohot("gh_res_close") end
     end
     if S.msg and S.msg_t > 0 then
         text(S.msg, w / 2, ty - 76 * u, 19 * u, col4(S.msg_bad and C.BAD or C.GOLD, min(1, S.msg_t * 2)), "center", 46, 1200 * u)

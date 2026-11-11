@@ -9,6 +9,8 @@ Synthesized with numpy / scipy, stereo 32 kHz (modal models, as Ricochet Parlour
 - roll: a glass marble down its wooden chute and across the felt; thunk: a domino against a wooden block
 - house: a toy house tipping over; wobble: a domino nudged edge-on that rocks and stays up
 - cheer: table cleared (a rising brass arpeggio); over: the run ends (falling chimes); coin; click
+- house rooms: string_snap1/2, weight_drop, plank_fall, gate_open (traps); collapse_cards / _blocks / _glass (fragile
+  stacks); unlock (a new tool); goal_doorbell, _tv, _toaster, _record, _train, _musicbox, _dictionary, _lights
 """
 import sys
 import wave
@@ -91,12 +93,143 @@ def clack(f):
     return body + knock + felt
 
 
+def fit(x, dur, fade=0.3):
+    """Cut a (room-processed) sound to dur seconds with a smooth fade, so long rings end without a click."""
+    x = np.array(x[: int(SR * dur)], float); n = min(len(x), int(SR * fade))
+    w = 0.5 + 0.5 * np.cos(np.linspace(0, np.pi, n))
+    x[-n:] *= w[:, None] if x.ndim == 2 else w
+    return x
+
+
+def sweep_sin(f): return np.sin(2 * np.pi * np.cumsum(f) / SR)
+def burst(d, lo, hi, rate): t = t_axis(d); return band(noise(d), lo, hi) * np.exp(-t * rate) * np.clip(t / 0.0005, 0, 1)
+
+
+def string_snap(f):
+    # A taut string cut: the snap, a twang that sags as the tension goes, and the loose end whipping away.
+    t = t_axis(0.8)
+    fr = f * (0.72 + 0.28 * np.exp(-t * 30))
+    tw = sum(sweep_sin(fr * k) / k ** 1.1 * np.exp(-t * (5 + 4 * k)) for k in range(1, 7)) * np.clip(t / 0.0006, 0, 1)
+    whip = band(noise(0.8), 1500, 7000) * np.exp(-((t - 0.05) / 0.025) ** 2) * 0.5 + band(noise(0.8), 500, 2500) * np.exp(-((t - 0.1) / 0.035) ** 2) * 0.35
+    return tw + burst(0.8, 2500, 12000, 600) * 0.6 + whip * 0.7
+
+
+def wood_hit(f, amp, dur=0.3, rate=300):
+    return (modal(f, [1, 2.45, 4.1], [1, 0.4, 0.2], [45, 70, 100], dur) + burst(dur, 1000, 6000, rate) * 0.5) * amp
+
+
+def glass(f, amp):
+    return (modal(f, [1, 2.32, 4.25, 6.0], [1, 0.35, 0.15, 0.06], [6, 10, 18, 30], 1.5) + burst(1.5, 3500, 10000, 900) * 0.12) * amp
+
+
+def tine(f, dur=2.0):
+    rs = [r for r in (1, 2.0, 6.27) if f * r < 13000]
+    return modal(f, rs, [1, 0.08, 0.35][: len(rs)], [1.8, 4, 25][: len(rs)], dur) + burst(dur, 3000, 9000, 800) * 0.12
+
+
+def house_sounds():
+    """The house rooms' traps, rewards and room goals (made after the original set so its RNG stream is unchanged)."""
+    for i, f in enumerate((520, 690), 1):
+        write(f"string_snap{i}", room(string_snap(f), 0.12), 0.4)
+    t = t_axis(0.8)
+
+    def drop(a):
+        return (modal(150, [1, 2.3, 3.7, 5.1], [1, 0.5, 0.3, 0.15], [22, 35, 50, 70], 0.8) + modal(1430, [1, 2.71, 4.4], [0.25, 0.12, 0.06], [25, 35, 50], 0.8)
+                + lowpass(noise(0.8), 2500) * np.exp(-t * 140) * 0.8) * a
+    write("weight_drop", room(mix(1.0, (0, drop(1)), (0.13, drop(0.25)), (0.21, drop(0.08))), 0.18), 0.5)
+    slap = lowpass(noise(0.8), 4000) * np.exp(-t * 220) * 1.2 * np.clip(t / 0.0005, 0, 1) + modal(190, [1, 2.6, 4.2, 6.8], [1, 0.6, 0.35, 0.2], [35, 50, 70, 100], 0.8)
+    tw = t_axis(0.3)
+    whoosh = band(noise(0.3), 200, 1500) * np.exp(-((tw - 0.24) / 0.08) ** 2) * 0.35
+    write("plank_fall", room(mix(1.1, (0, whoosh), (0.25, slap), (0.25, modal(820, [1, 2.3], [0.3, 0.15], [60, 90], 0.3)), (0.33, slap[: int(0.3 * SR)] * 0.12)), 0.18), 0.5)
+    t = t_axis(0.4)
+    ph = np.cumsum(60 + 30 * np.sin(2 * np.pi * 2.2 * t)) / SR
+    pulses = np.diff(np.floor(ph), prepend=0) * RNG.uniform(0.6, 1.0, len(t))
+    creak = signal.fftconvolve(pulses, modal(900, [1, 1.7, 2.9], [1, 0.5, 0.3], [150, 200, 260], 0.03))[: len(t)] * np.sin(np.pi * t / 0.4) ** 2
+    latch = modal(2900, [1, 2.4, 4.1], [0.6, 0.3, 0.15], [120, 180, 250], 0.15) + burst(0.15, 2000, 9000, 500) * 0.5
+    write("gate_open", room(mix(0.9, (0, latch), (0.06, creak * 0.5), (0.5, modal(420, [1, 2.2, 3.4], [0.6, 0.25, 0.1], [40, 60, 90], 0.3))), 0.15), 0.38)
+    # House of cards: light slaps of card on card and the flutter of falling cards.
+    t = t_axis(1.3)
+    flutter = band(noise(1.3), 400, 3500) * (0.5 + 0.5 * np.sin(2 * np.pi * 17 * t)) * np.exp(-((t - 0.4) / 0.3) ** 2) * 0.12
+    slaps = [(s, burst(0.05, 800, 5000, RNG.uniform(140, 220)) * RNG.uniform(0.3, 1.0)) for s in np.sort(RNG.beta(2, 3.5, 30))]
+    pats = [(s, lowpass(burst(0.08, 200, 3000, 120), 1500) * 0.6) for s in (0.92, 1.02)]
+    write("collapse_cards", room(mix(1.4, (0, flutter), *slaps, *pats), 0.15), 0.42)
+    # Block tower: a cascade of wooden knocks, the last ones landing on felt.
+    times = np.cumsum(np.concatenate([[0], RNG.uniform(0.03, 0.12, 13)]))
+    blocks = [(s, wood_hit(RNG.uniform(600, 1500), 1.0 - 0.05 * k) if k < 9 else lowpass(wood_hit(RNG.uniform(500, 900), 0.6), 1200))
+              for k, s in enumerate(times)]
+    write("collapse_blocks", room(mix(1.7, (0, modal(260, [1, 2.1], [0.6, 0.2], [25, 40], 0.4)), *blocks), 0.2), 0.55)
+    # Glasses: they tip into each other and ring; no shatter.
+    clinks = [(s, glass(f, a)) for s, f, a in ((0, 2200, 1), (0.12, 2750, 0.8), (0.2, 3100, 0.7), (0.33, 2450, 0.6), (0.41, 3500, 0.45),
+                                               (0.6, 2900, 0.4), (0.78, 2350, 0.3), (1.0, 3250, 0.2))]
+    toks = [(s + 0.02, modal(700, [1, 2.3], [0.25, 0.1], [60, 90], 0.2)) for s in (0.2, 0.41, 0.78)]
+    write("collapse_glass", fit(room(mix(2.4, *clinks, *toks), 0.25), 2.3, 0.5), 0.45)
+    # Unlock: a wooden mallet grace note into a warm G major chord with a soft bloom.
+    t = t_axis(1.6)
+
+    def mallet(f): return modal(f, [1, 3.93, 9.0], [1, 0.25, 0.08], [4, 18, 40], 1.6)
+    bloom = sum(np.sin(2 * np.pi * f * t) for f in (196, 392, 493.9, 587.3)) * np.clip(t / 0.15, 0, 1) * np.exp(-t * 2.5) * 0.12
+    sparkle = [(0.12 + 0.06 * k, modal(f, [1, 2.4], [0.12, 0.04], [20, 35], 0.4)) for k, f in enumerate((2349, 2794, 3136))]
+    unlock = mix(1.8, (0, mallet(587.3) * 0.6), *[(0.09, mallet(f) * a) for f, a in ((392, 1), (493.9, 0.8), (587.3, 0.7), (784, 0.6))], (0.09, bloom), *sparkle)
+    write("unlock", fit(room(unlock, 0.25), 1.8, 0.4), 0.5)
+    # Room goals.
+    def chime(f): return modal(f, [1, 2.76, 5.40, 8.93], [1, 0.45, 0.2, 0.08], [1.6, 3, 5, 8], 2.0) + burst(2.0, 2000, 8000, 700) * 0.3
+    write("goal_doorbell", fit(room(mix(2.5, (0, chime(659.25)), (0.5, chime(523.25))), 0.25), 2.45, 0.6), 0.55)
+    t = t_axis(1.9)
+    hum = sum(sweep_sin((90 + 30 * (1 - np.exp(-t * 3))) * k) / k for k in range(1, 9)) * np.clip(t / 0.6, 0, 1) ** 1.5 * 0.35
+    static = band(noise(1.9) * (RNG.random(len(t)) < 0.004), 1500, 6000) * np.exp(-t * 2) * 1.5
+    whine = np.sin(2 * np.pi * 15300 * t) * np.clip((t - 0.2) / 0.8, 0, 1) * 0.015
+    switch = modal(1100, [1, 2.3, 3.8], [0.7, 0.3, 0.15], [120, 170, 240], 0.3) + modal(140, [1, 2.2], [0.6, 0.2], [50, 70], 0.3)
+    write("goal_tv", fit(room(mix(2.1, (0, switch), (0.08, lowpass(hum, 2500) * 2.2 + static + whine)), 0.15), 2.0, 0.4), 0.5)
+    t = t_axis(0.6)
+    spring = sweep_sin(740 * (1 + 0.06 * np.sin(2 * np.pi * 28 * t))) * np.exp(-t * 12) * np.clip(t / 0.001, 0, 1) * 0.4
+
+    def toast(): return lowpass(burst(0.2, 200, 3000, 80), 1800) * 0.5 + modal(300, [1, 2.2], [0.3, 0.1], [50, 70], 0.2)
+    write("goal_toaster", room(mix(0.9, (0, modal(1600, [1, 2.9, 4.7, 6.2], [0.8, 0.4, 0.25, 0.1], [40, 60, 90, 120], 0.6)), (0, modal(220, [1, 2.3], [0.6, 0.2], [40, 55], 0.3)),
+                                   (0.005, spring), (0.28, toast()), (0.31, toast() * 0.7)), 0.18), 0.5)
+    # Record: the needle drops, then a bar of warm surface crackle turning at 33 1/3.
+    t = t_axis(3.4)
+    def ticks(rate): return (RNG.random(len(t)) < rate / SR) * RNG.uniform(0.5, 1, len(t)) * RNG.choice([-1, 1], len(t))
+    hiss = band(noise(3.4), 300, 4500) * 0.04 * (1 + 0.3 * np.sin(2 * np.pi * 0.556 * t)) + lowpass(noise(3.4), 60) * 0.03
+    bed = lowpass(band(ticks(90), 1500, 6000) + lowpass(ticks(4), 2000) * 0.8 + hiss, 6000) * np.clip((t - 0.05) / 0.15, 0, 1)
+    needle = burst(0.4, 2000, 9000, 600) * 0.4 + modal(70, [1, 2.1], [1, 0.3], [18, 30], 0.4) + modal(160, [1, 2.4], [0.3, 0.1], [40, 60], 0.4)
+    bed *= 0.45 * np.abs(needle).max() / np.abs(bed).max()
+    write("goal_record", fit(room(mix(3.4, (0, needle), (0, bed)), 0.15), 3.3, 0.6), 0.5)
+    # Toy train: a three-note whistle with a scoop up, then two chuffs of steam.
+    t = t_axis(0.75)
+    scoop = (0.94 + 0.06 * (1 - np.exp(-t * 12))) * (1 + 0.004 * np.sin(2 * np.pi * 5.5 * t))
+    whistle = sum(sweep_sin(f * scoop) + 0.15 * sweep_sin(2 * f * scoop) for f in (740, 932.3, 1108.7)) / 3 + band(noise(0.75), 600, 4000) * 0.15
+    whistle *= np.clip(t / 0.04, 0, 1) * np.clip((0.75 - t) / 0.15, 0, 1)
+    tc = t_axis(0.35)
+
+    def chuff(): return band(noise(0.35), 250, 2500) * np.clip(tc / 0.008, 0, 1) * np.exp(-tc * 14) * 0.9 + lowpass(noise(0.35), 400) * np.exp(-tc * 20) * 0.4
+    write("goal_train", fit(room(mix(1.8, (0, whistle), (0.9, chuff()), (1.22, chuff() * 0.8)), 0.2), 1.9, 0.3), 0.5)
+    # Music box: an original six-note phrase on comb tines, the last note with a harmony, over the faint ratchet.
+    phrase = [(0.0, 784.0), (0.3, 1174.7), (0.6, 1318.5), (0.9, 1046.5), (1.35, 987.8), (1.65, 1046.5), (1.65, 659.25)]
+    tick = [(s, burst(0.02, 2000, 6000, 400) * 0.02) for s in np.arange(0, 3.2, 1 / 14)]
+    write("goal_musicbox", fit(room(mix(3.8, *[(s, tine(f) * 0.7) for s, f in phrase], *tick), 0.3), 3.6, 0.8), 0.5)
+    # Dictionary: a puff of air from the pages, then the heavy covers meet.
+    t = t_axis(0.3); tt = t_axis(1.0)
+    air = band(noise(0.3), 300, 3000) * np.exp(-((t - 0.09) / 0.05) ** 2) * 0.35 + band(noise(0.3), 2000, 8000) * np.exp(-((t - 0.08) / 0.03) ** 2) * 0.12
+    thud = (modal(85, [1, 1.8, 2.9, 4.3], [1, 0.6, 0.35, 0.15], [16, 28, 45, 70], 1.0) + lowpass(noise(1.0), 1800) * np.exp(-tt * 90) * np.clip(tt / 0.0005, 0, 1)
+            + burst(1.0, 1500, 6000, 300) * 0.35)
+    write("goal_dictionary", room(mix(1.3, (0, air), (0.13, thud)), 0.2), 0.55)
+    # Master switch: a big clunk and latch, then the house lights swelling up in a shimmer.
+    t = t_axis(2.3)
+    glide = 0.97 + 0.03 * np.clip(t / 1.4, 0, 1)
+    swell = np.clip(t / 1.3, 0, 1) ** 2
+    shimmer = sum(sweep_sin(f * glide) + sweep_sin(f * glide * 1.003) for f in (523.25, 659.25, 784, 1046.5, 1318.5)) * swell * (1 + 0.15 * np.sin(2 * np.pi * 6 * t)) * 0.08
+    shimmer += band(noise(2.3) * (RNG.random(len(t)) < swell * 0.003), 2500, 7000) * 1.2 * swell
+    clunk = modal(520, [1, 2.2, 3.6, 5.3], [0.7, 0.35, 0.2, 0.12], [35, 50, 70, 95], 0.5) + modal(110, [1, 2.4], [0.9, 0.3], [25, 35], 0.5) + burst(0.5, 800, 6000, 250) * 0.6
+    write("goal_lights", fit(room(mix(2.5, (0, clunk), (0.05, modal(2100, [1, 2.4], [0.3, 0.1], [150, 200], 0.1)), (0.15, shimmer)), 0.25), 2.45, 0.35), 0.55)
+
+
 def main():
     global IR
     OUT.mkdir(parents=True, exist_ok=True)
     IR = make_ir()
     for old in OUT.glob("*.wav"):
         if not old.name.startswith("clack"): old.unlink()
+    for _ in range(6): noise(0.25)  # the RNG draws the synthesized clacks took, so the files below rebuild byte-for-byte
     t = t_axis(0.2)
     write("place", room(modal(900, [1, 2.4], [0.6, 0.3], [90, 140], 0.2) + lowpass(noise(0.2), 900) * np.exp(-t * 70) * 0.5, 0.1), 0.25)
     write("remove", room(modal(1300, [1, 2.2], [0.5, 0.2], [60, 110], 0.2) + band(noise(0.2), 400, 2500) * np.exp(-t * 50) * 0.4, 0.1), 0.22)
@@ -146,6 +279,7 @@ def main():
     write("over", room(over, 0.3), 0.55)
     write("coin", room(mix(0.5, (0, modal(2637, [1, 2.4, 3.9], [1, 0.4, 0.2], [18, 30, 45], 0.4)), (0.07, modal(3520, [1, 2.4], [0.8, 0.3], [20, 35], 0.4))), 0.2), 0.4)
     write("click", modal(1600, [1, 2.4], [1, 0.3], [160, 240], 0.1), 0.26)
+    house_sounds()
     print("sounds written to", OUT)
 
 

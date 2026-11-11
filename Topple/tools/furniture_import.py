@@ -2,7 +2,10 @@
 
     blender -b --factory-startup --python tools/furniture_import.py -- <in.glb> <out.obj> <out_texture.png> <spec.json>
 
-spec: at [x, y], yaw (degrees), and size_x (length along x before the yaw) or size_z (height).
+spec: at [x, y], yaw (degrees), and size_x (length along x before the yaw) or size_z (height), or size [x, y, h]
+(tools/gen_house.py: the room spec's box; the model gets one uniform scale that fits it inside the box, centred on the
+footprint, seated on the base), turn (quarter turns in degrees that bring the model's front to -y, default 0) and z
+(the base's height, default 0).
 Blender's axes are the table's (x, y, h), and the OBJ export maps them to the engine's (x, h, -y), so a room piece needs
 no node transform. Prints BOX (the world bounds) and SLICE lines (the footprint of the model in height bands), which
 is what the collision boxes in tools/gen_room.py are read from.
@@ -42,15 +45,30 @@ for k in range(90):
     area = (max(xs) - min(xs)) * (max(ys) - min(ys))
     if best is None or area < best[0]:
         best = (area, t)
+if F.get("size") and best[1] > math.radians(45):
+    best = (best[0], best[1] - math.pi / 2)      # the same box, without swapping the model's width and depth
 o.data.transform(Matrix.Rotation(best[1], 4, "Z"))
+if F.get("size"):
+    # turn: quarter turns (degrees, multiple of 90) that bring the model's front to local -y, the spec's front.
+    o.data.transform(Matrix.Rotation(math.radians(F.get("turn", 0.0)), 4, "Z"))
 pts = [v.co for v in o.data.vertices]
 lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
 hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
-k = F["size_x"] / (hi.x - lo.x) if F.get("size_x") else F["size_z"] / (hi.z - lo.z)
 o.data.transform(Matrix.Translation((-(lo.x + hi.x) / 2, -(lo.y + hi.y) / 2, -lo.z)))
-o.data.transform(Matrix.Scale(k, 4))
+if F.get("size"):
+    # tools/gen_house.py: one uniform scale that fits the model inside the spec's box (x, y, h), centred on its
+    # footprint and seated on its base, so the box (the collision the rules use) never has to move for the model.
+    ext = [hi[i] - lo[i] for i in range(3)]
+    k = min(F["size"][i] / max(1e-9, ext[i]) for i in range(3)) * min(1.0, F.get("shrink", 1.0))
+    got = [e * k for e in ext]
+    print("FIT uniform %.4f  model %.2f x %.2f x %.2f in box %.2f x %.2f x %.2f  (short by %.2f %.2f %.2f)" % (
+        k, *got, *F["size"], *[F["size"][i] - got[i] for i in range(3)]))
+    o.data.transform(Matrix.Scale(k, 4))
+else:
+    k = F["size_x"] / (hi.x - lo.x) if F.get("size_x") else F["size_z"] / (hi.z - lo.z)
+    o.data.transform(Matrix.Scale(k, 4))
 o.data.transform(Matrix.Rotation(math.radians(F.get("yaw", 0.0)), 4, "Z"))
-o.data.transform(Matrix.Translation((F["at"][0], F["at"][1], 0.0)))
+o.data.transform(Matrix.Translation((F["at"][0], F["at"][1], F.get("z", 0.0))))
 o.data.update()
 
 P = [v.co.copy() for v in o.data.vertices]
