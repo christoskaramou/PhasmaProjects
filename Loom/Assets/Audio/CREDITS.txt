@@ -1,0 +1,10 @@
+Loom sounds: cut and levelled by tools/make_sounds.py from these recordings, all Creative Commons 0
+(https://creativecommons.org/publicdomain/zero/1.0/), checked on each sound's Freesound page.
+
+ambience.wav: "Countryside Ambience Spring" by Kinoton, https://freesound.org/s/514550/
+beat.wav: "Wooden hand Loom .mp3" by snapcam, https://freesound.org/s/582994/
+shuttle.wav: "Hand and wood (sliding).wav" by Pipelenisf, https://freesound.org/s/560349/
+wool.wav: "Fabric Rustles.wav" by Kawgrim, https://freesound.org/s/584866/
+step.wav: "Footsteps_Grass_Single_03.wav" by BenDrain, https://freesound.org/s/488074/
+click.wav: "Videogame Menu BUTTON CLICK" by Christopherderp, https://freesound.org/s/342200/
+over.wav: "Wooden Chest, Drop on Soft Surface and Release Metal Handles.wav" by The_Frisbee_of_Peace, https://freesound.org/s/573652/
