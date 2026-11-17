@@ -1,0 +1,16 @@
+Shadow Puppeteer sounds: cut and levelled by tools/make_sounds.py from these recordings, all Creative Commons 0
+(https://creativecommons.org/publicdomain/zero/1.0/), checked on each sound's Freesound page.
+
+ambience.wav: "FREESampleSunday_FIRECrkl_CandleWick01-03.wav" by InMotionAudio, https://freesound.org/s/662891/
+drag.wav: "Hand and wood (sliding).wav" by Pipelenisf, https://freesound.org/s/560349/
+step.wav: "Generic Soft Wood/Floor Hits" by SirBagel, https://freesound.org/s/732813/
+climb.wav: "ladder.wav" by MalMan35, https://freesound.org/s/344196/
+fall.wav: "Whoosh stereo light (transition)" by xkeril, https://freesound.org/s/701104/
+land.wav: "Paper Impacts" by HECKFRICKER, https://freesound.org/s/625305/
+slide.wav: "PaperSlide.wav" by eyesonlegs, https://freesound.org/s/464302/
+thorns.wav: "TearingPaper11" by falcospizaetus, https://freesound.org/s/489968/
+candle.wav: "blowing out candle.wav" by Reitanna, https://freesound.org/s/242867/
+star.wav: "Twinkling chime" by Spacekittycat, https://freesound.org/s/770899/
+door.wav: "Music Box Melody 1" by DRFX, https://freesound.org/s/338986/
+click.wav: "UI Click Wooden" by Qvantor, https://freesound.org/s/878238/
+unlock.wav: "Harp Short 4.wav" by luckylittleraven, https://freesound.org/s/415477/
