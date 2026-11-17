@@ -64,7 +64,7 @@ local QUADS, CLICK = {}, {}
 env.runtime_ui = setmetatable({
     get_surface_size = function() return { width = SURF_W or 2560, height = SURF_H or 1369 } end,
     set_quad = function(_, id, o) QUADS[id] = o end,
-    get_state = function(_, id) if CLICK[id] then CLICK[id] = nil; return { clicked = true } end; return {} end,
+    get_state = function(_, id) if CLICK[id] then CLICK[id] = nil; return { clicked = true } end; return { hovered = HOVER and HOVER[id] or nil } end,
 }, { __index = function() return function() end end })
 local SET = {}
 local render_mode
@@ -291,6 +291,7 @@ do
     check(G.mode == "title" and QUADS.t_play and QUADS.t_play.visible ~= false and QUADS.t_quit, "title card with PLAY and QUIT")
     frames(200)
     check(L.S.st.K > #R.START, "the title's weaver weaves behind the card (" .. (L.S.st.K - #R.START) .. " rows)")
+    G.save.guided = 1            -- no guide here: the guide holds the clock itself, which would hide a running clock in pause
     CLICK.t_play = true; frames(3)
     check(G.mode == "run" and not L.S.st.over, "PLAY starts a run")
     local st = L.S.st
@@ -474,6 +475,59 @@ do
         check(G.mode == "over" and s3.over_info.cause == cause and fix and #fix > 20 and bad == 0,
             "game over by '" .. cause .. "': " .. head .. " / the cause and FIX shown inside the card (" .. bad .. " bad boxes)")
     end
+    SURF_W, SURF_H = nil, nil
+end
+
+-- 10. round 6: COMING UP, the kind hints (hover / key), the warnings
+do
+    local function overlap(a, b) return a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h end
+    for _, sz in ipairs({ { 1280, 720 }, { 2560, 1369 } }) do
+        SURF_W, SURF_H = sz[1], sz[2]
+        G.save.guided = 1
+        G.start_run(21); frames(4)
+        local st = L.S.st
+        local pb = G.preview_box
+        local ok_pb = pb and pb.x >= 0 and pb.x + pb.w <= sz[1] and pb.y + pb.h < sz[2] * 0.5 and pb.cs * 1 >= 18
+        -- the preview shows exactly the pattern rows ahead: count its non-empty cells against st.ahead
+        check(ok_pb and #st.ahead == R.PREVIEW, string.format("%dx%d: COMING UP shows %d rows ahead, on screen (cells %.0f px)", sz[1], sz[2], #st.ahead, pb and pb.cs or 0))
+        local bad, small, shown = 0, 0, 0
+        for i = 1, 9 do
+            HOVER = { ["chip" .. i] = true }
+            frames(2)
+            local hb = G.hint_box
+            if hb and hb.i == i then
+                shown = shown + 1
+                if hb.x < 0 or hb.y < 0 or hb.x + hb.w > sz[1] or overlap(hb, pb) then bad = bad + 1 end
+                for _, q in ipairs(text_quads(51, 51)) do
+                    if not in_box(q, hb) or not fits(q) then bad = bad + 1; if bad < 3 then print("   hint", q.label) end end
+                    if q.font_scale * 16 < 14 then small = small + 1 end
+                end
+            end
+        end
+        HOVER = nil
+        frames(2)
+        check(shown == 9 and bad == 0 and small == 0, string.format("%dx%d: hovering each chip 1-9 shows its hint on screen, text inside and >= 14 px (%d shown, %d bad, %d small)", sz[1], sz[2], shown, bad, small))
+        check(G.hint_box == nil, sz[1] .. ": the hint goes when the pointer leaves the chips")
+        tap("6"); frames(2)
+        check(G.hint_box and G.hint_box.i == 6, sz[1] .. ": pressing a key shows that kind's hint")
+        frames(200)
+        check(G.hint_box == nil, sz[1] .. ": the key's hint fades after a moment")
+    end
+    -- what each hint says matches the rules' prices and payouts
+    local okp = G.pays_text("f"):find("2 tan") and G.pays_text("p"):find("nothing") and G.pays_text("w"):find("2 brown")
+    check(okp, "hints read payouts from R.HARVEST: " .. G.pays_text("f"))
+    -- warnings: low path wool, a river in COMING UP, a blocked row above the path
+    G.start_run(22); frames(2)
+    local st = L.S.st
+    st.wool.tan = 1; frames(2)
+    check(G.warn and G.warn:find("Path wool low"), "low path wool warns and names FIELDS: " .. tostring(G.warn))
+    st.wool.tan = 9
+    st.ahead[2] = { [0] = "~", "~", "~", "~", "~", "~", "~", "~", "~" }; frames(2)
+    check(G.warn and G.warn:find("A river crosses in 2 rows"), "a river in COMING UP warns ahead: " .. tostring(G.warn))
+    local blocked = {}
+    for c = 0, 8 do blocked[c] = "r" end
+    st.ahead[1] = blocked; frames(2)
+    check(G.warn and G.warn:find("blocked above the path"), "rock above every glowing cell says turn sideways: " .. tostring(G.warn))
     SURF_W, SURF_H = nil, nil
 end
 

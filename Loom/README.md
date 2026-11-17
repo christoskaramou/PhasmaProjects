@@ -11,6 +11,11 @@ Controls (also on the title card): Left/Right or A/D move along the row · 1-9 l
 woods, field, hill, rock, house (or click a cell, then a bobbin) · Backspace take back the last pick ·
 Space beat the row in · Esc pause · M mute.
 
+Rivers and rocks stand in the path's way from the first rows; the COMING UP panel (top right) shows the next 3 rows,
+so turn the path sideways early. Wool is scarce: land beside the path pays it back when the traveller walks past
+(hover a chip, or press its key, to see what each kind costs, does and pays). Warnings above the chips name the
+next thing to fix: a river on the path, a blocked row, low path wool.
+
 ## How it is made
 
 See `.concepts/next/loom/LOOKPLAN.md` and `PROGRESS.md`. The table, loom frame, reed, warp and wool stands are

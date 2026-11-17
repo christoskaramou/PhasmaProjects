@@ -115,6 +115,9 @@ def is_loom(png):
         a, b = a - a.mean(), b - b.mean()
         return float((a * b).sum() / (np.sqrt((a * a).sum() * (b * b).sum()) + 1e-9))
 
+    if not (nxt / "loom" / "target.png").exists():
+        print("is_loom: no reference images (.concepts was removed); shot not checked")
+        return True
     t = thumb(png)
     mine = max(ncc(t, thumb(nxt / "loom" / n)) for n in ("target.png", "target_b.png", "backdrop.png"))
     other = max(ncc(t, thumb(nxt / n)) for n in ("undertow.png", "shadow_puppeteer.png"))

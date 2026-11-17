@@ -45,6 +45,7 @@ end
 -- 3. bridges
 do
     local st = R.new(3)
+    st.wool.indigo = 9
     local ok, why = R.lay(st, 3, BRIDGE)
     check(not ok and why:find("river"), "a bridge needs river beside it")
     R.lay(st, 0, WATER); R.lay(st, 1, WATER); R.lay(st, 2, WATER)      -- a river from the west edge
@@ -89,19 +90,18 @@ do
     check(s2.rows[s2.K]:sub(4, 4) == ".", "the clock's beat turns orphan water into meadow")
     -- the pattern's hills: in 80 rows of normal play there are hill ridges, and never in front of the path's head
     local s3 = R.new(31, { village = true })
-    local hills, blocked = 0, 0
+    local hills = 0
     for _ = 1, 80 do
         if s3.over then break end
+        for w in pairs(s3.wool) do s3.wool[w] = R.MAXWOOL end      -- the pattern under test, not the purse
         for c = 0, R.COLS - 1 do
             if s3.forced[c] == "h" then
                 hills = hills + 1
-                if R.walkable(R.cell(s3, c, s3.K)) then blocked = blocked + 1 end
             end
         end
         R.bot_weave(s3)
     end
     check(hills >= 20, "the pattern brings hills into normal play (" .. hills .. " hill cells in 80 rows)")
-    check(blocked == 0, "a forced hill never stands in front of a walkable cell of the newest row")
     local ponds = 0
     for k = #R.START + 1, s3.K do
         local row = s3.rows[k]
@@ -115,20 +115,51 @@ do
         end
     end
     check(ponds == 0, "no lone ponds in 80 rows of play (" .. ponds .. ")")
-    -- the crossing's bend column is never where the newest row is walkable (the path can always bridge it)
+    -- round 6: COMING UP. The pattern is made R.PREVIEW rows ahead and each row arrives as it was shown; every pair of
+    -- pattern rows keeps R.MIN_OPEN columns passable in common; rocks and the river's bend may stand before the head
     local s4 = R.new(41, { village = true })
-    local blocked4, seen4 = 0, 0
+    local same, shown, tight = true, 0, 0
+    local prevf
     for _ = 1, 120 do
         if s4.over then break end
-        local n = 0
-        for c = 0, R.COLS - 1 do if s4.forced[c] == "~" then n = n + 1 end end
-        if n >= 2 and s4.river2 then
-            seen4 = seen4 + 1
-            if R.walkable(R.cell(s4, s4.river2.j, s4.K)) then blocked4 = blocked4 + 1 end
-        end
+                local nxt = {}
+        for c = 0, R.COLS - 1 do nxt[c] = s4.ahead[1][c] end
+        if prevf and R.shared_open(prevf, s4.forced) < R.MIN_OPEN then tight = tight + 1 end
+        prevf = {}
+        for c = 0, R.COLS - 1 do prevf[c] = s4.forced[c] end
         R.bot_weave(s4)
+        if s4.over then break end
+        for c = 0, R.COLS - 1 do
+            local want = nxt[c]
+            if R.cell(s4, c, s4.K) == "B" then want = "~" end
+            if s4.forced[c] ~= want then same = false end
+        end
+        shown = shown + 1
     end
-    check(seen4 >= 3 and blocked4 == 0, string.format("the crossing's bend never stands in front of the path's head (%d crossings)", seen4))
+    check(same and shown >= 40, string.format("each row's pattern arrives as COMING UP showed it (%d rows)", shown))
+    for seed = 1, 20 do                       -- and over 6000 made rows, where rocks are most crowded
+        local sg = R.new(seed)
+        local pf = sg.ahead[#sg.ahead]
+        for _ = 1, 300 do
+            local f = R.gen_forced(sg)
+            if R.shared_open(pf, f) < R.MIN_OPEN then tight = tight + 1 end
+            pf = f
+        end
+    end
+    check(tight == 0, "every pair of pattern rows keeps " .. R.MIN_OPEN .. " passable columns in common (" .. tight .. " walled)")
+    -- a weaver who only ever lays path straight ahead meets a cell it cannot enter within 40 rows
+    local s5 = R.new(43, { village = true })
+    local blocked_at
+    for i = 1, 40 do
+        s5.wool.tan, s5.wool.brown = 9, 9
+        local c = s5.trav.c
+        if not R.passable(s5.forced, c) then blocked_at = i; break end
+        R.lay(s5, c, s5.forced[c] == "~" and BRIDGE or PATH)
+        R.beat(s5)
+        if s5.over then blocked_at = i; break end
+    end
+    check(blocked_at ~= nil, "laying path straight ahead is not enough: rock or a river's bend blocks it (row " .. tostring(blocked_at) .. ")")
+    check(R.START_WOOL.tan <= 5, "path wool is scarce at the start (" .. R.START_WOOL.tan .. " tan)")
     -- meander keys: a straight N-S river alternates ns / ns2 by row, an E-W one ew / ew2 by column
     local rows = { "....~....", "....~....", "....~....", ".~~~~~~~." }
     local grid = function(r, c) local row = rows[r + 1]; return row and row:sub(c + 1, c + 1) or nil end

@@ -286,6 +286,7 @@ local function run_controls()
     for i = 1, 9 do
         if press(tostring(i)) then
             G.sel = i
+            G.hint_i, G.hint_t = i, G.t
             if try(R.lay(st, st.cursor, i)) then say(R.KINDS[i].name:upper() .. " laid", CREAM) end
         end
     end
@@ -293,7 +294,7 @@ local function run_controls()
     if press("Tab") and G.guide then end_guide(); say("Guide skipped: HOW TO PLAY is on the pause card (Esc)", OCHRE) end
     if press("Space") and not L.busy() then G.beat_now(st) end
     -- mouse: a chip chooses the kind; a cell of the row lays it there
-    for i = 1, 9 do if clicked("chip" .. i) then G.sel = i; sound("click") end end
+    for i = 1, 9 do if clicked("chip" .. i) then G.sel = i; G.hint_i, G.hint_t = i, G.t; sound("click") end end
     for c = 0, R.COLS - 1 do
         if clicked("cell" .. c) then
             st.cursor = c
@@ -462,10 +463,10 @@ G.HOWTO = {
         } },
     {   title = "HOW TO PLAY   2 / 2   ·   WOOL AND LAND",
         items = {
-            { "WOOL", "Each kind costs one wool of its colour (meadow is free). The chips at the bottom show the wool you have left." },
+            { "WOOL", "Each kind costs one wool of its colour (meadow is free). The chips at the bottom show the wool left: hover one (or press its key) to see what it does and pays." },
             { "EARN IT BACK", "Land beside the path pays wool when the traveller walks past: fields tan, woods brown and ochre, hills tan and sage, water indigo, bridges brown and tan, rocks cream, houses tan, ochre and brown." },
             { "RIVERS", "A river must start at the cloth's edge or join water. Where a river crosses the path, lay a BRIDGE (4) on it." },
-            { "LEVELS", "Every 10 rows the loom beats faster. From level 2 rivers cross the cloth; from level 3 rocks block cells." },
+            { "COMING UP", "The panel at the top right shows the next 3 rows. Rivers and rocks stand in the way: turn the path sideways early. Every 10 rows the loom beats faster." },
             { "HOUSES", "Village houses (9) unlock once you have walked 12 rows in one run. They pay three wools." },
         } },
 }
@@ -596,6 +597,105 @@ local function draw_guide()
 end
 
 ------------------------------------------------------------------ HUD
+-- What each kind does (the hint over a chip: hover it, or press its key)
+local KIND_HINT = {
+    ["."] = "Plain grass. The traveller cannot walk on it. Cells you leave empty become meadow.",
+    p = "The traveller walks on it. Every row needs path joined to the path below it.",
+    ["~"] = "A river. It must start at the cloth's edge or join water. Only a bridge crosses it.",
+    b = "Lay it on a river where your path meets it: the traveller crosses there.",
+    w = "Trees. Lay them beside the path to earn brown wool back (bridges need it).",
+    f = "Crops. Lay them beside the path: the best way to earn path wool (tan) back.",
+    h = "A hill. Lay it beside the path to earn a little tan and sage back.",
+    r = "Stone. The traveller cannot cross it. Beside the path it pays cream wool for houses.",
+    H = "The traveller walks on it like path, and it pays three wools when he passes.",
+}
+G.KIND_HINT = KIND_HINT
+function G.pays_text(k)
+    local hk = R.HARVEST[k]
+    if not hk then return "Pays nothing back." end
+    local t = {}
+    for _, w in ipairs(R.WOOLS) do if hk[w] then t[#t + 1] = hk[w] .. " " .. w end end
+    return "Pays back " .. table.concat(t, " + ") .. " when the traveller walks past it."
+end
+local function draw_kind_hint(st, i, cx, ybot)
+    local d = R.KINDS[i]
+    local bw = 460 * u
+    local lines = {}
+    local function add(str, col) for _, l in ipairs(wrap(str, 38)) do lines[#lines + 1] = { l, col } end end
+    if d.cost == 0 then add("Free.", DIM)
+    else add(string.format("Costs 1 %s wool  ·  you have %d", d.wool, st.wool[d.wool]), st.wool[d.wool] < d.cost and BAD or DIM) end
+    add(KIND_HINT[d.k], CREAM)
+    add(G.pays_text(d.k), SAGE)
+    if d.k == "H" and not st.village then add("Unlocks once you walk " .. R.VILLAGE_AT .. " rows in one run.", OCHRE) end
+    local bh = (58 + #lines * 28 + 14) * u
+    local x = max(12 * u, min(LY.w - bw - 12 * u, cx - bw / 2))
+    local y = ybot - bh
+    panel(x, y, bw, bh, 50, { 0.09, 0.06, 0.035, 0.96 }, col4(OCHRE, 0.9), 12)
+    text(i .. "   " .. d.name:upper(), x + 20 * u, y + 30 * u, 24 * u, OCHRE, "left", 51, bw - 40 * u)
+    for n, l in ipairs(lines) do text(l[1], x + 20 * u, y + (58 + (n - 1) * 28 + 14) * u, 19 * u, l[2], "left", 51, bw - 40 * u) end
+    G.hint_box = { x = x, y = y, w = bw, h = bh, i = i, lines = lines }
+end
+-- COMING UP: the pattern of the next R.PREVIEW rows (top = farthest) over the row being woven
+local PREVIEW_COL = { ["~"] = { 0.30, 0.46, 0.80 }, r = { 0.60, 0.58, 0.55 }, h = { 0.46, 0.58, 0.30 }, p = { 0.84, 0.68, 0.48 },
+    H = { 0.95, 0.91, 0.82 }, b = { 0.66, 0.46, 0.32 }, B = { 0.66, 0.46, 0.32 }, f = { 0.90, 0.68, 0.30 }, w = { 0.26, 0.42, 0.20 } }
+local PREVIEW_EMPTY = { 0.20, 0.27, 0.14 }
+local function draw_preview(st, marks, x, y, pw)
+    local gap = 3 * u
+    local cs = (pw - 44 * u - 8 * gap) / 9
+    local nrow = #st.ahead + 1
+    local ph = (44 + 36) * u + nrow * (cs + gap) + 8 * u
+    panel(x, y, pw, ph, 20, { 0.08, 0.05, 0.03, 0.72 }, { 0.80, 0.62, 0.38, 0.5 }, 12)
+    text("COMING UP", x + 22 * u, y + 24 * u, 16 * u, col4(OCHRE, 0.95), "left", 21, 160 * u)
+    text("bottom row = this row", x + pw - 22 * u, y + 24 * u, 14 * u, DIM, "right", 21, 170 * u)
+    local gx, gy = x + 22 * u, y + 44 * u
+    for r = 1, nrow do
+        local f = r < nrow and st.ahead[nrow - r] or nil          -- top: the farthest row; bottom: the row being woven
+        local yy = gy + (r - 1) * (cs + gap) + (r == nrow and 6 * u or 0)
+        for c = 0, R.COLS - 1 do
+            local k
+            if f then k = f[c] else k = st.cur[c] end
+            local col = PREVIEW_COL[k] or PREVIEW_EMPTY
+            local a = f and (0.55 + 0.45 * (r / nrow)) or 1
+            rect(gx + c * (cs + gap), yy, cs, cs, { col[1], col[2], col[3], a }, 21, 4 * u)
+            if not f and marks and marks[c] then
+                rect(gx + c * (cs + gap) - 2 * u, yy - 2 * u, cs + 4 * u, cs + 4 * u, CLEAR, 22, 5 * u, { 0.78, 0.94, 0.56, 0.95 })
+            end
+        end
+    end
+    local ly = y + ph - 22 * u
+    local lx = x + 22 * u
+    for _, it in ipairs({ { "~", "river" }, { "r", "rock" }, { "h", "hill" }, { "p", "path" } }) do
+        rect(lx, ly - 7 * u, 14 * u, 14 * u, col4(PREVIEW_COL[it[1]], 1), 21, 3 * u)
+        text(it[2], lx + 20 * u, ly, 14 * u, DIM, "left", 21, 60 * u)
+        lx = lx + 72 * u
+    end
+    G.preview_box = { x = x, y = y, w = pw, h = ph, cs = cs }
+end
+-- The warning line above the chips: what needs doing now, most urgent first.
+function G.warning(st, marks)
+    for c = 0, R.COLS - 1 do
+        if marks[c] and st.forced[c] == "~" then return "A river crosses the path here: lay a BRIDGE (4) on the glowing cell", OCHRE end
+    end
+    local any, open_above = false, false
+    for c = 0, R.COLS - 1 do
+        if marks[c] then any = true; if st.ahead[1] and R.passable(st.ahead[1], c) then open_above = true end end
+    end
+    if any and not open_above then return "The next row is blocked above the path: run the path sideways in this row (see COMING UP)", BAD end
+    if st.wool.tan <= 2 then
+        if st.wool.ochre < 1 then return string.format("Path wool low (%d tan) and no ochre: lay WOODS (5) beside the path for ochre, then FIELDS (6)", st.wool.tan), BAD end
+        return string.format("Path wool low (%d tan): lay FIELDS (6) beside the path - each pays 2 tan when the traveller passes", st.wool.tan), BAD
+    end
+    for i, f in ipairs(st.ahead) do
+        local n = 0
+        for c = 0, R.COLS - 1 do if f[c] == "~" then n = n + 1 end end
+        if n >= 2 then
+            local when = i == 1 and "the next row" or ("in " .. i .. " rows")
+            if st.wool.brown < 1 then return "A river crosses " .. when .. " and you have no brown wool for a bridge!", BAD end
+            return "A river crosses " .. when .. ": keep brown wool for a BRIDGE (4)", OCHRE
+        end
+    end
+    return nil
+end
 local CHIP_IDS = {}
 for i = 1, 9 do CHIP_IDS[#CHIP_IDS + 1] = "chip" .. i end
 for c = 0, 8 do CHIP_IDS[#CHIP_IDS + 1] = "cell" .. c end
@@ -618,15 +718,12 @@ local function draw_hud()
     text(string.format("the loom beats in %d s", math.ceil(st.timer)), w - m - 22 * u, m + 60 * u, 16 * u, f < 0.25 and BAD or DIM, "right", 21, pw - 40 * u)
     rect(w - m - pw + 22 * u, m + 80 * u, (pw - 44 * u), 8 * u, { 0.2, 0.13, 0.08, 0.8 }, 21, 4 * u)
     rect(w - m - pw + 22 * u, m + 80 * u, (pw - 44 * u) * f, 8 * u, col4(f < 0.25 and BAD or SAGE, 0.95), 22, 4 * u)
-    if SET:get("mute") then text("MUTED  ·  M", w - m - 22 * u, m + 124 * u, 14 * u, OCHRE, "right", 21, 210 * u) end
-    -- what the pattern brings next row
-    local warn
-    local nk = st.K + 1
-    if st.level >= 2 and (nk + 1) % R.RIVER_EVERY == 0 then warn = "a river crosses the next row: keep brown wool for a bridge" end
     local marks, breaks = G.marks(st)
-    for c = 0, R.COLS - 1 do
-        if marks[c] and st.forced[c] == "~" then warn = "a river crosses the path here: lay a BRIDGE (4) on the glowing cell" end
-    end
+    local py = m + 116 * u
+    if SET:get("mute") then text("MUTED  ·  M", w - m - 22 * u, m + 124 * u, 14 * u, OCHRE, "right", 21, 210 * u); py = py + 26 * u end
+    draw_preview(st, marks, w - m - pw, py, pw)
+    local warn, warn_col = G.warning(st, marks)
+    G.warn = warn
     G.draw_marks(st, marks)
     -- the kind chips (bottom): key, name, the wool it spends and what is left
     -- round 3: larger chips (readable at 1280x720: 17 / 15 px), and the wool left as a big number (the wool balls are
@@ -650,7 +747,14 @@ local function draw_hud()
         local low = d.cost > 0 and st.wool[d.wool] < d.cost and not locked
         text(sub, x + 30 * u, y0 + 66 * u, 19 * u, low and BAD or col4(DIM, locked and 0.5 or 1), "left", 22, cw - 34 * u)
         catcher("chip" .. i, x, y0, cw, chh, 26)
+        if hovered("chip" .. i) then G.hover_i = i end
     end
+    -- the hint of the hovered chip, or of the kind just chosen by key / click (2.5 s)
+    local hi = G.hover_i
+    G.hover_i = nil
+    if not hi and G.hint_i and G.t - (G.hint_t or -9) < 2.5 then hi = G.hint_i end
+    G.hint_box = nil
+    if hi and not st.over and not G.guide then draw_kind_hint(st, hi, x0 + (hi - 1) * (cw + gap) + cw / 2, y0 - 128 * u) end   -- above the warning lines
     -- message line and the controls cue (above the chips)
     local my = y0 - 30 * u
     if G.msg and G.mode ~= "over" then
@@ -658,7 +762,7 @@ local function draw_hud()
         local a = min(1, (4.0 - G.msg_t) * 2)
         if a <= 0 then G.msg = nil else text(G.msg, w / 2, my - 30 * u, 21 * u, col4(G.msg_col or CREAM, a), "center", 23, 1100 * u) end
     end
-    if warn then text(warn, w / 2, my - 64 * u, 20 * u, OCHRE, "center", 23, 1200 * u) end
+    if warn then text(warn, w / 2, my - 64 * u, 20 * u, warn_col or OCHRE, "center", 23, 1300 * u) end
     G.break_warning = nil
     if breaks and not st.over and not G.guide then
         G.break_warning = string.format("This row does not carry the path on: lay PATH (2) on a glowing cell   ·   the loom beats in %d s", math.ceil(st.timer))

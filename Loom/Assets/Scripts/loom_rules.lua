@@ -14,7 +14,9 @@ R.COLS = 9
 R.LAG = 2                      -- the traveller stands on the third row behind the fell (row index 2, as target.png)
 R.MAXWOOL = 9                  -- a full bobbin
 R.VILLAGE_AT = 12              -- best rows walked that unlock the cream bobbin (village houses)
-R.RIVER_EVERY = 9              -- from level 2 a river crosses the whole row every RIVER_EVERY rows
+R.RIVER_EVERY = 7              -- a river crosses the cloth (over two rows) every RIVER_EVERY rows
+R.PREVIEW = 3                  -- pattern rows shown before they are woven (COMING UP)
+R.MIN_OPEN = 3                 -- columns every pair of pattern rows keeps passable in common
 R.HILL_EVERY = 4               -- from the first rows the pattern brings a 2-wide hill ridge every HILL_EVERY rows ...
 R.HILL_ROWS = { 2, 5 }         -- ... running on for 2 to 4 rows
 -- The nine kinds, in key order 1..9: what each costs and which bobbin it spends.
@@ -33,7 +35,7 @@ R.KIND_OF = {}
 for i, d in ipairs(R.KINDS) do R.KIND_OF[d.k] = d; d.i = i end
 R.KIND_OF.B = R.KIND_OF.b
 R.WOOLS = { "sage", "indigo", "tan", "brown", "ochre", "grey", "cream" }
-R.START_WOOL = { sage = 5, indigo = 4, tan = 9, brown = 4, ochre = 4, grey = 2, cream = 3 }
+R.START_WOOL = { sage = 3, indigo = 3, tan = 5, brown = 3, ochre = 3, grey = 2, cream = 3 }   -- round 6: scarce
 -- What a cell pays (once) when the traveller first stands on it or beside it (8 neighbours).
 R.HARVEST = {
     f = { tan = 2 }, w = { ochre = 1, brown = 2 }, H = { tan = 1, ochre = 1, brown = 1 }, r = { cream = 1 },
@@ -144,56 +146,90 @@ local function harvest_around(st, c, k)
     end
 end
 
-local function new_row_forced(st)
-    st.forced = {}
-    local lv = st.level
-    local nk = st.K + 1
-    if lv >= 2 and nk % R.RIVER_EVERY == 0 then
-        -- round 4: the pattern's river crosses the cloth over two rows with a bend - from one edge to column j in this
-        -- row, then on from j to the other edge in the next (it winds, it is no straight canal). j is never a column
-        -- where the newest row is walkable, so the path's head can always bridge it on one of the two rows.
-        local j, tries = nil, 0
-        while not j and tries < 30 do
-            tries = tries + 1
-            local c = rnd(st.g, R.COLS - 2)               -- 1..7
-            if not walkable(cell(st, c, st.K)) then j = c end
-        end
-        j = j or 4
-        local west = rnd(st.g, 2) == 1
-        for c = 0, R.COLS - 1 do if (west and c <= j) or (not west and c >= j) then st.forced[c] = "~" end end
-        st.river2 = { j = j, west = west }
-    elseif st.river2 then
-        local j, west = st.river2.j, st.river2.west
-        for c = 0, R.COLS - 1 do if (west and c >= j) or (not west and c <= j) then st.forced[c] = "~" end end
-        st.river2 = nil
+-- Can a path enter cell c of a pattern row (forced cells f) from below? Never through rock; a pattern river only where a
+-- legal E-W bridge fits (water or the selvedge on both sides: the bend's end cell cannot be bridged).
+function R.passable(f, c)
+    local k = f[c]
+    if k == "r" then return false end
+    if k == "~" then
+        local function wet(cc) return cc < 0 or cc >= R.COLS or f[cc] == "~" end
+        return wet(c - 1) and wet(c + 1)
     end
-    -- a bridge over a N-S river carries the river on into the next row
-    for c = 0, R.COLS - 1 do if cell(st, c, st.K) == "B" then st.forced[c] = "~" end end
-    -- the pattern brings hills (round 3): a 2-wide ridge that runs on for HILL_ROWS rows, every HILL_EVERY rows, never
-    -- on a column where the newest row is walkable (the path's head always has a way on) nor on a river row
-    local function free(c) return c >= 0 and c < R.COLS and not st.forced[c] and not walkable(cell(st, c, st.K)) end
-    if not st.hillrun and nk % R.HILL_EVERY == 3 then
+    return true
+end
+local function shared_open(a, b)
+    local n = 0
+    for c = 0, R.COLS - 1 do if R.passable(a, c) and R.passable(b, c) then n = n + 1 end end
+    return n
+end
+R.shared_open = shared_open
+
+-- The pattern of one row, made PREVIEW rows before it is woven (round 6: the player sees it coming, so it may stand in
+-- the path's way). Rivers cross over two rows with a bend from the first rows; hill ridges; rock outcrops that block
+-- cells. Every row keeps at least R.MIN_OPEN columns passable in common with the row before it.
+local function gen_forced(st)
+    local g = st.gen
+    g.k = g.k + 1
+    local nk, n = g.k, g.k - st.K0           -- n: 1 for the first row woven in a run
+    local lv = R.level_of(n - 1)
+    local f = {}
+    local river = false
+    if n > 3 and nk % R.RIVER_EVERY == 0 then
+        local j = rnd(st.g, R.COLS - 2)          -- 1..7: the bend
+        local west = rnd(st.g, 2) == 1
+        for c = 0, R.COLS - 1 do if (west and c <= j) or (not west and c >= j) then f[c] = "~" end end
+        g.river2 = { j = j, west = west }
+        river = true
+    elseif g.river2 then
+        local j, west = g.river2.j, g.river2.west
+        for c = 0, R.COLS - 1 do if (west and c >= j) or (not west and c <= j) then f[c] = "~" end end
+        g.river2 = nil
+        river = true
+    end
+    st.river2 = g.river2
+    local function free(c) return c >= 0 and c < R.COLS and not f[c] end
+    if not g.hillrun and nk % R.HILL_EVERY == 3 then
         local tries = 0
         while tries < 12 do
             tries = tries + 1
             local c = rnd(st.g, R.COLS - 1) - 1
-            if free(c) and free(c + 1) then st.hillrun = { c = c, left = R.HILL_ROWS[1] + rnd(st.g, R.HILL_ROWS[2] - R.HILL_ROWS[1] + 1) - 1 }; break end
+            if free(c) and free(c + 1) then g.hillrun = { c = c, left = R.HILL_ROWS[1] + rnd(st.g, R.HILL_ROWS[2] - R.HILL_ROWS[1] + 1) - 1 }; break end
         end
     end
-    if st.hillrun then
-        local h = st.hillrun
-        for c = h.c, h.c + 1 do if free(c) then st.forced[c] = "h" end end
+    if g.hillrun then
+        local h = g.hillrun
+        for c = h.c, h.c + 1 do if free(c) then f[c] = "h" end end
         h.left = h.left - 1
-        if h.left <= 0 then st.hillrun = nil end
+        if h.left <= 0 then g.hillrun = nil end
     end
-    if lv >= 3 and not st.forced[0] then
-        local n = rnd(st.g, 3) - 1                     -- 0..2 rock outcrops
-        for _ = 1, n do
-            local c = rnd(st.g, R.COLS) - 1
-            -- never right ahead of the path's head (the path could not go on): only beside it
-            if not st.forced[c] and not walkable(cell(st, c, st.K)) then st.forced[c] = "r" end
+    -- rocks: from the third row, more and wider with the level; never on a river row
+    if not river and n > 2 then
+        local chance = lv == 1 and 5 or (lv == 2 and 7 or 8)       -- in 10
+        if rnd(st.g, 10) <= chance then
+            for _ = 1, 6 do
+                local t = {}
+                local wide = rnd(st.g, lv == 1 and 2 or 3)
+                local c0 = rnd(st.g, R.COLS - wide + 1) - 1
+                for c = c0, c0 + wide - 1 do if free(c) then t[c] = "r" end end
+                if lv >= 3 and rnd(st.g, 2) == 1 then local c = rnd(st.g, R.COLS) - 1; if free(c) then t[c] = "r" end end
+                local trial = {}
+                for c = 0, R.COLS - 1 do trial[c] = t[c] or f[c] end
+                if shared_open(g.prev or {}, trial) >= R.MIN_OPEN then f = trial; break end
+            end
         end
     end
+    g.prev = f
+    return f
+end
+
+R.gen_forced = gen_forced
+local function new_row_forced(st)
+    while #st.ahead < R.PREVIEW + 1 do st.ahead[#st.ahead + 1] = gen_forced(st) end
+    local f = table.remove(st.ahead, 1)
+    st.forced = {}
+    for c = 0, R.COLS - 1 do st.forced[c] = f[c] end
+    -- a bridge over a N-S river carries the river on into the next row
+    for c = 0, R.COLS - 1 do if cell(st, c, st.K) == "B" then st.forced[c] = "~" end end
     st.cur = {}
     for c = 0, R.COLS - 1 do st.cur[c] = st.forced[c] end
     st.order = {}
@@ -204,9 +240,10 @@ function R.new(seed, opts)
     opts = opts or {}
     local st = { seed = seed or 1, g = rng_new(seed or 1), rows = {}, K = 0, beats = 0, level = 1, walked = 0, harvest = 0,
         score = 0, wool = {}, harvested = {}, events = {}, nev = 0, cursor = 4, village = opts.village and true or false,
-        over = nil, route = nil }
+        over = nil, route = nil, ahead = {} }
     for i, r in ipairs(opts.rows or R.START) do st.rows[i] = r end
     st.K = #st.rows
+    st.K0, st.gen = st.K, { k = st.K }
     for _, w in ipairs(R.WOOLS) do st.wool[w] = R.START_WOOL[w] end
     if not st.village then st.wool.cream = 0 end
     -- the traveller: on the path in row K - LAG
@@ -535,6 +572,37 @@ function R.grid_fn(st)
     end
 end
 
+-- The fewest path cells needed to carry the path through the coming pattern rows (st.ahead) from column t of the row
+-- being woven: each row is entered straight up, then the path may run sideways over land (not river or rock).
+-- 99 per row it cannot get through.
+function R.ahead_cost(st, t)
+    local cost = { [t] = 0 }
+    local total = 0
+    for _, f in ipairs(st.ahead) do
+        local nxt = {}
+        for e, c0 in pairs(cost) do
+            if R.passable(f, e) then
+                nxt[e] = min(nxt[e] or 1e9, c0 + 1)
+                if f[e] ~= "~" then
+                    for _, dir in ipairs({ -1, 1 }) do
+                        local c = e + dir
+                        while c >= 0 and c < R.COLS and f[c] ~= "~" and f[c] ~= "r" do
+                            nxt[c] = min(nxt[c] or 1e9, c0 + 1 + abs(c - e))
+                            c = c + dir
+                        end
+                    end
+                end
+            end
+        end
+        if next(nxt) == nil then return total + 99 * 3 end
+        cost = nxt
+        total = 0
+    end
+    local best = 1e9
+    for _, v in pairs(cost) do best = min(best, v) end
+    return best
+end
+
 ------------------------------------------------------------------ a simple weaver (title-card attract and live tests)
 -- Plans the row: carry the path on from its head (bridge where the river forces it), wander now and then, fill
 -- the rest with land it can afford. careless = true weaves no path at all (it breaks the run: game-over tests).
@@ -548,21 +616,35 @@ function R.bot_row(st, careless)
     end
     local used = {}
     if not careless and #heads > 0 then
-        local h = heads[1]
-        for _, c in ipairs(heads) do if abs(c - 4) < abs(h - 4) then h = c end end
-        local up = cell(st, h, st.K)
-        -- the head must open north (a bridge B only opens east-west: step sideways first)
-        local col = h
-        if st.forced[h] == "~" then
-            plan[#plan + 1] = { c = h, i = 4 }
-        elseif st.forced[h] == nil then
-            plan[#plan + 1] = { c = h, i = 2 }
-            -- now and then the path bends one cell sideways in this row
-            local turn = rnd(st.g, 5)
-            if up ~= "B" and turn == 1 and h > 1 and not st.forced[h - 1] then plan[#plan + 1] = { c = h - 1, i = 2 }; col = h - 1 end
-            if up ~= "B" and turn == 2 and h < R.COLS - 2 and not st.forced[h + 1] then plan[#plan + 1] = { c = h + 1, i = 2 }; col = h + 1 end
+        -- enter the row at a head h, then run the path sideways over land to t, the column that the coming pattern rows
+        -- leave open (rock and the river's bend stand in the way: the player sees them in COMING UP)
+        local function land(c) local f = st.forced[c]; return f == nil or f == "h" end
+        local best
+        for _, h in ipairs(heads) do
+            if R.passable(st.forced, h) then
+                for t = 0, R.COLS - 1 do
+                    local ok = t == h
+                    if not ok then
+                        ok = true
+                        for c = min(h, t), max(h, t) do if not land(c) then ok = false end end
+                    end
+                    if ok and t ~= h and abs(t - h) + 1 > st.wool.tan then ok = false end       -- cannot afford the run
+                    if ok then
+                        local s = abs(t - h) + R.ahead_cost(st, t) * 0.6 + abs(t - 4) * 0.1 + rnd(st.g, 10) * 0.01
+                        if not best or s < best.s then best = { h = h, t = t, s = s } end
+                    end
+                end
+            end
         end
-        used[h], used[col] = true, true
+        if best then
+            if st.forced[best.h] == "~" then
+                plan[#plan + 1] = { c = best.h, i = 4 }
+                used[best.h] = true
+            else
+                local step = best.t >= best.h and 1 or -1           -- from the head outward: a short purse still joins on
+                for c = best.h, best.t, step do plan[#plan + 1] = { c = c, i = 2 }; used[c] = true end
+            end
+        end
     end
     -- beside the path's new cell: land that pays back when the traveller passes (field: tan, woods: ochre and
     -- brown, house: all three); elsewhere mostly meadow (free), and now and then a hill or a pond for the look
@@ -571,7 +653,8 @@ function R.bot_row(st, careless)
     for _, p in ipairs(plan) do pathc[p.c] = true end
     local function side_kind()
         -- what the stocks need most: fields pay tan, woods pay brown and ochre, houses pay all three
-        if st.wool.tan < 6 and afford(6) then return 6 end
+        if st.wool.tan < 8 and afford(6) then return 6 end
+        if st.wool.ochre < 3 and afford(5) then return 5 end
         if afford(5) then return 5 end
         if afford(6) then return 6 end
         if st.village and afford(9) then return 9 end
