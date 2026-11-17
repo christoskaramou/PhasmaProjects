@@ -1,0 +1,110 @@
+"""Cut and level Undertow's sounds from CC0 Freesound recordings.
+    python -I tools/make_sounds.py <candidates_dir> <Assets/Audio dir>
+<candidates_dir> holds analysis.json and the downloaded previews (scratch/snd/search.py + analyse.py: every candidate's
+sound page was checked to carry only the CC0 licence link). For each category the chosen recording is cut to its
+loudest event and its active RMS is set to the median of the category's analysed candidates (their typical range);
+the ambience loops with a 2 s crossfade and sits AMB_DB under that median so the effects stay on top.
+Writes <name>.wav (16-bit, 44.1 kHz) and CREDITS.txt."""
+import json, subprocess, sys
+from pathlib import Path
+import numpy as np
+
+SR = 44100
+# name: (category, freesound id, cut length s (None: whole), mono)
+PICK = {
+    "ambience": ("ambience", "790352", 30.0, False),
+    "catch": ("catch", "411880", 0.55, True),
+    "release": ("release", "719636", None, True),
+    "skim": ("skim", "841834", None, True),
+    "crash": ("crash", "861044", None, True),
+    "sink": ("sink", "853279", None, True),
+    "click": ("click", "342200", 0.14, True),
+}
+# candidates that are not the category's kind of sound stay out of its median (a trickle bed and a far waves loop
+# among the splashes, a wooden bridge among the chains, a near-silent cliff recording among the ambiences)
+EXCLUDE = {"454337", "426343", "445789", "403762"}
+AMB_DB = -8.0           # the ambience bed under the effects' typical level
+PEAK_MAX = 10 ** (-1.0 / 20)
+
+
+def decode(path, ch):
+    raw = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path), "-ac", str(ch), "-ar", str(SR), "-f", "f32le", "-"],
+                         capture_output=True, check=True).stdout
+    return np.frombuffer(raw, "<f4").astype(np.float64).reshape(-1, ch)
+
+
+def env(x):
+    m = x.mean(axis=1)
+    return np.sqrt(np.convolve(m * m, np.ones(441) / 441, "same"))
+
+
+def active_rms(x):
+    e = env(x)
+    act = e > e.max() * 0.1
+    return float(np.sqrt((x[act] ** 2).mean()))
+
+
+def fade(x, fin, fout):
+    n_in, n_out = int(fin * SR), int(fout * SR)
+    if n_in:
+        x[:n_in] *= np.linspace(0, 1, n_in)[:, None]
+    if n_out:
+        x[-n_out:] *= np.linspace(1, 0, n_out)[:, None]
+    return x
+
+
+def main():
+    src, out = Path(sys.argv[1]), Path(sys.argv[2])
+    out.mkdir(parents=True, exist_ok=True)
+    A = json.loads((src / "analysis.json").read_text())
+    credits = ["Undertow sounds: cut and levelled by tools/make_sounds.py from these recordings, all Creative Commons 0",
+               "(https://creativecommons.org/publicdomain/zero/1.0/), checked on each sound's Freesound page.", ""]
+    report = {}
+    for name, (cat, sid, cut, mono) in PICK.items():
+        c = next(c for c in A[cat] if c["id"] == sid)
+        ch = 1 if mono else 2
+        x = decode(src / c["file"], ch)
+        if name == "ambience":
+            a = int(10 * SR)
+            n = int(cut * SR)
+            xf = int(2.0 * SR)
+            seg = x[a:a + n + xf].copy()
+            w = np.linspace(0, 1, xf)[:, None]
+            loop = seg[:n].copy()
+            loop[:xf] = seg[:xf] * w + seg[n:n + xf] * (1 - w)       # the tail runs into the head: a seamless loop
+            x = loop
+        else:
+            e = env(x)
+            i = int(e.argmax())
+            # the loudest event's onset: back from the peak to where it rose past 10% of it
+            j = i
+            while j > 0 and e[j] > e[i] * 0.1:
+                j -= 1
+            start = max(0, j - int(0.005 * SR))
+            if cut:
+                x = x[start:start + int(cut * SR)].copy()
+            else:
+                x = x[start:].copy()
+                e2 = env(x)
+                tail = np.where(e2 > e2.max() * 0.01)[0]
+                x = x[: tail[-1] + int(0.05 * SR)].copy()
+            x = fade(x, 0.003, min(0.04, len(x) / SR * 0.25))
+        target_db = float(np.median([d["rms_active_db"] for d in A[cat] if d["id"] not in EXCLUDE])) + (AMB_DB if name == "ambience" else 0)
+        g = 10 ** (target_db / 20) / max(active_rms(x), 1e-9)
+        g = min(g, PEAK_MAX / max(np.abs(x).max(), 1e-9))
+        x = np.clip(x * g, -1, 1)
+        pcm = (x * 32767).astype("<i2")
+        f = out / (name + ".wav")
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "s16le", "-ar", str(SR), "-ac", str(ch), "-i", "-", str(f)],
+                       input=pcm.tobytes(), check=True)
+        got = 20 * np.log10(active_rms(x))
+        report[name] = {"id": sid, "dur": round(len(x) / SR, 2), "rms_active_db": round(got, 1), "target_db": round(target_db, 1),
+                        "peak_db": round(20 * np.log10(np.abs(x).max()), 1)}
+        credits.append(f"{name}.wav: \"{c['title']}\" by {c['user']}, {c['page']}")
+        print(name, report[name])
+    (out / "CREDITS.txt").write_text("\n".join(credits) + "\n", encoding="utf-8")
+    (src / "chosen.json").write_text(json.dumps(report, indent=1))
+
+
+if __name__ == "__main__":
+    main()

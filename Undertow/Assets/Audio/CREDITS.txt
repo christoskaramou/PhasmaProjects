@@ -1,0 +1,10 @@
+Undertow sounds: cut and levelled by tools/make_sounds.py from these recordings, all Creative Commons 0
+(https://creativecommons.org/publicdomain/zero/1.0/), checked on each sound's Freesound page.
+
+ambience.wav: "Seaside Morning Post Rain Ambience - Hambantota, Sri Lanka" by seventhsamurai, https://freesound.org/s/790352/
+catch.wav: "Chains.mp3" by Yin_Yang_Jake007, https://freesound.org/s/411880/
+release.wav: "Fast whoosh, bamboo swoosh through air, version 1" by zapsplat.com, https://freesound.org/s/719636/
+skim.wav: "Small Puddle Splash" by Robo9418, https://freesound.org/s/841834/
+crash.wav: "Hard Glass Break 3" by ElevatorFan2020, https://freesound.org/s/861044/
+sink.wav: "Fishing Lure Plop Water - Game SFX (2 or 2)" by el_boss, https://freesound.org/s/853279/
+click.wav: "Videogame Menu BUTTON CLICK" by Christopherderp, https://freesound.org/s/342200/
