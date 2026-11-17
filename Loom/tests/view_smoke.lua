@@ -422,7 +422,7 @@ do
     -- the break warning while the row would break, and the clock's beat with it
     local st2 = L.S.st
     frames(2)
-    check(G.break_warning and G.break_warning:find("glowing") and R.would_break(st2), "an empty row shows the break warning with the clock")
+    check(G.break_warning and G.break_warning:find("outlined") and R.would_break(st2), "an empty row shows the break warning with the clock")
     -- skip: a fresh save, TAB ends the guide and saves it
     SAVES["Save/loom.txt"] = "best=0" .. string.char(10) .. "best_rows=0" .. string.char(10) .. "runs=0" .. string.char(10) .. "guided=0" .. string.char(10)
     G.save.guided = 0

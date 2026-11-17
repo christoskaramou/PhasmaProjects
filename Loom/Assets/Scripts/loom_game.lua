@@ -402,19 +402,19 @@ function G.over_words(st)
     if i.cause == "clock" then
         return "THE LOOM BEAT AN EMPTY ROW",
             "The clock ran out before the row carried the path on, so the loom beat it in by itself and the path stopped" .. col .. ".",
-            "before the clock runs out, lay PATH (2) on the glowing cell above the path's end, then press SPACE."
+            "before the clock runs out, lay PATH (2) on the outlined cell above the path's end, then press SPACE."
     elseif i.cause == "river" then
         return "THE RIVER CUT THE PATH",
             "A river crossed the end of the path" .. col .. " and no bridge carried the traveller over it.",
-            "where the river meets the path, lay a BRIDGE (4) on the glowing cell. Bridges cost brown wool."
+            "where the river meets the path, lay a BRIDGE (4) on the outlined cell. Bridges cost brown wool."
     elseif i.cause == "detached" then
         return "THE PATH IS BROKEN",
             "The row had path wool, but not where the traveller's path ended" .. col .. ", so the two never joined.",
-            "lay PATH (2) on the glowing cell straight above the path's end, or join it sideways in the same row."
+            "lay PATH (2) on the outlined cell straight above the path's end, or join it sideways in the same row."
     end
     return "THE PATH IS BROKEN",
         "That row had no path joined to where the traveller's path ended" .. col .. ", so he had nowhere to walk.",
-        "every row needs PATH (2) on the glowing cell above the path's end. SPACE warns you before a breaking beat."
+        "every row needs PATH (2) on the outlined cell above the path's end. SPACE warns you before a breaking beat."
 end
 local function draw_over(a)
     local st = S.st
@@ -456,7 +456,7 @@ G.HOWTO = {
     {   title = "HOW TO PLAY   1 / 2   ·   THE PATH",
         items = {
             { "THE GOAL", "Keep the little traveller walking. He follows the woven PATH up the cloth, toward the loom." },
-            { "EVERY ROW", "Each row you weave must carry the path on from where it ends: lay PATH on the glowing cell. If a row does not, the run ends." },
+            { "EVERY ROW", "Each row you weave must carry the path on from where it ends: lay PATH on the outlined cell. If a row does not, the run ends." },
             { "WEAVE", "LEFT / RIGHT (or A / D) move the shuttle along the row. Keys 1-9 lay wool in its cell. BACKSPACE takes the last pick back." },
             { "BEAT", "SPACE beats the row in: the cloth moves on and the traveller walks. A row that would break the path asks for SPACE twice." },
             { "THE CLOCK", "Wait too long and the loom beats the row in by itself (top right). Cells you left empty become plain meadow." },
@@ -490,7 +490,7 @@ local function howto_controls(dt, esc)
     elseif (press("Right") or press("D") or clicked("h_next")) and H.page < #G.HOWTO then sound("click"); H.page = H.page + 1
     elseif (press("Left") or press("A") or clicked("h_prev")) and H.page > 1 then sound("click"); H.page = H.page - 1 end
 end
--- page 1's picture: a few rows of cloth, the traveller on the path, the glowing cell above its end in the loose row
+-- page 1's picture: a few rows of cloth, the traveller on the path, the outlined cell above its end in the loose row
 local function howto_picture(x, y, cs, a)
     local GREEN, TAN, LOOSE = { 0.40, 0.55, 0.28 }, { 0.80, 0.66, 0.46 }, { 0.30, 0.24, 0.18 }
     local path = { [1] = 2, [2] = 2, [3] = 2, [4] = 3 }       -- row (from the bottom) -> path column
@@ -501,7 +501,7 @@ local function howto_picture(x, y, cs, a)
             rect(x + (c - 1) * (cs + 3 * u), yy, cs, cs, col4(col, a), 163, 4 * u)
         end
     end
-    for c = 1, 5 do      -- the row being woven: loose warp, the glowing cell above the path's end (column 3)
+    for c = 1, 5 do      -- the row being woven: loose warp, the outlined cell above the path's end (column 3)
         local xx = x + (c - 1) * (cs + 3 * u)
         rect(xx, y, cs, cs, col4(LOOSE, a), 163, 4 * u)
         if c == 3 then rect(xx - 2 * u, y - 2 * u, cs + 4 * u, cs + 4 * u, col4({ 0.70, 0.86, 0.52, 0.30 }, a), 164, 6 * u, col4(SAGE, a)) end
@@ -544,7 +544,8 @@ local function draw_howto()
 end
 
 ------------------------------------------------------------------ the path marks and the guided first run
--- A soft glow on every cell of the row being woven that would carry the path on (R.path_marks).
+-- Where the cells that would carry the path on (R.path_marks) sit on screen: the guide points there. Not drawn on the
+-- cloth (a static box looked wrong there); COMING UP outlines them in its bottom row.
 function G.draw_marks(st, marks)
     if not (W.project and LY.w) then return end
     G.mark_rects = {}
@@ -552,14 +553,12 @@ function G.draw_marks(st, marks)
         if marks[c] then
             local x1, y1 = W.project(W.col_x(c) - D.CELL / 2 + 0.003, D.CELL - 0.003, D.Z0, LY.w, LY.h)
             local x2, y2 = W.project(W.col_x(c) + D.CELL / 2 - 0.003, 0.003, D.Z0, LY.w, LY.h)
-            local laid = R.walkable(st.cur[c])
-            rect(x1, y1, x2 - x1, y2 - y1, { 0.70, 0.88, 0.50, laid and 0.10 or 0.22 }, 19, 8 * u, { 0.78, 0.94, 0.56, laid and 0.5 or 0.95 })
             G.mark_rects[c] = { x = x1, y = y1, w = x2 - x1, h = y2 - y1 }
         end
     end
 end
 local GUIDE_TEXT = {
-    "YOUR FIRST ROW.  The traveller's path ends below the GLOWING cell.  Move the shuttle there with LEFT / RIGHT and press 2 to lay PATH.",
+    "YOUR FIRST ROW.  The traveller's path ends below the cell OUTLINED in COMING UP (top right).  Move the shuttle there with LEFT / RIGHT and press 2 to lay PATH.",
     "GOOD: the path goes on.  Lay other land if you like (it costs wool), then press SPACE to beat the row in.",
     "The cloth moved on and the traveller walked.  Land beside his path pays wool back when he passes: watch the chips at the bottom.",
 }
@@ -584,7 +583,7 @@ local function draw_guide()
     text("TAB skip the guide", x + bw - 24 * u, y + 24 * u, 16 * u, DIM, "right", 71, 280 * u)
     catcher("g_skip", x + bw - 300 * u, y + 6 * u, 290 * u, 36 * u, 72)
     if g.step <= 2 and G.mark_rects then
-        -- point at the glowing cell nearest the cursor
+        -- point at the outlined cell nearest the cursor
         local best, bd
         for c, r in pairs(G.mark_rects) do
             local d = math.abs(c - (S.st.cursor or 4))
@@ -674,7 +673,7 @@ end
 -- The warning line above the chips: what needs doing now, most urgent first.
 function G.warning(st, marks)
     for c = 0, R.COLS - 1 do
-        if marks[c] and st.forced[c] == "~" then return "A river crosses the path here: lay a BRIDGE (4) on the glowing cell", OCHRE end
+        if marks[c] and st.forced[c] == "~" then return "A river crosses the path here: lay a BRIDGE (4) on the outlined cell", OCHRE end
     end
     local any, open_above = false, false
     for c = 0, R.COLS - 1 do
@@ -765,7 +764,7 @@ local function draw_hud()
     if warn then text(warn, w / 2, my - 64 * u, 20 * u, warn_col or OCHRE, "center", 23, 1300 * u) end
     G.break_warning = nil
     if breaks and not st.over and not G.guide then
-        G.break_warning = string.format("This row does not carry the path on: lay PATH (2) on a glowing cell   ·   the loom beats in %d s", math.ceil(st.timer))
+        G.break_warning = string.format("This row does not carry the path on: lay PATH (2) on an outlined cell (COMING UP)   ·   the loom beats in %d s", math.ceil(st.timer))
         local bw = 1180 * u
         rect((w - bw) / 2, my - 116 * u, bw, 40 * u, { 0.18, 0.05, 0.03, 0.72 }, 22, 10 * u, col4(BAD, 0.8))
         text(G.break_warning, w / 2, my - 96 * u, 20 * u, BAD, "center", 23, bw - 30 * u)
