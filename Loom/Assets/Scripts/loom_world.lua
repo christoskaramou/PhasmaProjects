@@ -49,6 +49,7 @@ end
 -- Props a little darker than their cooked colours: the felt houses came out brighter than the bake (houses region
 -- 166,144,115 against 143,119,88, round 3).
 W.PROP_FACTOR = 0.84
+W.BACKDROP_PUSH = 1.06      -- backdrop scale about the camera (see its placement)
 local function prop_look(rough) return function(n) local k = W.PROP_FACTOR; mat(n, { k, k, k }, 0, rough or 0.85) end end
 -- Unlit: black base, metallic 1 (no diffuse, black F0: no specular), the picture as emissive.
 -- The backdrop texture is the bake through the inverse of the engine's tone curve, / EMIS_SCALE (gen_assets.py).
@@ -267,7 +268,11 @@ function W.init()
         setpos(W.balls[i].n, b[2], b[3], 0)
         W.balls[i].shadow = node("ball_shadow_" .. b[1], "shadow_card")
     end
-    setpos(W.backdrop, 0, 0, 0)
+    -- The bake's warp and reed stood a few mm above the loose row being woven and hid its middle cells. Scaling the
+    -- backdrop about the camera keeps every pixel where it was and pushes its depth back, so the live row draws over it.
+    local C, s = D.CAM, W.BACKDROP_PUSH
+    pcall(function() W.backdrop:set_scale(v3(s, s, s)) end)
+    setpos(W.backdrop, C.pos[1] * (1 - s), -C.pos[3] * (1 - s), C.pos[2] * (1 - s))
     flush_xf()
     W.cx = 4
 end

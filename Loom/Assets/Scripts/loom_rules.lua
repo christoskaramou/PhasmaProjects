@@ -11,7 +11,7 @@ local R = {}
 local floor, min, max, abs = math.floor, math.min, math.max, math.abs
 
 R.COLS = 9
-R.LAG = 2                      -- the traveller stands on the third row behind the fell (row index 2, as target.png)
+R.LAG = 3                      -- the traveller stands three rows behind the fell: low enough that his hat never hides the row being woven
 R.MAXWOOL = 9                  -- a full bobbin
 R.VILLAGE_AT = 12              -- best rows walked that unlock the cream bobbin (village houses)
 R.RIVER_EVERY = 7              -- a river crosses the cloth (over two rows) every RIVER_EVERY rows

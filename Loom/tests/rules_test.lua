@@ -59,7 +59,7 @@ do
     local K = st.K
     check(R.beat(st) and st.rows[K + 1]:sub(4, 4) == "b", "beaten: an E-W bridge ('b') with river both sides")
     -- a N-S river: water behind the cell makes a 'B' bridge, and the river carries on into the next row
-    local s2 = R.new(4, { rows = { ".........", "...~p....", "...~p....", "...~p...." } })
+    local s2 = R.new(4, { rows = { ".........", "...~p....", "...~p....", "...~p....", "...~p...." } })
     s2.wool.brown = 5
     check(R.lay(s2, 3, BRIDGE), "a bridge with river behind it can be laid")
     s2.cur[4] = "p"
@@ -195,17 +195,17 @@ do
     local st = R.new(9)
     st.wool.tan = 3
     R.lay(st, 5, PATH); R.lay(st, 4, FIELD)
-    R.beat(st)       -- traveller one row on: the new row is still 2 rows ahead
+    R.beat(st)       -- traveller one row on: the new row is still LAG rows ahead
+    local fk = st.K
     local t1 = st.wool.tan
-    R.lay(st, 5, PATH); R.beat(st)
-    R.lay(st, 5, PATH); R.beat(st)    -- now the traveller stands beside the field's row
+    for _ = 1, R.LAG do R.lay(st, 5, PATH); R.beat(st) end    -- now the traveller has passed the field's row
     local paid = 0
-    for _, e in ipairs(st.events) do if e.kind == "wool" and e.what == "f" then paid = paid + e.amount end end
+    for _, e in ipairs(st.events) do if e.kind == "wool" and e.what == "f" and e.k == fk then paid = paid + e.amount end end
     check(paid == 2, "the field beside the path paid 2 tan (paid " .. paid .. ")")
     local h = st.harvest
     R.lay(st, 5, PATH); R.beat(st)
     local again = 0
-    for _, e in ipairs(st.events) do if e.kind == "wool" and e.what == "f" then again = again + e.amount end end
+    for _, e in ipairs(st.events) do if e.kind == "wool" and e.what == "f" and e.k == fk then again = again + e.amount end end
     check(again == 2, "a cell pays only once")
     st.wool.tan = R.MAXWOOL
     check(st.wool.tan <= R.MAXWOOL, "bobbins hold at most " .. R.MAXWOOL)
