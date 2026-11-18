@@ -1,0 +1,31 @@
+<!doctypehtml><html lang=en><head><meta charset=utf-8><meta content="width=device-width,initial-scale=1"name=viewport><title>Topple</title><style>body,html{margin:0;width:100%;height:100%;overflow:hidden;background:#000}#canvas{display:block;width:100%;height:100%;border:0;outline:0}#status{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa4b2;font:14px system-ui,sans-serif;pointer-events:none}</style></head><body><canvas id=canvas tabindex=-1></canvas><div id=status>Loading...</div><script>var Module=(()=>{const e=document.getElementById("status"),t=document.getElementById("canvas");t.addEventListener("contextmenu",e=>e.preventDefault());let n=navigator.gpu?"":"This browser does not support WebGPU.";const o=t=>{const o=n||t;e.textContent=o,e.style.display=o?"flex":"none"},i=()=>{const e=!navigator.userActivation||navigator.userActivation.isActive;window.miniaudio&&e&&(window.miniaudio.unlock(),document.removeEventListener("keydown",i,!0))};return document.addEventListener("keydown",i,!0),o("Loading..."),{canvas:t,print:(...e)=>console.log(...e),printErr:(...e)=>console.error(...e),setStatus:o,onAbort:e=>{n="The game stopped: "+e,o("")}}})()</script><style>
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#canvas{touch-action:none}
+.pe-ui{position:fixed;z-index:5;display:none;align-items:center;justify-content:center;color:#fff;
+font:calc(20px*var(--pe-u,1)) system-ui,sans-serif}
+#pe-start{inset:0;z-index:6;background:rgba(0,0,0,.55)}
+#pe-full{top:calc(8px*var(--pe-u,1));right:calc(8px*var(--pe-u,1));width:calc(40px*var(--pe-u,1));
+height:calc(40px*var(--pe-u,1));box-sizing:border-box;border-radius:50%;background:rgba(20,24,32,.4);
+border:calc(1.5px*var(--pe-u,1)) solid rgba(255,255,255,.45);touch-action:none}
+</style>
+<div id=pe-start class=pe-ui>Tap to play full screen</div>
+<div id=pe-full class=pe-ui>&#x26F6;</div>
+<script>(()=>{
+const preview=/[?&]touch=1/.test(location.search),coarse=matchMedia("(pointer: coarse)").matches;
+if(!coarse&&!preview)return;
+const show=(id,on)=>document.getElementById(id).style.display=on?"flex":"none";
+const asked=/[?&]zoom=([0-9.]+)/.exec(location.search);
+if(preview||Math.min(screen.width,screen.height)<=600)Module.peUiZoom=asked?+asked[1]:2.2;
+const scale=Math.min(devicePixelRatio||1,2);
+if(scale>1&&coarse){
+const meta=document.querySelector("meta[name=viewport]");
+meta.content="width=device-width,initial-scale="+1/scale+",minimum-scale="+1/scale+",maximum-scale="+1/scale+",user-scalable=no";
+document.documentElement.style.setProperty("--pe-u",scale)}
+const fullScreen=()=>{const root=document.documentElement;
+if(document.fullscreenElement||!root.requestFullscreen)return;
+root.requestFullscreen({navigationUI:"hide"}).then(()=>screen.orientation&&screen.orientation.lock&&
+screen.orientation.lock("landscape")).catch(()=>{})};
+document.getElementById("pe-full").addEventListener("pointerup",event=>{event.preventDefault();
+document.fullscreenElement?document.exitFullscreen():fullScreen()});
+document.getElementById("pe-start").addEventListener("pointerup",()=>{show("pe-start",false);fullScreen()});
+show("pe-start",true);show("pe-full",true)})()</script><script>(async()=>{try{const parts=2,total=139220400;let got=0;const packed=new ReadableStream({async start(out){for(let i=0;i<parts;i++){const response=await fetch("data."+String(i).padStart(3,"0"));if(!response.ok)throw new Error("part "+i+" answered "+response.status);const reader=response.body.getReader();for(;;){const{done,value}=await reader.read();if(done)break;got+=value.length;out.enqueue(value);Module.setStatus("Loading... "+Math.floor(100*got/total)+"%")}}out.close()}});const pack=await new Response(packed.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();Module.getPreloadedPackage=()=>pack;Module.locateFile=path=>path.endsWith(".wasm")?"../player/71a427f4a5f1ba87.wasm":path;const script=document.createElement("script");script.src="PhasmaPlayer.js";document.body.appendChild(script)}catch(error){Module.setStatus("The game could not be loaded: "+error.message)}})()</script></body></html>
