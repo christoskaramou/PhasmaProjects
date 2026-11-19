@@ -46,6 +46,62 @@ Module.locateFile=path=>path.endsWith(".wasm")?"../player/__WASM__":path;
 const script=document.createElement("script");script.src="PhasmaPlayer.js";document.body.appendChild(script)
 }catch(error){Module.setStatus("The game could not be loaded: "+error.message)}})()</script>"""
 
+# Phones (a coarse pointer, or ?touch=1 to preview on a desktop), the same for every game: the page is laid out in
+# device pixels so the canvas, which the player sizes in CSS pixels, renders sharp (capped at 2x for the GPU's sake);
+# a tap enters full screen in landscape; and Module.peUiZoom asks the player to enlarge the game's UI on a
+# phone-sized screen (RuntimeUiZoom.h in the engine; ?zoom=1.8 tries another value). The player itself pulses the
+# phone's vibration when a UI element is pressed. A two-finger pinch on the canvas becomes mouse-wheel steps with a
+# vibration pulse each, so every game that zooms or scrolls with the wheel does so by pinching.
+UI_ZOOM = 2.2
+MOBILE = """<style>
+html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#canvas{touch-action:none}
+.pe-ui{position:fixed;z-index:5;display:none;align-items:center;justify-content:center;color:#fff;
+font:calc(20px*var(--pe-u,1)) system-ui,sans-serif}
+#pe-start{inset:0;z-index:6;background:rgba(0,0,0,.55)}
+#pe-full{top:calc(8px*var(--pe-u,1));right:calc(8px*var(--pe-u,1));width:calc(40px*var(--pe-u,1));
+height:calc(40px*var(--pe-u,1));box-sizing:border-box;border-radius:50%;background:rgba(20,24,32,.4);
+border:calc(1.5px*var(--pe-u,1)) solid rgba(255,255,255,.45);touch-action:none}
+</style>
+<div id=pe-start class=pe-ui>Tap to play full screen</div>
+<div id=pe-full class=pe-ui>&#x26F6;</div>
+<script>(()=>{
+const preview=/[?&]touch=1/.test(location.search),coarse=matchMedia("(pointer: coarse)").matches;
+if(!coarse&&!preview)return;
+const show=(id,on)=>document.getElementById(id).style.display=on?"flex":"none";
+const asked=/[?&]zoom=([0-9.]+)/.exec(location.search);
+if(preview||Math.min(screen.width,screen.height)<=600)Module.peUiZoom=asked?+asked[1]:__ZOOM__;
+const scale=Math.min(devicePixelRatio||1,2);
+if(scale>1&&coarse){
+const meta=document.querySelector("meta[name=viewport]");
+meta.content="width=device-width,initial-scale="+1/scale+",minimum-scale="+1/scale+",maximum-scale="+1/scale+",user-scalable=no";
+document.documentElement.style.setProperty("--pe-u",scale)}
+const fullScreen=()=>{const root=document.documentElement;
+if(document.fullscreenElement||!root.requestFullscreen)return;
+root.requestFullscreen({navigationUI:"hide"}).then(()=>screen.orientation&&screen.orientation.lock&&
+screen.orientation.lock("landscape")).catch(()=>{})};
+document.getElementById("pe-full").addEventListener("pointerup",event=>{event.preventDefault();
+document.fullscreenElement?document.exitFullscreen():fullScreen()});
+document.getElementById("pe-start").addEventListener("pointerup",()=>{show("pe-start",false);fullScreen()});
+const fingers=new Map();let span=0;
+const spread=()=>{const[a,b]=[...fingers.values()];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};
+addEventListener("pointerdown",event=>{
+if(event.pointerType!="touch"||event.target.id!="canvas")return;
+fingers.set(event.pointerId,event);
+if(fingers.size==2)span=spread()},true);
+addEventListener("pointermove",event=>{
+if(!fingers.has(event.pointerId))return;
+fingers.set(event.pointerId,event);
+if(fingers.size!=2)return;
+const step=24*scale,[a,b]=[...fingers.values()];
+while(Math.abs(spread()-span)>=step){
+const way=Math.sign(spread()-span);span+=way*step;
+event.target.dispatchEvent(new WheelEvent("wheel",{deltaY:-100*way,clientX:(a.clientX+b.clientX)/2,
+clientY:(a.clientY+b.clientY)/2,bubbles:true,cancelable:true}));
+navigator.vibrate&&navigator.vibrate(8)}},true);
+for(const type of["pointerup","pointercancel"])addEventListener(type,event=>fingers.delete(event.pointerId),true);
+show("pe-start",true);show("pe-full",true)})()</script>""".replace("__ZOOM__", str(UI_ZOOM))
+
 INDEX = """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -118,7 +174,8 @@ def publish_game(name, export, site):
     parts, packed_bytes = pack_parts(export / "PhasmaPlayer.data", folder)
     loader = LOADER.replace("__PARTS__", str(parts)).replace("__BYTES__", str(packed_bytes))
     loader = loader.replace("__WASM__", wasm_name).replace("\n", "")
-    page = page.replace(PLAYER_SCRIPT, loader).replace("<title>Phasma</title>", f"<title>{html.escape(name)}</title>")
+    page = page.replace(PLAYER_SCRIPT, MOBILE + loader)
+    page = page.replace("<title>Phasma</title>", f"<title>{html.escape(name)}</title>")
     (folder / "index.html").write_text(page, encoding="utf-8")
     shutil.copyfile(export / "PhasmaPlayer.js", folder / "PhasmaPlayer.js")
     shot = export.parent / "shot.png"
