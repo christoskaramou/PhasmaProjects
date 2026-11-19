@@ -469,7 +469,7 @@ local function drive_top(state)
         msg, ccol = string.format("Raze the Wilds' Great Hall   -   %d enemy halls, %d foes",
             state.enemy_halls or 0, state.enemy_alive), U.COLOR.ink
     end
-    drive_text("Objective", msg, ccol, sw * 0.5 - 500, M, 1000, 70)
+    drive_text("Objective", msg, ccol, sw * 0.5 - 320, M, 640, 70)
 end
 
 -- Jev sits on the objective row, left of the match banner (the start / R path).
@@ -564,7 +564,8 @@ local function draw_select_box()
     local b = WB.selection.box
     if b.active then
         local x0, y0 = math.min(b.x0, b.x1), math.min(b.y0, b.y1)
-        local w, h = math.abs(b.x1 - b.x0), math.abs(b.y1 - b.y0)
+        -- At least 1: a quad of size 0 is drawn at the engine's default size, which showed as two long lines on a click.
+        local w, h = math.max(math.abs(b.x1 - b.x0), 1), math.max(math.abs(b.y1 - b.y0), 1)
         local c = SELBOX_COL
         quad("selbox_t", x0, y0, w, 2, c, NO_INPUT)
         quad("selbox_b", x0, y0 + h, w, 2, c, NO_INPUT)

@@ -93,8 +93,8 @@ def build_hud(nodes_len_before, ui_root_index):
     nodes.append(ui_node("HUD_Fps", "hud_fps", 150, 70, [1, 0], [1, 0], -(M * 2 + 440), M, g,
                          fill=PANEL, border=EDGE, body="FPS --", text_color=GREEN,
                          font_scale=1.4, align_h=2, align_v=2))
-    # objective banner, top-center
-    nodes.append(ui_node("HUD_Objective", "hud_objective", 1000, 70, [0.5, 0], [0.5, 0], 0, M, g,
+    # objective banner, top-center, narrow enough to end left of the fps panel, so its text never lies over it
+    nodes.append(ui_node("HUD_Objective", "hud_objective", 640, 70, [0.5, 0], [0.5, 0], 0, M, g,
                          wtype="text", body="Clear the Wilds camp", text_color=INK,
                          font_scale=1.6, align_h=2, align_v=2))
     return nodes
